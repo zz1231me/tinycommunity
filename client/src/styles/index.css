@@ -277,12 +277,13 @@ body {
  * ======================================== */
 @layer components {
   /* 레이아웃 */
+  /* 카드 표면 — 라이트: 부드러운 그림자, 다크: 그림자가 안 보이므로 inset ring으로 입체감 */
   .card {
-    @apply bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/60 shadow-sm;
+    @apply bg-white dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm dark:shadow-none dark:ring-1 dark:ring-inset dark:ring-white/[0.04];
   }
 
   .card-hover {
-    @apply hover:shadow-md transition-shadow duration-200;
+    @apply transition-shadow duration-200 hover:shadow-md dark:hover:ring-white/[0.08];
   }
 
   .page-container {
