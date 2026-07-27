@@ -207,6 +207,39 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
     []
   );
 
+  // Enter=등록 / Shift+Enter=줄바꿈.
+  // CKEditor 기본은 Enter=새 문단이므로 hard-enter(비-soft)를 가로채 등록을 트리거한다.
+  // 핸들러는 onReady에서 1회만 등록되므로, 최신 상태를 반영하도록 콜백을 ref에 매 렌더 갱신한다.
+  const writeSubmitRef = useRef<() => void>(() => {});
+  writeSubmitRef.current = () => ops.handleSubmit(setComments);
+  const replySubmitRef = useRef<() => void>(() => {});
+  replySubmitRef.current = () => {
+    if (ops.replyingToId !== null) ops.handleReplySubmit(ops.replyingToId);
+  };
+  const editSaveRef = useRef<() => void>(() => {});
+  editSaveRef.current = () => {
+    if (ops.editingCommentId !== null) ops.handleEditSave(ops.editingCommentId);
+  };
+
+  const attachEnterToSubmit = (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    editor: any,
+    actionRef: React.MutableRefObject<() => void>
+  ) => {
+    editor.editing.view.document.on(
+      'enter',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (evt: any, data: any) => {
+        if (data.isSoft) return; // Shift+Enter → 줄바꿈(기본 동작 유지)
+        if (data.domEvent?.isComposing) return; // 한글 등 IME 조합 중 Enter는 글자 확정용 — 무시
+        data.preventDefault();
+        evt.stop();
+        actionRef.current();
+      },
+      { priority: 'high' }
+    );
+  };
+
   useEffect(() => {
     if (!postId || !boardType) return;
     const controller = new AbortController();
@@ -465,6 +498,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                         editor={ClassicEditor}
                         config={editConfig}
                         data={ops.editContent}
+                        onReady={editor => attachEnterToSubmit(editor, editSaveRef)}
                         onChange={(_e, editor) => ops.setEditContent(editor.getData())}
                       />
                     </div>
@@ -569,6 +603,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                         onReady={editor => {
                           ops.replyEditorRef.current = editor;
                           editor.editing?.view?.focus();
+                          attachEnterToSubmit(editor, replySubmitRef);
                         }}
                         onChange={(_e, editor) => ops.setReplyContent(editor.getData())}
                       />
@@ -784,21 +819,27 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                   data={ops.newComment}
                   onReady={editor => {
                     ops.writeEditorRef.current = editor;
+                    attachEnterToSubmit(editor, writeSubmitRef);
                   }}
                   onChange={(_e, editor) => ops.setNewComment(editor.getData())}
                   disabled={ops.submitting}
                 />
               </div>
-              <div className="flex items-center justify-between">
-                <span
-                  className={`text-xs ${
-                    newCommentLen > 900
-                      ? 'text-red-500 dark:text-red-400'
-                      : 'text-slate-400 dark:text-slate-500'
-                  }`}
-                >
-                  {newCommentLen.toLocaleString()}/{ops.MAX_CHARS}자
-                </span>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={`text-xs ${
+                      newCommentLen > 900
+                        ? 'text-red-500 dark:text-red-400'
+                        : 'text-slate-400 dark:text-slate-500'
+                    }`}
+                  >
+                    {newCommentLen.toLocaleString()}/{ops.MAX_CHARS}자
+                  </span>
+                  <span className="hidden sm:inline text-xs text-slate-400 dark:text-slate-500">
+                    · Enter 등록, Shift+Enter 줄바꿈
+                  </span>
+                </div>
                 <button
                   onClick={() => ops.handleSubmit(setComments)}
                   disabled={!newCommentLen || newCommentLen > ops.MAX_CHARS || ops.submitting}
