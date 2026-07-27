@@ -47,14 +47,14 @@ export const PageHeader = React.memo(
                     {!isLast && bc.to ? (
                       <Link
                         to={bc.to}
-                        className="min-w-0 truncate hover:text-primary-600 dark:hover:text-primary-400 hover:underline transition-colors"
+                        className="min-w-0 max-w-[180px] sm:max-w-[320px] truncate hover:text-primary-600 dark:hover:text-primary-400 hover:underline transition-colors"
                       >
                         {bc.label}
                       </Link>
                     ) : (
                       <span
                         aria-current={isLast ? 'page' : undefined}
-                        className={`min-w-0 truncate ${isLast ? 'text-slate-700 dark:text-slate-300 font-medium' : ''}`}
+                        className={`min-w-0 max-w-[180px] sm:max-w-[320px] truncate ${isLast ? 'text-slate-700 dark:text-slate-300 font-medium' : ''}`}
                       >
                         {bc.label}
                       </span>
