@@ -269,15 +269,25 @@
   height: auto;
   border-radius: 0.5rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin: 1rem auto;
-  display: block;
   border: 1px solid rgb(229, 231, 235);
   /* gray-200 */
+  /* 정렬/블록화는 래퍼(figure.image)가 담당 — bare <img>(에디터 insert.type:'auto'의
+     인라인 이미지)는 텍스트 흐름을 유지해 자동 가운데정렬되지 않는다.
+     Tailwind preflight의 img{display:block}을 덮어써 인라인 흐름을 보장. */
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .dark .ck-content-view img {
   border-color: rgb(75, 85, 99);
   /* gray-600 */
+}
+
+/* figure 래퍼 이미지(block/정렬/리사이즈)는 래퍼를 채우는 블록 — 정렬·크기는 figure.image가 담당 */
+.ck-content-view figure.image img {
+  display: block;
+  width: 100%;
+  margin: 0;
 }
 
 /* ✅ 구분선 */

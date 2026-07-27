@@ -551,7 +551,15 @@ const PostEditor = ({ mode }: Props) => {
           <div className="flex justify-end">
             <button
               type="button"
-              onClick={() => setSplitView(v => !v)}
+              onClick={() => {
+                // 분할 보기를 켤 때만 현재 내용으로 미리보기 초기화.
+                // (비분할 모드는 미리보기가 화면에 없어 매 키 입력 sanitize를 하지 않으므로)
+                if (!splitView) {
+                  const html = editorRef.current?.getInstance()?.getContent?.() ?? '';
+                  setPreviewHtml(sanitizeHTML(html));
+                }
+                setSplitView(v => !v);
+              }}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
                 splitView
                   ? 'bg-primary-600 text-white border-primary-600'
@@ -624,7 +632,7 @@ const PostEditor = ({ mode }: Props) => {
               placeholder={
                 boardType ? `${boardTitle}의 내용을 작성해주세요...` : '내용을 작성해주세요...'
               }
-              onChange={html => setPreviewHtml(sanitizeHTML(html))}
+              onChange={() => {}}
             >
               <CKEditorWrapper
                 key={editorKey}
@@ -634,7 +642,7 @@ const PostEditor = ({ mode }: Props) => {
                 placeholder={
                   boardType ? `${boardTitle}의 내용을 작성해주세요...` : '내용을 작성해주세요...'
                 }
-                onChange={html => setPreviewHtml(sanitizeHTML(html))}
+                onChange={() => {}}
               />
             </EditorErrorBoundary>
           )}

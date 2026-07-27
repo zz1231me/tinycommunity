@@ -264,17 +264,32 @@ const MEDIA_EMBED_CONFIG: EditorConfig['mediaEmbed'] = {
 };
 
 const POST_IMAGE_CONFIG: EditorConfig['image'] = {
+  // 삽입 시 커서 위치에 따라 inline/block 자동 결정 — 글 작성 중 삽입은 inline(좌측 흐름),
+  // 빈 줄 삽입만 block. 생략 시 기본값 'block'이라 무조건 가운데정렬되던 불편을 개선.
+  insert: { type: 'auto' },
+  // 정렬 스타일은 표시 CSS(CKContentView.css)가 처리하는 클래스로 한정 — 에디터↔표시 정합.
+  // inline / alignLeft(좌측 플로트) / alignCenter(가운데블록) / alignRight(우측 플로트)
+  styles: { options: ['inline', 'alignLeft', 'alignCenter', 'alignRight'] },
+  // 리사이즈: 드래그 핸들 + 프리셋 버튼(원본/25/50/75%) — 클릭만으로 크기 조절.
+  resizeUnit: '%',
+  resizeOptions: [
+    { name: 'resizeImage:original', value: null, label: '원본' },
+    { name: 'resizeImage:25', value: '25', label: '25%' },
+    { name: 'resizeImage:50', value: '50', label: '50%' },
+    { name: 'resizeImage:75', value: '75', label: '75%' },
+  ],
   toolbar: [
     'imageStyle:inline',
-    'imageStyle:wrapText',
-    'imageStyle:breakText',
+    'imageStyle:alignLeft',
+    'imageStyle:alignCenter',
+    'imageStyle:alignRight',
+    '|',
+    'resizeImage',
     '|',
     'toggleImageCaption',
     'imageTextAlternative',
     '|',
     'linkImage',
-    '|',
-    'resizeImage',
   ],
 };
 
