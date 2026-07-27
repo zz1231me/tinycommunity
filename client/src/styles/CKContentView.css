@@ -3,7 +3,8 @@
 
 .ck-content-view {
   max-width: none;
-  line-height: 1.6;
+  /* 에디터(.ck-editor__editable, 1.75)와 base line-height를 통일해 작성↔읽기 간 줄간격 일치 */
+  line-height: 1.75;
   color: rgb(55, 65, 81);
   /* gray-700 */
   font-family:
