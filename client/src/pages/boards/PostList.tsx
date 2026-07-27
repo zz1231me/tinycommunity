@@ -452,7 +452,7 @@ const PostList = () => {
 
       {/* ✅ 게시글 목록 카드 — 다크모드는 shadow가 안 보이므로 subtle ring으로 입체감 부여 */}
       <div
-        className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm dark:shadow-none dark:ring-1 dark:ring-inset dark:ring-white/[0.04] overflow-hidden"
+        className="card overflow-hidden"
         role="region"
         aria-label={`${boardInfo?.name || '게시판'} 목록`}
         aria-live="polite"

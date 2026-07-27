@@ -73,7 +73,7 @@ const ChangePassword = () => {
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 space-y-4"
+          className="card p-6 space-y-4"
         >
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">새 비밀번호 설정</h1>
 
@@ -111,7 +111,7 @@ const ChangePassword = () => {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="btn-primary w-full"
           >
             {submitting ? '변경 중...' : '비밀번호 변경'}
           </button>

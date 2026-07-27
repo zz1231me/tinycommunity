@@ -214,7 +214,7 @@ export const PermissionManagement = () => {
         </div>
       )}
       <AdminSection title="위키 편집 권한">
-        <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
+        <div className="card p-6">
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm text-slate-500 dark:text-slate-400">
               선택된 역할만 위키 페이지를 생성·수정·삭제할 수 있습니다.
@@ -284,7 +284,7 @@ export const PermissionManagement = () => {
               type="button"
               onClick={handleSaveAll}
               disabled={saving || dirtyCount === 0}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="btn-primary gap-1.5 px-4 py-2"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? '저장 중' : dirtyCount > 0 ? `저장 (${dirtyCount})` : '저장됨'}
@@ -320,7 +320,7 @@ export const PermissionManagement = () => {
               return (
                 <div
                   key={board.id}
-                  className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800"
+                  className="card p-6"
                 >
                   <div className="mb-4 flex items-center justify-between">
                     <h3 className="flex items-baseline gap-2 text-base font-semibold text-slate-800 dark:text-slate-100">

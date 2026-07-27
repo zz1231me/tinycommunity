@@ -168,7 +168,7 @@ export function ReportButton({ targetType, targetId, className = '' }: ReportBut
                   </p>
                   <button
                     onClick={handleClose}
-                    className="mt-4 px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors"
+                    className="btn-primary mt-4 px-6 py-2"
                   >
                     확인
                   </button>

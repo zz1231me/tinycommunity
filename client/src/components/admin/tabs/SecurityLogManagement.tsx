@@ -234,7 +234,7 @@ export const SecurityLogManagement = () => {
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded text-sm font-medium transition-colors"
+            className="btn-primary px-4 py-2"
           >
             검색
           </button>

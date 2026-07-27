@@ -416,7 +416,7 @@ export default function Profile() {
             {activeTab === 'profile' && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {/* 아바타 */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 text-center">
+                <div className="card p-6 text-center">
                   <AvatarUpload
                     user={user}
                     onAvatarUpdate={url => updateUser({ avatar: url })}
@@ -435,7 +435,7 @@ export default function Profile() {
                 </div>
 
                 {/* 기본 정보 */}
-                <div className="sm:col-span-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 space-y-5">
+                <div className="card sm:col-span-2 p-6 space-y-5">
                   <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-base">
                     기본 정보
                   </h3>
@@ -459,12 +459,12 @@ export default function Profile() {
                             }}
                             maxLength={50}
                             autoFocus
-                            className="flex-1 max-w-[200px] px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="input flex-1 max-w-[200px] py-1.5"
                           />
                           <button
                             onClick={handleNameSave}
                             disabled={isChangingName}
-                            className="px-3 py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 rounded-lg transition-colors"
+                            className="btn-primary px-3 py-1.5 text-xs"
                           >
                             {isChangingName ? '저장 중...' : '저장'}
                           </button>
@@ -524,7 +524,7 @@ export default function Profile() {
 
             {/* 2. 내 게시글 탭 */}
             {activeTab === 'posts' && (
-              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="card overflow-hidden">
                 <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                   <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                     내가 작성한 게시글
@@ -585,7 +585,7 @@ export default function Profile() {
 
             {/* 3. 내 댓글 탭 */}
             {activeTab === 'comments' && (
-              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="card overflow-hidden">
                 <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                   <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                     내가 작성한 댓글
@@ -649,7 +649,7 @@ export default function Profile() {
 
             {/* 4. 접속 기록 탭 */}
             {activeTab === 'security' && (
-              <div className="mb-6 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="card mb-6 overflow-hidden">
                 <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
                   <h3 className="font-semibold text-slate-900 dark:text-slate-100">활성 세션</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -687,7 +687,7 @@ export default function Profile() {
                                   {deviceLabel(s.userAgent)}
                                 </span>
                                 {s.isCurrent && (
-                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+                                  <span className="badge badge-primary">
                                     현재 기기
                                   </span>
                                 )}
@@ -722,7 +722,7 @@ export default function Profile() {
             )}
 
             {activeTab === 'security' && (
-              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="card overflow-hidden">
                 <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
                   <h3 className="font-semibold text-slate-900 dark:text-slate-100">접속 기록</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -808,7 +808,7 @@ export default function Profile() {
             {activeTab === 'settings' && (
               <div className="space-y-6">
                 {/* 비밀번호 변경 */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+                <div className="card p-6">
                   <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-5">
                     비밀번호 변경
                   </h3>
@@ -843,7 +843,7 @@ export default function Profile() {
                           }
                           autoComplete={autocomplete}
                           disabled={isChangingPassword}
-                          className="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+                          className="input px-4 py-2.5"
                           placeholder={note}
                         />
                       </div>
@@ -851,7 +851,7 @@ export default function Profile() {
                     <button
                       type="submit"
                       disabled={isChangingPassword}
-                      className="w-full py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 rounded-lg transition-colors disabled:cursor-not-allowed"
+                      className="btn-primary w-full"
                     >
                       {isChangingPassword ? (
                         <span className="flex items-center justify-center gap-2">
@@ -866,7 +866,7 @@ export default function Profile() {
                 </div>
 
                 {/* 2단계 인증 */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+                <div className="card p-6">
                   <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-5">
                     2단계 인증 (2FA)
                   </h3>

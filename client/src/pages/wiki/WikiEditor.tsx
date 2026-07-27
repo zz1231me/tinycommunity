@@ -451,7 +451,7 @@ export const WikiEditor: React.FC<WikiEditorProps> = ({
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm transition-all"
+              className="input py-2.5"
               placeholder="페이지 제목을 입력하세요"
               required
             />
@@ -500,7 +500,7 @@ export const WikiEditor: React.FC<WikiEditorProps> = ({
                 const val = parseInt(e.target.value);
                 setParentId(!isNaN(val) ? val : null);
               }}
-              className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 text-sm transition-all"
+              className="input py-2.5"
             >
               <option value="">최상위 페이지</option>
               {parentOptions.map(p => (
@@ -567,7 +567,7 @@ export const WikiEditor: React.FC<WikiEditorProps> = ({
           <button
             type="submit"
             disabled={!title.trim() || !slug.trim() || !!slugError || isSaving}
-            className="flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold text-sm"
+            className="btn-primary"
           >
             {isSaving && (
               <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />

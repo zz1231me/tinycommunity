@@ -222,7 +222,7 @@ const WikiPageRoute = () => {
                 setIsEditing(false);
                 setSaveError(null);
               }}
-              className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+              className="btn-primary gap-1.5 px-3 py-1.5"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path

@@ -148,7 +148,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({ attachments }) => {
                           {displayName}
                         </div>
                         {isImage && (
-                          <span className="flex-shrink-0 text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                          <span className="badge badge-info flex-shrink-0">
                             확대
                           </span>
                         )}

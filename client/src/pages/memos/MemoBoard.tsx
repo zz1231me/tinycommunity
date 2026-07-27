@@ -123,7 +123,7 @@ const MemoBoard = () => {
       <div className="mb-6">
         <button
           onClick={handleNewMemo}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-sm"
+          className="btn-primary px-4 py-2"
         >
           <span className="text-lg">+</span>새 메모 작성
         </button>

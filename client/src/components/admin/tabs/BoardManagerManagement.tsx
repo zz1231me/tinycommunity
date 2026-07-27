@@ -222,7 +222,7 @@ const BoardManagerManagement = () => {
                           setUserSearch(e.target.value);
                           setSelectedUserId('');
                         }}
-                        className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="input"
                       />
                       {userSearch && !selectedUserId && filteredUsers.length > 0 && (
                         <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-10 max-h-48 overflow-y-auto">
@@ -249,7 +249,7 @@ const BoardManagerManagement = () => {
                       onClick={handleAdd}
                       disabled={!selectedUserId || isAdding}
                       style={{ outline: 'none', border: 'none' }}
-                      className="px-4 py-2 text-sm font-medium bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-lg transition-colors flex-shrink-0"
+                      className="btn-primary px-4 py-2 flex-shrink-0"
                     >
                       {isAdding ? '추가 중...' : '추가'}
                     </button>

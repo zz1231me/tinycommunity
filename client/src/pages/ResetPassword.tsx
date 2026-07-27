@@ -154,7 +154,7 @@ function ResetPassword() {
               </p>
               <Link
                 to="/password-reset-request"
-                className="inline-flex items-center gap-2 py-2.5 px-6 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg transition-colors"
+                className="btn-primary px-6"
               >
                 초기화 다시 요청하기
               </Link>

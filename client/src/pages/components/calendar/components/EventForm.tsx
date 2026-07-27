@@ -60,16 +60,8 @@ interface EventFormProps {
   submitting?: boolean;
 }
 
-// 공통 input 클래스
-const inputCls = [
-  'block w-full px-3.5 py-2.5 rounded-lg text-base',
-  'border border-slate-300 dark:border-slate-600',
-  'bg-white dark:bg-slate-800',
-  'text-slate-900 dark:text-slate-100',
-  'placeholder:text-slate-400 dark:placeholder:text-slate-500',
-  'focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-500',
-  'transition-all duration-150',
-].join(' ');
+// 공통 input 클래스 — 디자인 시스템 프리미티브(.input)에 위임
+const inputCls = 'input';
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
@@ -110,7 +102,7 @@ export const EventForm: React.FC<EventFormProps> = ({
           e.preventDefault();
         }
       }}
-      className="space-y-5"
+      className="space-y-4"
     >
       {/* 일정 종류 */}
       <div>
@@ -207,89 +199,70 @@ export const EventForm: React.FC<EventFormProps> = ({
         />
       </div>
 
-      {/* 날짜 */}
-      <div>
-        <FieldLabel required>일정 날짜</FieldLabel>
-        <div className="flex items-end gap-2">
-          <div className="flex-1">
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
-              시작일
-            </p>
-            <input
-              type="date"
-              value={formData.start}
-              onChange={e => {
-                const newStart = e.target.value;
-                onChange({
-                  start: newStart,
-                  end: newStart > formData.end ? newStart : formData.end,
-                });
-              }}
-              onClick={e => e.currentTarget.showPicker?.()}
-              className={`${inputCls} cursor-pointer`}
-              required
-            />
-          </div>
-          <div className="flex-shrink-0 pb-3 text-slate-300 dark:text-slate-600">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M14 5l7 7m0 0l-7 7m7-7H3"
-              />
-            </svg>
-          </div>
-          <div className="flex-1">
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
-              종료일
-            </p>
-            <input
-              type="date"
-              value={formData.end}
-              min={formData.start}
-              onChange={e => onChange({ end: e.target.value })}
-              onClick={e => e.currentTarget.showPicker?.()}
-              className={`${inputCls} cursor-pointer`}
-              required
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 장소 */}
-      <div>
-        <FieldLabel>장소</FieldLabel>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
-            <svg
-              className="w-4 h-4 text-slate-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-          </div>
+      {/* 날짜 · 장소 — 넓은 모달 폭을 활용해 3열 배치 (세로 스크롤 최소화) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <FieldLabel required>시작일</FieldLabel>
           <input
-            type="text"
-            value={formData.location || ''}
-            onChange={e => onChange({ location: e.target.value.slice(0, eventLocationMax) })}
-            maxLength={eventLocationMax}
-            className={`${inputCls} pl-10`}
-            placeholder="장소를 입력하세요 (선택사항)"
+            type="date"
+            value={formData.start}
+            onChange={e => {
+              const newStart = e.target.value;
+              onChange({
+                start: newStart,
+                end: newStart > formData.end ? newStart : formData.end,
+              });
+            }}
+            onClick={e => e.currentTarget.showPicker?.()}
+            className={`${inputCls} cursor-pointer`}
+            required
           />
+        </div>
+        <div>
+          <FieldLabel required>종료일</FieldLabel>
+          <input
+            type="date"
+            value={formData.end}
+            min={formData.start}
+            onChange={e => onChange({ end: e.target.value })}
+            onClick={e => e.currentTarget.showPicker?.()}
+            className={`${inputCls} cursor-pointer`}
+            required
+          />
+        </div>
+        <div>
+          <FieldLabel>장소</FieldLabel>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
+              <svg
+                className="w-4 h-4 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+            </div>
+            <input
+              type="text"
+              value={formData.location || ''}
+              onChange={e => onChange({ location: e.target.value.slice(0, eventLocationMax) })}
+              maxLength={eventLocationMax}
+              className={`${inputCls} pl-10`}
+              placeholder="장소 (선택)"
+            />
+          </div>
         </div>
       </div>
 
@@ -321,12 +294,7 @@ export const EventForm: React.FC<EventFormProps> = ({
         <button
           type="submit"
           disabled={submitting}
-          className="flex-1 inline-flex items-center justify-center gap-2
-                     px-4 py-2.5 rounded-lg text-sm font-semibold
-                     bg-primary-600 hover:bg-primary-700 active:bg-primary-800
-                     text-white shadow-sm
-                     transition-all duration-150 active:scale-[0.98]
-                     disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+          className="btn-primary flex-1"
         >
           {submitting ? (
             <>
@@ -364,13 +332,7 @@ export const EventForm: React.FC<EventFormProps> = ({
           type="button"
           onClick={onCancel}
           disabled={submitting}
-          className="px-4 py-2.5 rounded-lg text-sm font-medium
-                     text-slate-600 dark:text-slate-400
-                     bg-slate-100 dark:bg-slate-800
-                     hover:bg-slate-200 dark:hover:bg-slate-700
-                     hover:text-slate-800 dark:hover:text-slate-200
-                     disabled:opacity-50 disabled:cursor-not-allowed
-                     transition-colors duration-150"
+          className="btn-secondary"
         >
           취소
         </button>

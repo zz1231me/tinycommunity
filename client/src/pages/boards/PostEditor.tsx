@@ -514,7 +514,7 @@ const PostEditor = ({ mode }: Props) => {
                 id="board-move-select"
                 value={targetBoard}
                 onChange={e => setTargetBoard(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500/40 focus:outline-none"
+                className="input"
               >
                 {/* 현재 게시판이 쓰기권한 목록에 없을 수 있으므로 항상 선택지로 포함 */}
                 {boardType && !moveTargets.some(b => b.id === boardType) && (

@@ -92,7 +92,7 @@ export const EventManagement = () => {
         title="이벤트 권한 설정"
         actions={
           <span
-            className={`text-xs px-2 py-1 rounded-full font-medium ${savingEvents ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}
+            className={`badge py-1 ${savingEvents ? 'badge-warning' : 'badge-success'}`}
           >
             {savingEvents ? '저장 중...' : '자동 저장됨'}
           </span>
@@ -129,7 +129,7 @@ export const EventManagement = () => {
                   {eventPermissions.map(p => (
                     <tr key={p.roleId} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                       <td className="px-3 py-3">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                        <span className="badge badge-info">
                           {p.role?.name || p.roleId}
                         </span>
                       </td>
@@ -209,7 +209,7 @@ export const EventManagement = () => {
                       )}
                     </td>
                     <td className="px-3 py-3">
-                      <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                      <span className="badge badge-gray">
                         {CALENDAR_NAMES[event.calendarId] || event.calendarId}
                       </span>
                     </td>
@@ -229,7 +229,7 @@ export const EventManagement = () => {
                           <button
                             onClick={() => handleSaveEdit(event.id)}
                             disabled={savingEdit}
-                            className="px-3 py-1.5 text-xs font-medium rounded-md bg-primary-600 hover:bg-primary-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="btn-primary px-3 py-1.5 text-xs"
                           >
                             {savingEdit ? '저장 중...' : '저장'}
                           </button>

@@ -398,7 +398,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                       {userName}
                     </span>
                     {isReply && (
-                      <span className="text-xs bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 px-1.5 py-0.5 rounded-full flex-shrink-0 font-medium">
+                      <span className="badge badge-primary px-1.5 flex-shrink-0">
                         답글
                       </span>
                     )}
@@ -410,7 +410,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                       {formatRelativeDate(comment.createdAt)}
                     </time>
                     {comment.isEdited && (
-                      <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                      <span className="badge badge-warning px-1.5 flex-shrink-0">
                         수정됨
                       </span>
                     )}
@@ -530,8 +530,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                             editCommentLen > ops.MAX_CHARS ||
                             ops.editContent === comment.content
                           }
-                          className="px-3 py-1.5 text-sm font-medium bg-primary-600 text-white rounded-lg
-                                     hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="btn-primary px-3 py-1.5 text-sm"
                         >
                           저장
                         </button>
@@ -640,9 +639,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                             replyCommentLen > ops.MAX_CHARS ||
                             ops.replySubmitting
                           }
-                          className="flex items-center gap-1.5 px-4 py-1.5 bg-primary-600 text-white font-semibold text-sm
-                                     rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed
-                                     transition-colors"
+                          className="btn-primary px-4 py-1.5 text-sm"
                         >
                           {ops.replySubmitting ? (
                             <>
@@ -843,9 +840,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                 <button
                   onClick={() => ops.handleSubmit(setComments)}
                   disabled={!newCommentLen || newCommentLen > ops.MAX_CHARS || ops.submitting}
-                  className="flex items-center gap-2 px-5 py-2 bg-primary-600 text-white font-semibold text-sm
-                             rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed
-                             transition-colors shadow-sm"
+                  className="btn-primary"
                 >
                   {ops.submitting ? (
                     <>

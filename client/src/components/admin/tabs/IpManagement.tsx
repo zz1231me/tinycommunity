@@ -15,7 +15,7 @@ import { toast } from '../../../utils/toast';
 
 // ── 통계 카드 ────────────────────────────────────────────────────────────────
 const StatCard = ({ label, value, color }: { label: string; value: number; color: string }) => (
-  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex flex-col gap-1">
+  <div className="card p-4 flex flex-col gap-1">
     <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</span>
     <span className={`text-2xl font-bold ${color}`}>{value}</span>
   </div>
@@ -24,11 +24,11 @@ const StatCard = ({ label, value, color }: { label: string; value: number; color
 // ── 배지 ─────────────────────────────────────────────────────────────────────
 const TypeBadge = ({ type }: { type: IpRuleType }) =>
   type === 'whitelist' ? (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+    <span className="badge badge-success">
       <Shield className="w-3 h-3" /> 화이트리스트
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+    <span className="badge badge-danger">
       <ShieldOff className="w-3 h-3" /> 블랙리스트
     </span>
   );

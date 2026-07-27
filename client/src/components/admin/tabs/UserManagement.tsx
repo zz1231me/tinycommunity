@@ -321,7 +321,7 @@ export const UserManagement = () => {
                 if (e.key === 'Enter') handleResetPassword();
               }}
               placeholder="6자리 숫자 (예: 482915)"
-              className="w-full px-3 py-2 text-center tracking-[0.4em] text-lg border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input text-center tracking-[0.4em] text-lg"
             />
             {resetError && <p className="text-sm text-red-500 dark:text-red-400">{resetError}</p>}
             <div className="flex justify-end gap-2">
@@ -335,7 +335,7 @@ export const UserManagement = () => {
               <button
                 onClick={handleResetPassword}
                 disabled={resetting || resetCode.length !== 6}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 hover:bg-primary-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary px-4 py-2"
               >
                 {resetting ? '초기화 중...' : '초기화'}
               </button>
@@ -414,7 +414,7 @@ export const UserManagement = () => {
           <button
             onClick={handleAddUser}
             disabled={!userForm.id || !userForm.name || !userForm.role}
-            className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed text-white transition-colors"
+            className="btn-primary px-4 py-2"
           >
             계정 생성
           </button>
@@ -430,7 +430,7 @@ export const UserManagement = () => {
         <AdminSection
           title={`승인 대기 (${pendingUsers.length}명)`}
           actions={
-            <span className="text-xs font-semibold px-2 py-1 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded-full">
+            <span className="badge badge-warning py-1">
               조치 필요
             </span>
           }
@@ -518,7 +518,7 @@ export const UserManagement = () => {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="아이디 / 이름 검색..."
-              className="w-48 px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input w-48 py-1.5"
             />
           </div>
         }
@@ -577,7 +577,7 @@ export const UserManagement = () => {
                       </select>
                     </td>
                     <td className="px-3 py-3">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      <span className="badge badge-success">
                         <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
                         활성
                       </span>

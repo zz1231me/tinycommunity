@@ -85,7 +85,7 @@ const AssetUploader: React.FC<AssetUploaderProps> = ({ label, hint, accept, valu
             value={value ?? ''}
             onChange={e => onChange(e.target.value || null)}
             placeholder="파일 업로드 시 자동 입력 (또는 https://... 직접 입력)"
-            className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="input"
           />
 
           <div className="flex gap-2">
@@ -201,7 +201,7 @@ const NumberInput: React.FC<NumberInputProps> = ({
           onKeyDown={e => {
             if (e.key === 'Enter') commit((e.target as HTMLInputElement).value);
           }}
-          className="w-full max-w-[120px] px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="input max-w-[120px]"
         />
         {unit && <span className="text-sm text-slate-500 dark:text-slate-400">{unit}</span>}
       </div>
@@ -416,7 +416,7 @@ export const SiteSettingsManagement = () => {
               onChange={e => set('siteName', e.target.value)}
               placeholder="TinyCommunity"
               required
-              className="w-full max-w-sm px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input max-w-sm"
             />
             <p className="mt-1 text-xs text-slate-400">헤더와 사이드바에 표시되는 이름</p>
           </div>
@@ -431,7 +431,7 @@ export const SiteSettingsManagement = () => {
               onChange={e => set('siteTitle', e.target.value)}
               placeholder="TinyCommunity"
               required
-              className="w-full max-w-sm px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input max-w-sm"
             />
             <p className="mt-1 text-xs text-slate-400">브라우저 탭에 표시되는 제목</p>
           </div>
@@ -445,7 +445,7 @@ export const SiteSettingsManagement = () => {
               onChange={e => set('description', e.target.value || null)}
               rows={3}
               placeholder="사이트에 대한 간단한 설명을 입력하세요."
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input resize-none"
             />
             <p className="mt-1 text-xs text-slate-400">메타 태그, SEO, 로그인 페이지에 사용</p>
           </div>
@@ -598,7 +598,7 @@ export const SiteSettingsManagement = () => {
                 onChange={e => set('maintenanceMessage', e.target.value || null)}
                 rows={3}
                 placeholder="현재 서비스 점검 중입니다. 잠시 후 다시 이용해 주세요."
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="input resize-none"
               />
               <p className="mt-1 text-xs text-slate-400">비워두면 기본 메시지가 표시됩니다.</p>
             </div>
@@ -617,7 +617,7 @@ export const SiteSettingsManagement = () => {
             onChange={e => set('loginMessage', e.target.value || null)}
             rows={3}
             placeholder="로그인 페이지 하단에 표시할 메시지를 입력하세요. (예: 문의: admin@example.com)"
-            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="input resize-none"
           />
           <p className="mt-1 text-xs text-slate-400">
             공지사항, 문의처, 이용 안내 등을 입력할 수 있습니다.
@@ -1028,7 +1028,7 @@ export const SiteSettingsManagement = () => {
         <button
           type="submit"
           disabled={saving}
-          className="px-5 py-2.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+          className="btn-primary"
         >
           {saving ? (
             <>

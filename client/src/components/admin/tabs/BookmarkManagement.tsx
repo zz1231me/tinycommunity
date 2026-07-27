@@ -137,7 +137,7 @@ export function BookmarkManagement() {
               type="text"
               value={formData.name}
               onChange={e => setFormData({ ...formData, name: e.target.value })}
-              className="w-44 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input w-44"
               placeholder="예: Google"
             />
           </div>
@@ -149,14 +149,14 @@ export function BookmarkManagement() {
               type="text"
               value={formData.url}
               onChange={e => setFormData({ ...formData, url: e.target.value })}
-              className="w-64 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input w-64"
               placeholder="https://google.com"
             />
           </div>
           <button
             onClick={handleCreate}
             disabled={!formData.name || !formData.url}
-            className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed text-white transition-colors"
+            className="btn-primary px-4 py-2"
           >
             추가
           </button>
@@ -302,7 +302,7 @@ export function BookmarkManagement() {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => handleUpdate(bookmark.id)}
-                            className="px-3 py-1.5 text-xs font-medium rounded-md bg-primary-600 hover:bg-primary-700 text-white transition-colors"
+                            className="btn-primary px-3 py-1.5 text-xs"
                           >
                             저장
                           </button>

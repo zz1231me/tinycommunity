@@ -239,7 +239,7 @@ export const ErrorLogManagement = () => {
           </div>
           <button
             type="submit"
-            className="px-4 py-1.5 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 transition-colors"
+            className="btn-primary px-4 py-1.5"
           >
             검색
           </button>

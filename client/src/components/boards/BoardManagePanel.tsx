@@ -145,8 +145,7 @@ export function BoardManagePanel({
     }
   };
 
-  const inputCls =
-    'w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500';
+  const inputCls = 'input';
 
   return (
     <div
@@ -291,7 +290,7 @@ export function BoardManagePanel({
                         <button
                           onClick={() => handleSaveEdit(tag.id)}
                           disabled={busyTagId === tag.id}
-                          className="px-2.5 py-1 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg disabled:opacity-50"
+                          className="btn-primary px-2.5 py-1 text-xs"
                         >
                           저장
                         </button>

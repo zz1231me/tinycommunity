@@ -320,7 +320,7 @@ export const RateLimitManagement = () => {
                     </td>
                     <td className="px-3 py-3 text-center">
                       <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${setting.enabled ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}
+                        className={`badge ${setting.enabled ? 'badge-success' : 'badge-gray'}`}
                       >
                         <span
                           className={`w-1.5 h-1.5 rounded-full ${setting.enabled ? 'bg-green-500' : 'bg-slate-400'}`}

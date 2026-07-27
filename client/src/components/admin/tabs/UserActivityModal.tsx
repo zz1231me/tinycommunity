@@ -320,7 +320,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
                               {log.adminName}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
-                              <span className="px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                              <span className="badge badge-info">
                                 {ACTION_LABELS[log.action] ?? log.action}
                               </span>
                             </td>

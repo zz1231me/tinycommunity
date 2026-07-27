@@ -297,7 +297,7 @@ const PostDetail = () => {
 
               {/* 조회수 */}
               {post.viewCount !== undefined && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300">
+                <div className="badge badge-gray gap-1.5 px-3 py-1.5">
                   <Eye className="w-4 h-4" aria-hidden="true" />
                   <span className="sr-only">조회수</span>
                   <span>{post.viewCount.toLocaleString()}</span>

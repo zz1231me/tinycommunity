@@ -249,7 +249,7 @@ export function NotificationBell() {
               <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
                 알림
                 {unreadCount > 0 && (
-                  <span className="ml-2 px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs rounded-full font-bold">
+                  <span className="badge badge-red ml-2 px-1.5 font-bold">
                     {unreadCount}
                   </span>
                 )}
@@ -310,7 +310,7 @@ export function NotificationBell() {
                 </p>
                 <button
                   onClick={fetchNotifications}
-                  className="px-4 py-2 text-xs font-medium rounded-lg bg-primary-600 hover:bg-primary-700 text-white transition-colors"
+                  className="btn-primary px-4 py-2 text-xs"
                 >
                   다시 시도
                 </button>

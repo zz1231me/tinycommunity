@@ -36,5 +36,4 @@ export const AdminFormField: React.FC<AdminFormFieldProps> = ({ label, labelNote
 
 /** 어드민 표준 텍스트 입력 클래스 */
 // eslint-disable-next-line react-refresh/only-export-components
-export const adminInputCls = (width = 'w-40') =>
-  `${width} rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-colors duration-150`;
+export const adminInputCls = (width = 'w-40') => `input ${width}`;

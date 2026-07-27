@@ -32,7 +32,7 @@ const Forbidden = () => {
         <div className="mt-8">
           <button
             onClick={() => navigate('/')}
-            className="px-5 py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition-colors"
+            className="btn-primary"
           >
             메인으로 돌아가기
           </button>

@@ -172,7 +172,7 @@ const TagManagement = () => {
                     <button
                       onClick={startCreate}
                       style={{ outline: 'none', border: 'none' }}
-                      className="px-3 py-1.5 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                      className="btn-primary px-3 py-1.5"
                     >
                       + 새 태그
                     </button>
@@ -195,7 +195,7 @@ const TagManagement = () => {
                         onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                         required
                         placeholder="태그 이름"
-                        className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="input w-auto py-1.5"
                       />
                     </div>
                     <div>
@@ -213,7 +213,7 @@ const TagManagement = () => {
                           type="text"
                           value={form.color}
                           onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
-                          className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-mono w-24 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          className="input w-24 py-1.5 font-mono"
                         />
                       </div>
                     </div>
@@ -226,7 +226,7 @@ const TagManagement = () => {
                         value={form.description}
                         onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                         placeholder="선택사항"
-                        className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="input w-auto py-1.5"
                       />
                     </div>
                     <div className="flex gap-2">
@@ -234,7 +234,7 @@ const TagManagement = () => {
                         type="submit"
                         disabled={isSaving}
                         style={{ outline: 'none', border: 'none' }}
-                        className="px-4 py-1.5 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-60 transition-colors"
+                        className="btn-primary px-4 py-1.5"
                       >
                         {isSaving ? '저장 중...' : editingTag ? '수정' : '추가'}
                       </button>

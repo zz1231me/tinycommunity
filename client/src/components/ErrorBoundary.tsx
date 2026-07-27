@@ -101,7 +101,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="flex gap-3 justify-center">
               <button
                 onClick={this.handleReload}
-                className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors"
+                className="btn-primary px-6"
               >
                 새로고침
               </button>
