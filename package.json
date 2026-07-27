@@ -1,0 +1,11 @@
+{
+  "name": "jamtori",
+  "private": true,
+  "description": "Monorepo root — pre-commit hooks via husky",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.0.0"
+  }
+}

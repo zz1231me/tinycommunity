@@ -1,0 +1,49 @@
+# 의존성
+node_modules
+npm-debug.log
+package-lock.json
+
+# 빌드 산출물
+dist
+build
+*.log
+
+# 환경변수 (보안)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# 테스트 및 커버리지
+coverage
+*.test.ts
+__tests__
+
+# 로컬 전용 파일
+.claude
+server/uploads
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+
+# 기타
+*.md
+!README.md
+docker-compose.yml
+Dockerfile
+.dockerignore

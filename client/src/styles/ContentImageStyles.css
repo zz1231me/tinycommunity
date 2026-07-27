@@ -1,0 +1,25 @@
+/* ContentImageStyles.css - 이미지 스타일링 */
+
+.content-image-clickable {
+  cursor: pointer !important;
+  transition:
+    border 0.15s ease,
+    box-shadow 0.15s ease !important;
+  border-radius: 8px !important;
+  border: 2px solid transparent !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+
+.dark .content-image-clickable {
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.08) !important;
+}
+
+.content-image-hover {
+  border-color: var(--color-primary-500) !important;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.25) !important;
+}
+
+.dark .content-image-hover {
+  border-color: var(--color-primary-400) !important;
+  box-shadow: 0 4px 20px rgba(129, 140, 248, 0.25) !important;
+}

@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    // ✅ TypeScript 5.8 최적화 설정 (점진적 적용)
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* ✅ TypeScript 5.8: 강화된 타입 안전성 */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    
+    /* ✅ TypeScript 5.8: 새로운 안전성 옵션 (점진적 적용) */
+    // "noUncheckedIndexedAccess": true,     // 🔄 점진 적용 예정
+    "noImplicitOverride": true,
+    // "exactOptionalPropertyTypes": true,   // 🔄 점진 적용 예정
+    
+    /* ✅ TypeScript 5.8: 성능 최적화 */
+    "incremental": true,
+    
+    /* Path Alias */
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}

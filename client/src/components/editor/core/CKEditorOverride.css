@@ -1,0 +1,541 @@
+/* client/src/components/editor/core/CKEditorOverride.css */
+/* CKEditor 5 dark mode + wrapper styles */
+
+/* ===================================================
+   드롭다운/풍선/툴팁 z-index
+   --------------------------------------------------
+   CKEditor 기본값: --ck-z-panel = 1000.
+   CalendarModal(z-50) 안의 overflow-y-auto가 패널을 클리핑하거나 stacking context를 새로
+   만들어 가리는 경우를 위해 명시적으로 보정한다.
+   ⚠️ toast(9999)보다 위로 올리면 토스트가 가려지므로 9999로 통일.
+=================================================== */
+.ck-body-wrapper,
+.ck.ck-balloon-panel,
+.ck.ck-tooltip,
+.ck.ck-toolbar__items .ck-dropdown__panel,
+.ck.ck-list,
+.ck.ck-form__header {
+  z-index: 9999 !important;
+}
+
+/* ===================================================
+   에디터 크기
+=================================================== */
+
+/* 게시글 에디터 — 워드처럼 넉넉하게 */
+/* :not(.ck-editor__nested-editable) — figcaption 등 중첩 에디터 제외 */
+.post-ck-editor-wrapper .ck-editor__editable:not(.ck-editor__nested-editable) {
+  min-height: 600px;
+  max-height: none;
+  padding: 2rem 2.5rem !important;
+  font-size: 1rem;
+  line-height: 1.75;
+  font-family:
+    'Pretendard Variable',
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    'Noto Sans KR',
+    sans-serif !important;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/* 위키 에디터 */
+.wiki-ck-editor-wrapper .ck-editor__editable:not(.ck-editor__nested-editable) {
+  min-height: 500px;
+  max-height: none;
+  padding: 1.5rem 2rem !important;
+  font-size: 1rem;
+  line-height: 1.75;
+  font-family:
+    'Pretendard Variable',
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    'Noto Sans KR',
+    sans-serif !important;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/* 댓글 에디터 크기 */
+.comment-ck-editor-wrapper .ck-editor__editable:not(.ck-editor__nested-editable) {
+  min-height: 100px !important;
+  max-height: 250px !important;
+  overflow-y: auto;
+}
+
+/* 댓글 에디터 — 툴바 여백 축소 */
+.comment-ck-editor-wrapper .ck.ck-toolbar {
+  padding: 2px 4px !important;
+}
+.comment-ck-editor-wrapper .ck.ck-toolbar .ck-toolbar__items {
+  flex-wrap: wrap;
+}
+
+/* 일정(이벤트) 에디터 */
+.event-ck-editor-wrapper .ck-editor__editable:not(.ck-editor__nested-editable) {
+  min-height: 150px !important;
+  max-height: 300px !important;
+  overflow-y: auto;
+}
+.event-ck-editor-wrapper .ck.ck-toolbar {
+  padding: 2px 4px !important;
+}
+.event-ck-editor-wrapper .ck.ck-toolbar .ck-toolbar__items {
+  flex-wrap: wrap;
+}
+
+/* ===================================================
+   Dark mode — CSS 변수 재정의
+=================================================== */
+.dark .ck-editor-wrapper,
+.dark .post-ck-editor-wrapper,
+.dark .wiki-ck-editor-wrapper,
+.dark .comment-ck-editor-wrapper,
+.dark .event-ck-editor-wrapper {
+  --ck-color-base-background: #1f2937;
+  --ck-color-base-foreground: #374151;
+  --ck-color-base-border: #4b5563;
+  --ck-color-base-text: #f3f4f6;
+  --ck-color-toolbar-background: #111827;
+  --ck-color-toolbar-border: #374151;
+  --ck-color-button-default-background: transparent;
+  --ck-color-button-default-hover-background: #374151;
+  --ck-color-button-on-background: #2563eb;
+  --ck-color-button-on-hover-background: #1d4ed8;
+  --ck-color-button-on-color: #ffffff;
+  --ck-color-panel-background: #1f2937;
+  --ck-color-panel-border: #4b5563;
+  --ck-color-list-background: #1f2937;
+  --ck-color-list-button-hover-background: #374151;
+  --ck-color-dropdown-panel-background: #1f2937;
+  --ck-color-dropdown-panel-border: #4b5563;
+  --ck-color-input-background: #374151;
+  --ck-color-input-border: #6b7280;
+  --ck-color-input-text: #f3f4f6;
+  --ck-color-focus-border: #3b82f6;
+  --ck-color-shadow-drop: rgba(0, 0, 0, 0.5);
+  --ck-color-shadow-inner: rgba(0, 0, 0, 0.3);
+  --ck-color-table-focused-cell-background: rgba(59, 130, 246, 0.1);
+}
+
+/* ===================================================
+   Tailwind Preflight reset 복원
+=================================================== */
+.ck-editor__editable ul {
+  list-style-type: disc !important;
+  margin-left: 1.25rem !important;
+  padding-left: 0.5rem !important;
+  margin-bottom: 1rem !important;
+}
+.ck-editor__editable ol {
+  list-style-type: decimal !important;
+  margin-left: 1.25rem !important;
+  padding-left: 0.5rem !important;
+  margin-bottom: 1rem !important;
+}
+.ck-editor__editable li {
+  display: list-item !important;
+  margin-bottom: 0.25rem;
+  line-height: 1.6;
+}
+
+/* 중첩 리스트 */
+.ck-editor__editable ul ul {
+  list-style-type: circle !important;
+}
+.ck-editor__editable ul ul ul {
+  list-style-type: square !important;
+}
+.ck-editor__editable ol ol {
+  list-style-type: lower-alpha !important;
+}
+.ck-editor__editable ol ol ol {
+  list-style-type: lower-roman !important;
+}
+
+/* ===================================================
+   제목 스타일 (에디터 내부) — CKContentView.css와 동일하게 유지
+=================================================== */
+.ck-editor__editable h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  line-height: 1.3;
+  color: #111827; /* gray-900 — 읽기 뷰와 동일 */
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+.ck-editor__editable h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.35;
+  color: #111827; /* gray-900 */
+}
+.ck-editor__editable h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #111827; /* gray-900 */
+}
+.ck-editor__editable h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 0.875rem;
+  margin-bottom: 0.375rem;
+  color: #111827; /* gray-900 */
+}
+.ck-editor__editable h5 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+  color: #374151; /* gray-700 */
+}
+.dark .ck-editor__editable h1 {
+  border-bottom-color: #374151;
+}
+.dark .ck-editor__editable h1,
+.dark .ck-editor__editable h2,
+.dark .ck-editor__editable h3,
+.dark .ck-editor__editable h4 {
+  color: #f9fafb; /* gray-50 — 읽기 뷰와 동일 */
+}
+.dark .ck-editor__editable h5 {
+  color: #e5e7eb; /* gray-200 */
+}
+
+/* ===================================================
+   단락 간격
+=================================================== */
+.ck-editor__editable p {
+  margin-bottom: 1rem;
+  line-height: 1.75;
+}
+
+/* ===================================================
+   인라인 서식 (에디터 내부) — 읽기 뷰(CKContentView.css)와 동일하게.
+   strong: 굵기만(색 강제 금지 — FontColor가 감싼 굵은 글씨 색 보존).
+=================================================== */
+.ck-editor__editable strong {
+  font-weight: 600;
+}
+.ck-editor__editable sup,
+.ck-editor__editable sub {
+  font-size: 0.75rem;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+.ck-editor__editable sup {
+  top: -0.5em;
+}
+.ck-editor__editable sub {
+  bottom: -0.25em;
+}
+.ck-editor__editable a {
+  color: rgb(37, 99, 235); /* blue-600 */
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.ck-editor__editable a:hover {
+  text-decoration: underline;
+}
+.dark .ck-editor__editable a {
+  color: rgb(96, 165, 250); /* blue-400 */
+}
+
+/* ===================================================
+   인라인 코드 (에디터 내부)
+=================================================== */
+.ck-editor__editable :not(pre) > code {
+  background-color: #f3f4f6;
+  color: #dc2626;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.3rem;
+  font-size: 0.875em;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Monaco, Consolas, monospace;
+}
+.dark .ck-editor__editable :not(pre) > code {
+  background-color: #374151;
+  color: #f87171;
+}
+
+/* ===================================================
+   코드 블록 (에디터 내부)
+=================================================== */
+.ck-editor__editable pre {
+  background-color: #282c34;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+  border: 1px solid rgb(55, 65, 81);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.ck-editor__editable pre code {
+  background: none;
+  color: #abb2bf;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Monaco, Consolas, monospace;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* ===================================================
+   인용구 (에디터 내부)
+=================================================== */
+.ck-editor__editable blockquote {
+  border-left: 4px solid #3b82f6 !important;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  padding: 0.75rem 1rem !important;
+  margin: 1rem 0 !important;
+  border-radius: 0 0.375rem 0.375rem 0;
+  font-style: italic;
+}
+.dark .ck-editor__editable blockquote {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+/* ===================================================
+   테이블 (에디터 내부) — figure.table 구조
+=================================================== */
+/* ⚠️ CKEditor 기본 figure.table은 display:table이라 overflow-x:auto가 무시됨(테이블 박스는
+   overflow를 visible로 강제). 그러면 Excel 붙여넣기처럼 열이 많은 넓은 표가 에디터 밖으로
+   튀어나온다. → display:block + max-width로 에디터 폭에 가두고, 넘치는 표는 가로 스크롤. */
+.ck-editor__editable .table {
+  margin: 1rem 0;
+  display: block !important;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.ck-editor__editable .table table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 400px;
+}
+.ck-editor__editable .table table th,
+.ck-editor__editable .table table td {
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  min-width: 80px;
+  line-height: 1.5;
+}
+.ck-editor__editable .table table th {
+  background-color: #f9fafb;
+  font-weight: 600;
+  color: #111827;
+}
+.ck-editor__editable .table table tr:nth-child(even) td {
+  background-color: #f9fafb;
+}
+.dark .ck-editor__editable .table table th {
+  background-color: #1f2937;
+  color: #f9fafb;
+}
+.dark .ck-editor__editable .table table th,
+.dark .ck-editor__editable .table table td {
+  border-color: #4b5563;
+}
+.dark .ck-editor__editable .table table tr:nth-child(even) td {
+  background-color: #1a2332;
+}
+
+/* ===================================================
+   이미지 (에디터 내부)
+=================================================== */
+.ck-editor__editable figure.image {
+  margin: 1rem auto;
+  clear: both;
+}
+.ck-editor__editable figure.image img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+.ck-editor__editable figure.image figcaption {
+  font-size: 0.875rem !important;
+  color: #6b7280;
+  text-align: center;
+  padding: 0.375rem 0.5rem !important;
+  font-style: italic;
+  word-break: break-word;
+  min-height: unset !important;
+  max-height: unset !important;
+  line-height: 1.5 !important;
+}
+.ck-editor__editable figure.image.image-style-align-left {
+  float: left;
+  margin-right: 1.5rem;
+  max-width: 50%;
+}
+.ck-editor__editable figure.image.image-style-align-right {
+  float: right;
+  margin-left: 1.5rem;
+  max-width: 50%;
+}
+.ck-editor__editable figure.image.image-style-block,
+.ck-editor__editable figure.image.image-style-align-center {
+  display: table;
+  margin-left: auto;
+  margin-right: auto;
+  float: none;
+  clear: both;
+}
+.ck-editor__editable figure.image.image-style-align-block-left {
+  float: none;
+  clear: none;
+  margin: 0 auto 0 0;
+}
+.ck-editor__editable figure.image.image-style-align-block-right {
+  float: none;
+  clear: none;
+  margin: 0 0 0 auto;
+}
+.ck-editor__editable figure.image.image-style-inline {
+  display: inline-block;
+  float: none;
+  clear: none;
+  margin: 0 0.25em;
+  vertical-align: middle;
+}
+.ck-editor__editable figure.image.image-style-side {
+  float: right;
+  margin-left: 1.5rem;
+  max-width: 50%;
+}
+
+/* ===================================================
+   페이지 나누기
+=================================================== */
+.ck-editor__editable .page-break {
+  border-top: 3px dashed #9ca3af;
+  margin: 1.5rem 0;
+  position: relative;
+}
+.ck-editor__editable .page-break::after {
+  content: '── 페이지 구분선 ──';
+  position: absolute;
+  top: -0.7rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+.dark .ck-editor__editable .page-break {
+  border-top-color: #4b5563;
+}
+.dark .ck-editor__editable .page-break::after {
+  background: #1f2937;
+}
+
+/* ===================================================
+   구분선 (에디터 내부)
+=================================================== */
+.ck-editor__editable hr {
+  border: 0;
+  border-top: 1px solid #d1d5db;
+  margin: 1.5rem 0;
+}
+.dark .ck-editor__editable hr {
+  border-top-color: #4b5563;
+}
+
+/* ===================================================
+   Border-radius — 앱 디자인 일관성
+=================================================== */
+.ck-editor-wrapper .ck.ck-editor__top .ck-sticky-panel .ck-sticky-panel__content,
+.post-ck-editor-wrapper .ck.ck-editor__top .ck-sticky-panel .ck-sticky-panel__content,
+.wiki-ck-editor-wrapper .ck.ck-editor__top .ck-sticky-panel .ck-sticky-panel__content,
+.comment-ck-editor-wrapper .ck.ck-editor__top .ck-sticky-panel .ck-sticky-panel__content,
+.event-ck-editor-wrapper .ck.ck-editor__top .ck-sticky-panel .ck-sticky-panel__content {
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.ck-editor-wrapper .ck.ck-editor__editable_inline,
+.post-ck-editor-wrapper .ck.ck-editor__editable_inline,
+.wiki-ck-editor-wrapper .ck.ck-editor__editable_inline,
+.comment-ck-editor-wrapper .ck.ck-editor__editable_inline,
+.event-ck-editor-wrapper .ck.ck-editor__editable_inline {
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+
+/* ===================================================
+   포커스 링
+=================================================== */
+.ck-editor-wrapper .ck.ck-editor__editable.ck-focused:not(.ck-editor__nested-editable),
+.post-ck-editor-wrapper .ck.ck-editor__editable.ck-focused:not(.ck-editor__nested-editable),
+.wiki-ck-editor-wrapper .ck.ck-editor__editable.ck-focused:not(.ck-editor__nested-editable),
+.comment-ck-editor-wrapper .ck.ck-editor__editable.ck-focused:not(.ck-editor__nested-editable),
+.event-ck-editor-wrapper .ck.ck-editor__editable.ck-focused:not(.ck-editor__nested-editable) {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  outline: none;
+}
+
+/* ===================================================
+   Highlight (형광펜) — 에디터 내부
+   읽기 뷰(CKContentView.css)와 동일한 배경/텍스트색/패딩/밑줄로 명시 지정 → edit==read.
+=================================================== */
+.ck-editor__editable mark,
+.ck-editor__editable .marker-yellow {
+  background-color: #fef08a !important;
+  color: rgb(17, 24, 39) !important;
+  padding: 1px 2px;
+  border-radius: 2px;
+}
+.ck-editor__editable .marker-green {
+  background-color: #bbf7d0 !important;
+  color: rgb(6, 78, 59) !important;
+  padding: 1px 2px;
+  border-radius: 2px;
+}
+.ck-editor__editable .marker-pink {
+  background-color: #fbcfe8 !important;
+  color: rgb(131, 24, 67) !important;
+  padding: 1px 2px;
+  border-radius: 2px;
+}
+.ck-editor__editable .marker-blue {
+  background-color: #bfdbfe !important;
+  color: rgb(30, 64, 175) !important;
+  padding: 1px 2px;
+  border-radius: 2px;
+}
+.ck-editor__editable .pen-red {
+  color: #ef4444 !important;
+  text-decoration: underline;
+}
+.ck-editor__editable .pen-green {
+  color: #16a34a !important;
+  text-decoration: underline;
+}
+.dark .ck-editor__editable .marker-yellow {
+  background-color: #854d0e !important;
+  color: #fefce8 !important;
+}
+.dark .ck-editor__editable .marker-green {
+  background-color: #14532d !important;
+  color: #f0fdf4 !important;
+}
+.dark .ck-editor__editable .marker-pink {
+  background-color: #831843 !important;
+  color: #fdf2f8 !important;
+}
+.dark .ck-editor__editable .marker-blue {
+  background-color: #1e3a8a !important;
+  color: #eff6ff !important;
+}

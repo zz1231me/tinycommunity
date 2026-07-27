@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  server:
+    name: Server (TypeScript + ESLint + Tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Prettier check
+        run: npm run format:check
+
+      - name: Run tests with coverage
+        run: npm test -- --coverage
+        env:
+          NODE_ENV: test
+          DB_TYPE: sqlite
+          DB_STORAGE: ':memory:'
+          JWT_SECRET: ${{ secrets.CI_JWT_SECRET || 'ci-test-jwt-secret-key-at-least-32-chars' }}
+          JWT_REFRESH_SECRET: ${{ secrets.CI_JWT_REFRESH_SECRET || 'ci-test-refresh-secret-key-32-chars' }}
+          ADMIN_DEFAULT_PASSWORD: ${{ secrets.CI_ADMIN_PASSWORD || 'CiTestAdmin123!' }}
+
+  client:
+    name: Client (TypeScript + ESLint + Build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Prettier check
+        run: npm run format:check
+
+      - name: Build
+        run: npm run build

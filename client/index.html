@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TinyCommunity</title>
+
+    <!-- ✅ 사이트명/파비콘 깜빡임 방지: 직전에 캐시한 값을 첫 페인트 전 동기 적용.
+         App이 사이트 설정을 fetch하기 전까지 위 기본 title이 잠깐 보였다 교체되던 문제 해결.
+         (최초 방문 등 캐시가 없으면 기본값 유지) -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('siteTitle');
+          if (t) document.title = t;
+          var f = localStorage.getItem('faviconUrl');
+          if (f) {
+            var link = document.querySelector("link[rel~='icon']");
+            if (!link) {
+              link = document.createElement('link');
+              link.rel = 'icon';
+              document.head.appendChild(link);
+            }
+            link.href = f;
+          }
+        } catch (e) {
+          /* localStorage 접근 불가 시 무시 */
+        }
+      })();
+    </script>
+
+    <!-- 링크 미리보기(OG)/SEO 마케팅 메타는 제거함 — 사이트 설정과 무관한 고정 문구가
+         메신저 미리보기에 노출되던 문제 방지. 페이지 제목은 위 <title> + 클라이언트(JS)에서
+         사이트 설정값으로 동적 적용한다. -->
+
+    <!-- ✅ Pretendard Variable — 한국어 최적화 무료 폰트 (dynamic subset → 빠른 로딩) -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="stylesheet" as="style" crossorigin
+      href="https://cdn.jsdelivr.net/npm/pretendard@latest/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+
+    <!-- ✅ Theme Color for Mobile -->
+    <meta name="theme-color" content="#3B82F6" />
+    
+    <!-- ✅ Content Security Policy (XSS Prevention) -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self';
+                   script-src 'self' 'unsafe-inline' 'unsafe-eval';
+                   style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+                   font-src 'self' https://cdn.jsdelivr.net data:;
+                   img-src 'self' data: blob: https:;
+                   connect-src 'self' http://localhost:* https://localhost:* ws://localhost:*;" />
+    
+    <!-- ✅ X-Content-Type-Options -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    
+    <!-- ✅ Referrer Policy -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

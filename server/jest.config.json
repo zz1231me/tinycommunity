@@ -1,0 +1,30 @@
+{
+  "preset": "ts-jest",
+  "testEnvironment": "node",
+  "roots": ["<rootDir>/src"],
+  "testMatch": ["**/__tests__/**/*.test.ts"],
+  "setupFiles": ["<rootDir>/src/__tests__/env-setup.ts"],
+  "setupFilesAfterEnv": ["<rootDir>/src/__tests__/setup.ts"],
+  "collectCoverageFrom": [
+    "src/**/*.ts",
+    "!src/**/*.d.ts",
+    "!src/types/**",
+    "!src/index.ts",
+    "!src/__tests__/**"
+  ],
+  "coverageDirectory": "coverage",
+  "coverageReporters": ["text", "lcov", "html"],
+  "coverageThreshold": {
+    "global": {
+      "branches": 30,
+      "functions": 30,
+      "lines": 30,
+      "statements": 30
+    }
+  },
+  "moduleNameMapper": {
+    "^@/(.*)$": "<rootDir>/src/$1"
+  },
+  "testTimeout": 15000,
+  "verbose": true
+}

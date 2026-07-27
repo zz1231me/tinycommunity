@@ -1,0 +1,674 @@
+/* client/src/pages/components/calendar/styles/calendar.css */
+
+/* ===== 기본 설정 ===== */
+.calendar-wrapper {
+  --fc-border-color: #e2e8f0;
+  --fc-today-bg-color: transparent;
+  --fc-neutral-bg-color: #ffffff;
+  --fc-list-event-hover-bg-color: #f1f5f9;
+  display: block;
+  width: 100%;
+  height: 100%;
+  font-family:
+    'Pretendard',
+    'Noto Sans KR',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  background: #ffffff;
+}
+
+.dark .calendar-wrapper {
+  --fc-border-color: #334155;
+  --fc-neutral-bg-color: #0f172a;
+  --fc-list-event-hover-bg-color: #1e293b;
+  background: #0f172a;
+}
+
+.calendar-wrapper .fc {
+  font-family: inherit;
+  height: 100%;
+  background: transparent;
+}
+
+/* ===== CKEditor (이벤트 폼) ===== */
+/* 에디터 내용 영역 최소 높이 */
+.event-ck-editor-wrapper .ck-editor__editable {
+  min-height: 160px;
+  font-size: 0.9375rem; /* 15px — text-sm 스케일 */
+  line-height: 1.65;
+  color: #1e293b;
+}
+
+.dark .event-ck-editor-wrapper .ck-editor__editable {
+  color: #e2e8f0;
+  background: #1e293b;
+}
+
+.event-ck-editor-wrapper .ck.ck-editor__editable_inline {
+  padding: 0.75rem 1rem;
+}
+
+/* 툴바 래핑 허용 (shouldNotGroupWhenFull: true 와 함께 동작) */
+.event-ck-editor-wrapper .ck-toolbar__items {
+  flex-wrap: wrap;
+}
+
+.event-ck-editor-wrapper .ck.ck-toolbar {
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 4px 6px;
+}
+
+.dark .event-ck-editor-wrapper .ck.ck-toolbar {
+  border-bottom-color: #334155;
+  background: #1e293b;
+}
+
+/* CKEditor 포커스 상태 — 외부 래퍼에 ring 표시 */
+.event-ck-editor-wrapper:focus-within {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  border-radius: 8px;
+}
+
+.dark .event-ck-editor-wrapper:focus-within {
+  border-color: #818cf8 !important;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+}
+
+/* ===== 날짜 셀 ===== */
+.calendar-wrapper .fc-daygrid-day {
+  min-height: 110px;
+  position: relative;
+  transition: background-color 0.12s ease;
+  background: #ffffff;
+}
+
+.dark .calendar-wrapper .fc-daygrid-day {
+  background: #0f172a;
+}
+
+.calendar-wrapper .fc-daygrid-day:hover {
+  background: #f8fafc;
+}
+
+.dark .calendar-wrapper .fc-daygrid-day:hover {
+  background: #1e293b;
+}
+
+@media (max-height: 900px) {
+  .calendar-wrapper .fc-daygrid-day {
+    min-height: 90px;
+  }
+}
+@media (max-height: 700px) {
+  .calendar-wrapper .fc-daygrid-day {
+    min-height: 72px;
+  }
+}
+
+/* ===== 테두리 ===== */
+.calendar-wrapper .fc-theme-standard td,
+.calendar-wrapper .fc-theme-standard th {
+  border-color: #e2e8f0;
+}
+
+.dark .calendar-wrapper .fc-theme-standard td,
+.dark .calendar-wrapper .fc-theme-standard th {
+  border-color: #334155;
+}
+
+/* ===== 헤더 (요일) ===== */
+.calendar-wrapper .fc-col-header-cell {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 10px 8px;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.6px;
+}
+
+.dark .calendar-wrapper .fc-col-header-cell {
+  background: #1e293b;
+  color: #94a3b8;
+  border-bottom-color: #334155;
+}
+
+.calendar-wrapper .fc-col-header-cell.fc-day-sun {
+  color: #ef4444 !important;
+}
+.calendar-wrapper .fc-col-header-cell.fc-day-sat {
+  color: #6366f1 !important;
+}
+.dark .calendar-wrapper .fc-col-header-cell.fc-day-sun {
+  color: #f87171 !important;
+}
+.dark .calendar-wrapper .fc-col-header-cell.fc-day-sat {
+  color: #818cf8 !important;
+}
+
+/* ===== 날짜 숫자 ===== */
+.calendar-wrapper .fc-daygrid-day-number {
+  color: #1e293b;
+  font-weight: 500;
+  padding: 8px 10px;
+  font-size: 14px;
+  transition: color 0.12s ease;
+  display: inline-block;
+}
+
+.dark .calendar-wrapper .fc-daygrid-day-number {
+  color: #cbd5e1;
+}
+
+.calendar-wrapper .fc-daygrid-day-number:hover {
+  color: #6366f1;
+}
+.dark .calendar-wrapper .fc-daygrid-day-number:hover {
+  color: #818cf8;
+}
+
+/* 주말 날짜 */
+.calendar-wrapper .fc-daygrid-day.fc-day-sun .fc-daygrid-day-number {
+  color: #ef4444 !important;
+}
+.calendar-wrapper .fc-daygrid-day.fc-day-sat .fc-daygrid-day-number {
+  color: #6366f1 !important;
+}
+.dark .calendar-wrapper .fc-daygrid-day.fc-day-sun .fc-daygrid-day-number {
+  color: #f87171 !important;
+}
+.dark .calendar-wrapper .fc-daygrid-day.fc-day-sat .fc-daygrid-day-number {
+  color: #818cf8 !important;
+}
+
+/* 이번 달이 아닌 날짜 */
+.calendar-wrapper .fc-day-other {
+  background: #f8fafc !important;
+}
+.dark .calendar-wrapper .fc-day-other {
+  background: #0b1121 !important;
+}
+
+.calendar-wrapper .fc-day-other .fc-daygrid-day-number {
+  color: #cbd5e1;
+  font-weight: 400;
+}
+.dark .calendar-wrapper .fc-day-other .fc-daygrid-day-number {
+  color: #475569;
+}
+
+.calendar-wrapper .fc-daygrid-day.fc-day-other.fc-day-sun .fc-daygrid-day-number {
+  color: #fca5a5 !important;
+}
+.calendar-wrapper .fc-daygrid-day.fc-day-other.fc-day-sat .fc-daygrid-day-number {
+  color: #a5b4fc !important;
+}
+.dark .calendar-wrapper .fc-daygrid-day.fc-day-other.fc-day-sun .fc-daygrid-day-number {
+  color: #7f1d1d !important;
+}
+.dark .calendar-wrapper .fc-daygrid-day.fc-day-other.fc-day-sat .fc-daygrid-day-number {
+  color: #312e81 !important;
+}
+
+/* ===== 오늘 날짜 셀 ===== */
+.calendar-wrapper .today-highlight {
+  background: #fafaff !important;
+  position: relative !important;
+}
+
+.dark .calendar-wrapper .today-highlight {
+  background: #16183a !important;
+}
+
+/* 오늘 셀 상단 accent 라인 */
+.calendar-wrapper .today-highlight::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #6366f1;
+  z-index: 2;
+}
+
+.calendar-wrapper .fc-day-sun.today-highlight::before {
+  background: #ef4444;
+}
+.calendar-wrapper .fc-day-sat.today-highlight::before {
+  background: #6366f1;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   오늘 날짜 숫자 배지
+   fc-day-today  : FullCalendar 가 자동으로 추가하는 클래스
+   today-highlight: dayCellClassNames 콜백으로 추가하는 클래스
+   두 셀렉터를 모두 사용해 렌더 타이밍 이슈로 한 쪽이 늦게
+   적용되더라도 배지 스타일이 반드시 적용되도록 합니다.
+   ───────────────────────────────────────────────────────────── */
+.calendar-wrapper .fc-day-today .fc-daygrid-day-number,
+.calendar-wrapper .today-highlight .fc-daygrid-day-number {
+  background: #6366f1 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+  min-width: 30px !important;
+  min-height: 26px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 6px 8px !important;
+  padding: 4px 8px !important;
+  font-size: 14px !important;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35) !important;
+  position: relative !important;
+  z-index: 10 !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
+}
+
+.dark .calendar-wrapper .fc-day-today .fc-daygrid-day-number,
+.dark .calendar-wrapper .today-highlight .fc-daygrid-day-number {
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.55) !important;
+}
+
+/* 오늘이 일요일 */
+.calendar-wrapper .fc-day-today.fc-day-sun .fc-daygrid-day-number,
+.calendar-wrapper .today-highlight.fc-day-sun .fc-daygrid-day-number {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35) !important;
+}
+
+.dark .calendar-wrapper .fc-day-today.fc-day-sun .fc-daygrid-day-number,
+.dark .calendar-wrapper .today-highlight.fc-day-sun .fc-daygrid-day-number {
+  background: #f87171 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(248, 113, 113, 0.5) !important;
+}
+
+/* 오늘이 토요일 */
+.calendar-wrapper .fc-day-today.fc-day-sat .fc-daygrid-day-number,
+.calendar-wrapper .today-highlight.fc-day-sat .fc-daygrid-day-number {
+  background: #6366f1 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35) !important;
+}
+
+.dark .calendar-wrapper .fc-day-today.fc-day-sat .fc-daygrid-day-number,
+.dark .calendar-wrapper .today-highlight.fc-day-sat .fc-daygrid-day-number {
+  background: #818cf8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(129, 140, 248, 0.5) !important;
+}
+
+/* ===== 이벤트 ===== */
+.calendar-wrapper .fc-event {
+  border: none !important;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 12.5px;
+  padding: 3px 8px;
+  margin: 1.5px 3px;
+  cursor: pointer;
+  transition:
+    filter 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dark .calendar-wrapper .fc-event {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.calendar-wrapper .fc-event:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);
+  z-index: 10;
+}
+
+.dark .calendar-wrapper .fc-event:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* 드래그 중 */
+.calendar-wrapper .fc-event-dragging {
+  opacity: 0.85 !important;
+  z-index: 9999 !important;
+  transform: scale(1.04) rotate(-0.5deg) !important;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18) !important;
+}
+
+.dark .calendar-wrapper .fc-event-dragging {
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+.calendar-wrapper .fc-event-mirror {
+  opacity: 0.45 !important;
+  border: 2px dashed #6366f1 !important;
+  background: rgba(99, 102, 241, 0.08) !important;
+}
+
+.dark .calendar-wrapper .fc-event-mirror {
+  border-color: #818cf8 !important;
+  background: rgba(129, 140, 248, 0.15) !important;
+}
+
+/* ===== 이벤트 제목 ===== */
+.calendar-wrapper .fc-event-title {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-wrapper .fc-daygrid-event-dot {
+  display: none;
+}
+
+/* ===== 날짜 영역 상단 ===== */
+.calendar-wrapper .fc-daygrid-day-top {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+/* ===== 선택 영역 ===== */
+.calendar-wrapper .fc-highlight {
+  background: rgba(99, 102, 241, 0.12) !important;
+  border: 1px dashed rgba(99, 102, 241, 0.35) !important;
+}
+
+.dark .calendar-wrapper .fc-highlight {
+  background: rgba(129, 140, 248, 0.16) !important;
+  border: 1px dashed rgba(129, 140, 248, 0.4) !important;
+}
+
+/* ===== now indicator ===== */
+.calendar-wrapper .fc-timegrid-now-indicator-line {
+  border-color: #6366f1;
+  border-width: 2px;
+}
+
+.calendar-wrapper .fc-timegrid-now-indicator-arrow {
+  border-top-color: #6366f1;
+  border-bottom-color: #6366f1;
+}
+
+/* ===== 주간 뷰 (dayGridWeek) ===== */
+.calendar-wrapper .fc-dayGridWeek-view .fc-daygrid-day {
+  min-height: 160px;
+}
+
+/* ===== 목록 뷰 (listMonth) ===== */
+.calendar-wrapper .fc-list {
+  border: none;
+}
+
+/* 목록 — 날짜 헤더 행 */
+.calendar-wrapper .fc-list-day th {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  padding: 0;
+}
+
+.dark .calendar-wrapper .fc-list-day th {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+.calendar-wrapper .fc-list-day-cushion {
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendar-wrapper .fc-list-day-text,
+.calendar-wrapper .fc-list-day-side-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  text-decoration: none !important;
+}
+
+.dark .calendar-wrapper .fc-list-day-text,
+.dark .calendar-wrapper .fc-list-day-side-text {
+  color: #94a3b8;
+}
+
+/* 오늘 날짜 헤더 강조 */
+.calendar-wrapper .fc-list-day.fc-day-today th {
+  background: #eff0ff !important;
+  border-left: 3px solid #6366f1 !important;
+}
+
+.dark .calendar-wrapper .fc-list-day.fc-day-today th {
+  background: #1e2040 !important;
+  border-left: 3px solid #818cf8 !important;
+}
+
+.calendar-wrapper .fc-list-day.fc-day-today .fc-list-day-text,
+.calendar-wrapper .fc-list-day.fc-day-today .fc-list-day-side-text {
+  color: #4f46e5 !important;
+}
+
+.dark .calendar-wrapper .fc-list-day.fc-day-today .fc-list-day-text,
+.dark .calendar-wrapper .fc-list-day.fc-day-today .fc-list-day-side-text {
+  color: #818cf8 !important;
+}
+
+/* 목록 — 이벤트 행 */
+.calendar-wrapper .fc-list-event {
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.calendar-wrapper .fc-list-event td {
+  border-color: #f1f5f9 !important;
+  padding: 10px 16px;
+}
+
+.dark .calendar-wrapper .fc-list-event td {
+  border-color: #1e293b !important;
+}
+
+.calendar-wrapper .fc-list-event:hover td {
+  background: #f8fafc !important;
+}
+
+.dark .calendar-wrapper .fc-list-event:hover td {
+  background: #1e293b !important;
+}
+
+/* 이벤트 컬러 도트 */
+.calendar-wrapper .fc-list-event-dot {
+  border-width: 5px;
+  border-radius: 50%;
+}
+
+/* 이벤트 제목 */
+.calendar-wrapper .fc-list-event-title a {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+  text-decoration: none;
+}
+
+.dark .calendar-wrapper .fc-list-event-title a {
+  color: #e2e8f0;
+}
+
+/* 이벤트 시간 */
+.calendar-wrapper .fc-list-event-time {
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: nowrap;
+  min-width: 60px;
+}
+
+/* 목록 — 빈 상태 */
+.calendar-wrapper .fc-list-empty {
+  background: transparent;
+}
+
+.calendar-wrapper .fc-list-empty-cushion {
+  padding: 56px 24px;
+  text-align: center;
+}
+
+.calendar-wrapper .fc-no-events-msg {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.calendar-wrapper .fc-no-events-msg::before {
+  content: '';
+  display: block;
+  width: 48px;
+  height: 48px;
+  background-color: #f1f5f9;
+  border-radius: 12px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 28px;
+}
+
+.dark .calendar-wrapper .fc-no-events-msg {
+  color: #64748b;
+}
+
+.dark .calendar-wrapper .fc-no-events-msg::before {
+  background-color: #1e293b;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'/%3E%3C/svg%3E");
+}
+
+/* ===== "+N개 더보기" 링크 ===== */
+.calendar-wrapper .fc-daygrid-more-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6366f1;
+  background: #eef2ff;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin: 1px 3px;
+  text-decoration: none;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.calendar-wrapper .fc-daygrid-more-link:hover {
+  background: #e0e7ff;
+  color: #4f46e5;
+}
+
+.dark .calendar-wrapper .fc-daygrid-more-link {
+  color: #818cf8;
+  background: #1e2040;
+}
+
+.dark .calendar-wrapper .fc-daygrid-more-link:hover {
+  background: #252850;
+  color: #a5b4fc;
+}
+
+/* ===== 둥근 모서리 ===== */
+.calendar-wrapper .fc {
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+}
+
+.calendar-wrapper .fc-scrollgrid {
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+  background: transparent;
+}
+
+.calendar-wrapper .fc-view-harness {
+  background: transparent;
+}
+
+.calendar-wrapper .fc-scroller {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  background: transparent;
+}
+
+/* ===== 커스텀 스크롤바 ===== */
+.calendar-wrapper .fc-scroller::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.calendar-wrapper .fc-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.calendar-wrapper .fc-scroller::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.calendar-wrapper .fc-scroller::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark .calendar-wrapper .fc-scroller::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+.dark .calendar-wrapper .fc-scroller::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* ===== 반응형 ===== */
+@media (max-width: 768px) {
+  .calendar-wrapper .fc-daygrid-day {
+    min-height: 72px;
+  }
+
+  .calendar-wrapper .fc-col-header-cell {
+    font-size: 10px;
+    padding: 8px 4px;
+    letter-spacing: 0;
+  }
+
+  .calendar-wrapper .fc-daygrid-day-number {
+    font-size: 12px;
+    padding: 5px 7px;
+  }
+
+  .calendar-wrapper .fc-event {
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+
+  .calendar-wrapper .today-highlight .fc-daygrid-day-number {
+    min-width: 26px !important;
+    min-height: 22px !important;
+    font-size: 12px !important;
+    margin: 4px 6px !important;
+  }
+
+  .calendar-wrapper .fc-list-event td {
+    padding: 8px 12px;
+  }
+  .calendar-wrapper .fc-list-day-cushion {
+    padding: 8px 12px;
+  }
+}

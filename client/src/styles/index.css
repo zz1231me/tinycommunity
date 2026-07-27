@@ -1,0 +1,460 @@
+/* 폰트는 index.html <link>로 로드 (CSS @import보다 빠름) */
+
+/* 디자인 시스템 import — CSS vars (@import must precede other rules) */
+@import './design-system.css';
+
+/* Tailwind v4: single import replaces @tailwind base/components/utilities */
+@import 'tailwindcss';
+
+/* Tailwind v4: class-based dark mode (equivalent to v3 darkMode: 'class') */
+@variant dark (&:is(.dark *));
+
+/* Tailwind v4: typography plugin */
+@plugin '@tailwindcss/typography';
+
+/* ============================================================
+ * Tailwind v4 @theme — replaces tailwind.config.js theme.extend
+ * These CSS vars are auto-exposed as utilities (bg-primary-500, etc.)
+ * and also override Tailwind's built-in defaults where they conflict.
+ * ============================================================ */
+@theme {
+  /* ── Primary: Indigo-Blue ── */
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+  --color-primary-950: #1e1b4b;
+
+  /* ── Secondary / Accent: Teal (indigo 보색 계열 액센트 — 단조로움 해소) ── */
+  --color-secondary-50: #f0fdfa;
+  --color-secondary-100: #ccfbf1;
+  --color-secondary-200: #99f6e4;
+  --color-secondary-300: #5eead4;
+  --color-secondary-400: #2dd4bf;
+  --color-secondary-500: #14b8a6;
+  --color-secondary-600: #0d9488;
+  --color-secondary-700: #0f766e;
+  --color-secondary-800: #115e59;
+  --color-secondary-900: #134e4a;
+
+  /* ── Neutral: Slate ── */
+  --color-neutral-50: #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-850: #172032;
+  --color-neutral-900: #0f172a;
+  --color-neutral-950: #020617;
+
+  /* ── Font families ── */
+  --font-sans:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto,
+    'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  --font-mono:
+    'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+  /* ── Font sizes (with line-height companions) ── */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.3125rem;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.5625rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.625rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.875rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.375rem;
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: 2.75rem;
+
+  /* ── Box shadows ── */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow: 0 2px 4px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 8px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 20px -3px rgb(0 0 0 / 0.08), 0 4px 8px -4px rgb(0 0 0 / 0.04);
+  --shadow-xl: 0 20px 30px -5px rgb(0 0 0 / 0.08), 0 8px 12px -6px rgb(0 0 0 / 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.18);
+
+  /* ── Border radius ── */
+  --radius-sm: 0.25rem;
+  --radius: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+
+  /* ── Durations extras ── */
+  --duration-250: 250ms;
+
+  /* ── Spacing extras ── */
+  --spacing-13: 3.25rem;
+  --spacing-15: 3.75rem;
+  --spacing-18: 4.5rem;
+}
+
+/* ========================================
+ * 기본 설정
+ * ======================================== */
+html,
+body,
+#root {
+  @apply h-full w-full;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  color-scheme: light;
+  @apply bg-slate-50 dark:bg-slate-900;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-sans);
+  @apply bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  word-break: keep-all;
+  line-height: 1.65;
+  letter-spacing: -0.01em; /* 한국어 자간 최적화 */
+}
+
+/* ========================================
+ * 스크롤바 — 얇고 절제된 스타일
+ * ======================================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-400);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* ========================================
+ * 선택 텍스트
+ * ======================================== */
+::selection {
+  background: var(--color-primary-100);
+  color: var(--color-primary-900);
+}
+
+.dark ::selection {
+  background: rgba(99, 102, 241, 0.3);
+  color: var(--color-primary-100);
+}
+
+/* ========================================
+ * 포커스 접근성
+ * ======================================== */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ========================================
+ * 애니메이션
+ * ======================================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.18s ease-out;
+}
+.animate-slideInDown {
+  animation: slideInDown 0.18s ease-out;
+}
+.animate-slideInUp {
+  animation: slideInUp 0.18s ease-out;
+}
+.animate-scaleIn {
+  animation: scaleIn 0.18s ease-out;
+}
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* 접근성: 애니메이션 감소 설정 존중 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ========================================
+ * 컴포넌트 스타일
+ * ======================================== */
+@layer components {
+  /* 레이아웃 */
+  .card {
+    @apply bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/60 shadow-sm;
+  }
+
+  .card-hover {
+    @apply hover:shadow-md transition-shadow duration-200;
+  }
+
+  .page-container {
+    @apply min-h-full bg-slate-50 dark:bg-slate-900;
+  }
+
+  /* 와이드 콘텐츠 래퍼 — 목록·관리·상세·에디터 (단일 토큰 --content-width) */
+  .content-wrapper {
+    max-width: var(--content-width);
+    @apply mx-auto px-4 py-6 sm:px-6;
+  }
+
+  /* 읽기/폼 콘텐츠 래퍼 — 위키 문서·프로필 (--content-width-reading) */
+  .content-wrapper-reading {
+    max-width: var(--content-width-reading);
+    @apply mx-auto px-4 py-6 sm:px-6;
+  }
+
+  /* ── 버튼 ──────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+           px-5 py-2.5
+           bg-primary-600 hover:bg-primary-700 active:bg-primary-800
+           text-white text-sm font-semibold
+           rounded-lg shadow-sm
+           transition-all duration-150
+           active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2
+           px-5 py-2.5
+           bg-white dark:bg-slate-800
+           border border-slate-200 dark:border-slate-700
+           text-slate-700 dark:text-slate-300 text-sm font-semibold
+           rounded-lg shadow-sm
+           hover:bg-slate-50 dark:hover:bg-slate-700
+           hover:border-slate-300 dark:hover:border-slate-600
+           active:bg-slate-100 dark:active:bg-slate-700
+           active:scale-[0.98]
+           transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2
+           px-5 py-2.5
+           bg-red-50 dark:bg-red-900/30
+           border border-red-200 dark:border-red-800/60
+           text-red-700 dark:text-red-400 text-sm font-semibold
+           rounded-lg shadow-sm
+           hover:bg-red-100 dark:hover:bg-red-900/50
+           hover:border-red-300 dark:hover:border-red-700
+           active:bg-red-200 dark:active:bg-red-900/60
+           active:scale-[0.98]
+           transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2
+           px-4 py-2
+           text-slate-600 dark:text-slate-400 text-sm font-medium
+           rounded-lg
+           hover:bg-slate-100 dark:hover:bg-slate-800
+           hover:text-slate-900 dark:hover:text-slate-200
+           active:bg-slate-200 dark:active:bg-slate-700
+           transition-colors duration-150;
+  }
+
+  /* ── 입력 필드 ─────────────────────────── */
+  /* Tailwind v4: @apply는 utility 클래스만 가능 — .input과 .input-field를 동일 규칙으로 합침 */
+  .input-field,
+  .input {
+    @apply w-full px-3.5 py-2.5
+           border border-slate-300 dark:border-slate-600
+           rounded-lg
+           bg-white dark:bg-slate-800
+           text-slate-900 dark:text-slate-100 text-base
+           placeholder-slate-400 dark:placeholder-slate-500
+           focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 dark:disabled:bg-slate-900
+           transition-colors duration-150;
+  }
+
+  textarea.input-field,
+  textarea.input {
+    @apply leading-relaxed resize-y;
+  }
+
+  /* ── 배지 ──────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold;
+  }
+
+  .badge-primary {
+    @apply bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400;
+  }
+
+  .badge-success {
+    @apply bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400;
+  }
+
+  .badge-warning {
+    @apply bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400;
+  }
+
+  .badge-danger {
+    @apply bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400;
+  }
+
+  .badge-info {
+    @apply bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400;
+  }
+
+  .badge-gray {
+    @apply bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-400;
+  }
+
+  .badge-red {
+    @apply bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400;
+  }
+
+  /* ── 알림/상태 배너 ────────────────────── */
+  .alert {
+    @apply flex items-start gap-3 p-4 rounded-xl border text-sm;
+  }
+
+  .alert-info {
+    @apply bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800/60
+           text-sky-800 dark:text-sky-300;
+  }
+
+  .alert-success {
+    @apply bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/60
+           text-green-800 dark:text-green-300;
+  }
+
+  .alert-warning {
+    @apply bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/60
+           text-amber-800 dark:text-amber-300;
+  }
+
+  .alert-danger {
+    @apply bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/60
+           text-red-800 dark:text-red-300;
+  }
+
+  /* ── 시맨틱 텍스트 컬러 ────────────────── */
+  .text-muted {
+    @apply text-slate-400 dark:text-slate-500;
+  }
+
+  .text-subtle {
+    @apply text-slate-500 dark:text-slate-400;
+  }
+
+  .text-body {
+    @apply text-slate-700 dark:text-slate-300;
+  }
+
+  .text-heading {
+    @apply text-slate-900 dark:text-slate-100;
+  }
+}
+
+/* ========================================
+ * 반응형
+ * ======================================== */
+@media (max-width: 768px) {
+  .content-wrapper {
+    @apply px-3 py-4;
+  }
+}
