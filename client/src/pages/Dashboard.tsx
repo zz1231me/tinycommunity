@@ -1,6 +1,7 @@
 // client/src/pages/Dashboard.tsx
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
+import { LoadingSpinner } from '../components/common/LoadingStates';
 import { useAuth } from '../store/auth';
 import { useSiteSettings } from '../store/siteSettings';
 import { useUIOverlays } from '../store/uiOverlays';
@@ -143,7 +144,17 @@ function Dashboard() {
         <DashboardSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-slate-900">
-          <Outlet />
+          {/* 콘텐츠 영역 전용 Suspense — 대시보드 내 페이지 이동 시 사이드바/헤더는 유지되고
+              이 영역에만 로더가 표시된다. (루트 Suspense가 잡으면 앱 전체가 깜빡이며 재구성됨) */}
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center py-24">
+                <LoadingSpinner size="md" message="불러오는 중..." />
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </main>
       </div>
 
