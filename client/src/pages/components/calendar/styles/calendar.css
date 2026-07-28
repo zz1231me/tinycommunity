@@ -335,7 +335,9 @@
    이벤트 색은 --ev(eventDidMount 주입)로 받아 color-mix로 라이트/다크 톤을 각각 생성. */
 .calendar-wrapper .fc-daygrid-event {
   background: color-mix(in srgb, var(--ev, #14b8a6) 15%, #ffffff) !important;
-  color: color-mix(in srgb, var(--ev, #14b8a6) 82%, #0f172a) !important;
+  /* 글자는 '어두운 슬레이트 + 약간의 색 힌트(30%)' — 밝은 카테고리(노랑·회색)도 항상 대비 확보.
+     색 정체성은 좌측 컬러바 + 배경 틴트가 전달하므로 글자를 진하게 해도 색감은 유지된다. */
+  color: color-mix(in srgb, var(--ev, #14b8a6) 30%, #1e293b) !important;
   border: none !important;
   border-left: 3px solid var(--ev, #14b8a6) !important;
 }
