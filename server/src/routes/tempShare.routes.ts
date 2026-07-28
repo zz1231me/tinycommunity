@@ -4,9 +4,9 @@ import multer from 'multer';
 import crypto from 'crypto';
 import path from 'path';
 import { authenticate } from '../middlewares/auth.middleware';
+import { createDynamicUploader } from '../middlewares/upload/dynamicUploader';
+import { getFileSizeLimits } from '../utils/settingsCache';
 import { uploadTempFile, downloadTempFile, tempDir } from '../controllers/tempShare.controller';
-
-const MAX_SIZE = 50 * 1024 * 1024; // 50MB
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, tempDir),
@@ -17,7 +17,10 @@ const storage = multer.diskStorage({
     cb(null, `${id}${ext}`);
   },
 });
-const upload = multer({ storage, limits: { fileSize: MAX_SIZE, files: 1 } });
+// ★파일 크기 한도는 관리자 설정(maxFileSizeMb)을 매 요청마다 최신값으로 읽는다(하드코딩 제거).
+const upload = createDynamicUploader(() =>
+  multer({ storage, limits: { fileSize: getFileSizeLimits().DOCUMENT, files: 1 } })
+);
 
 const router = Router();
 

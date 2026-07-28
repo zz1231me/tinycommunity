@@ -15,6 +15,7 @@ import { User } from '../models/User';
 import { SecurityLog } from '../models/SecurityLog';
 import { sendSuccess, sendError } from '../utils/response';
 import { logError } from '../utils/logger';
+import { getSettings } from '../utils/settingsCache';
 import {
   invalidateCache,
   invalidateUserCache as invalidateUserResponseCache,
@@ -724,8 +725,9 @@ export const updateEventAsAdmin = async (req: Request, res: Response): Promise<v
       recurrenceEndDate,
       calendarId,
     } = req.body as Record<string, unknown>;
-    if (body && String(body).length > 10000) {
-      sendError(res, 400, '내용은 10,000자를 초과할 수 없습니다.');
+    const eventBodyMax = getSettings().eventBodyMaxLength;
+    if (body && String(body).length > eventBodyMax) {
+      sendError(res, 400, `내용은 ${eventBodyMax.toLocaleString()}자를 초과할 수 없습니다.`);
       return;
     }
     if (location && String(location).length > 500) {

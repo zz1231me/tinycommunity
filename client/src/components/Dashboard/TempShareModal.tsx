@@ -4,9 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { X, UploadCloud, Copy, Clock, FileUp, RotateCcw } from 'lucide-react';
 import { uploadTempShare, type TempShareResult } from '../../api/tempShare';
 import { getApiErrorMessage } from '../../api/utils';
+import { useSiteSettings } from '../../store/siteSettings';
 import { toast } from '../../utils/toast';
-
-const MAX_SIZE = 50 * 1024 * 1024; // 서버 한도와 동일
 
 interface Props {
   open: boolean;
@@ -21,6 +20,9 @@ export function TempShareModal({ open, onClose }: Props) {
   const [result, setResult] = useState<TempShareResult | null>(null);
   const [remain, setRemain] = useState(0); // 초
   const inputRef = useRef<HTMLInputElement>(null);
+  // 파일 크기 한도는 관리자 설정(maxFileSizeMb)을 따른다(하드코딩 제거).
+  const maxMb = useSiteSettings(s => s.settings.maxFileSizeMb);
+  const maxSize = maxMb * 1024 * 1024;
 
   const reset = useCallback(() => {
     setResult(null);
@@ -61,8 +63,8 @@ export function TempShareModal({ open, onClose }: Props) {
 
   const handleFile = useCallback(async (file: File) => {
     if (!file) return;
-    if (file.size > MAX_SIZE) {
-      toast.error('파일이 너무 큽니다. 최대 50MB까지 공유할 수 있습니다.');
+    if (file.size > maxSize) {
+      toast.error(`파일이 너무 큽니다. 최대 ${maxMb}MB까지 공유할 수 있습니다.`);
       return;
     }
     setUploading(true);
@@ -75,7 +77,7 @@ export function TempShareModal({ open, onClose }: Props) {
     } finally {
       setUploading(false);
     }
-  }, []);
+  }, [maxSize, maxMb]);
 
   const shareUrl = result ? `${window.location.origin}${result.url}` : '';
 
@@ -142,7 +144,7 @@ export function TempShareModal({ open, onClose }: Props) {
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   {uploading ? `업로드 중… ${progress}%` : '파일을 끌어다 놓거나 클릭'}
                 </p>
-                <p className="text-xs text-slate-400">최대 50MB · 링크는 15분간 유지</p>
+                <p className="text-xs text-slate-400">최대 {maxMb}MB · 링크는 15분간 유지</p>
               </div>
               {uploading && (
                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
