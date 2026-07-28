@@ -55,7 +55,8 @@ function Dashboard() {
     <div className="h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
       {/* 헤더 */}
       <header
-        className="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800
+        className="h-14 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl
+                         border-b border-slate-200/70 dark:border-white/[0.06]
                          flex items-center px-3 sm:px-5 z-50 flex-shrink-0"
       >
         <div className="w-full flex items-center justify-between gap-3">

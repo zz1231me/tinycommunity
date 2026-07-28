@@ -74,8 +74,8 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
   return (
     <aside
       className={`
-      w-60 bg-white dark:bg-slate-900
-      border-r border-slate-200 dark:border-slate-800
+      w-60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl
+      border-r border-slate-200/70 dark:border-white/[0.06]
       lg:relative fixed z-40
       top-14 lg:top-0 bottom-0 left-0
       transform transition-transform duration-250 ease-in-out
