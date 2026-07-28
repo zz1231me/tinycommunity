@@ -1,4 +1,15 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  useReactTable,
+  type SortingState,
+  type FilterFn,
+} from '@tanstack/react-table';
 import api from '../../../api/axios';
 import { formatDateTime, formatRelative, formatDate } from '../../../utils/date';
 import { User } from '../../../types/admin.types';
@@ -52,11 +63,8 @@ export const UserManagement = () => {
   const [deletedUsers, setDeletedUsers] = useState<User[]>([]);
   const [showDeleted, setShowDeleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortKey, setSortKey] = useState<'id' | 'name' | 'role' | 'lastLoginAt' | 'createdAt'>(
-    'lastLoginAt'
-  );
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [page, setPage] = useState(1);
+  // 정렬은 react-table가 관리 — 기본은 '최근 접속' 내림차순(활동 최신순)
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'lastSeen', desc: true }]);
   const [confirmAction, setConfirmAction] = useState<{
     type: string;
     userId: string;
@@ -285,66 +293,178 @@ export const UserManagement = () => {
     else if (type === 'approve') handleApproveUser(userId);
   };
 
-  const activeUsers = users.filter(u => u.isActive !== false);
+  const activeUsers = useMemo(() => users.filter(u => u.isActive !== false), [users]);
   const pendingUsers = users.filter(u => u.isActive === false);
-
-  const filteredActive = activeUsers.filter(
-    u =>
-      !searchQuery ||
-      u.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // 정렬
   const roleNameOf = (id: string) => roles.find(r => r.id === id)?.name ?? id;
-  const sortedActive = [...filteredActive].sort((a, b) => {
-    let av: string | number = '';
-    let bv: string | number = '';
-    switch (sortKey) {
-      case 'id':
-        av = a.id.toLowerCase();
-        bv = b.id.toLowerCase();
-        break;
-      case 'name':
-        av = a.name.toLowerCase();
-        bv = b.name.toLowerCase();
-        break;
-      case 'role':
-        av = roleNameOf(a.roleId).toLowerCase();
-        bv = roleNameOf(b.roleId).toLowerCase();
-        break;
-      case 'lastLoginAt': {
-        const as = lastSeenOf(a);
-        const bs = lastSeenOf(b);
-        av = as ? new Date(as).getTime() : 0;
-        bv = bs ? new Date(bs).getTime() : 0;
-        break;
-      }
-      case 'createdAt':
-        av = new Date(a.createdAt).getTime();
-        bv = new Date(b.createdAt).getTime();
-        break;
-    }
-    if (av < bv) return sortDir === 'asc' ? -1 : 1;
-    if (av > bv) return sortDir === 'asc' ? 1 : -1;
-    return 0;
-  });
 
-  const toggleSort = (key: typeof sortKey) => {
-    if (sortKey === key) {
-      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(key);
-      setSortDir(key === 'lastLoginAt' || key === 'createdAt' ? 'desc' : 'asc');
-    }
-    setPage(1);
+  // 아이디/이름만 대상으로 하는 검색 필터(react-table globalFilter로 위임)
+  const userSearchFilter: FilterFn<User> = (row, _columnId, value) => {
+    const q = String(value ?? '')
+      .toLowerCase()
+      .trim();
+    if (!q) return true;
+    const u = row.original;
+    return u.id.toLowerCase().includes(q) || u.name.toLowerCase().includes(q);
   };
 
-  // 페이지네이션 (클라이언트)
-  const PER_PAGE = 15;
-  const totalPages = Math.max(1, Math.ceil(sortedActive.length / PER_PAGE));
-  const currentPage = Math.min(page, totalPages);
-  const pagedActive = sortedActive.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
+  const columnHelper = createColumnHelper<User>();
+  const columns = [
+    columnHelper.accessor('id', {
+      header: '아이디',
+      cell: info => (
+        <span className="font-mono text-slate-900 dark:text-slate-100">{info.getValue()}</span>
+      ),
+    }),
+    columnHelper.accessor('name', {
+      header: '이름',
+      cell: info => {
+        const u = info.row.original;
+        return (
+          <div>
+            <div className="font-medium text-slate-900 dark:text-slate-100">{u.name}</div>
+            {u.email && (
+              <div className="text-xs text-slate-400 dark:text-slate-500">{u.email}</div>
+            )}
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor(row => roleNameOf(row.roleId), {
+      id: 'role',
+      header: '역할',
+      cell: info => {
+        const u = info.row.original;
+        return (
+          <select
+            value={u.roleId}
+            onChange={e => handleUpdateUserRole(u.id, e.target.value)}
+            className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          >
+            {roles.map(r => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        );
+      },
+    }),
+    columnHelper.display({
+      id: 'status',
+      header: '상태',
+      cell: () => (
+        <span className="badge badge-success">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+          활성
+        </span>
+      ),
+    }),
+    columnHelper.accessor(
+      row => {
+        const s = lastSeenOf(row);
+        return s ? new Date(s).getTime() : 0;
+      },
+      {
+        id: 'lastSeen',
+        header: '최근 접속',
+        cell: info => {
+          const u = info.row.original;
+          const seen = lastSeenOf(u);
+          return seen ? (
+            <div
+              title={`${formatDateTime(seen)}${u.lastLoginDevice ? ` · ${u.lastLoginDevice}` : ''}`}
+            >
+              <div>{formatRelative(seen)}</div>
+              {(u.lastLoginIp || u.lastLoginDevice) && (
+                <div className="text-xs text-slate-400 dark:text-slate-500">
+                  {u.lastLoginIp && <span className="font-mono">{u.lastLoginIp}</span>}
+                  {u.lastLoginIp && u.lastLoginDevice && ' · '}
+                  {u.lastLoginDevice}
+                </div>
+              )}
+            </div>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500">없음</span>
+          );
+        },
+      }
+    ),
+    columnHelper.accessor(row => new Date(row.createdAt).getTime(), {
+      id: 'createdAt',
+      header: '가입일',
+      cell: info => (
+        <span title={formatDateTime(info.row.original.createdAt)}>
+          {formatDate(info.row.original.createdAt)}
+        </span>
+      ),
+    }),
+    columnHelper.display({
+      id: 'actions',
+      header: '작업',
+      cell: info => {
+        const u = info.row.original;
+        return (
+          <div className="flex items-center justify-end gap-1.5">
+            <button
+              onClick={() => openResetPassword(u.id, u.name)}
+              className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+            >
+              비번 초기화
+            </button>
+            <button
+              onClick={() =>
+                requestConfirm(
+                  'deactivate',
+                  u.id,
+                  `'${u.name}' 계정을 비활성화하면 로그인이 차단됩니다.`
+                )
+              }
+              className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-600 dark:hover:bg-amber-900/20 transition-colors"
+            >
+              비활성화
+            </button>
+            <button
+              onClick={() => setActivityModal({ userId: u.id, userName: u.name })}
+              className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 dark:hover:bg-indigo-900/20 transition-colors"
+            >
+              활동 내역
+            </button>
+            <button
+              onClick={() =>
+                requestConfirm(
+                  'delete',
+                  u.id,
+                  `'${u.name}' 계정을 삭제합니다. 이 작업은 되돌리기 어렵습니다.`
+                )
+              }
+              className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-red-50 hover:border-red-300 hover:text-red-600 dark:hover:bg-red-900/20 transition-colors"
+            >
+              삭제
+            </button>
+          </div>
+        );
+      },
+    }),
+  ];
+
+  const table = useReactTable({
+    data: activeUsers,
+    columns,
+    state: { sorting, globalFilter: searchQuery },
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setSearchQuery,
+    globalFilterFn: userSearchFilter,
+    enableSortingRemoval: false, // 정렬은 항상 유지(오름↔내림만 토글)
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: { pagination: { pageSize: 15 } },
+  });
+
+  const filteredCount = table.getFilteredRowModel().rows.length;
+  const pageCount = table.getPageCount();
+  const pageIndex = table.getState().pagination.pageIndex;
 
   if (loading) return <LoadingSpinner message="사용자 목록을 불러오는 중..." />;
 
@@ -581,10 +701,7 @@ export const UserManagement = () => {
             <input
               type="text"
               value={searchQuery}
-              onChange={e => {
-                setSearchQuery(e.target.value);
-                setPage(1);
-              }}
+              onChange={e => setSearchQuery(e.target.value)}
               placeholder="아이디 / 이름 검색..."
               className="input w-48 py-1.5"
             />
@@ -594,186 +711,89 @@ export const UserManagement = () => {
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-700">
-                {(
-                  [
-                    ['id', '아이디'],
-                    ['name', '이름'],
-                    ['role', '역할'],
-                  ] as const
-                ).map(([k, label]) => (
-                  <th key={k} className="text-left px-3 py-2">
-                    <button
-                      onClick={() => toggleSort(k)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
-                    >
-                      {label}
-                      <span
-                        className={`text-[10px] ${sortKey === k ? 'text-primary-500' : 'text-slate-300 dark:text-slate-600'}`}
+              {table.getHeaderGroups().map(headerGroup => (
+                <tr
+                  key={headerGroup.id}
+                  className="border-b border-slate-200 dark:border-slate-700"
+                >
+                  {headerGroup.headers.map(header => {
+                    const canSort = header.column.getCanSort();
+                    const sorted = header.column.getIsSorted();
+                    const isActions = header.column.id === 'actions';
+                    return (
+                      <th
+                        key={header.id}
+                        className={`px-3 py-2 ${isActions ? 'text-right' : 'text-left'}`}
                       >
-                        {sortKey === k ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
-                      </span>
-                    </button>
-                  </th>
-                ))}
-                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  상태
-                </th>
-                {(
-                  [
-                    ['lastLoginAt', '최근 접속'],
-                    ['createdAt', '가입일'],
-                  ] as const
-                ).map(([k, label]) => (
-                  <th key={k} className="text-left px-3 py-2">
-                    <button
-                      onClick={() => toggleSort(k)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
-                    >
-                      {label}
-                      <span
-                        className={`text-[10px] ${sortKey === k ? 'text-primary-500' : 'text-slate-300 dark:text-slate-600'}`}
-                      >
-                        {sortKey === k ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
-                      </span>
-                    </button>
-                  </th>
-                ))}
-                <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  작업
-                </th>
-              </tr>
+                        {canSort ? (
+                          <button
+                            onClick={header.column.getToggleSortingHandler()}
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            <span
+                              className={`text-[10px] ${sorted ? 'text-primary-500' : 'text-slate-300 dark:text-slate-600'}`}
+                            >
+                              {sorted ? (sorted === 'asc' ? '▲' : '▼') : '↕'}
+                            </span>
+                          </button>
+                        ) : (
+                          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                          </span>
+                        )}
+                      </th>
+                    );
+                  })}
+                </tr>
+              ))}
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {sortedActive.length === 0 ? (
+              {table.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={columns.length}
                     className="px-3 py-8 text-center text-slate-400 dark:text-slate-500"
                   >
                     {searchQuery ? '검색 결과가 없습니다.' : '등록된 사용자가 없습니다.'}
                   </td>
                 </tr>
               ) : (
-                pagedActive.map(user => (
-                  <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                    <td className="px-3 py-3 font-mono text-slate-900 dark:text-slate-100">
-                      {user.id}
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="font-medium text-slate-900 dark:text-slate-100">
-                        {user.name}
-                      </div>
-                      {user.email && (
-                        <div className="text-xs text-slate-400 dark:text-slate-500">
-                          {user.email}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-3 py-3">
-                      <select
-                        value={user.roleId}
-                        onChange={e => handleUpdateUserRole(user.id, e.target.value)}
-                        className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                table.getRowModel().rows.map(row => (
+                  <tr
+                    key={row.id}
+                    className="hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                  >
+                    {row.getVisibleCells().map(cell => (
+                      <td
+                        key={cell.id}
+                        className={`px-3 py-3 ${cell.column.id === 'actions' ? 'text-right' : ''} ${cell.column.id === 'lastSeen' ? 'whitespace-nowrap text-slate-600 dark:text-slate-300' : ''} ${cell.column.id === 'createdAt' ? 'whitespace-nowrap text-slate-500 dark:text-slate-400' : ''}`}
                       >
-                        {roles.map(r => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className="badge badge-success">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                        활성
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300">
-                      {lastSeenOf(user) ? (
-                        <div
-                          title={`${formatDateTime(lastSeenOf(user)!)}${user.lastLoginDevice ? ` · ${user.lastLoginDevice}` : ''}`}
-                        >
-                          <div>{formatRelative(lastSeenOf(user)!)}</div>
-                          {(user.lastLoginIp || user.lastLoginDevice) && (
-                            <div className="text-xs text-slate-400 dark:text-slate-500">
-                              {user.lastLoginIp && (
-                                <span className="font-mono">{user.lastLoginIp}</span>
-                              )}
-                              {user.lastLoginIp && user.lastLoginDevice && ' · '}
-                              {user.lastLoginDevice}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-slate-400 dark:text-slate-500">없음</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-slate-500 dark:text-slate-400">
-                      <span title={formatDateTime(user.createdAt)}>{formatDate(user.createdAt)}</span>
-                    </td>
-                    <td className="px-3 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => openResetPassword(user.id, user.name)}
-                          className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
-                        >
-                          비번 초기화
-                        </button>
-                        <button
-                          onClick={() =>
-                            requestConfirm(
-                              'deactivate',
-                              user.id,
-                              `'${user.name}' 계정을 비활성화하면 로그인이 차단됩니다.`
-                            )
-                          }
-                          className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-600 dark:hover:bg-amber-900/20 transition-colors"
-                        >
-                          비활성화
-                        </button>
-                        <button
-                          onClick={() => setActivityModal({ userId: user.id, userName: user.name })}
-                          className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 dark:hover:bg-indigo-900/20 transition-colors"
-                        >
-                          활동 내역
-                        </button>
-                        <button
-                          onClick={() =>
-                            requestConfirm(
-                              'delete',
-                              user.id,
-                              `'${user.name}' 계정을 삭제합니다. 이 작업은 되돌리기 어렵습니다.`
-                            )
-                          }
-                          className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-red-50 hover:border-red-300 hover:text-red-600 dark:hover:bg-red-900/20 transition-colors"
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    </td>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
-        {totalPages > 1 && (
+        {pageCount > 1 && (
           <div className="flex items-center justify-between px-3 py-3 border-t border-slate-100 dark:border-slate-700/60">
             <span className="text-xs text-slate-500 dark:text-slate-400">
-              총 {sortedActive.length}명 · {currentPage}/{totalPages} 페이지
+              총 {filteredCount}명 · {pageIndex + 1}/{pageCount} 페이지
             </span>
             <div className="flex items-center gap-1.5">
               <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={currentPage <= 1}
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
                 className="px-2.5 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 이전
               </button>
               <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage >= totalPages}
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
                 className="px-2.5 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 다음
