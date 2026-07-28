@@ -315,9 +315,12 @@ export const register = async (req: Request, res: Response, next: NextFunction):
 
     const user = await authService.register({ id, password, name, email });
 
-    // requireApproval이 꺼져 있으면 즉시 활성화 (자동 승인)
+    // requireApproval이 꺼져 있으면 즉시 활성화·승인, 켜져 있으면 승인 대기(isApproved=false).
+    // ★isApproved로 '승인 대기'와 '관리자 비활성화'를 구분한다(둘 다 isActive=false지만 목록이 다름).
     if (!requireApproval) {
-      await user.update({ isActive: true });
+      await user.update({ isActive: true, isApproved: true });
+    } else {
+      await user.update({ isApproved: false });
     }
 
     const message = requireApproval

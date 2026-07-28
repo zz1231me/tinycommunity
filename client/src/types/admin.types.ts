@@ -6,6 +6,7 @@ export interface User {
   email?: string | null;
   roleId: string;
   isActive: boolean;
+  isApproved?: boolean; // false=가입 승인 대기, true=승인됨(비활성화돼도 유지)
   lastLoginAt?: string | null;
   lastActiveAt?: string | null;
   lastLoginIp?: string | null;

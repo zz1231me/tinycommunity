@@ -294,7 +294,9 @@ export const UserManagement = () => {
   };
 
   const activeUsers = useMemo(() => users.filter(u => u.isActive !== false), [users]);
-  const pendingUsers = users.filter(u => u.isActive === false);
+  // ★승인 대기(isApproved=false)와 관리자가 비활성화한 사용자(isApproved=true & isActive=false)를 구분한다.
+  const pendingUsers = users.filter(u => u.isApproved === false);
+  const deactivatedUsers = users.filter(u => u.isApproved !== false && u.isActive === false);
   const roleNameOf = (id: string) => roles.find(r => r.id === id)?.name ?? id;
 
   // 아이디/이름만 대상으로 하는 검색 필터(react-table globalFilter로 위임)
@@ -675,6 +677,78 @@ export const UserManagement = () => {
                           className="px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-red-50 hover:border-red-300 hover:text-red-600 dark:hover:bg-red-900/20 transition-colors"
                         >
                           거부
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </AdminSection>
+      )}
+
+      {/* 2-2. 비활성화됨 (관리자가 비활성화한 사용자 — 승인 대기와 분리) */}
+      {deactivatedUsers.length > 0 && (
+        <AdminSection
+          title={`비활성화됨 (${deactivatedUsers.length}명)`}
+          actions={<span className="badge badge-gray py-1">로그인 차단됨</span>}
+        >
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-700">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    아이디
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    이름
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    마지막 로그인
+                  </th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    작업
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {deactivatedUsers.map(user => (
+                  <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                    <td className="px-3 py-3 font-mono text-slate-900 dark:text-slate-100">
+                      {user.id}
+                    </td>
+                    <td className="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">
+                      {user.name}
+                    </td>
+                    <td className="px-3 py-3 text-slate-500 dark:text-slate-400 text-xs">
+                      {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : '기록 없음'}
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() =>
+                            requestConfirm(
+                              'approve',
+                              user.id,
+                              `'${user.name}' 계정을 재활성화하면 다시 로그인할 수 있습니다.`
+                            )
+                          }
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-secondary-600 hover:bg-secondary-700 text-white transition-colors"
+                        >
+                          재활성화
+                        </button>
+                        <button
+                          onClick={() =>
+                            requestConfirm(
+                              'delete',
+                              user.id,
+                              `'${user.name}' 계정을 삭제합니다. 이 작업은 되돌릴 수 없습니다.`
+                            )
+                          }
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-red-50 hover:border-red-300 hover:text-red-600 dark:hover:bg-red-900/20 transition-colors"
+                        >
+                          삭제
                         </button>
                       </div>
                     </td>

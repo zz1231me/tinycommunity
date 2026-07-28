@@ -52,6 +52,7 @@ export class UserService extends BaseService {
         'email',
         'roleId',
         'isActive',
+        'isApproved',
         'lastLoginAt',
         'lastLoginIp',
         'createdAt',
@@ -182,9 +183,11 @@ export class UserService extends BaseService {
   async approveUser(id: string): Promise<UserInstance> {
     const user = await User.findByPk(id);
     if (!user) throw new AppError(404, '사용자를 찾을 수 없습니다.');
-    if (user.isActive) throw new AppError(400, '이미 승인된 사용자입니다.');
+    if (user.isActive) throw new AppError(400, '이미 활성 상태인 사용자입니다.');
 
+    // 승인 대기(isApproved=false) → 승인 / 비활성화됨(isApproved=true) → 재활성화 모두 처리
     user.isActive = true;
+    user.isApproved = true;
     await user.save();
     return user;
   }
