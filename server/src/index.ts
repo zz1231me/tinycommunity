@@ -54,6 +54,7 @@ import wikiRoutes from './routes/wiki.routes';
 import tagRoutes from './routes/tag.routes';
 import reportRoutes from './routes/report.routes';
 import boardManagerRoutes from './routes/boardManager.routes';
+import customPageRoutes from './routes/customPage.routes';
 
 // ✅ 데이터베이스 설정
 import {
@@ -630,6 +631,7 @@ app.use('/api/wiki', wikiRoutes);
 app.use('/api/tags', tagRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/board-managers', boardManagerRoutes);
+app.use('/api/custom-pages', customPageRoutes);
 
 const imageStaticOptions = {
   maxAge: env.NODE_ENV === 'production' ? '1y' : 0,

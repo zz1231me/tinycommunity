@@ -36,6 +36,9 @@ const IpManagement = lazy(() => import('../../components/admin/tabs/IpManagement
 const BoardManagerManagement = lazy(
   () => import('../../components/admin/tabs/BoardManagerManagement')
 );
+const CustomPageManagement = lazy(
+  () => import('../../components/admin/tabs/CustomPageManagement')
+);
 
 import { PageHeader } from '../../components/common/PageHeader';
 
@@ -122,6 +125,7 @@ const AdminUserPage = () => {
                   <Route path="files" element={<FileManagement />} />
                   <Route path="ip-management" element={<IpManagement />} />
                   <Route path="board-managers" element={<BoardManagerManagement />} />
+                  <Route path="custom-pages" element={<CustomPageManagement />} />
                   {/* 잘못된 경로는 users로 리다이렉트 */}
                   <Route path="*" element={<Navigate to="users" replace />} />
                 </Routes>

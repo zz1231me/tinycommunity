@@ -1,7 +1,8 @@
 // client/src/components/Dashboard/DashboardSidebar.tsx
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Pencil, BookOpen, Settings, Folder, Link } from 'lucide-react';
+import { Calendar, Pencil, BookOpen, Settings, Folder, Link, FileText } from 'lucide-react';
+import { fetchPublishedPages, type CustomPageSummary } from '../../api/customPages';
 import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
 import { SidebarNav } from './SidebarNav';
@@ -68,6 +69,19 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
       );
     }
   }, [boards, boardsLoading, user, userRole, regularBoards.length, personalBoards.length]);
+
+  // 게시된 커스텀 HTML 페이지(관리자 작성) — 사이드바에 노출
+  const [customPages, setCustomPages] = React.useState<CustomPageSummary[]>([]);
+  React.useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    fetchPublishedPages()
+      .then(p => alive && setCustomPages(p))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [user]);
 
   const isAdminActive = location.pathname.startsWith('/admin');
 
@@ -183,6 +197,24 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
               />
             </div>
           </div>
+
+          {/* HTML 페이지 (관리자 작성, 게시된 것만) */}
+          {customPages.length > 0 && (
+            <div>
+              <SectionLabel>페이지</SectionLabel>
+              <div className="space-y-0.5">
+                {customPages.map(p => (
+                  <SidebarNav
+                    key={p.id}
+                    label={p.title}
+                    to={`pages/${p.slug}`}
+                    closeSidebar={onClose}
+                    icon={<FileText className="w-4.5 h-4.5" />}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* 관리자 패널 */}
           {isAdmin && (

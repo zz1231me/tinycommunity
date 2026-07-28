@@ -40,6 +40,7 @@ const WikiPageRoute = lazy(() => import('./pages/wiki/WikiPage'));
 const LoginTwoFactor = lazy(() => import('./pages/LoginTwoFactor'));
 const PasswordResetRequest = lazy(() => import('./pages/PasswordResetRequest'));
 const ChangePassword = lazy(() => import('./pages/ChangePassword'));
+const CustomPageView = lazy(() => import('./pages/CustomPageView'));
 
 function App() {
   const { setSettings } = useSiteSettings();
@@ -182,6 +183,7 @@ function App() {
                 <Route path="memos" element={<MemoBoard />} />
                 <Route path="wiki" element={<WikiPageRoute />} />
                 <Route path="wiki/:slug" element={<WikiPageRoute />} />
+                <Route path="pages/:slug" element={<CustomPageView />} />
 
                 {/* ✅ 게시글 관련 - 권한 보호됨 */}
                 <Route
