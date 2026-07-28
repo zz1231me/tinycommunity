@@ -9,7 +9,7 @@ import listPlugin from '@fullcalendar/list';
 import koLocale from '@fullcalendar/core/locales/ko';
 import { EventClickArg, DateSelectArg, EventDropArg } from '@fullcalendar/core';
 import { useAuth } from '../../../store/auth';
-import { updateEvent } from '../../../api/events';
+import { updateEvent, getEvents } from '../../../api/events';
 import { toast } from '../../../utils/toast';
 
 import { CalendarEvent, EventFormData, ModalMode } from './types';
@@ -162,6 +162,26 @@ const CalendarPage: React.FC = () => {
     setIsModalOpen(true);
   }, []);
 
+  // 우측 레일용 이벤트 — 보이는 달과 무관하게 '오늘~다음 31일'을 독립적으로 로드.
+  // (달력의 loadEvents는 보이는 범위만 가져오므로, 다른 달로 이동하면 오늘 일정이 누락됨)
+  const [railEvents, setRailEvents] = useState<CalendarEvent[]>([]);
+  const loadRail = useCallback(async () => {
+    if (!user?.id) return;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 31);
+    try {
+      setRailEvents(await getEvents(start, end));
+    } catch {
+      /* 레일은 보조 정보 — 실패해도 달력 흐름을 막지 않는다 */
+    }
+  }, [user?.id]);
+  // 마운트/사용자/날짜(자정) 변경 시 갱신
+  useEffect(() => {
+    loadRail();
+  }, [loadRail, todayStr]);
+
   /* ──── 드래그/리사이즈 공통 처리 ──── */
   const applyEventDateChange = useCallback(
     async (
@@ -204,6 +224,7 @@ const CalendarPage: React.FC = () => {
           borderColor: originalEvent.borderColor,
         });
         await loadEvents();
+        void loadRail();
       } catch (error) {
         toast.error(
           `일정 수정에 실패했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`
@@ -212,7 +233,7 @@ const CalendarPage: React.FC = () => {
         await loadEvents();
       }
     },
-    [canEditEvent, loadEvents]
+    [canEditEvent, loadEvents, loadRail]
   );
 
   const handleEventDrop = useCallback(
@@ -243,6 +264,7 @@ const CalendarPage: React.FC = () => {
       else if (modalMode === 'edit' && selectedEvent)
         await handleUpdateEvent(selectedEvent.id, formData, selectedEvent);
       setIsModalOpen(false);
+      void loadRail();
     } catch (err) {
       const msg = err instanceof Error ? err.message : '일정 저장에 실패했습니다.';
       toast.error(msg);
@@ -264,6 +286,7 @@ const CalendarPage: React.FC = () => {
     try {
       await handleDeleteEvent(selectedEvent.id);
       setIsModalOpen(false);
+      void loadRail();
     } catch {
       toast.error('일정 삭제에 실패했습니다.');
     } finally {
@@ -359,7 +382,7 @@ const CalendarPage: React.FC = () => {
       </div>
 
       {/* 우측 레일 — 오늘/다가오는 일정 (넓은 화면 전용) */}
-      <TodayRail events={events} todayStr={todayStr} onSelect={openEventDetail} />
+      <TodayRail events={railEvents} todayStr={todayStr} onSelect={openEventDetail} />
 
       {/* 이벤트 모달 */}
       <CalendarModal

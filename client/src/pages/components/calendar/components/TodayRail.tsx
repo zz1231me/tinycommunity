@@ -1,13 +1,13 @@
 // client/src/pages/components/calendar/components/TodayRail.tsx
 // 캘린더 우측 레일 — '오늘 일정'과 '다가오는 일정'을 모아 보여준다(넓은 화면 전용).
-import type { EventInput } from '@fullcalendar/core';
+// ★보이는 달과 무관하게 오늘 기준으로 표시하도록, CalendarEvent[]를 직접 받는다.
 import { CalendarEvent } from '../types';
 import { categoryColors } from '../constants';
 import { DEFAULT_EVENT_COLOR } from '../../../../constants/colors';
 import { dateUtils } from '../utils';
 
 interface TodayRailProps {
-  events: EventInput[];
+  events: CalendarEvent[];
   todayStr: string; // 'YYYY-MM-DD'
   onSelect: (event: CalendarEvent) => void;
 }
@@ -21,20 +21,18 @@ interface RailItem {
   multiDay: boolean;
 }
 
-const toItem = (e: EventInput): RailItem | null => {
-  const original = (e.extendedProps as { originalEvent?: CalendarEvent })?.originalEvent;
-  if (!original) return null;
-  const startD = dateUtils.isoToLocalDate(String(e.start));
-  const endD = e.end ? dateUtils.subtractDay(dateUtils.isoToLocalDate(String(e.end))) : startD;
+const toItem = (ev: CalendarEvent): RailItem => {
+  const startD = dateUtils.isoToLocalDate(ev.start);
+  const endD = ev.end ? dateUtils.subtractDay(dateUtils.isoToLocalDate(ev.end)) : startD;
   return {
-    original,
-    title: String(e.title ?? original.title),
+    original: ev,
+    title: ev.title,
     color:
-      (e.backgroundColor as string) ||
-      categoryColors[original.category as keyof typeof categoryColors]?.bg ||
+      ev.backgroundColor ||
+      categoryColors[ev.category as keyof typeof categoryColors]?.bg ||
       DEFAULT_EVENT_COLOR,
     startD,
-    endD,
+    endD: endD >= startD ? endD : startD,
     multiDay: endD > startD,
   };
 };
@@ -71,7 +69,7 @@ function EventRow({ item, onSelect }: { item: RailItem; onSelect: (e: CalendarEv
 }
 
 export function TodayRail({ events, todayStr, onSelect }: TodayRailProps) {
-  const items = events.map(toItem).filter((x): x is RailItem => x !== null);
+  const items = events.map(toItem);
 
   const today = items
     .filter(i => i.startD <= todayStr && todayStr <= i.endD)
