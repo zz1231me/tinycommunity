@@ -1,4 +1,5 @@
 import React from 'react';
+import { DEFAULT_TAG_COLOR } from '../../constants/colors';
 import { Tag } from '../../types/board.types';
 
 interface TagBadgeProps {
@@ -22,7 +23,7 @@ const normalizeHex = (hex: string): string => {
 
 export const TagBadge: React.FC<TagBadgeProps> = ({ tag, onClick, onRemove, size = 'sm' }) => {
   const sizeClass = size === 'sm' ? 'text-xs px-2 py-0.5' : 'text-sm px-3 py-1';
-  const baseColor = isSafeColor(tag.color) ? normalizeHex(tag.color) : '#6366f1';
+  const baseColor = isSafeColor(tag.color) ? normalizeHex(tag.color) : DEFAULT_TAG_COLOR;
 
   return (
     <span

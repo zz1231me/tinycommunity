@@ -8,6 +8,28 @@ import { AdminSection } from '../common/AdminSection';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import { toast } from '../../../utils/toast';
 
+// 태그 색 팔레트 — 새 태그마다 여기서 랜덤 기본색을 뽑고, 원클릭 스와치로도 제공.
+// (임의 RGB 대신 큐레이션 팔레트로 대비·톤을 보장)
+const TAG_PALETTE = [
+  '#ef4444',
+  '#f97316',
+  '#f59e0b',
+  '#eab308',
+  '#84cc16',
+  '#22c55e',
+  '#10b981',
+  '#14b8a6',
+  '#06b6d4',
+  '#3b82f6',
+  '#6366f1',
+  '#8b5cf6',
+  '#a855f7',
+  '#ec4899',
+  '#f43f5e',
+  '#64748b',
+];
+const randomTagColor = () => TAG_PALETTE[Math.floor(Math.random() * TAG_PALETTE.length)];
+
 const TagManagement = () => {
   const [boards, setBoards] = useState<BoardWithManagers[]>([]);
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
@@ -16,7 +38,7 @@ const TagManagement = () => {
   const [loadingTags, setLoadingTags] = useState(false);
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [form, setForm] = useState({ name: '', color: '#3b82f6', description: '' });
+  const [form, setForm] = useState({ name: '', color: randomTagColor(), description: '' });
   const [confirmDeleteId, setConfirmDeleteId] = useState<{ id: number; name: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -65,7 +87,7 @@ const TagManagement = () => {
       }
       setEditingTag(null);
       setIsCreating(false);
-      setForm({ name: '', color: '#3b82f6', description: '' });
+      setForm({ name: '', color: randomTagColor(), description: '' });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '저장에 실패했습니다.';
       toast.error(message);
@@ -95,7 +117,7 @@ const TagManagement = () => {
   const startCreate = () => {
     setEditingTag(null);
     setIsCreating(true);
-    setForm({ name: '', color: '#3b82f6', description: '' });
+    setForm({ name: '', color: randomTagColor(), description: '' });
   };
 
   const cancelForm = () => {
@@ -215,6 +237,32 @@ const TagManagement = () => {
                           onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
                           className="input w-24 py-1.5 font-mono"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, color: randomTagColor() }))}
+                          title="랜덤 색상"
+                          className="btn-secondary px-2 py-1.5"
+                        >
+                          🎲
+                        </button>
+                      </div>
+                      {/* 팔레트 원클릭 스와치 */}
+                      <div className="flex flex-wrap gap-1 mt-2 max-w-[240px]">
+                        {TAG_PALETTE.map(c => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setForm(f => ({ ...f, color: c }))}
+                            title={c}
+                            aria-label={`색상 ${c}`}
+                            className={`w-5 h-5 rounded-full transition-transform hover:scale-110 ${
+                              form.color.toLowerCase() === c.toLowerCase()
+                                ? 'ring-2 ring-offset-1 ring-slate-400 dark:ring-offset-slate-800'
+                                : ''
+                            }`}
+                            style={{ backgroundColor: c }}
+                          />
+                        ))}
                       </div>
                     </div>
                     <div>

@@ -1,4 +1,5 @@
 // client/src/pages/components/calendar/CalendarPage.tsx
+import { DEFAULT_EVENT_COLOR } from '../../../constants/colors';
 // FullCalendar 기반 일정 화면 (구 명칭 MyTUICalendar — TUI Calendar에서 FullCalendar로 이관하며 개명)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
@@ -29,8 +30,8 @@ const DEFAULT_FORM: EventFormData = {
   end: '',
   category: '',
   location: '',
-  color: '#6366f1',
-  backgroundColor: '#6366f1',
+  color: DEFAULT_EVENT_COLOR,
+  backgroundColor: DEFAULT_EVENT_COLOR,
 };
 
 const CalendarPage: React.FC = () => {
@@ -124,8 +125,8 @@ const CalendarPage: React.FC = () => {
       end: endDate,
       category: event.extendedProps.category || 'meeting',
       location: event.extendedProps.location || '',
-      color: event.backgroundColor || '#6366f1',
-      backgroundColor: event.backgroundColor || '#6366f1',
+      color: event.backgroundColor || DEFAULT_EVENT_COLOR,
+      backgroundColor: event.backgroundColor || DEFAULT_EVENT_COLOR,
     });
     setModalMode('view');
     setIsModalOpen(true);

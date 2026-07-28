@@ -1,4 +1,5 @@
 // client/src/pages/components/calendar/components/EventDetailView.tsx
+import { DEFAULT_EVENT_COLOR } from '../../../../constants/colors';
 import React, { useRef, useEffect } from 'react';
 import { CalendarEvent } from '../types';
 import { categoryColors } from '../constants';
@@ -70,7 +71,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
 
   const categoryInfo = categoryColors[event.category as keyof typeof categoryColors];
   const categoryLabel = categoryInfo?.label || '기타';
-  const eventColor = event.backgroundColor || '#6366f1';
+  const eventColor = event.backgroundColor || DEFAULT_EVENT_COLOR;
 
   return (
     <div className="space-y-5">

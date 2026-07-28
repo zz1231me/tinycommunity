@@ -9,6 +9,7 @@ import { roleService } from '../services/role.service';
 import { eventService } from '../services/event.service';
 import { Op } from 'sequelize';
 import { LoginHistory } from '../models/LoginHistory';
+import { UserSession } from '../models/UserSession';
 import { Role } from '../models/Role';
 import { User } from '../models/User';
 import { SecurityLog } from '../models/SecurityLog';
@@ -117,18 +118,32 @@ export const getAllUsers = async (_req: Request, res: Response): Promise<void> =
   try {
     const users = await userService.getAllUsers(true, 1000);
 
-    // 각 사용자의 최근 로그인 기기(UA) 보강 — LoginHistory의 최신 success 1건에서 파싱
     const ids = users.map(u => u.id);
     const deviceByUser = new Map<string, string>();
+    // 각 사용자의 최근 "활동" 시각 — 세션 lastActiveAt는 토큰 자동갱신(rotateSession)마다 갱신되므로
+    // 명시적 로그인 시각(lastLoginAt)보다 실제 접속 활동을 더 정확히 반영한다.
+    const lastActiveByUser = new Map<string, Date>();
     if (ids.length > 0) {
-      const histories = await LoginHistory.findAll({
-        where: { userId: { [Op.in]: ids }, status: 'success' },
-        attributes: ['userId', 'userAgent', 'createdAt'],
-        order: [['createdAt', 'DESC']],
-      });
+      const [histories, sessions] = await Promise.all([
+        LoginHistory.findAll({
+          where: { userId: { [Op.in]: ids }, status: 'success' },
+          attributes: ['userId', 'userAgent', 'createdAt'],
+          order: [['createdAt', 'DESC']],
+        }),
+        UserSession.findAll({
+          where: { userId: { [Op.in]: ids } },
+          attributes: ['userId', 'lastActiveAt'],
+          order: [['lastActiveAt', 'DESC']],
+        }),
+      ]);
       for (const h of histories) {
         if (h.userId && h.userAgent && !deviceByUser.has(h.userId)) {
           deviceByUser.set(h.userId, parseDevice(h.userAgent));
+        }
+      }
+      for (const s of sessions) {
+        if (s.userId && !lastActiveByUser.has(s.userId)) {
+          lastActiveByUser.set(s.userId, s.lastActiveAt);
         }
       }
     }
@@ -136,6 +151,7 @@ export const getAllUsers = async (_req: Request, res: Response): Promise<void> =
     const enriched = users.map(u => ({
       ...u.toJSON(),
       lastLoginDevice: deviceByUser.get(u.id) ?? null,
+      lastActiveAt: lastActiveByUser.get(u.id) ?? null,
     }));
 
     sendSuccess(res, enriched);

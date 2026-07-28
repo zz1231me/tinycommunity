@@ -155,7 +155,8 @@
 .calendar-wrapper .fc-daygrid-day-number {
   color: #1e293b;
   font-weight: 500;
-  padding: 8px 10px;
+  /* 하단 패딩 축소 — 날짜와 일정 사이 빈 공간을 좁혀 일정을 위로 당긴다 */
+  padding: 6px 10px 1px;
   font-size: 14px;
   transition: color 0.12s ease;
   display: inline-block;
@@ -253,7 +254,7 @@
    ───────────────────────────────────────────────────────────── */
 .calendar-wrapper .fc-day-today .fc-daygrid-day-number,
 .calendar-wrapper .today-highlight .fc-daygrid-day-number {
-  background: #6366f1 !important;
+  background: #0d9488 !important; /* teal 액센트 */
   color: #ffffff !important;
   font-weight: 700 !important;
   border-radius: 6px !important;
@@ -262,7 +263,7 @@
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  margin: 6px 8px !important;
+  margin: 6px 8px 2px !important;
   padding: 4px 8px !important;
   font-size: 14px !important;
   box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35) !important;

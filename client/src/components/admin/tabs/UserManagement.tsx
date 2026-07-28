@@ -18,6 +18,15 @@ import {
 } from '../../../api/admin';
 import { UserActivityModal } from './UserActivityModal';
 
+// "최근 접속" = 명시적 로그인(lastLoginAt)과 세션 활동(lastActiveAt, 토큰 자동갱신마다 갱신) 중 더 최근값.
+// 자동 인증 갱신으로 계속 활동 중인 사용자를 실제 접속 시점으로 표시한다.
+const lastSeenOf = (u: User): string | null => {
+  const a = u.lastActiveAt ? new Date(u.lastActiveAt).getTime() : 0;
+  const l = u.lastLoginAt ? new Date(u.lastLoginAt).getTime() : 0;
+  const t = Math.max(a, l);
+  return t > 0 ? new Date(t).toISOString() : null;
+};
+
 export const UserManagement = () => {
   const { user: currentUser } = useAuth();
   const {
@@ -304,10 +313,13 @@ export const UserManagement = () => {
         av = roleNameOf(a.roleId).toLowerCase();
         bv = roleNameOf(b.roleId).toLowerCase();
         break;
-      case 'lastLoginAt':
-        av = a.lastLoginAt ? new Date(a.lastLoginAt).getTime() : 0;
-        bv = b.lastLoginAt ? new Date(b.lastLoginAt).getTime() : 0;
+      case 'lastLoginAt': {
+        const as = lastSeenOf(a);
+        const bs = lastSeenOf(b);
+        av = as ? new Date(as).getTime() : 0;
+        bv = bs ? new Date(bs).getTime() : 0;
         break;
+      }
       case 'createdAt':
         av = new Date(a.createdAt).getTime();
         bv = new Date(b.createdAt).getTime();
@@ -678,11 +690,11 @@ export const UserManagement = () => {
                       </span>
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300">
-                      {user.lastLoginAt ? (
+                      {lastSeenOf(user) ? (
                         <div
-                          title={`${formatDateTime(user.lastLoginAt)}${user.lastLoginDevice ? ` · ${user.lastLoginDevice}` : ''}`}
+                          title={`${formatDateTime(lastSeenOf(user)!)}${user.lastLoginDevice ? ` · ${user.lastLoginDevice}` : ''}`}
                         >
-                          <div>{formatRelative(user.lastLoginAt)}</div>
+                          <div>{formatRelative(lastSeenOf(user)!)}</div>
                           {(user.lastLoginIp || user.lastLoginDevice) && (
                             <div className="text-xs text-slate-400 dark:text-slate-500">
                               {user.lastLoginIp && (

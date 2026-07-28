@@ -1,4 +1,5 @@
 import React from 'react';
+import { DEFAULT_TAG_COLOR } from '../../constants/colors';
 import { Avatar } from '../Avatar';
 import { PinIcon, LockIcon, EyeIcon, HeartIcon, ChatIcon } from '../common/Icons';
 import { Post } from '../../types/board.types';
@@ -91,7 +92,7 @@ export const PostListItem: React.FC<PostListItemProps> = ({
             {post.tags && post.tags.length > 0 && (
               <div className="flex items-center gap-1 flex-shrink-0">
                 {post.tags.slice(0, 3).map((tag, idx) => {
-                  const safeColor = isSafeColor(tag.color) ? tag.color : '#6366f1';
+                  const safeColor = isSafeColor(tag.color) ? tag.color : DEFAULT_TAG_COLOR;
                   return (
                     <span
                       key={tag.id}

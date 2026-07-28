@@ -7,6 +7,7 @@ export interface User {
   roleId: string;
   isActive: boolean;
   lastLoginAt?: string | null;
+  lastActiveAt?: string | null;
   lastLoginIp?: string | null;
   lastLoginDevice?: string | null;
   deletedAt?: string;
