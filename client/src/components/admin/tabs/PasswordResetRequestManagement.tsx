@@ -48,7 +48,21 @@ export const PasswordResetRequestManagement = () => {
 
   const copyCode = async (code: string) => {
     try {
-      await navigator.clipboard.writeText(code);
+      // HTTPS/localhost(보안 컨텍스트)에서만 navigator.clipboard 사용 가능.
+      // HTTP 인트라넷에선 미지원이라, textarea+execCommand 폴백으로 복사한다.
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(code);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = code;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
       toast.success('인증번호를 복사했습니다.');
     } catch {
       toast.error('복사에 실패했습니다. 직접 확인해 전달하세요.');

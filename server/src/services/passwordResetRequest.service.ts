@@ -63,7 +63,7 @@ class PasswordResetRequestService {
     if (!user) return; // 조용히 무시(열거 방지)
 
     const now = new Date();
-    let created = false;
+    let issued = false; // 코드가 발급(신규 or 재발급)됐는지 — 발급 시 관리자에게 알림
     await sequelize.transaction(async t => {
       const existing = await this.findActive(loginId, t);
       if (existing?.lockedUntil && existing.lockedUntil > now) return; // 잠금 중 — 재발급 금지
@@ -76,20 +76,19 @@ class PasswordResetRequestService {
         existing.expiresAt = expiresAt;
         existing.attempts = 0;
         existing.lockedUntil = null;
-        existing.status = 'pending';
         await existing.save({ transaction: t });
       } else {
         await PasswordResetRequest.create(
           { userId: loginId, status: 'pending', code: encrypted, expiresAt, attempts: 0 },
           { transaction: t }
         );
-        created = true;
       }
+      issued = true;
     });
 
-    // 새 요청이 생성되면 관리자 전원에게 알림(fire-and-forget). ★알림에는 인증번호를 넣지 않는다
-    //    — 관리자가 링크로 목록에 들어가 복호화된 코드를 확인해 전달한다.
-    if (created) void this.notifyAdmins(loginId, user.name ?? null);
+    // 코드가 발급되면(신규·재발급 모두) 관리자 전원에게 알림(fire-and-forget).
+    // ★알림에는 인증번호를 넣지 않는다 — 관리자가 링크로 목록에 들어가 복호화된 코드를 확인해 전달.
+    if (issued) void this.notifyAdmins(loginId, user.name ?? null);
   }
 
   // 관리자(admin)에게 초기화 요청 알림 발송. 실패해도 요청 흐름은 막지 않는다.
@@ -148,8 +147,7 @@ class PasswordResetRequestService {
         req.attempts += 1;
         if (req.attempts >= MAX_ATTEMPTS) {
           req.lockedUntil = new Date(now.getTime() + LOCK_MS);
-          req.code = null; // 잠금 시 코드 폐기
-          req.status = 'locked';
+          req.code = null; // 잠금 시 코드 폐기 (잠금 상태는 lockedUntil로 판단 — status 컬럼 미변경)
           await req.save({ transaction: t }); // 커밋됨(정상 반환)
           return new AppError(429, '인증번호를 3회 틀렸습니다. 1시간 후 다시 초기화를 요청해주세요.');
         }
@@ -169,9 +167,8 @@ class PasswordResetRequestService {
       user.passwordResetExpires = null;
       await user.save({ transaction: t });
 
-      req.completedAt = now;
+      req.completedAt = now; // 완료 상태는 completedAt으로 판단 — status 컬럼은 그대로 둔다
       req.code = null;
-      req.status = 'completed';
       await req.save({ transaction: t });
       return null; // 성공
     });
@@ -183,7 +180,9 @@ class PasswordResetRequestService {
   async listActive(): Promise<PasswordResetAdminView[]> {
     const now = new Date();
     const rows = await PasswordResetRequest.findAll({
-      where: { status: 'pending', completedAt: null },
+      // 진행 중 = 미완료(completedAt null). 코드/만료/잠금은 아래 filter에서 판단.
+      // (status 컬럼은 MariaDB의 옛 ENUM과 호환 위해 값 판단에 쓰지 않는다)
+      where: { completedAt: null },
       include: [{ model: User, as: 'user', attributes: ['id', 'name'], required: true }],
       order: [['createdAt', 'DESC']],
       limit: 200,

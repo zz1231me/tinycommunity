@@ -63,8 +63,9 @@ function PasswordResetRequest() {
   const submitVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!/^\d{6}$/.test(code)) return setError('인증번호 6자리를 입력해주세요.');
-    if (password.length < 8) return setError('새 비밀번호는 8자 이상이어야 합니다.');
+    if (!password) return setError('새 비밀번호를 입력해주세요.');
     if (password !== confirm) return setError('새 비밀번호가 일치하지 않습니다.');
+    // 길이·복잡도는 서버 정책(minPasswordLength·대소문자·숫자/특수)이 검증 — 서버 메시지를 그대로 노출
     setError('');
     setIsLoading(true);
     try {
@@ -216,7 +217,7 @@ function PasswordResetRequest() {
                     disabled={isLoading}
                     autoComplete="new-password"
                     className={inputCls + ' pr-12'}
-                    placeholder="8자 이상, 영문·숫자 포함"
+                    placeholder="새 비밀번호"
                   />
                   <button
                     type="button"
