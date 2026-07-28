@@ -42,8 +42,10 @@ PasswordResetRequest.init(
   {
     id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     userId: { type: DataTypes.STRING(50), allowNull: false },
+    // ENUM 대신 VARCHAR — MariaDB/MySQL에서 sync(alter:true)가 ENUM 값 변경 시 기존 데이터와
+    // 충돌해 시작이 깨질 수 있어, 제약 없는 문자열로 안전하게 저장한다(값 검증은 애플리케이션에서).
     status: {
-      type: DataTypes.ENUM('pending', 'completed', 'locked'),
+      type: DataTypes.STRING(20),
       allowNull: false,
       defaultValue: 'pending',
     },
