@@ -930,9 +930,20 @@ const startServer = async () => {
     });
   } catch (error) {
     logger.error('❌ API 서버 시작 실패:', error);
-    // ★시작 실패 원인은 환경(NODE_ENV)과 무관하게 항상 전체 스택을 출력 — 안 보이면 진단 불가
+    // ★시작 실패 원인은 환경(NODE_ENV)과 무관하게 항상 출력. Sequelize DB 에러는 실제 SQL·ER코드가
+    //   error.sql / error.original(parent)에 들어있으므로 그 필드를 직접 뽑아 보여준다.
     console.error('─── 시작 실패 상세 ───');
-    console.error(error instanceof Error ? (error.stack ?? error.message) : error);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const e = error as any;
+    console.error('name   :', e?.name);
+    console.error('message:', e?.message);
+    if (e?.sql) console.error('SQL    :', e.sql);
+    const orig = e?.original || e?.parent;
+    if (orig) {
+      console.error('DB code:', orig.code, '| errno:', orig.errno, '| sqlState:', orig.sqlState);
+      console.error('DB msg :', orig.sqlMessage || orig.message);
+    }
+    if (!e?.sql && !orig) console.error(error instanceof Error ? (error.stack ?? error.message) : error);
     process.exit(1);
   }
 };
