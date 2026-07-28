@@ -153,7 +153,7 @@ export const WikiSidebar: React.FC<WikiSidebarProps> = ({ pages, isEditing, onIn
                 />
               </svg>
             </div>
-            <h2 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+            <h2 className="text-xs font-bold text-slate-700 dark:text-slate-300 tracking-wider">
               위키
             </h2>
           </div>

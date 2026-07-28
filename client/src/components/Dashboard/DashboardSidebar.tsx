@@ -19,7 +19,7 @@ interface DashboardSidebarProps {
 // 섹션 헤더
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="px-3 mb-2 text-xs font-bold text-slate-500 dark:text-slate-500 uppercase tracking-wide select-none">
+    <p className="px-3 mb-2 text-xs font-bold text-slate-500 dark:text-slate-500 tracking-wide select-none">
       {children}
     </p>
   );
@@ -139,7 +139,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
           {!boardsLoading && personalBoards.length > 0 && (
             <div>
               <div className="flex items-center justify-between px-3 mb-1.5">
-                <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide select-none flex items-center gap-1.5">
+                <p className="text-xs font-bold text-amber-600 dark:text-amber-400 tracking-wide select-none flex items-center gap-1.5">
                   <Folder className="w-3 h-3" />
                   개인 공간
                 </p>
@@ -219,7 +219,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
           {/* 북마크 */}
           <div>
             <div className="flex items-center justify-between px-3 mb-1.5">
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-500 uppercase tracking-wide select-none">
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-500 tracking-wide select-none">
                 북마크
               </p>
               {isAdmin && (
@@ -266,7 +266,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
           {/* 개발 환경 디버깅 */}
           {import.meta.env.DEV && user && (
             <div className="mt-4 px-3 py-3 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 tracking-wider">
                 DEV
               </p>
               <div className="text-[11px] text-slate-400 dark:text-slate-500 space-y-0.5 font-mono">

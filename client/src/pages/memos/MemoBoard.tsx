@@ -142,7 +142,7 @@ const MemoBoard = () => {
           {/* Pinned memos */}
           {pinnedMemos.length > 0 && (
             <div>
-              <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-3 flex items-center gap-2">
                 📌 고정된 메모
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -164,7 +164,7 @@ const MemoBoard = () => {
           {unpinnedMemos.length > 0 && (
             <div>
               {pinnedMemos.length > 0 && (
-                <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
+                <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-3">
                   기타 메모
                 </h2>
               )}
@@ -197,7 +197,7 @@ const MemoBoard = () => {
 
       {/* Delete confirm modal */}
       {deleteTargetId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim">
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-sm w-full p-6">
             <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">메모 삭제</h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">

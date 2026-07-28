@@ -614,7 +614,7 @@ export function GlobalSearch() {
               {showHistory && (
                 <div className="py-2">
                   <div className="px-4 py-2.5 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide">
                       최근 검색
                     </span>
                     <button
@@ -682,7 +682,7 @@ export function GlobalSearch() {
               {showViewed && (
                 <div className="py-2 border-t border-slate-100 dark:border-slate-700">
                   <div className="px-4 py-2.5 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide">
                       최근 본 게시물
                     </span>
                     <button
@@ -838,7 +838,7 @@ export function GlobalSearch() {
                             <div
                               className={`w-1 h-4 bg-gradient-to-b ${TYPE_ACCENT[type]} rounded-full shadow-sm`}
                             />
-                            <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
+                            <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-wide">
                               {group.boardName}
                             </h3>
                             <span

@@ -167,7 +167,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
     }`;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 modal-scrim z-50 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
@@ -219,16 +219,16 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
                   <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                     <thead className="bg-slate-50 dark:bg-slate-700">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                           일시
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                           IP
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                           상태
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                           실패 사유
                         </th>
                       </tr>
@@ -295,16 +295,16 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
                   <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                     <thead className="bg-slate-50 dark:bg-slate-700">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                           일시
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                           관리자
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                           작업
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                           상세
                         </th>
                       </tr>
@@ -406,19 +406,19 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                   <thead className="bg-slate-50 dark:bg-slate-700">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                         시작
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                         IP
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                         마지막 활동
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                         만료
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                         액션
                       </th>
                     </tr>

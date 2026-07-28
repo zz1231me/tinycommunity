@@ -293,7 +293,7 @@ export const FileManagement = React.memo(() => {
       {/* 삭제 확인 모달 */}
       {confirmDelete && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim"
           onClick={e => {
             if (e.target === e.currentTarget) setConfirmDelete(null);
           }}

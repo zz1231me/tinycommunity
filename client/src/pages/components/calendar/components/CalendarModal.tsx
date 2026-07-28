@@ -81,7 +81,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-slate-900/50 dark:bg-slate-950/70 backdrop-blur-sm
+      className="fixed inset-0 modal-scrim
                  flex items-center justify-center z-50 p-4 animate-fadeIn"
       onClick={onClose}
     >

@@ -290,6 +290,11 @@ body {
     @apply transition-shadow duration-200 hover:shadow-md dark:hover:ring-white/[0.08];
   }
 
+  /* 모달 오버레이(스크림) — 전 모달 공통. 캘린더 모달 기준으로 통일 */
+  .modal-scrim {
+    @apply bg-slate-900/50 dark:bg-slate-950/70 backdrop-blur-sm;
+  }
+
   .page-container {
     @apply min-h-full bg-slate-50 dark:bg-slate-900;
   }

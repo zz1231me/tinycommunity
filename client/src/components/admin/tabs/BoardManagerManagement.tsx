@@ -209,7 +209,7 @@ const BoardManagerManagement = () => {
 
                 {/* 담당자 추가 */}
                 <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-                  <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
+                  <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-3">
                     담당자 추가
                   </h4>
                   <div className="flex gap-2">

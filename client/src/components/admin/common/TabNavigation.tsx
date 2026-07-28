@@ -96,7 +96,7 @@ export const TabNavigation = React.memo(() => {
     <nav className="space-y-5" aria-label="관리자 메뉴">
       {groups.map(group => (
         <div key={group.label}>
-          <div className="px-3 mb-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <div className="px-3 mb-1.5 text-[11px] font-medium tracking-wider text-slate-400 dark:text-slate-500">
             {group.label}
           </div>
           <div className="space-y-0.5">

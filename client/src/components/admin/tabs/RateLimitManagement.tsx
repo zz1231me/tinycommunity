@@ -160,7 +160,7 @@ export const RateLimitManagement = () => {
     <div className="space-y-6">
       {/* 확인 모달 */}
       {confirmAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center modal-scrim">
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
             <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-2">
               정말 실행하시겠습니까?

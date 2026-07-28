@@ -302,7 +302,7 @@ const IpManagement: React.FC = () => {
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800/80">
-              <tr className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+              <tr className="text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide">
                 <th className="px-4 py-3 text-left">유형</th>
                 <th className="px-4 py-3 text-left">IP / CIDR</th>
                 <th className="px-4 py-3 text-left hidden sm:table-cell">설명</th>

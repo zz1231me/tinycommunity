@@ -199,7 +199,7 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
           {/* 하위 페이지 */}
           {childPages.length > 0 && (
             <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800">
-              <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">
+              <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 tracking-wider mb-4">
                 하위 페이지
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

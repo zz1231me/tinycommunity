@@ -481,7 +481,7 @@ export const UserManagement = () => {
 
       {/* 비밀번호 초기화 — 관리자가 6자리 숫자 임시 비밀번호 입력 */}
       {resetTarget && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center modal-scrim p-4">
           <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 space-y-4">
             <div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">
