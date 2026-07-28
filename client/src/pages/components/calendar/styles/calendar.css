@@ -195,6 +195,20 @@
   background: #0b1121 !important;
 }
 
+/* 하루 이벤트가 많을 때: 이벤트 영역을 고정 높이 뷰포트로 만들고 dayAutoScroll.ts가 자동 스크롤.
+   min-height를 0으로 눌러 FullCalendar가 넣을 수 있는 min-height보다 max-height가 우선하도록 한다. */
+.calendar-wrapper .fc-daygrid-day-events {
+  max-height: 5.5rem;
+  min-height: 0 !important;
+  overflow: hidden;
+  position: relative;
+}
+/* 자동 스크롤 중 스크롤바는 숨김(넘침은 애니메이션으로 순회) */
+.calendar-wrapper .fc-daygrid-day-events::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 .calendar-wrapper .fc-day-other .fc-daygrid-day-number {
   color: #cbd5e1;
   font-weight: 400;
