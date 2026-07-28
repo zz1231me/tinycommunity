@@ -140,13 +140,13 @@
   color: #ef4444 !important;
 }
 .calendar-wrapper .fc-col-header-cell.fc-day-sat {
-  color: #6366f1 !important; /* 토요일=파랑(한국 캘린더 관례) */
+  color: #2563eb !important; /* 토요일=파랑(한국 캘린더 관례) */
 }
 .dark .calendar-wrapper .fc-col-header-cell.fc-day-sun {
   color: #f87171 !important;
 }
 .dark .calendar-wrapper .fc-col-header-cell.fc-day-sat {
-  color: #818cf8 !important;
+  color: #60a5fa !important;
 }
 
 /* ===== 날짜 숫자 ===== */
@@ -176,13 +176,13 @@
   color: #ef4444 !important;
 }
 .calendar-wrapper .fc-daygrid-day.fc-day-sat .fc-daygrid-day-number {
-  color: #6366f1 !important; /* 토요일=파랑(한국 캘린더 관례) */
+  color: #2563eb !important; /* 토요일=파랑(한국 캘린더 관례) */
 }
 .dark .calendar-wrapper .fc-daygrid-day.fc-day-sun .fc-daygrid-day-number {
   color: #f87171 !important;
 }
 .dark .calendar-wrapper .fc-daygrid-day.fc-day-sat .fc-daygrid-day-number {
-  color: #818cf8 !important;
+  color: #60a5fa !important;
 }
 
 /* 이번 달이 아닌 날짜 */
@@ -226,13 +226,13 @@
   color: #fca5a5 !important;
 }
 .calendar-wrapper .fc-daygrid-day.fc-day-other.fc-day-sat .fc-daygrid-day-number {
-  color: #a5b4fc !important;
+  color: #93c5fd !important;
 }
 .dark .calendar-wrapper .fc-daygrid-day.fc-day-other.fc-day-sun .fc-daygrid-day-number {
   color: #7f1d1d !important;
 }
 .dark .calendar-wrapper .fc-daygrid-day.fc-day-other.fc-day-sat .fc-daygrid-day-number {
-  color: #312e81 !important;
+  color: #1e3a8a !important;
 }
 
 /* ===== 오늘 날짜 셀 ===== */
@@ -291,13 +291,13 @@
 /* 오늘이 토요일 */
 .calendar-wrapper .fc-day-today.fc-day-sat .fc-daygrid-day-number,
 .calendar-wrapper .today-highlight.fc-day-sat .fc-daygrid-day-number {
-  background: #14b8a6 !important;
+  background: #2563eb !important;
   color: #ffffff !important;
 }
 
 .dark .calendar-wrapper .fc-day-today.fc-day-sat .fc-daygrid-day-number,
 .dark .calendar-wrapper .today-highlight.fc-day-sat .fc-daygrid-day-number {
-  background: #818cf8 !important;
+  background: #3b82f6 !important;
   color: #ffffff !important;
 }
 
