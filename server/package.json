@@ -44,7 +44,6 @@
     "sequelize": "~6.37.8",
     "sharp": "^0.35.0",
     "speakeasy": "^2.0.0",
-    "sqlite3": "^6.0.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "xlsx-js-style": "^1.2.0",
@@ -86,6 +85,6 @@
     "mariadb": "~3.5.2",
     "mysql2": "~3.22.1",
     "pg": "^8.21.0",
-    "sqlite3": "~6.0.1"
+    "sqlite3": "^6.0.1"
   }
 }
