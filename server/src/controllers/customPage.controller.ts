@@ -37,7 +37,16 @@ export const getPageBySlug = async (req: Request, res: Response): Promise<void> 
       sendError(res, 404, '페이지를 찾을 수 없습니다.');
       return;
     }
-    sendSuccess(res, page);
+    // 사용자 응답에는 렌더에 필요한 필드만 — 작성 관리자 ID(createdBy)는 노출하지 않는다.
+    sendSuccess(res, {
+      id: page.id,
+      slug: page.slug,
+      title: page.title,
+      html: page.html,
+      order: page.order,
+      isPublished: page.isPublished,
+      updatedAt: page.updatedAt,
+    });
   } catch (err) {
     logError('커스텀 페이지 조회 오류', err);
     sendError(res, 500, '서버 오류가 발생했습니다.');
