@@ -130,7 +130,7 @@ export const EventForm: React.FC<EventFormProps> = ({
                   transition-all duration-150
                   ${
                     isSelected
-                      ? 'border-current font-semibold shadow-md scale-[1.04]'
+                      ? 'border-current font-semibold shadow-sm'
                       : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700/60'
                   }
                 `}
@@ -150,10 +150,10 @@ export const EventForm: React.FC<EventFormProps> = ({
                 </span>
                 {isSelected && (
                   <div
-                    className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-emerald-500 rounded-full
-                                  flex items-center justify-center shadow-sm"
+                    className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-white rounded-full
+                                  flex items-center justify-center shadow ring-1 ring-black/5"
                   >
-                    <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-2.5 h-2.5 text-slate-900" fill="currentColor" viewBox="0 0 20 20">
                       <path
                         fillRule="evenodd"
                         d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
