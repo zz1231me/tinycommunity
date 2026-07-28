@@ -1,5 +1,5 @@
 // client/src/pages/components/calendar/components/CalendarModal.tsx
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { ModalMode, CalendarEvent, EventFormData } from '../types';
 import { EventDetailView } from './EventDetailView';
 
@@ -75,6 +75,21 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
   onFormChange,
   onCancelEdit,
 }) => {
+  // Esc로 닫기 + 열려 있는 동안 배경 스크롤 잠금 (a11y·다른 모달과 일관)
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const meta = MODE_META[mode];
@@ -92,6 +107,9 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
                    w-full max-h-[90vh] overflow-y-auto animate-scaleIn
                    ${mode === 'view' ? 'max-w-xl' : 'max-w-3xl'}`}
         onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={meta.label}
       >
         {/* 모달 헤더 */}
         <div

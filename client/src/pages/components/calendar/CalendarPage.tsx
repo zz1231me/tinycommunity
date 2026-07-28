@@ -82,11 +82,16 @@ const CalendarPage: React.FC = () => {
   const handleNext = useCallback(() => calendarRef.current?.getApi().next(), []);
   const handleToday = useCallback(() => calendarRef.current?.getApi().today(), []);
 
-  // 이벤트 색을 CSS 변수(--ev)로 노출 → CSS color-mix로 소프트 틴트(라이트/다크 모드별) 렌더
+  // 이벤트 색을 CSS 변수(--ev)로 노출 → CSS color-mix로 소프트 틴트(라이트/다크 모드별) 렌더.
+  // + 제목이 잘려도 hover 시 전체 제목을 볼 수 있도록 native title 툴팁 부여.
   const handleEventDidMount = useCallback(
-    (arg: { el: HTMLElement; event: { backgroundColor: string; borderColor: string } }) => {
+    (arg: {
+      el: HTMLElement;
+      event: { backgroundColor: string; borderColor: string; title: string };
+    }) => {
       const color = arg.event.backgroundColor || arg.event.borderColor;
       if (color) arg.el.style.setProperty('--ev', color);
+      if (arg.event.title) arg.el.setAttribute('title', arg.event.title);
     },
     []
   );

@@ -50,6 +50,7 @@ function EventRow({ item, onSelect }: { item: RailItem; onSelect: (e: CalendarEv
     <button
       type="button"
       onClick={() => onSelect(item.original)}
+      title={item.title}
       className="flex w-full items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60"
     >
       <span

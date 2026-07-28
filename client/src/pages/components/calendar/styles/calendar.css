@@ -334,7 +334,7 @@
 /* 소프트 틴트 이벤트 — 진한 단색 블록 대신 '옅은 배경 + 진한 색 텍스트'(좌측 컬러바 없음).
    이벤트 색은 --ev(eventDidMount 주입)로 받아 color-mix로 라이트/다크 톤을 각각 생성. */
 .calendar-wrapper .fc-daygrid-event {
-  background: color-mix(in srgb, var(--ev, #14b8a6) 15%, #ffffff) !important;
+  background: color-mix(in srgb, var(--ev, #14b8a6) 18%, #ffffff) !important;
   /* 글자는 '어두운 슬레이트 + 약간의 색 힌트' — 밝은 카테고리(노랑·회색)도 대비 확보.
      색 정체성은 배경 틴트가 전달한다. */
   color: color-mix(in srgb, var(--ev, #14b8a6) 20%, #0f172a) !important;
