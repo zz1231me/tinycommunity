@@ -32,7 +32,7 @@ const Unauthorized = lazy(() => import('./pages/Unauthorized'));
 const PostList = lazy(() => import('./pages/boards/PostList'));
 const PostDetail = lazy(() => import('./pages/boards/PostDetail'));
 const PostEditor = lazy(() => import('./pages/boards/PostEditor'));
-const MyTUICalendar = lazy(() => import('./pages/components/MyTUICalendar'));
+const CalendarPage = lazy(() => import('./pages/components/calendar/CalendarPage'));
 const AdminUserPage = lazy(() => import('./pages/admin'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const MemoBoard = lazy(() => import('./pages/memos/MemoBoard'));
@@ -180,7 +180,7 @@ function App() {
                 <Route index element={<Navigate to="calendar" replace />} />
 
                 {/* 주요 화면 라우팅 */}
-                <Route path="calendar" element={<MyTUICalendar />} />
+                <Route path="calendar" element={<CalendarPage />} />
                 <Route path="memos" element={<MemoBoard />} />
                 <Route path="wiki" element={<WikiPageRoute />} />
                 <Route path="wiki/:slug" element={<WikiPageRoute />} />

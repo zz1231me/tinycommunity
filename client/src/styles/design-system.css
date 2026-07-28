@@ -7,17 +7,17 @@
  * WCAG AA 대비: primary-600 on white = 5.1:1 (✓)
  * ============================================================ */
 :root {
-  --color-primary-50: #eef2ff;
-  --color-primary-100: #e0e7ff;
-  --color-primary-200: #c7d2fe;
-  --color-primary-300: #a5b4fc;
-  --color-primary-400: #818cf8;
-  --color-primary-500: #6366f1; /* 포커스 링, 강조 */
-  --color-primary-600: #4f46e5; /* 버튼, 주요 액션 */
-  --color-primary-700: #4338ca;
-  --color-primary-800: #3730a3;
-  --color-primary-900: #312e81;
-  --color-primary-950: #1e1b4b;
+  --color-primary-50: #f7f8f9;
+  --color-primary-100: #eef0f2;
+  --color-primary-200: #dcdfe4;
+  --color-primary-300: #bcc1cb;
+  --color-primary-400: #939aa8;
+  --color-primary-500: #6c7484; /* 포커스 링, 강조 */
+  --color-primary-600: #545c6b; /* 버튼, 주요 액션 */
+  --color-primary-700: #454b58;
+  --color-primary-800: #3a3f4a;
+  --color-primary-900: #2f333c;
+  --color-primary-950: #1f2228;
 
   /* ============================================================
    * NEUTRAL (Slate) — 다크모드와 통일된 회색 계열

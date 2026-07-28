@@ -1,8 +1,8 @@
-// client/src/pages/components/calendar/MyTUICalendar.tsx
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+// client/src/pages/components/calendar/CalendarPage.tsx
+// FullCalendar 기반 일정 화면 (구 명칭 MyTUICalendar — TUI Calendar에서 FullCalendar로 이관하며 개명)
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin, { EventResizeDoneArg } from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import koLocale from '@fullcalendar/core/locales/ko';
@@ -19,6 +19,8 @@ import { CalendarModal } from './components/CalendarModal';
 import { ConfirmationModal } from '../../../components/admin/common/ConfirmationModal';
 import './styles/calendar.css';
 
+const renderNoEvents = () => <div className="fc-no-events-msg">등록된 일정이 없습니다</div>;
+
 const DEFAULT_FORM: EventFormData = {
   title: '',
   body: '',
@@ -31,7 +33,7 @@ const DEFAULT_FORM: EventFormData = {
   backgroundColor: '#6366f1',
 };
 
-const MyTUICalendar: React.FC = () => {
+const CalendarPage: React.FC = () => {
   const { user, isAdmin } = useAuth();
   const calendarRef = useRef<FullCalendar>(null);
 
@@ -50,7 +52,7 @@ const MyTUICalendar: React.FC = () => {
   const [modalMode, setModalMode] = useState<ModalMode>('view');
   // 편집 취소 시 복원할 폼 스냅샷
   const formDataSnapshotRef = useRef<EventFormData | null>(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [todayStr, setTodayStr] = useState(() => dateUtils.toLocalDateString(new Date()));
   const [currentView, setCurrentView] = useState<CalendarView>('dayGridMonth');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -58,9 +60,13 @@ const MyTUICalendar: React.FC = () => {
   const [calendarTitle, setCalendarTitle] = useState('');
   const [formData, setFormData] = useState<EventFormData>(DEFAULT_FORM);
 
-  // 시계 업데이트
+  // 오늘 날짜만 추적 — 자정에 today-highlight를 갱신하되, 초 단위 리렌더 없이 날짜가 바뀔 때만.
+  // (시계는 CalendarHeader가 자체 상태로 처리해 부모 캘린더 전체 리렌더를 방지)
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    const timer = setInterval(() => {
+      const s = dateUtils.toLocalDateString(new Date());
+      setTodayStr(prev => (prev !== s ? s : prev));
+    }, 60_000);
     return () => clearInterval(timer);
   }, []);
 
@@ -69,16 +75,10 @@ const MyTUICalendar: React.FC = () => {
     if (user?.id) loadEvents();
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 오늘 날짜 문자열 (날짜가 바뀔 때만 재계산)
-  const todayStr = useMemo(
-    () => dateUtils.toLocalDateString(new Date()),
-    [currentTime.toDateString()] // eslint-disable-line react-hooks/exhaustive-deps
-  );
-
   /* ──── 네비게이션 ──── */
-  const handlePrev = () => calendarRef.current?.getApi().prev();
-  const handleNext = () => calendarRef.current?.getApi().next();
-  const handleToday = () => calendarRef.current?.getApi().today();
+  const handlePrev = useCallback(() => calendarRef.current?.getApi().prev(), []);
+  const handleNext = useCallback(() => calendarRef.current?.getApi().next(), []);
+  const handleToday = useCallback(() => calendarRef.current?.getApi().today(), []);
 
   const handleViewChange = useCallback((view: CalendarView) => {
     calendarRef.current?.getApi().changeView(view);
@@ -86,7 +86,7 @@ const MyTUICalendar: React.FC = () => {
   }, []);
 
   /* ──── 날짜 선택 (새 일정) ──── */
-  const handleDateSelect = (selectInfo: DateSelectArg) => {
+  const handleDateSelect = useCallback((selectInfo: DateSelectArg) => {
     const startStr = dateUtils.toLocalDateString(selectInfo.start);
     const endStr = dateUtils.subtractDay(dateUtils.toLocalDateString(selectInfo.end));
     setFormData({ ...DEFAULT_FORM, start: startStr, end: endStr });
@@ -94,10 +94,10 @@ const MyTUICalendar: React.FC = () => {
     setSelectedEvent(null);
     setIsModalOpen(true);
     selectInfo.view.calendar.unselect();
-  };
+  }, []);
 
   /* ──── 이벤트 클릭 (상세보기) ──── */
-  const handleEventClick = (clickInfo: EventClickArg) => {
+  const handleEventClick = useCallback((clickInfo: EventClickArg) => {
     const event = clickInfo.event;
     const originalEvent = event.extendedProps.originalEvent as CalendarEvent;
     setSelectedEvent(originalEvent);
@@ -129,7 +129,7 @@ const MyTUICalendar: React.FC = () => {
     });
     setModalMode('view');
     setIsModalOpen(true);
-  };
+  }, []);
 
   /* ──── 드래그/리사이즈 공통 처리 ──── */
   const applyEventDateChange = useCallback(
@@ -184,13 +184,15 @@ const MyTUICalendar: React.FC = () => {
     [canEditEvent, loadEvents]
   );
 
-  const handleEventDrop = (info: EventDropArg) => {
-    void applyEventDateChange(info.event, info.revert);
-  };
+  const handleEventDrop = useCallback(
+    (info: EventDropArg) => void applyEventDateChange(info.event, info.revert),
+    [applyEventDateChange]
+  );
 
-  const handleEventResize = (info: EventResizeDoneArg) => {
-    void applyEventDateChange(info.event, info.revert);
-  };
+  const handleEventResize = useCallback(
+    (info: EventResizeDoneArg) => void applyEventDateChange(info.event, info.revert),
+    [applyEventDateChange]
+  );
 
   /* ──── 폼 제출 ──── */
   const handleSubmit = async (e: React.FormEvent) => {
@@ -238,10 +240,29 @@ const MyTUICalendar: React.FC = () => {
     }
   };
 
-  const handleDatesSet = (dateInfo: { view: { title: string } }) => {
-    setCalendarTitle(dateInfo.view.title);
-    void loadEvents();
-  };
+  const handleDatesSet = useCallback(
+    (dateInfo: { view: { title: string } }) => {
+      setCalendarTitle(dateInfo.view.title);
+      void loadEvents();
+    },
+    [loadEvents]
+  );
+
+  const eventAllow = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (_: any, draggedEvent: any) => {
+      if (!draggedEvent) return false;
+      const originalEvent = draggedEvent.extendedProps.originalEvent as CalendarEvent;
+      return canEditEvent(originalEvent) && !originalEvent.isReadOnly;
+    },
+    [canEditEvent]
+  );
+
+  const dayCellClassNames = useCallback(
+    (arg: { date: Date }) =>
+      dateUtils.toLocalDateString(arg.date) === todayStr ? ['today-highlight'] : [],
+    [todayStr]
+  );
 
   /* ──── 렌더 ──── */
   return (
@@ -258,7 +279,6 @@ const MyTUICalendar: React.FC = () => {
 
         {/* 헤더 */}
         <CalendarHeader
-          currentTime={currentTime}
           loading={loading}
           title={calendarTitle}
           currentView={currentView}
@@ -273,7 +293,7 @@ const MyTUICalendar: React.FC = () => {
           <div className="calendar-wrapper h-full">
             <FullCalendar
               ref={calendarRef}
-              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+              plugins={[dayGridPlugin, interactionPlugin, listPlugin]}
               locale={koLocale}
               headerToolbar={false}
               initialView="dayGridMonth"
@@ -291,41 +311,18 @@ const MyTUICalendar: React.FC = () => {
               eventClick={handleEventClick}
               eventDrop={handleEventDrop}
               eventResize={handleEventResize}
-              eventAllow={(_, draggedEvent) => {
-                if (!draggedEvent) return false;
-                const originalEvent = draggedEvent.extendedProps.originalEvent as CalendarEvent;
-                return canEditEvent(originalEvent) && !originalEvent.isReadOnly;
-              }}
+              eventAllow={eventAllow}
               datesSet={handleDatesSet}
               nowIndicator={true}
               weekends={true}
               fixedWeekCount={false}
               showNonCurrentDates={false}
-              noEventsContent={() => <div className="fc-no-events-msg">등록된 일정이 없습니다</div>}
-              dayCellClassNames={arg =>
-                dateUtils.toLocalDateString(arg.date) === todayStr ? ['today-highlight'] : []
-              }
+              dayMaxEvents={true}
+              noEventsContent={renderNoEvents}
+              dayCellClassNames={dayCellClassNames}
             />
           </div>
         </div>
-
-        {/* 로딩 오버레이 */}
-        {loading && (
-          <div
-            className="absolute inset-0 bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm
-                          flex items-center justify-center z-30"
-          >
-            <div className="flex flex-col items-center gap-3">
-              <div
-                className="w-10 h-10 border-[3px] border-primary-200 dark:border-primary-900
-                              border-t-primary-600 rounded-full animate-spin"
-              />
-              <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                일정을 불러오는 중
-              </span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* 이벤트 모달 */}
@@ -371,4 +368,4 @@ const MyTUICalendar: React.FC = () => {
   );
 };
 
-export default MyTUICalendar;
+export default CalendarPage;

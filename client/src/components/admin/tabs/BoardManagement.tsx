@@ -146,22 +146,22 @@ export const BoardManagement = () => {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700">
-                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-28">
+                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 w-28">
                   ID
                 </th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                   이름
                 </th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                   설명
                 </th>
-                <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16">
+                <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 w-16">
                   순서
                 </th>
-                <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-20">
+                <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 w-20">
                   상태
                 </th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-40">
+                <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 w-40">
                   작업
                 </th>
               </tr>

@@ -219,16 +219,16 @@ export const PasswordResetRequestManagement = () => {
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800/60">
                   <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-500 dark:text-slate-400">
                       아이디
                     </th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-500 dark:text-slate-400">
                       이름
                     </th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-500 dark:text-slate-400">
                       요청 시각
                     </th>
-                    <th className="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <th className="px-4 py-2.5 text-right text-xs font-medium text-slate-500 dark:text-slate-400">
                       {isPending ? '작업' : '처리'}
                     </th>
                   </tr>

@@ -11,8 +11,22 @@ const VIEW_OPTIONS: { key: CalendarView; label: string }[] = [
   { key: 'listMonth', label: '목록' },
 ];
 
+// 시계는 자체 상태로 매초 갱신 — 부모(캘린더 전체)가 아니라 이 텍스트만 리렌더된다.
+const LiveClock: React.FC = React.memo(() => {
+  const [now, setNow] = React.useState(() => new Date());
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 tabular-nums tracking-tight">
+      {format(now, 'HH:mm:ss', { locale: ko })}
+    </span>
+  );
+});
+LiveClock.displayName = 'LiveClock';
+
 interface CalendarHeaderProps {
-  currentTime: Date;
   loading: boolean;
   title?: string;
   currentView: CalendarView;
@@ -22,8 +36,7 @@ interface CalendarHeaderProps {
   onViewChange: (view: CalendarView) => void;
 }
 
-export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
-  currentTime,
+const CalendarHeaderBase: React.FC<CalendarHeaderProps> = ({
   loading,
   title = '',
   currentView,
@@ -135,12 +148,13 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full block" />
               <span className="absolute inset-0 w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping opacity-60" />
             </span>
-            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 tabular-nums tracking-tight">
-              {format(currentTime, 'HH:mm:ss', { locale: ko })}
-            </span>
+            <LiveClock />
           </div>
         </div>
       </div>
     </div>
   );
 };
+
+// props가 바뀔 때만 리렌더 — 부모의 잦은 리렌더로부터 헤더를 보호
+export const CalendarHeader = React.memo(CalendarHeaderBase);

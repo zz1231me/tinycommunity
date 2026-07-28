@@ -165,19 +165,19 @@ export const EventManagement = () => {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                       역할
                     </th>
-                    <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                       생성
                     </th>
-                    <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                       조회
                     </th>
-                    <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                       타인 수정
                     </th>
-                    <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                       타인 삭제
                     </th>
                   </tr>
@@ -262,7 +262,7 @@ export const EventManagement = () => {
                 <th className="text-left px-3 py-2">
                   <button
                     onClick={() => toggleSort('title')}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                   >
                     제목
                     <span
@@ -272,16 +272,16 @@ export const EventManagement = () => {
                     </span>
                   </button>
                 </th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                   분류
                 </th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                   작성자
                 </th>
                 <th className="text-left px-3 py-2">
                   <button
                     onClick={() => toggleSort('start')}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                   >
                     기간
                     <span
@@ -291,7 +291,7 @@ export const EventManagement = () => {
                     </span>
                   </button>
                 </th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                   작업
                 </th>
               </tr>

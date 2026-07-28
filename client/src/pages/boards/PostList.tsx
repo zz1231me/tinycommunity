@@ -461,7 +461,7 @@ const PostList = () => {
         {loading && (
           <div>
             <div className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
-              <div className="grid grid-cols-12 gap-4 text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+              <div className="grid grid-cols-12 gap-4 text-xs font-bold text-slate-600 dark:text-slate-400">
                 <div className="col-span-8">제목</div>
                 <div className="col-span-2 text-center hidden sm:block">작성자</div>
                 <div className="col-span-2 text-center">작성일</div>

@@ -237,19 +237,19 @@ export const AuditLogManagement = () => {
               </colgroup>
               <thead className="bg-slate-50 dark:bg-slate-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider w-[160px]">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 w-[160px]">
                     일시
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                     관리자
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                     작업
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                     대상
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
                     변경 내역
                   </th>
                 </tr>

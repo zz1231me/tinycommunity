@@ -22,7 +22,7 @@ const ColumnHeader = () => (
     {/* ⚠️ grid 칼럼 설정(cols/gap)을 PostListItem 행과 반드시 동일하게 유지해야 칼럼이 정렬됨 */}
     <div
       role="row"
-      className="grid grid-cols-12 gap-2 sm:gap-4 items-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider"
+      className="grid grid-cols-12 gap-2 sm:gap-4 items-center text-xs font-semibold text-slate-600 dark:text-slate-400"
     >
       <div role="columnheader" className="col-span-10 sm:col-span-8">
         제목
@@ -64,7 +64,7 @@ export const PostListTable: React.FC<PostListTableProps> = ({
               />
               <path d="M9 11H3v5a2 2 0 002 2h4v-7zM11 18h4a2 2 0 002-2v-5h-6v7z" />
             </svg>
-            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
               고정 게시글
             </span>
             <span className="text-xs text-amber-500 dark:text-amber-500">

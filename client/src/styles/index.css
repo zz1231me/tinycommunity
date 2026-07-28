@@ -18,18 +18,18 @@
  * and also override Tailwind's built-in defaults where they conflict.
  * ============================================================ */
 @theme {
-  /* ── Primary: Indigo-Blue ── */
-  --color-primary-50: #eef2ff;
-  --color-primary-100: #e0e7ff;
-  --color-primary-200: #c7d2fe;
-  --color-primary-300: #a5b4fc;
-  --color-primary-400: #818cf8;
-  --color-primary-500: #6366f1;
-  --color-primary-600: #4f46e5;
-  --color-primary-700: #4338ca;
-  --color-primary-800: #3730a3;
-  --color-primary-900: #312e81;
-  --color-primary-950: #1e1b4b;
+  /* ── Primary: Graphite/Ink (애플식 뉴트럴 — 파랑 남용 대신 차분한 먹색 액센트) ── */
+  --color-primary-50: #f7f8f9;
+  --color-primary-100: #eef0f2;
+  --color-primary-200: #dcdfe4;
+  --color-primary-300: #bcc1cb;
+  --color-primary-400: #939aa8;
+  --color-primary-500: #6c7484;
+  --color-primary-600: #545c6b;
+  --color-primary-700: #454b58;
+  --color-primary-800: #3a3f4a;
+  --color-primary-900: #2f333c;
+  --color-primary-950: #1f2228;
 
   /* ── Secondary / Accent: Teal (indigo 보색 계열 액센트 — 단조로움 해소) ── */
   --color-secondary-50: #f0fdfa;
@@ -277,9 +277,13 @@ body {
  * ======================================== */
 @layer components {
   /* 레이아웃 */
-  /* 카드 표면 — 라이트: 부드러운 그림자, 다크: 그림자가 안 보이므로 inset ring으로 입체감 */
+  /* 카드 표면 — 애플식: 옅은 보더 + 부드러운 앰비언트 그림자로 살짝 떠 있는 느낌.
+     다크: 그림자가 안 보이므로 inset ring으로 입체감 */
   .card {
-    @apply bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm dark:shadow-none dark:ring-1 dark:ring-inset dark:ring-white/[0.04];
+    @apply bg-white dark:bg-slate-800/60 rounded-2xl
+           border border-slate-200/60 dark:border-white/[0.06]
+           shadow-[0_1px_2px_rgba(16,24,40,0.03),0_10px_30px_-14px_rgba(16,24,40,0.12)]
+           dark:shadow-none dark:ring-1 dark:ring-inset dark:ring-white/[0.05];
   }
 
   .card-hover {
@@ -302,30 +306,29 @@ body {
     @apply mx-auto px-4 py-6 sm:px-6;
   }
 
-  /* ── 버튼 ──────────────────────────────── */
+  /* ── 버튼 (애플식: 그래파이트 먹색 주버튼 · flat · rounded-xl) ──
+     apple.com 스타일 — 라이트: 잉크블랙, 다크: 화이트 인버트. 파란색 남용 대신 뉴트럴 CTA. */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2
            px-5 py-2.5
-           bg-gradient-to-b from-primary-500 to-primary-600
-           hover:from-primary-600 hover:to-primary-700
-           active:from-primary-700 active:to-primary-800
-           text-white text-sm font-semibold
-           rounded-lg shadow-sm shadow-primary-600/25 dark:shadow-primary-900/40
+           bg-slate-900 hover:bg-slate-800 active:bg-slate-700
+           dark:bg-slate-100 dark:hover:bg-white dark:active:bg-slate-200
+           text-white dark:text-slate-900 text-sm font-semibold
+           rounded-xl shadow-sm shadow-slate-900/10
            transition-all duration-150
            active:scale-[0.98]
            disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
   }
 
+  /* 보조 버튼 — 애플식 틴티드(보더 없이 연한 회색 필) */
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2
            px-5 py-2.5
-           bg-white dark:bg-slate-800
-           border border-slate-200 dark:border-slate-700
-           text-slate-700 dark:text-slate-300 text-sm font-semibold
-           rounded-lg shadow-sm
-           hover:bg-slate-50 dark:hover:bg-slate-700
-           hover:border-slate-300 dark:hover:border-slate-600
-           active:bg-slate-100 dark:active:bg-slate-700
+           bg-slate-100 dark:bg-slate-800
+           text-slate-700 dark:text-slate-200 text-sm font-semibold
+           rounded-xl
+           hover:bg-slate-200/70 dark:hover:bg-slate-700
+           active:bg-slate-200 dark:active:bg-slate-700
            active:scale-[0.98]
            transition-all duration-150
            disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
@@ -335,11 +338,9 @@ body {
     @apply inline-flex items-center justify-center gap-2
            px-5 py-2.5
            bg-red-50 dark:bg-red-900/30
-           border border-red-200 dark:border-red-800/60
            text-red-700 dark:text-red-400 text-sm font-semibold
-           rounded-lg shadow-sm
+           rounded-xl
            hover:bg-red-100 dark:hover:bg-red-900/50
-           hover:border-red-300 dark:hover:border-red-700
            active:bg-red-200 dark:active:bg-red-900/60
            active:scale-[0.98]
            transition-all duration-150
@@ -350,7 +351,7 @@ body {
     @apply inline-flex items-center justify-center gap-2
            px-4 py-2
            text-slate-600 dark:text-slate-400 text-sm font-medium
-           rounded-lg
+           rounded-xl
            hover:bg-slate-100 dark:hover:bg-slate-800
            hover:text-slate-900 dark:hover:text-slate-200
            active:bg-slate-200 dark:active:bg-slate-700
@@ -362,8 +363,8 @@ body {
   .input-field,
   .input {
     @apply w-full px-3 py-2
-           border border-slate-300 dark:border-slate-600
-           rounded-lg
+           border border-slate-200 dark:border-slate-600
+           rounded-xl
            bg-white dark:bg-slate-700
            text-slate-900 dark:text-slate-100 text-sm
            placeholder-slate-400 dark:placeholder-slate-500

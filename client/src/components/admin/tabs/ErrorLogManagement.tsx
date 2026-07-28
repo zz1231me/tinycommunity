@@ -276,7 +276,7 @@ export const ErrorLogManagement = () => {
                 ].map(h => (
                   <th
                     key={h}
-                    className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                    className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400"
                   >
                     {h}
                   </th>

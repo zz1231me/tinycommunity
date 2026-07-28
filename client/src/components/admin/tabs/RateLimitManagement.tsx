@@ -272,19 +272,19 @@ export const RateLimitManagement = () => {
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                     카테고리 / 이름
                   </th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                     제한 설정
                   </th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                     적용 경로
                   </th>
-                  <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-20">
+                  <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 w-20">
                     상태
                   </th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-32">
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 w-32">
                     작업
                   </th>
                 </tr>

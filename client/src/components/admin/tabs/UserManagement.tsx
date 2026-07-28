@@ -492,16 +492,16 @@ export const UserManagement = () => {
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                     아이디
                   </th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                     이름
                   </th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                     신청일
                   </th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                     작업
                   </th>
                 </tr>
@@ -593,7 +593,7 @@ export const UserManagement = () => {
                   <th key={k} className="text-left px-3 py-2">
                     <button
                       onClick={() => toggleSort(k)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                     >
                       {label}
                       <span
@@ -604,7 +604,7 @@ export const UserManagement = () => {
                     </button>
                   </th>
                 ))}
-                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                   상태
                 </th>
                 {(
@@ -616,7 +616,7 @@ export const UserManagement = () => {
                   <th key={k} className="text-left px-3 py-2">
                     <button
                       onClick={() => toggleSort(k)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                     >
                       {label}
                       <span
@@ -627,7 +627,7 @@ export const UserManagement = () => {
                     </button>
                   </th>
                 ))}
-                <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                   작업
                 </th>
               </tr>
@@ -791,16 +791,16 @@ export const UserManagement = () => {
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                     익명화 ID
                   </th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                     이름
                   </th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                     삭제일
                   </th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                     작업
                   </th>
                 </tr>
