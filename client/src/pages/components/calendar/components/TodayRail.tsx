@@ -82,7 +82,7 @@ export function TodayRail({ events, todayStr, onSelect }: TodayRailProps) {
     .slice(0, 6);
 
   return (
-    <aside className="hidden w-80 flex-shrink-0 flex-col gap-4 overflow-y-auto py-4 pr-4 sm:pr-6 lg:flex">
+    <aside className="hidden w-80 flex-shrink-0 flex-col gap-4 overflow-y-auto py-5 pr-5 sm:py-7 sm:pr-8 lg:flex">
       {/* 오늘 일정 */}
       <section className="card p-4">
         <div className="mb-3 flex items-baseline justify-between">

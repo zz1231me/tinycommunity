@@ -328,7 +328,7 @@ const CalendarPage: React.FC = () => {
     <div className="h-full flex flex-col lg:flex-row bg-slate-50 dark:bg-slate-900">
       {/* 캘린더 카드 */}
       <div
-        className="flex-1 flex flex-col min-h-0 mx-4 my-4 sm:mx-6 sm:my-5 lg:mr-3
+        className="flex-1 flex flex-col min-h-0 mx-5 my-5 sm:mx-8 sm:my-7 lg:mr-4
                       bg-white dark:bg-slate-900
                       rounded-2xl border border-slate-200 dark:border-slate-800
                       shadow-sm overflow-hidden relative"
