@@ -546,6 +546,24 @@ export const updateBoard = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
+// 드래그 정렬 결과(id 배열)를 받아 표시 순서를 일괄 재부여
+export const reorderBoards = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { orderedIds } = req.body;
+    if (!Array.isArray(orderedIds) || orderedIds.some(id => typeof id !== 'string')) {
+      sendError(res, 400, '게시판 순서 목록이 올바르지 않습니다.');
+      return;
+    }
+    await boardService.reorderBoards(orderedIds);
+    invalidateCache('boards'); // 순서 변경 즉시 사이드바에 반영
+    logAudit(req, 'reorder_boards', { targetType: 'board', afterValue: { orderedIds } });
+    sendSuccess(res, null, '게시판 순서가 저장되었습니다.');
+  } catch (error: unknown) {
+    logError('게시판 순서 변경 실패', error);
+    sendError(res, 500, '게시판 순서 변경 실패');
+  }
+};
+
 export const deleteBoard = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;

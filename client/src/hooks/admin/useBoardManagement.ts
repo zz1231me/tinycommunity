@@ -47,6 +47,25 @@ export const useBoardManagement = () => {
     await fetchBoards();
   };
 
+  // 드래그 정렬 결과를 저장 — 낙관적으로 로컬 순서를 먼저 반영하고, 실패 시 서버 상태로 되돌린다.
+  const reorderBoards = async (orderedIds: string[]) => {
+    const prev = boards;
+    const byId = new Map(prev.map(b => [b.id, b]));
+    const next = orderedIds
+      .map((id, i) => {
+        const b = byId.get(id);
+        return b ? { ...b, order: i } : null;
+      })
+      .filter((b): b is Board => b !== null);
+    setBoards(next);
+    try {
+      await api.put('/admin/boards/reorder', { orderedIds });
+    } catch (err) {
+      setBoards(prev); // 롤백
+      throw err;
+    }
+  };
+
   const deleteBoard = async (id: string) => {
     await api.delete(`/admin/boards/${id}`);
     await fetchBoards();
@@ -169,6 +188,7 @@ export const useBoardManagement = () => {
     fetchBoards,
     addBoard,
     updateBoard,
+    reorderBoards,
     deleteBoard,
     fetchBoardPermissions,
     updatePermission,

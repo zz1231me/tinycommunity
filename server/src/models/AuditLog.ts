@@ -15,6 +15,7 @@ export type AuditAction =
   | 'change_role'
   | 'create_board'
   | 'update_board'
+  | 'reorder_boards'
   | 'delete_board'
   | 'create_role'
   | 'update_role'
@@ -97,6 +98,7 @@ AuditLog.init(
         'change_role',
         'create_board',
         'update_board',
+        'reorder_boards',
         'delete_board',
         'create_role',
         'update_role',

@@ -16,6 +16,7 @@ import {
   getAllBoards,
   createBoard,
   updateBoard,
+  reorderBoards,
   deleteBoard,
   getAllRoles,
   createRole,
@@ -94,6 +95,7 @@ router.post('/users/:userId/restore', restoreUser as RequestHandler);
 // ===== 게시판 관리 API =====
 router.get('/boards', getAllBoards as RequestHandler);
 router.post('/boards', createBoard as RequestHandler);
+router.put('/boards/reorder', reorderBoards as RequestHandler);
 router.put('/boards/:id', updateBoard as RequestHandler);
 router.delete('/boards/:id', deleteBoard as RequestHandler);
 // 전체 게시판 권한 일괄 조회 (보드별 :boardId 라우트와 경로가 달라 충돌 없음)

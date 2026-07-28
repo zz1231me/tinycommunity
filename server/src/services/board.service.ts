@@ -129,6 +129,16 @@ export class BoardService extends BaseService {
     return board;
   }
 
+  // ✅ 게시판 표시 순서 일괄 저장 — 전달된 id 배열 순서대로 order를 0,1,2…로 재부여.
+  //    단일 writer(SQLite)라 한 트랜잭션 안에서 각 update에 {transaction}을 넘겨 SQLITE_BUSY를 피한다.
+  async reorderBoards(orderedIds: string[]) {
+    await sequelize.transaction(async t => {
+      for (let i = 0; i < orderedIds.length; i++) {
+        await Board.update({ order: i }, { where: { id: orderedIds[i] }, transaction: t });
+      }
+    });
+  }
+
   // ✅ 게시판 삭제
   async deleteBoard(boardId: string) {
     const board = await Board.findByPk(boardId);
