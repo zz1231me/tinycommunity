@@ -3,6 +3,8 @@ import { SecurityLog } from '../models/SecurityLog';
 import { User } from '../models/User';
 import { Op } from 'sequelize';
 import { logError } from '../utils/logger';
+import type { Request } from 'express';
+import type { AuthRequest } from '../types/auth-request';
 
 interface CreateLogDTO {
   userId?: string | null;
@@ -143,3 +145,28 @@ export class SecurityLogService extends BaseService {
 }
 
 export const securityLogService = new SecurityLogService();
+
+/**
+ * 계정 보안 이벤트 기록 헬퍼 (컨트롤러용).
+ * 요청 컨텍스트(ip·method·route·userAgent·userId)를 req에서 추출해 보안 로그를 남긴다.
+ * fire-and-forget — 실패해도 메인 로직에 영향 없음.
+ */
+export function logSecurityEvent(
+  req: Request,
+  action: string,
+  opts: { status?: string; userId?: string | null; details?: unknown } = {}
+): void {
+  const authReq = req as AuthRequest;
+  securityLogService
+    .createLog({
+      userId: opts.userId ?? authReq.user?.id ?? null,
+      ipAddress: req.ip || 'unknown',
+      action,
+      method: req.method,
+      route: req.originalUrl,
+      userAgent: req.get('user-agent'),
+      status: opts.status ?? 'SUCCESS',
+      details: opts.details,
+    })
+    .catch(() => {});
+}

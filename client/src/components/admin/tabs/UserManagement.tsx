@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../../../api/axios';
-import { formatDateTime } from '../../../utils/date';
+import { formatDateTime, formatRelative, formatDate } from '../../../utils/date';
 import { User } from '../../../types/admin.types';
 import { useUserManagement } from '../../../hooks/admin/useUserManagement';
 import { useAuth } from '../../../store/auth';
@@ -43,6 +43,11 @@ export const UserManagement = () => {
   const [deletedUsers, setDeletedUsers] = useState<User[]>([]);
   const [showDeleted, setShowDeleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortKey, setSortKey] = useState<'id' | 'name' | 'role' | 'lastLoginAt' | 'createdAt'>(
+    'lastLoginAt'
+  );
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [page, setPage] = useState(1);
   const [confirmAction, setConfirmAction] = useState<{
     type: string;
     userId: string;
@@ -281,6 +286,54 @@ export const UserManagement = () => {
       u.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // 정렬
+  const roleNameOf = (id: string) => roles.find(r => r.id === id)?.name ?? id;
+  const sortedActive = [...filteredActive].sort((a, b) => {
+    let av: string | number = '';
+    let bv: string | number = '';
+    switch (sortKey) {
+      case 'id':
+        av = a.id.toLowerCase();
+        bv = b.id.toLowerCase();
+        break;
+      case 'name':
+        av = a.name.toLowerCase();
+        bv = b.name.toLowerCase();
+        break;
+      case 'role':
+        av = roleNameOf(a.roleId).toLowerCase();
+        bv = roleNameOf(b.roleId).toLowerCase();
+        break;
+      case 'lastLoginAt':
+        av = a.lastLoginAt ? new Date(a.lastLoginAt).getTime() : 0;
+        bv = b.lastLoginAt ? new Date(b.lastLoginAt).getTime() : 0;
+        break;
+      case 'createdAt':
+        av = new Date(a.createdAt).getTime();
+        bv = new Date(b.createdAt).getTime();
+        break;
+    }
+    if (av < bv) return sortDir === 'asc' ? -1 : 1;
+    if (av > bv) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const toggleSort = (key: typeof sortKey) => {
+    if (sortKey === key) {
+      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'lastLoginAt' || key === 'createdAt' ? 'desc' : 'asc');
+    }
+    setPage(1);
+  };
+
+  // 페이지네이션 (클라이언트)
+  const PER_PAGE = 15;
+  const totalPages = Math.max(1, Math.ceil(sortedActive.length / PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedActive = sortedActive.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
+
   if (loading) return <LoadingSpinner message="사용자 목록을 불러오는 중..." />;
 
   return (
@@ -516,7 +569,10 @@ export const UserManagement = () => {
             <input
               type="text"
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={e => {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }}
               placeholder="아이디 / 이름 검색..."
               className="input w-48 py-1.5"
             />
@@ -527,41 +583,80 @@ export const UserManagement = () => {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700">
-                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  아이디
-                </th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  이름
-                </th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  역할
-                </th>
+                {(
+                  [
+                    ['id', '아이디'],
+                    ['name', '이름'],
+                    ['role', '역할'],
+                  ] as const
+                ).map(([k, label]) => (
+                  <th key={k} className="text-left px-3 py-2">
+                    <button
+                      onClick={() => toggleSort(k)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                    >
+                      {label}
+                      <span
+                        className={`text-[10px] ${sortKey === k ? 'text-primary-500' : 'text-slate-300 dark:text-slate-600'}`}
+                      >
+                        {sortKey === k ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+                      </span>
+                    </button>
+                  </th>
+                ))}
                 <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   상태
                 </th>
+                {(
+                  [
+                    ['lastLoginAt', '최근 접속'],
+                    ['createdAt', '가입일'],
+                  ] as const
+                ).map(([k, label]) => (
+                  <th key={k} className="text-left px-3 py-2">
+                    <button
+                      onClick={() => toggleSort(k)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                    >
+                      {label}
+                      <span
+                        className={`text-[10px] ${sortKey === k ? 'text-primary-500' : 'text-slate-300 dark:text-slate-600'}`}
+                      >
+                        {sortKey === k ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+                      </span>
+                    </button>
+                  </th>
+                ))}
                 <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   작업
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {filteredActive.length === 0 ? (
+              {sortedActive.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={7}
                     className="px-3 py-8 text-center text-slate-400 dark:text-slate-500"
                   >
                     {searchQuery ? '검색 결과가 없습니다.' : '등록된 사용자가 없습니다.'}
                   </td>
                 </tr>
               ) : (
-                filteredActive.map(user => (
+                pagedActive.map(user => (
                   <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                     <td className="px-3 py-3 font-mono text-slate-900 dark:text-slate-100">
                       {user.id}
                     </td>
-                    <td className="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">
-                      {user.name}
+                    <td className="px-3 py-3">
+                      <div className="font-medium text-slate-900 dark:text-slate-100">
+                        {user.name}
+                      </div>
+                      {user.email && (
+                        <div className="text-xs text-slate-400 dark:text-slate-500">
+                          {user.email}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-3">
                       <select
@@ -581,6 +676,29 @@ export const UserManagement = () => {
                         <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
                         활성
                       </span>
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300">
+                      {user.lastLoginAt ? (
+                        <div
+                          title={`${formatDateTime(user.lastLoginAt)}${user.lastLoginDevice ? ` · ${user.lastLoginDevice}` : ''}`}
+                        >
+                          <div>{formatRelative(user.lastLoginAt)}</div>
+                          {(user.lastLoginIp || user.lastLoginDevice) && (
+                            <div className="text-xs text-slate-400 dark:text-slate-500">
+                              {user.lastLoginIp && (
+                                <span className="font-mono">{user.lastLoginIp}</span>
+                              )}
+                              {user.lastLoginIp && user.lastLoginDevice && ' · '}
+                              {user.lastLoginDevice}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 dark:text-slate-500">없음</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap text-slate-500 dark:text-slate-400">
+                      <span title={formatDateTime(user.createdAt)}>{formatDate(user.createdAt)}</span>
                     </td>
                     <td className="px-3 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
@@ -628,6 +746,29 @@ export const UserManagement = () => {
             </tbody>
           </table>
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-3 py-3 border-t border-slate-100 dark:border-slate-700/60">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              총 {sortedActive.length}명 · {currentPage}/{totalPages} 페이지
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+                className="px-2.5 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                이전
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="px-2.5 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                다음
+              </button>
+            </div>
+          </div>
+        )}
       </AdminSection>
 
       {/* 4. 삭제된 계정 */}

@@ -17,6 +17,7 @@ type ErrorLog = {
   errorCode: string;
   errorMessage: string;
   severity: 'info' | 'warning' | 'error' | 'critical';
+  requestBody?: Record<string, unknown> | null;
   createdAt: string;
 };
 
@@ -320,11 +321,20 @@ export const ErrorLogManagement = () => {
                         {log.severity}
                       </span>
                     </td>
-                    <td
-                      className="px-3 py-3 text-xs text-slate-700 dark:text-slate-300 max-w-xs truncate"
-                      title={log.errorMessage}
-                    >
-                      {log.errorMessage}
+                    <td className="px-3 py-3 text-xs text-slate-700 dark:text-slate-300 max-w-xs">
+                      <div className="truncate" title={log.errorMessage}>
+                        {log.errorMessage}
+                      </div>
+                      {log.requestBody && (
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-[11px] text-primary-600 dark:text-primary-400">
+                            패킷 보기
+                          </summary>
+                          <pre className="mt-1 max-w-xs overflow-x-auto whitespace-pre-wrap break-all rounded bg-slate-100 p-2 text-[11px] text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                            {JSON.stringify(log.requestBody, null, 2)}
+                          </pre>
+                        </details>
+                      )}
                     </td>
                   </tr>
                 ))

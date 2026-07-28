@@ -2,6 +2,7 @@ import { Response } from 'express';
 
 import { userSessionService } from '../services/userSession.service';
 import { auditLogService } from '../services/auditLog.service';
+import { logSecurityEvent } from '../services/securityLog.service';
 import { sendSuccess, sendError, sendNotFound } from '../utils/response';
 import { logError } from '../utils/logger';
 import { invalidateUserCache } from '../middlewares/auth.middleware';
@@ -125,6 +126,7 @@ export const terminateOwnSession = async (req: Request, res: Response): Promise<
       sendError(res, 400, '현재 사용 중인 세션입니다. 로그아웃을 이용해주세요.');
       return;
     }
+    logSecurityEvent(authReq, 'SESSION_TERMINATED', { userId, details: { sessionId } });
     sendSuccess(res, null, '세션을 종료했습니다.');
   } catch (error) {
     logError('내 세션 종료 실패', error);

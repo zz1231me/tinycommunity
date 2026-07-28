@@ -146,6 +146,26 @@ export class UserSessionService extends BaseService {
   }
 
   /**
+   * 세션의 최초 IP/기기 정보 조회 (재발급 이상 탐지용).
+   * rotateSession은 sessionToken/lastActiveAt만 갱신하므로 여기 값은 로그인 시점 기준이다.
+   */
+  async getSessionMeta(
+    rawToken: string
+  ): Promise<{ ipAddress: string | null; userAgent: string | null } | null> {
+    try {
+      const sessionToken = this.hashToken(rawToken);
+      const session = await UserSession.findOne({
+        where: { sessionToken },
+        attributes: ['ipAddress', 'userAgent'],
+      });
+      if (!session) return null;
+      return { ipAddress: session.ipAddress ?? null, userAgent: session.userAgent ?? null };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * 세션 만료 (로그아웃 시 호출)
    */
   async expireSession(rawToken: string): Promise<void> {

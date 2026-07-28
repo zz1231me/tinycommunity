@@ -8,6 +8,7 @@ import { boardService } from '../services/board.service';
 import { roleService } from '../services/role.service';
 import { eventService } from '../services/event.service';
 import { Op } from 'sequelize';
+import { LoginHistory } from '../models/LoginHistory';
 import { Role } from '../models/Role';
 import { User } from '../models/User';
 import { SecurityLog } from '../models/SecurityLog';
@@ -37,6 +38,7 @@ const invalidateRoleAffectedCaches = (): void => {
 import { AuthValidator } from '../validators/auth.validator';
 import { FlatRequest as Request, type AuthRequest } from '../types/auth-request';
 import { auditLogService } from '../services/auditLog.service';
+import { logSecurityEvent } from '../services/securityLog.service';
 import type { AuditAction } from '../models/AuditLog';
 import { AppError } from '../middlewares/error.middleware';
 import { SiteSettings } from '../models/SiteSettings';
@@ -84,10 +86,59 @@ export const getDeletedUsers = async (_req: Request, res: Response): Promise<voi
   }
 };
 
+/** User-Agent 문자열을 간결한 기기 라벨로 변환 (예: "Chrome · macOS") */
+function parseDevice(ua: string): string {
+  const browser = /Edg/i.test(ua)
+    ? 'Edge'
+    : /OPR|Opera/i.test(ua)
+      ? 'Opera'
+      : /Chrome/i.test(ua)
+        ? 'Chrome'
+        : /Firefox/i.test(ua)
+          ? 'Firefox'
+          : /Safari/i.test(ua)
+            ? 'Safari'
+            : '기타 브라우저';
+  const os = /Windows/i.test(ua)
+    ? 'Windows'
+    : /Mac OS X|Macintosh/i.test(ua)
+      ? 'macOS'
+      : /Android/i.test(ua)
+        ? 'Android'
+        : /iPhone|iPad|iPod/i.test(ua)
+          ? 'iOS'
+          : /Linux/i.test(ua)
+            ? 'Linux'
+            : '';
+  return os ? `${browser} · ${os}` : browser;
+}
+
 export const getAllUsers = async (_req: Request, res: Response): Promise<void> => {
   try {
     const users = await userService.getAllUsers(true, 1000);
-    sendSuccess(res, users);
+
+    // 각 사용자의 최근 로그인 기기(UA) 보강 — LoginHistory의 최신 success 1건에서 파싱
+    const ids = users.map(u => u.id);
+    const deviceByUser = new Map<string, string>();
+    if (ids.length > 0) {
+      const histories = await LoginHistory.findAll({
+        where: { userId: { [Op.in]: ids }, status: 'success' },
+        attributes: ['userId', 'userAgent', 'createdAt'],
+        order: [['createdAt', 'DESC']],
+      });
+      for (const h of histories) {
+        if (h.userId && h.userAgent && !deviceByUser.has(h.userId)) {
+          deviceByUser.set(h.userId, parseDevice(h.userAgent));
+        }
+      }
+    }
+
+    const enriched = users.map(u => ({
+      ...u.toJSON(),
+      lastLoginDevice: deviceByUser.get(u.id) ?? null,
+    }));
+
+    sendSuccess(res, enriched);
   } catch (error) {
     logError('사용자 조회 실패', error);
     sendError(res, 500, '사용자 조회 실패');
@@ -322,6 +373,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
       targetId: id,
       afterValue: { changed: true, mustChangePassword: true },
     });
+    logSecurityEvent(req, 'ADMIN_PASSWORD_RESET', { userId: id, details: { by: adminId } });
     sendSuccess(res, { tempPassword }, '비밀번호가 초기화되었습니다.');
   } catch (error: unknown) {
     const appErr = toAppError(error);
@@ -359,6 +411,7 @@ export const approvePasswordResetRequest = async (req: Request, res: Response): 
       targetId: user.id,
       afterValue: { approved: true },
     });
+    logSecurityEvent(req, 'PASSWORD_RESET_APPROVED', { userId: user.id, details: { by: adminId } });
     // 평문 토큰을 관리자에게만 반환 — 관리자가 재설정 링크를 본인에게 전달한다(이메일 인프라 없음).
     sendSuccess(
       res,

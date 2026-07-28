@@ -603,9 +603,9 @@ if (env.NODE_ENV === 'development') {
   logger.info('📚 Swagger UI: http://127.0.0.1:' + PORT + '/api-docs');
 }
 
-// ✅ 보안 로깅 미들웨어
-import { activityLogger } from './middlewares/securityLogger';
-app.use(activityLogger);
+// ✅ 보안 에러 로깅 (권한 거부 403·비정상 요청 429만 요청 패킷과 함께 에러 로그에 기록)
+import { securityErrorLogger } from './middlewares/securityErrorLogger';
+app.use(securityErrorLogger);
 
 // ✅ CSRF 보호 (X-Requested-With 헤더 검증, sameSite:lax 쿠키와 이중 방어)
 app.use('/api', csrfProtection);

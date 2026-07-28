@@ -3,8 +3,12 @@
 export interface User {
   id: string;
   name: string;
+  email?: string | null;
   roleId: string;
   isActive: boolean;
+  lastLoginAt?: string | null;
+  lastLoginIp?: string | null;
+  lastLoginDevice?: string | null;
   deletedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -45,6 +49,7 @@ export interface Event {
   end: string;
   location?: string;
   calendarId: string;
+  category?: string | null;
   user: {
     id: string;
     name: string;

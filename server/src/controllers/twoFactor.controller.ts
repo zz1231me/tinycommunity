@@ -7,7 +7,7 @@ import { User } from '../models/User';
 import { Role } from '../models/Role';
 import { AuthRequest } from '../types/auth-request';
 import { authService } from '../services/auth.service';
-import { securityLogService } from '../services/securityLog.service';
+import { securityLogService, logSecurityEvent } from '../services/securityLog.service';
 import { loginHistoryService } from '../services/loginHistory.service';
 import { userSessionService } from '../services/userSession.service';
 import { notificationService } from '../services/notification.service';
@@ -120,6 +120,7 @@ export const enable2FA = async (req: AuthRequest, res: Response): Promise<void> 
     user.twoFactorEnabled = true;
     await user.save();
 
+    logSecurityEvent(req, 'TWO_FACTOR_ENABLED');
     sendSuccess(res, null, '2FA가 활성화되었습니다.');
   } catch (error) {
     logError('2FA 활성화 실패', error);
@@ -182,6 +183,7 @@ export const disable2FA = async (req: AuthRequest, res: Response): Promise<void>
     user.twoFactorSecret = null;
     await user.save();
 
+    logSecurityEvent(req, 'TWO_FACTOR_DISABLED');
     sendSuccess(res, null, '2FA가 비활성화되었습니다.');
   } catch (error) {
     logError('2FA 비활성화 실패', error);

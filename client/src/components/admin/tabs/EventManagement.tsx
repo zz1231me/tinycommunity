@@ -6,15 +6,21 @@ import { ConfirmationModal } from '../common/ConfirmationModal';
 import { toast } from '../../../utils/toast';
 import { formatDateTime } from '../../../utils/date';
 
-const CALENDAR_NAMES: Record<string, string> = {
-  vacation: '휴가',
+// 일정 분류(category) 라벨 — 캘린더 카테고리 키와 일치
+const CATEGORY_NAMES: Record<string, string> = {
+  annual: '연차',
+  morning_half: '오전반차',
+  afternoon_half: '오후반차',
   meeting: '회의',
-  deadline: '마감',
-  out: '외근',
+  dinner: '회식',
   etc: '기타',
 };
+const categoryLabel = (c?: string | null) => (c ? CATEGORY_NAMES[c] || c : '미분류');
 
 const formatDate = formatDateTime;
+
+type PeriodFilter = 'all' | 'upcoming' | 'past' | 'thisMonth';
+type EventSortKey = 'start' | 'title';
 
 export const EventManagement = () => {
   const {
@@ -40,6 +46,14 @@ export const EventManagement = () => {
   const [editTitle, setEditTitle] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  // 목록 관리(검색·필터·정렬·페이지네이션)
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
+  const [sortKey, setSortKey] = useState<EventSortKey>('start');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [page, setPage] = useState(1);
 
   const handleDeleteEvent = async (id: number) => {
     try {
@@ -75,6 +89,49 @@ export const EventManagement = () => {
 
   // 최초 로드 시에만 전체 스피너 — 수정/삭제 후 재조회 시 목록이 깜빡이지 않도록
   if (loading && !dataLoaded) return <LoadingSpinner message="일정 목록을 불러오는 중..." />;
+
+  // ── 목록 필터/정렬/페이지네이션 ──────────────────────────
+  const now = Date.now();
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+  const nextMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).getTime();
+
+  const categoryOptions = Array.from(new Set(events.map(e => e.category || '').filter(Boolean)));
+
+  const filteredEvents = events.filter(e => {
+    if (search) {
+      const q = search.toLowerCase();
+      if (!e.title.toLowerCase().includes(q) && !e.user.name.toLowerCase().includes(q)) return false;
+    }
+    if (categoryFilter && (e.category || '') !== categoryFilter) return false;
+    const endT = new Date(e.end).getTime();
+    const startT = new Date(e.start).getTime();
+    if (periodFilter === 'upcoming' && endT < now) return false;
+    if (periodFilter === 'past' && endT >= now) return false;
+    if (periodFilter === 'thisMonth' && (startT < monthStart || startT >= nextMonthStart)) return false;
+    return true;
+  });
+
+  const sortedEvents = [...filteredEvents].sort((a, b) => {
+    const av = sortKey === 'title' ? a.title.toLowerCase() : new Date(a.start).getTime();
+    const bv = sortKey === 'title' ? b.title.toLowerCase() : new Date(b.start).getTime();
+    if (av < bv) return sortDir === 'asc' ? -1 : 1;
+    if (av > bv) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const toggleSort = (key: EventSortKey) => {
+    if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else {
+      setSortKey(key);
+      setSortDir(key === 'start' ? 'desc' : 'asc');
+    }
+    setPage(1);
+  };
+
+  const PER_PAGE = 15;
+  const totalPages = Math.max(1, Math.ceil(sortedEvents.length / PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedEvents = sortedEvents.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
 
   return (
     <div className="space-y-8">
@@ -156,13 +213,64 @@ export const EventManagement = () => {
       </AdminSection>
 
       {/* 전체 일정 목록 */}
-      <AdminSection title={`전체 일정 (${events.length}건)`}>
+      <AdminSection title={`전체 일정 (${sortedEvents.length}건)`}>
+        {/* 필터 툴바 */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <input
+            type="text"
+            value={search}
+            onChange={e => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder="제목 / 작성자 검색..."
+            className="input w-56 py-1.5"
+          />
+          <select
+            value={periodFilter}
+            onChange={e => {
+              setPeriodFilter(e.target.value as PeriodFilter);
+              setPage(1);
+            }}
+            className="input w-auto py-1.5"
+          >
+            <option value="all">전체 기간</option>
+            <option value="upcoming">예정</option>
+            <option value="past">지난</option>
+            <option value="thisMonth">이번 달</option>
+          </select>
+          <select
+            value={categoryFilter}
+            onChange={e => {
+              setCategoryFilter(e.target.value);
+              setPage(1);
+            }}
+            className="input w-auto py-1.5"
+          >
+            <option value="">전체 분류</option>
+            {categoryOptions.map(c => (
+              <option key={c} value={c}>
+                {categoryLabel(c)}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700">
-                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  제목
+                <th className="text-left px-3 py-2">
+                  <button
+                    onClick={() => toggleSort('title')}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                  >
+                    제목
+                    <span
+                      className={`text-[10px] ${sortKey === 'title' ? 'text-primary-500' : 'text-slate-300 dark:text-slate-600'}`}
+                    >
+                      {sortKey === 'title' ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+                    </span>
+                  </button>
                 </th>
                 <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   분류
@@ -170,8 +278,18 @@ export const EventManagement = () => {
                 <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   작성자
                 </th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  기간
+                <th className="text-left px-3 py-2">
+                  <button
+                    onClick={() => toggleSort('start')}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                  >
+                    기간
+                    <span
+                      className={`text-[10px] ${sortKey === 'start' ? 'text-primary-500' : 'text-slate-300 dark:text-slate-600'}`}
+                    >
+                      {sortKey === 'start' ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+                    </span>
+                  </button>
                 </th>
                 <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   작업
@@ -179,17 +297,17 @@ export const EventManagement = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {events.length === 0 ? (
+              {sortedEvents.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
                     className="px-3 py-8 text-center text-slate-400 dark:text-slate-500"
                   >
-                    등록된 일정이 없습니다.
+                    {events.length === 0 ? '등록된 일정이 없습니다.' : '조건에 맞는 일정이 없습니다.'}
                   </td>
                 </tr>
               ) : (
-                events.map(event => (
+                pagedEvents.map(event => (
                   <tr key={event.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                     <td className="px-3 py-3 font-medium text-slate-900 dark:text-slate-100 min-w-[160px]">
                       {editingId === event.id ? (
@@ -209,9 +327,7 @@ export const EventManagement = () => {
                       )}
                     </td>
                     <td className="px-3 py-3">
-                      <span className="badge badge-gray">
-                        {CALENDAR_NAMES[event.calendarId] || event.calendarId}
-                      </span>
+                      <span className="badge badge-gray">{categoryLabel(event.category)}</span>
                     </td>
                     <td className="px-3 py-3 text-slate-700 dark:text-slate-300">
                       <div className="text-sm font-medium">{event.user.name}</div>
@@ -263,6 +379,29 @@ export const EventManagement = () => {
             </tbody>
           </table>
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-3 py-3 border-t border-slate-100 dark:border-slate-700/60">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              총 {sortedEvents.length}건 · {currentPage}/{totalPages} 페이지
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+                className="px-2.5 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                이전
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="px-2.5 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                다음
+              </button>
+            </div>
+          </div>
+        )}
       </AdminSection>
     </div>
   );

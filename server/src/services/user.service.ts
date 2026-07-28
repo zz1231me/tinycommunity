@@ -46,7 +46,17 @@ export class UserService extends BaseService {
           attributes: ['id', 'name', 'description'],
         },
       ],
-      attributes: ['id', 'name', 'email', 'roleId', 'isActive', 'createdAt', 'updatedAt'],
+      attributes: [
+        'id',
+        'name',
+        'email',
+        'roleId',
+        'isActive',
+        'lastLoginAt',
+        'lastLoginIp',
+        'createdAt',
+        'updatedAt',
+      ],
       order: [
         ['isActive', 'ASC'],
         ['createdAt', 'DESC'],

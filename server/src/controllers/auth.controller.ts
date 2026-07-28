@@ -4,6 +4,7 @@ import { AuthRequest } from '../types/auth-request';
 import { userService } from '../services/user.service';
 import { authService } from '../services/auth.service';
 import { passwordResetRequestService } from '../services/passwordResetRequest.service';
+import { logSecurityEvent } from '../services/securityLog.service';
 import { logInfo, logSuccess, logError } from '../utils/logger';
 import { AuthValidator } from '../validators/auth.validator';
 import {
@@ -148,6 +149,9 @@ export const refreshToken = async (
       return;
     }
 
+    // 재발급 전에 세션의 최초 IP/기기를 확보 (rotate 후엔 옛 토큰으로 조회 불가)
+    const priorMeta = await userSessionService.getSessionMeta(refresh_token);
+
     const result = await authService.refreshToken(refresh_token);
 
     setAuthCookies(
@@ -160,6 +164,28 @@ export const refreshToken = async (
       buildAuthData(result.user, result.payload?.permissions ?? []),
       '토큰 갱신 성공'
     );
+    // 토큰 재발급은 매우 빈번하므로 정상 갱신은 기록하지 않는다.
+    // 세션 최초 IP/기기와 다른 곳에서 갱신된 "의심스러운" 경우만 보안 로그에 남긴다(토큰 탈취 신호).
+    if (priorMeta) {
+      const curIp = req.ip ?? null;
+      const curUa = req.get('user-agent') ?? null;
+      const ipChanged = !!priorMeta.ipAddress && !!curIp && priorMeta.ipAddress !== curIp;
+      const uaChanged = !!priorMeta.userAgent && !!curUa && priorMeta.userAgent !== curUa;
+      if (ipChanged || uaChanged) {
+        logSecurityEvent(req, 'TOKEN_REFRESH_SUSPICIOUS', {
+          userId: result.user.id,
+          status: 'WARNING',
+          details: {
+            reason: ipChanged && uaChanged ? 'IP·기기 변경' : ipChanged ? 'IP 변경' : '기기 변경',
+            knownIp: priorMeta.ipAddress,
+            currentIp: curIp,
+            knownUserAgent: priorMeta.userAgent?.slice(0, 160),
+            currentUserAgent: curUa?.slice(0, 160),
+          },
+        });
+      }
+    }
+
     logSuccess('토큰 갱신 성공', { userName: result.user.name });
   } catch (err: unknown) {
     logError('토큰 갱신 실패', err);
@@ -206,6 +232,7 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     };
     res.clearCookie('access_token', cookieClearOptions);
     res.clearCookie('refresh_token', cookieClearOptions);
+    logSecurityEvent(req, 'LOGOUT', { userId: authReq.user?.id ?? null });
     logSuccess('로그아웃 성공');
     res.status(204).send();
   } catch (err) {
@@ -347,6 +374,7 @@ export const changePassword = async (
     invalidateUserCache(authReq.user.id);
     // 비밀번호 변경 시 모든 기존 세션 즉시 무효화 (도난된 세션 차단)
     userSessionService.expireAllUserSessions(authReq.user.id).catch(() => {});
+    logSecurityEvent(req, 'PASSWORD_CHANGED', { userId: authReq.user.id });
     sendSuccess(res, null, '비밀번호가 변경되었습니다.');
   } catch (err: unknown) {
     logError('비밀번호 변경 오류', err);
@@ -439,6 +467,10 @@ export const requestPasswordReset = async (req: Request, res: Response): Promise
     }
 
     await passwordResetRequestService.createRequest(loginId.trim());
+    logSecurityEvent(req, 'PASSWORD_RESET_REQUEST', {
+      userId: null,
+      details: { loginId: loginId.trim() },
+    });
 
     // 계정 존재 여부와 무관하게 동일한 응답 (아이디 열거 방지)
     sendSuccess(
@@ -479,6 +511,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     invalidateUserCache(resetUserId);
     // 비밀번호 재설정 시 모든 기존 세션 무효화 (탈취된 계정 보호)
     userSessionService.expireAllUserSessions(resetUserId).catch(() => {});
+    logSecurityEvent(req, 'PASSWORD_RESET_COMPLETED', { userId: resetUserId });
     sendSuccess(res, null, '비밀번호가 성공적으로 변경되었습니다. 다시 로그인해주세요.');
   } catch (err) {
     logError('비밀번호 재설정 오류', err);
