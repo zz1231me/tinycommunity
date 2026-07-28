@@ -25,6 +25,14 @@ export interface Comment {
   likeCount?: number;
   /** 현재 사용자가 좋아요했는지 여부 */
   liked?: boolean;
+  /** 이모지 리액션 집계 (emoji별 개수 + 내가 눌렀는지) */
+  reactions?: CommentReaction[];
+}
+
+export interface CommentReaction {
+  emoji: string;
+  count: number;
+  reactedByMe: boolean;
 }
 
 let _optimisticIdCounter = 0; // Number.MAX_SAFE_INTEGER로 wrapping해 overflow 방지

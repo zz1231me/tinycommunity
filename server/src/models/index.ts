@@ -15,6 +15,7 @@ import { RateLimitSettings } from './RateLimitSettings';
 import { SecurityLog } from './SecurityLog';
 import { PostLike } from './PostLike';
 import { CommentLike } from './CommentLike';
+import { CommentReaction } from './CommentReaction';
 import { Notification } from './Notification';
 import { PostBookmark } from './PostBookmark';
 import { PostRead } from './PostRead';
@@ -215,6 +216,22 @@ User.hasMany(CommentLike, {
 });
 CommentLike.belongsTo(User, { foreignKey: 'UserId', as: 'user' });
 
+// Comment/User ↔ CommentReaction — 이모지 리액션(CommentLike와 동일 정리 패턴)
+Comment.hasMany(CommentReaction, {
+  foreignKey: 'CommentId',
+  as: 'reactions',
+  onDelete: 'CASCADE',
+  hooks: true,
+});
+CommentReaction.belongsTo(Comment, { foreignKey: 'CommentId', as: 'comment' });
+User.hasMany(CommentReaction, {
+  foreignKey: 'UserId',
+  as: 'commentReactions',
+  onDelete: 'CASCADE',
+  hooks: true,
+});
+CommentReaction.belongsTo(User, { foreignKey: 'UserId', as: 'user' });
+
 // ========================================
 // PostBookmark 관련 관계
 // ========================================
@@ -412,6 +429,7 @@ export {
   SecurityLog,
   PostLike,
   CommentLike,
+  CommentReaction,
   Notification,
   PostBookmark,
   PostRead,

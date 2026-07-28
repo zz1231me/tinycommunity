@@ -2,6 +2,7 @@ import { Op } from 'sequelize';
 import { BaseService } from './base.service';
 import { Comment, CommentInstance } from '../models/Comment';
 import { CommentLike } from '../models/CommentLike';
+import { CommentReaction } from '../models/CommentReaction';
 import { User } from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
 import { isAdminOrManager } from '../config/constants';
@@ -220,6 +221,41 @@ export class CommentService extends BaseService {
       for (const c of result) c.liked = false;
     }
 
+    // 2.6) 이모지 리액션 — 표시 댓글의 리액션을 1쿼리로 모아 {emoji,count,reactedByMe}[]로 집계
+    //      (비로그인도 count는 보이되 reactedByMe는 항상 false. 삭제 placeholder는 빈 배열)
+    const reactableIds = result.filter(c => !c.isDeleted).map(c => c.id as number);
+    const reactionByComment = new Map<number, Map<string, { count: number; me: boolean }>>();
+    if (reactableIds.length > 0) {
+      const rows = await CommentReaction.findAll({
+        where: { CommentId: reactableIds },
+        attributes: ['CommentId', 'UserId', 'emoji'],
+      });
+      for (const r of rows) {
+        const cid = r.CommentId as number;
+        let m = reactionByComment.get(cid);
+        if (!m) {
+          m = new Map();
+          reactionByComment.set(cid, m);
+        }
+        const cur = m.get(r.emoji) ?? { count: 0, me: false };
+        cur.count += 1;
+        if (userId && r.UserId === userId) cur.me = true;
+        m.set(r.emoji, cur);
+      }
+    }
+    for (const c of result) {
+      if (c.isDeleted) {
+        c.reactions = [];
+        continue;
+      }
+      const m = reactionByComment.get(c.id as number);
+      c.reactions = m
+        ? [...m.entries()]
+            .map(([emoji, v]) => ({ emoji, count: v.count, reactedByMe: v.me }))
+            .sort((a, b) => b.count - a.count)
+        : [];
+    }
+
     // 3) 정렬 — 마스킹 부모를 끼워넣었으므로 정렬 기준에 맞춰 다시 정렬(클라 트리 빌더의 root 순서 보존)
     const byTime = (a: Record<string, unknown>, b: Record<string, unknown>): number =>
       new Date(a.createdAt as string).getTime() - new Date(b.createdAt as string).getTime();
@@ -324,6 +360,8 @@ export class CommentService extends BaseService {
       // (소프트 삭제된 댓글은 좋아요 토글 불가(404)이고 표시 시 likeCount 0으로 마스킹되지만,
       //  고아 행이 쌓이지 않도록 정리)
       await CommentLike.destroy({ where: { CommentId: commentId }, transaction: t });
+      // 이모지 리액션도 동일 이유로 명시적 정리(고아 행 방지)
+      await CommentReaction.destroy({ where: { CommentId: commentId }, transaction: t });
 
       // soft delete가 model에 설정되어 있으므로 destroy 호출
       await comment.destroy({ transaction: t });

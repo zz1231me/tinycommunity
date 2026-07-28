@@ -3,6 +3,7 @@ import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types/auth-request';
 import { commentService } from '../services/comment.service';
 import { commentLikeService } from '../services/commentLike.service';
+import { commentReactionService } from '../services/commentReaction.service';
 import { notificationService } from '../services/notification.service';
 import {
   sendSuccess,
@@ -359,6 +360,66 @@ export const likeComment = async (
         })
         .catch(notifErr => logError('댓글 좋아요 알림 생성 실패', notifErr));
     }
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 댓글 이모지 리액션 토글 — likeComment와 동일한 boardType 교차검증 + 비밀글 접근 보호를 적용
+export const reactToComment = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { boardType, commentId } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      sendUnauthorized(res, '로그인이 필요합니다.');
+      return;
+    }
+
+    const numericCommentId = parseInt(commentId, 10);
+    if (isNaN(numericCommentId)) {
+      sendValidationError(res, 'commentId', '잘못된 댓글 ID입니다.');
+      return;
+    }
+
+    const emoji = typeof req.body?.emoji === 'string' ? req.body.emoji.trim() : '';
+    // 임의 텍스트 저장 방지 — 실제 이모지(Extended_Pictographic)를 포함하고 길이 제한 내여야 함
+    if (!emoji || emoji.length > 32 || !/\p{Extended_Pictographic}/u.test(emoji)) {
+      sendValidationError(res, 'emoji', '유효한 이모지가 아닙니다.');
+      return;
+    }
+
+    const comment = await Comment.findByPk(numericCommentId, {
+      include: [
+        {
+          model: Post,
+          as: 'post',
+          attributes: ['boardType', 'UserId', 'isSecret', 'secretType', 'secretUserIds'],
+        },
+      ],
+    });
+    if (!comment) {
+      sendNotFound(res, '댓글');
+      return;
+    }
+    const post = (comment as Comment & { post?: SecretPostFields & { boardType: string } }).post;
+    if (!post || post.boardType !== boardType) {
+      sendNotFound(res, '댓글');
+      return;
+    }
+
+    const access = checkSecretPostAccess(post, userId, req.user?.role);
+    if (!access.ok) {
+      sendForbidden(res, access.message);
+      return;
+    }
+
+    const reactions = await commentReactionService.toggleReaction(numericCommentId, userId, emoji);
+    sendSuccess(res, { reactions }, '리액션이 반영되었습니다.');
   } catch (err) {
     next(err);
   }

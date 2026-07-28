@@ -7,6 +7,7 @@ import { buildEditorConfig } from '../../components/editor/core/editorConfig';
 import axios from '../../api/axios';
 import { useAuth } from '../../store/auth';
 import { ReportButton } from '../../components/boards/ReportButton';
+import { CommentReactions } from '../../components/boards/CommentReactions';
 import { Avatar } from '../../components/Avatar';
 import { formatRelativeDate, formatFullDateTime, toISOString } from '../../utils/date';
 import { sanitizeCommentHTML } from '../../utils/htmlSanitizer';
@@ -159,6 +160,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   const [copied, setCopied] = useState(false);
   // 좋아요 토글 in-flight 가드 (댓글 id별 1요청 — 더블클릭으로 인한 토글 꼬임 방지)
   const likeInFlight = useRef<Set<number>>(new Set());
+  // 이모지 리액션 in-flight 가드 (댓글 id + 이모지별 1요청)
+  const reactionInFlight = useRef<Set<string>>(new Set());
 
   const { isAuthenticated, getUserId, getUser, isAdmin } = useAuth();
   const currentUserId = getUserId();
@@ -311,6 +314,37 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
         toast.error(err.response?.data?.message || '좋아요 처리에 실패했습니다.');
       } finally {
         likeInFlight.current.delete(id);
+      }
+    },
+    [boardType, isAuthenticated]
+  );
+
+  // 이모지 리액션 토글 — 서버 권위값(해당 댓글의 reactions 배열)으로 갱신.
+  // 좋아요와 달리 다중 이모지라 낙관적 계산이 복잡해, 서버 응답을 그대로 반영한다.
+  const handleToggleReaction = useCallback(
+    async (comment: Comment, emoji: string) => {
+      if (comment.isDeleted) return;
+      if (!isAuthenticated) {
+        toast.error('로그인이 필요합니다.');
+        return;
+      }
+      if (!boardType) return;
+      const id = comment.id;
+      if (id < 0) return; // 아직 서버 저장 전 임시 댓글
+      const key = `${id}:${emoji}`;
+      if (reactionInFlight.current.has(key)) return;
+      reactionInFlight.current.add(key);
+      try {
+        const res = await axios.post(`/comments/${boardType}/${id}/reactions`, { emoji });
+        const data = res.data?.data ?? res.data;
+        setComments(prev =>
+          prev.map(c => (c.id === id ? { ...c, reactions: data?.reactions ?? [] } : c))
+        );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || '리액션 처리에 실패했습니다.');
+      } finally {
+        reactionInFlight.current.delete(key);
       }
     },
     [boardType, isAuthenticated]
@@ -540,8 +574,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                 ) : (
                   <>
                     <CommentContent content={comment.content} />
-                    {/* 좋아요 */}
-                    <div className="mt-2 flex items-center">
+                    {/* 좋아요 + 이모지 리액션 */}
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
                       <button
                         onClick={() => handleToggleCommentLike(comment)}
                         disabled={!isAuthenticated}
@@ -574,6 +608,11 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                         </svg>
                         {(comment.likeCount ?? 0) > 0 && <span>{comment.likeCount}</span>}
                       </button>
+                      <CommentReactions
+                        comment={comment}
+                        canReact={isAuthenticated}
+                        onToggle={handleToggleReaction}
+                      />
                     </div>
                   </>
                 )}

@@ -12,6 +12,7 @@ import {
   updateComment,
   deleteComment,
   likeComment,
+  reactToComment,
 } from '../controllers/comment.controller';
 import { apiLimiter } from '../middlewares/rate-limit.middleware';
 
@@ -225,6 +226,14 @@ router.post(
   authenticate as RequestHandler,
   checkReadAccess as RequestHandler,
   likeComment as RequestHandler
+);
+
+router.post(
+  '/:boardType/:commentId/reactions',
+  apiLimiter as RequestHandler,
+  authenticate as RequestHandler,
+  checkReadAccess as RequestHandler,
+  reactToComment as RequestHandler
 );
 
 export default router;
