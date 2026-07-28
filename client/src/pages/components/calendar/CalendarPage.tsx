@@ -328,9 +328,6 @@ const CalendarPage: React.FC = () => {
                       rounded-2xl border border-slate-200 dark:border-slate-800
                       shadow-sm overflow-hidden relative"
       >
-        {/* 상단 accent 라인 */}
-        <div className="h-[3px] bg-gradient-to-r from-secondary-400 via-secondary-500 to-secondary-600 flex-shrink-0" />
-
         {/* 헤더 */}
         <CalendarHeader
           loading={loading}

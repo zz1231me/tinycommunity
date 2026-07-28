@@ -306,11 +306,11 @@
   border: none !important;
   border-radius: 6px;
   font-weight: 500;
-  font-size: 12px;
-  line-height: 1.35;
-  /* 세로 여백 축소 — 이벤트를 컴팩트하게 쌓아 4개도 빽빽해 보이지 않게 */
-  padding: 1.5px 7px;
-  margin: 1px 3px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  /* 세로 여백 — 글자를 키운 만큼 살짝 여유 */
+  padding: 2.5px 9px;
+  margin: 2px 3px;
   cursor: pointer;
   /* 플랫 칩 — 검정 drop shadow 제거(부트스트랩/머티리얼 느낌 탈피). hover는 미묘한 명도만 */
   box-shadow: none;
@@ -331,15 +331,14 @@
   filter: brightness(1.12);
 }
 
-/* 소프트 틴트 이벤트 — 진한 단색 블록 대신 '옅은 배경 + 진한 색 텍스트 + 좌측 컬러바'.
+/* 소프트 틴트 이벤트 — 진한 단색 블록 대신 '옅은 배경 + 진한 색 텍스트'(좌측 컬러바 없음).
    이벤트 색은 --ev(eventDidMount 주입)로 받아 color-mix로 라이트/다크 톤을 각각 생성. */
 .calendar-wrapper .fc-daygrid-event {
   background: color-mix(in srgb, var(--ev, #14b8a6) 15%, #ffffff) !important;
-  /* 글자는 '어두운 슬레이트 + 약간의 색 힌트(30%)' — 밝은 카테고리(노랑·회색)도 항상 대비 확보.
-     색 정체성은 좌측 컬러바 + 배경 틴트가 전달하므로 글자를 진하게 해도 색감은 유지된다. */
+  /* 글자는 '어두운 슬레이트 + 약간의 색 힌트' — 밝은 카테고리(노랑·회색)도 대비 확보.
+     색 정체성은 배경 틴트가 전달한다. */
   color: color-mix(in srgb, var(--ev, #14b8a6) 20%, #0f172a) !important;
   border: none !important;
-  border-left: 3px solid var(--ev, #14b8a6) !important;
 }
 .dark .calendar-wrapper .fc-daygrid-event {
   background: color-mix(in srgb, var(--ev, #14b8a6) 26%, #0f172a) !important;
@@ -678,8 +677,8 @@
   }
 
   .calendar-wrapper .fc-event {
-    font-size: 11px;
-    padding: 2px 6px;
+    font-size: 12.5px;
+    padding: 2px 7px;
   }
 
   .calendar-wrapper .today-highlight .fc-daygrid-day-number {
