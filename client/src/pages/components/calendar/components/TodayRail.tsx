@@ -122,5 +122,3 @@ export function TodayRail({ events, todayStr, onSelect }: TodayRailProps) {
     </aside>
   );
 }
-
-export default TodayRail;
