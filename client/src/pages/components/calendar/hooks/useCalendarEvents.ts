@@ -6,6 +6,7 @@ import { CalendarEvent, EventFormData } from '../types';
 import { categoryColors } from '../constants';
 import { dateUtils } from '../utils';
 import { toast } from '../../../../utils/toast';
+import { DEFAULT_EVENT_COLOR } from '../../../../constants/colors';
 
 interface UseCalendarEventsProps {
   userId?: string;
@@ -60,11 +61,11 @@ export const useCalendarEvents = ({
         backgroundColor:
           event.backgroundColor ||
           categoryColors[event.category as keyof typeof categoryColors]?.bg ||
-          '#3788d8',
+          DEFAULT_EVENT_COLOR,
         borderColor:
           event.borderColor ||
           categoryColors[event.category as keyof typeof categoryColors]?.border ||
-          '#2563eb',
+          DEFAULT_EVENT_COLOR,
         textColor:
           categoryColors[event.category as keyof typeof categoryColors]?.textColor ?? '#ffffff',
         editable: canEditEvent(event),

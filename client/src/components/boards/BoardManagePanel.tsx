@@ -4,6 +4,7 @@ import { Tag } from '../../types/board.types';
 import { getTags, createTag, updateTag, deleteTag } from '../../api/tags';
 import { updateBoardInfo } from '../../api/boards';
 import { toast } from '../../utils/toast';
+import { DEFAULT_TAG_COLOR } from '../../constants/colors';
 
 interface BoardManagePanelProps {
   boardType: string;
@@ -13,7 +14,7 @@ interface BoardManagePanelProps {
   onBoardUpdated: (info: { name: string; description: string }) => void;
 }
 
-const DEFAULT_COLOR = '#3b82f6';
+const DEFAULT_COLOR = DEFAULT_TAG_COLOR;
 
 /** 게시판 내 관리 패널 — 담당자/관리자가 이 게시판의 기본정보와 태그를 관리 */
 export function BoardManagePanel({

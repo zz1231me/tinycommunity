@@ -425,7 +425,7 @@ export const UserManagement = () => {
             </button>
             <button
               onClick={() => setActivityModal({ userId: u.id, userName: u.name })}
-              className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 dark:hover:bg-indigo-900/20 transition-colors"
+              className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-secondary-50 hover:border-secondary-300 hover:text-secondary-600 dark:hover:bg-secondary-900/20 transition-colors"
             >
               활동 내역
             </button>

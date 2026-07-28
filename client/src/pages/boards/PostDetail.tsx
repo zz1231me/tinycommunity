@@ -1,6 +1,7 @@
 // client/src/pages/boards/PostDetail.tsx - 비밀글 + 좋아요 + 반응 + 핀 + 태그 지원
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { DEFAULT_TAG_COLOR } from '../../constants/colors';
 import {
   FileText,
   ArrowLeft,
@@ -251,7 +252,7 @@ const PostDetail = () => {
           {postTags.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap mb-4">
               {postTags.map(tag => {
-                const safeColor = isSafeColor(tag.color) ? tag.color : '#3b82f6';
+                const safeColor = isSafeColor(tag.color) ? tag.color : DEFAULT_TAG_COLOR;
                 return (
                   <span
                     key={tag.id}
