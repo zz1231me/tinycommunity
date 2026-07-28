@@ -26,21 +26,6 @@ export interface Attachment {
   path: string; // 저장 경로
 }
 
-// ✅ Tiptap JSON 콘텐츠 타입 정의
-export interface TiptapContent {
-  type: 'doc';
-  content?: Array<{
-    type: string;
-    attrs?: Record<string, any>;
-    content?: any[];
-    marks?: Array<{
-      type: string;
-      attrs?: Record<string, any>;
-    }>;
-    text?: string;
-  }>;
-}
-
 // ✅ PostInstance 타입 정의 (사용자 삭제 대응)
 export interface PostInstance extends Model<
   InferAttributes<PostInstance>,
@@ -48,7 +33,7 @@ export interface PostInstance extends Model<
 > {
   id: CreationOptional<string>;
   title: string;
-  content: string; // JSON 문자열로 저장 (TiptapContent)
+  content: string; // 본문(현재 CKEditor HTML, 레거시 Tiptap JSON 호환)
   contentText: CreationOptional<string | null>; // 검색용 평문(content에서 태그 제거)
   author: string;
   attachments: Attachment[] | null;
@@ -124,37 +109,6 @@ class PostModel
     return safeValues;
   }
 
-  // ✅ JSON 콘텐츠 파싱 헬퍼 메서드
-  public getContentAsJSON(): TiptapContent | null {
-    try {
-      const parsed = JSON.parse(this.content);
-      // Tiptap JSON 구조 검증
-      if (parsed && typeof parsed === 'object' && parsed.type === 'doc') {
-        return parsed as TiptapContent;
-      }
-      return null;
-    } catch (error) {
-      logError('콘텐츠 JSON 파싱 실패', error);
-      return null;
-    }
-  }
-
-  // ✅ JSON 콘텐츠 설정 헬퍼 메서드
-  public setContentFromJSON(jsonContent: TiptapContent | string): void {
-    if (typeof jsonContent === 'string') {
-      try {
-        const parsed = JSON.parse(jsonContent);
-        this.content = JSON.stringify(parsed);
-      } catch (error) {
-        logError('JSON 문자열 파싱 실패', error);
-        this.content = jsonContent;
-      }
-    } else if (typeof jsonContent === 'object' && jsonContent !== null) {
-      this.content = JSON.stringify(jsonContent);
-    } else {
-      logError('유효하지 않은 콘텐츠 형식');
-    }
-  }
 }
 
 // 모델 초기화
@@ -176,7 +130,7 @@ PostModel.init(
     content: {
       type: DataTypes.TEXT,
       allowNull: false,
-      comment: 'JSON format (Tiptap document structure)',
+      comment: 'HTML content (legacy: Tiptap JSON)',
     },
     contentText: {
       type: DataTypes.TEXT,
