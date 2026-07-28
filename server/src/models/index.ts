@@ -1,6 +1,5 @@
 // server/src/models/index.ts - 모델 관계 설정 (완전 정리됨)
 
-import { logError, logSuccess } from '../utils/logger';
 import User from './User';
 import { Post } from './Post';
 import { Comment } from './Comment';
@@ -452,14 +451,3 @@ export {
 // 데이터베이스 동기화 헬퍼
 // ========================================
 
-export async function syncDatabase(options?: { force?: boolean; alter?: boolean }) {
-  const { sequelize } = await import('../config/sequelize');
-
-  try {
-    await sequelize.sync(options);
-    logSuccess('데이터베이스 동기화 완료');
-  } catch (error) {
-    logError('데이터베이스 동기화 실패', error);
-    throw error;
-  }
-}

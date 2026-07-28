@@ -16,106 +16,7 @@ import { sequelize } from '../config/sequelize';
 import { Board } from '../models/Board';
 import { User } from '../models/User';
 import { Role } from '../models/Role';
-import { RESERVED_BOARD_IDS } from '../config/constants';
-import { AppError } from '../middlewares/error.middleware';
 import crypto from 'crypto';
-
-function toAppError(err: unknown): AppError | null {
-  return err instanceof AppError ? err : null;
-}
-
-// ✅ 특정 게시판 정보 조회
-export const getBoardById = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { id } = req.params;
-
-  try {
-    const board = await boardService.getBoardById(id);
-    if (!board) {
-      return sendNotFound(res, '게시판');
-    }
-
-    sendSuccess(res, board);
-  } catch (err) {
-    logError('게시판 상세 조회 실패', err, { boardId: id });
-    sendError(res, 500, '게시판 정보를 불러오는데 실패했습니다.');
-  }
-};
-
-// ✅ 게시판 생성 (관리자 전용)
-export const createBoard = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { id, name, description, order } = req.body;
-  const { id: userId, role: userRole } = req.user;
-
-  if (userRole !== 'admin') {
-    return sendForbidden(res, '관리자만 게시판을 생성할 수 있습니다.');
-  }
-
-  if (!id || !name) {
-    return sendValidationError(res, 'id', '게시판 ID와 이름은 필수입니다.');
-  }
-
-  if (!/^[a-zA-Z0-9_-]{2,50}$/.test(id)) {
-    return sendValidationError(
-      res,
-      'id',
-      '게시판 ID는 영문, 숫자, 언더스코어(_), 하이픈(-)만 사용 가능하며 2~50자여야 합니다.'
-    );
-  }
-
-  // ✅ 예약된 시스템 ID 차단 (라우팅 충돌 방지)
-  if (RESERVED_BOARD_IDS.includes(id.toLowerCase())) {
-    return sendValidationError(res, 'id', `'${id}'는 시스템에서 사용 중인 예약된 ID입니다.`);
-  }
-
-  try {
-    const newBoard = await boardService.createBoard({ id, name, description, order });
-
-    logSuccess('게시판 생성 완료', { userId, boardId: id });
-    sendSuccess(res, newBoard, '게시판이 생성되었습니다.', 201);
-  } catch (err: unknown) {
-    const appErr = toAppError(err);
-    if (appErr?.statusCode === 409) {
-      return sendValidationError(res, 'id', appErr.message);
-    }
-    logError('게시판 생성 실패', err, { userId, boardId: id });
-    sendError(res, 500, '게시판 생성 실패');
-  }
-};
-
-// ✅ 게시판 수정 (관리자 전용)
-export const updateBoard = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { id } = req.params;
-  const { name, description, order, isActive } = req.body;
-  const { id: userId, role: userRole } = req.user;
-
-  if (userRole !== 'admin') {
-    return sendForbidden(res, '관리자만 게시판을 수정할 수 있습니다.');
-  }
-
-  if (name !== undefined) {
-    if (typeof name !== 'string' || name.trim().length === 0) {
-      return sendValidationError(res, 'name', '게시판 이름을 입력해주세요.');
-    }
-    if (name.trim().length > 100) {
-      return sendValidationError(res, 'name', '게시판 이름은 100자를 초과할 수 없습니다.');
-    }
-  }
-  if (description !== undefined && description !== null) {
-    if (typeof description === 'string' && description.length > 500) {
-      return sendValidationError(res, 'description', '게시판 설명은 500자를 초과할 수 없습니다.');
-    }
-  }
-
-  try {
-    const updatedBoard = await boardService.updateBoard(id, { name, description, order, isActive });
-
-    logSuccess('게시판 수정 완료', { userId, boardId: id });
-    sendSuccess(res, updatedBoard, '게시판이 수정되었습니다.');
-  } catch (err) {
-    logError('게시판 수정 실패', err, { userId, boardId: id });
-    sendError(res, 500, '게시판 수정 실패');
-  }
-};
 
 // ✅ 게시판 기본정보(이름/설명) 수정 — admin/manager 또는 해당 게시판 담당자
 //    (게시판 생성/삭제, 활성화/권한 설정은 관리자 전용 — 여기서 처리하지 않음)
@@ -169,30 +70,6 @@ export const getBoardManageCapability = async (req: AuthRequest, res: Response):
   const { id: userId, role: userRole } = req.user;
   const canManage = await boardManagerService.canManage(boardType, userId, userRole);
   sendSuccess(res, { canManage });
-};
-
-// ✅ 게시판 삭제 (관리자 전용)
-export const deleteBoard = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { id } = req.params;
-  const { id: userId, role: userRole } = req.user;
-
-  if (userRole !== 'admin') {
-    return sendForbidden(res, '관리자만 게시판을 삭제할 수 있습니다.');
-  }
-
-  try {
-    await boardService.deleteBoard(id);
-
-    logSuccess('게시판 삭제 완료', { userId, boardId: id });
-    sendSuccess(res, null, '게시판이 삭제되었습니다.');
-  } catch (err: unknown) {
-    const appErr = toAppError(err);
-    if (appErr?.statusCode === 400) {
-      return sendValidationError(res, 'id', appErr.message);
-    }
-    logError('게시판 삭제 실패', err, { userId, boardId: id });
-    sendError(res, 500, '게시판 삭제 실패');
-  }
 };
 
 // ✅ 게시판 권한 확인 (User Role 기반) - Helper Function

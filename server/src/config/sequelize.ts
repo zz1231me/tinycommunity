@@ -360,21 +360,3 @@ export async function checkDatabaseHealth(): Promise<{
 }
 
 // ============================================================================
-// ✅ 트랜잭션 헬퍼 함수
-// ============================================================================
-export async function withTransaction<T>(
-  callback: (transaction: Transaction) => Promise<T>
-): Promise<T> {
-  const transaction = await sequelize.transaction({
-    isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED,
-  });
-
-  try {
-    const result = await callback(transaction);
-    await transaction.commit();
-    return result;
-  } catch (error) {
-    await transaction.rollback();
-    throw error;
-  }
-}
