@@ -857,10 +857,12 @@ const startServer = async () => {
     await initializeDatabase();
 
     logger.info('🔄 테이블 동기화 시작...');
-    // SQLite alter:true는 column 변경 시 backup→drop→rename 패턴이라 FK 제약에서 실패 가능.
-    // 그래서 SQLite는 alter:false로 유지하고, 누락된 컬럼은 아래 ensureSiteSettingsColumns()로 직접 ADD.
-    const syncOptions =
-      env.DB_TYPE === 'sqlite' ? { alter: false, force: false } : { alter: true, force: false };
+    // ★모든 DB에서 alter:false. alter:true는 위험하다:
+    //   - SQLite: column 변경 시 backup→drop→rename 패턴이라 FK 제약에서 실패 가능.
+    //   - MySQL/MariaDB: 재시작마다 unique/인덱스를 기존 것 감지 못 하고 중복 추가(email_2, email_3 …)
+    //     → 결국 'ER_TOO_MANY_KEYS: max 64 keys' 로 시작이 깨진다(치명).
+    //   누락된 컬럼은 아래 ensureAllModelColumns()가 QueryInterface(dialect 무관)로 직접 ADD한다.
+    const syncOptions = { alter: false, force: false };
     await sequelize.sync(syncOptions);
     logger.info('✅ 테이블 동기화 완료');
 
