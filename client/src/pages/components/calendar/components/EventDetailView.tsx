@@ -22,25 +22,14 @@ interface EventDetailViewProps {
   onClose: () => void;
 }
 
-// 정보 행 — 은은한 아이콘 + 라벨/값. (박스·대문자 없이 가볍게)
-function InfoRow({
-  icon,
-  label,
-  children,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  children: React.ReactNode;
-}) {
+// 메타 한 줄 — 아이콘 + 값 (라벨 없이 컴팩트)
+function MetaRow({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-3 py-2.5">
-      <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center text-slate-400 dark:text-slate-500">
+    <div className="flex items-center gap-2.5 text-sm text-slate-700 dark:text-slate-300">
+      <span className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center text-slate-400 dark:text-slate-500">
         {icon}
       </span>
-      <div className="min-w-0 flex-1">
-        <p className="mb-0.5 text-xs font-medium text-slate-400 dark:text-slate-500">{label}</p>
-        {children}
-      </div>
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
 }
@@ -67,11 +56,11 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
   const eventColor = event.backgroundColor || DEFAULT_EVENT_COLOR;
 
   return (
-    <div className="space-y-5">
-      {/* 제목 히어로 — 일정 색으로 은은하게 틴트(캘린더 셀과 동일 언어) */}
+    <div className="space-y-4">
+      {/* 히어로 — 색 틴트 + 카테고리 + 제목 + 날짜(핵심 정보를 상단에 모음) */}
       <div
-        className="rounded-2xl px-4 py-4"
-        style={{ background: `color-mix(in srgb, ${eventColor} 10%, transparent)` }}
+        className="rounded-2xl px-5 py-4"
+        style={{ background: `color-mix(in srgb, ${eventColor} 12%, transparent)` }}
       >
         <span
           className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
@@ -82,33 +71,26 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
         <h3 className="mt-2.5 break-words text-xl font-bold leading-snug text-slate-900 dark:text-slate-100">
           {event.title}
         </h3>
+        <div
+          className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold"
+          style={{ color: `color-mix(in srgb, ${eventColor} 45%, #0f172a)` }}
+        >
+          <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+          {formatDateRange(event.start, event.end)}
+        </div>
       </div>
 
-      {/* 정보 rows */}
-      <div className="divide-y divide-slate-100 dark:divide-slate-800">
-        {/* 날짜 */}
-        <InfoRow
-          label="일정 날짜"
-          icon={
-            <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-          }
-        >
-          <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-            {formatDateRange(event.start, event.end)}
-          </p>
-        </InfoRow>
-
-        {/* 장소 */}
+      {/* 메타 — 장소·작성자 (라벨 없이 컴팩트 인라인) */}
+      <div className="space-y-3 px-1">
         {event.location && (
-          <InfoRow
-            label="장소"
+          <MetaRow
             icon={
               <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -126,51 +108,10 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
               </svg>
             }
           >
-            <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-              {event.location}
-            </p>
-          </InfoRow>
+            <span className="font-medium text-slate-800 dark:text-slate-200">{event.location}</span>
+          </MetaRow>
         )}
-
-        {/* 상세 내용 */}
-        {event.body && (
-          <InfoRow
-            label="상세 내용"
-            icon={
-              <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h7"
-                />
-              </svg>
-            }
-          >
-            <div
-              ref={bodyRef}
-              className="mt-1.5 overflow-x-auto rounded-xl bg-slate-50 p-3.5 dark:bg-slate-800/50"
-            >
-              {isHtmlContent(event.body) ? (
-                <div
-                  className="ck-content-view text-sm"
-                  dangerouslySetInnerHTML={{ __html: sanitizeHTML(event.body) }}
-                />
-              ) : (
-                <p
-                  className="text-sm text-slate-800 dark:text-slate-200
-                               whitespace-pre-wrap leading-relaxed"
-                >
-                  {event.body}
-                </p>
-              )}
-            </div>
-          </InfoRow>
-        )}
-
-        {/* 작성자 */}
-        <InfoRow
-          label="작성자"
+        <MetaRow
           icon={
             <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -182,14 +123,36 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
             </svg>
           }
         >
-          <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+          <span className="font-medium text-slate-800 dark:text-slate-200">
             {event.user?.name || '알 수 없음'}
-          </p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+          </span>
+          <span className="ml-1.5 text-xs text-slate-400 dark:text-slate-500">
             {formatDateTime(event.createdAt)} 작성
-          </p>
-        </InfoRow>
+          </span>
+        </MetaRow>
       </div>
+
+      {/* 본문 — 라벨 + 가벼운 카드 */}
+      {event.body && (
+        <div className="px-1">
+          <p className="mb-1.5 text-xs font-semibold text-slate-400 dark:text-slate-500">메모</p>
+          <div
+            ref={bodyRef}
+            className="overflow-x-auto rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-800/40"
+          >
+            {isHtmlContent(event.body) ? (
+              <div
+                className="ck-content-view text-sm"
+                dangerouslySetInnerHTML={{ __html: sanitizeHTML(event.body) }}
+              />
+            ) : (
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800 dark:text-slate-200">
+                {event.body}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 액션 — 수정/삭제만(닫기는 헤더 X·배경 클릭으로 대체). 권한 없으면 숨김 */}
       {(canEdit || canDelete) && (

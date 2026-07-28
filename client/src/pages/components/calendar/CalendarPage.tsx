@@ -279,7 +279,7 @@ const CalendarPage: React.FC = () => {
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900">
       {/* 캘린더 카드 */}
       <div
-        className="flex flex-col mx-4 my-4 sm:mx-6 sm:my-5
+        className="flex-1 flex flex-col min-h-0 mx-4 my-4 sm:mx-6 sm:my-5
                       bg-white dark:bg-slate-900
                       rounded-2xl border border-slate-200 dark:border-slate-800
                       shadow-sm overflow-hidden relative"
@@ -298,16 +298,17 @@ const CalendarPage: React.FC = () => {
           onViewChange={handleViewChange}
         />
 
-        {/* 캘린더 본체 — 콘텐츠 높이(auto)로 렌더해 셀이 늘어나지 않게(일정 밑 빈공간 제거) */}
-        <div className="p-3 sm:p-4">
-          <div className="calendar-wrapper">
+        {/* 캘린더 본체 — 카드 높이를 채우되(하단 빈공간 방지) expandRows로 행을 균등 분배 */}
+        <div className="flex-1 min-h-0 p-3 sm:p-4">
+          <div className="calendar-wrapper h-full">
             <FullCalendar
               ref={calendarRef}
               plugins={[dayGridPlugin, interactionPlugin, listPlugin]}
               locale={koLocale}
               headerToolbar={false}
               initialView="dayGridMonth"
-              height="auto"
+              height="100%"
+              expandRows={true}
               events={events}
               selectable={true}
               selectMirror={true}
