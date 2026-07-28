@@ -12,7 +12,7 @@ import {
   uploadAvatar as uploadAvatarController,
   deleteAvatar,
   requestPasswordReset,
-  resetPassword,
+  verifyPasswordReset,
   updateProfile,
 } from '../controllers/auth.controller';
 import { authenticate } from '../middlewares/auth.middleware';
@@ -30,7 +30,7 @@ import {
   registerSchema,
   changePasswordSchema,
   passwordResetRequestSchema,
-  resetPasswordSchema,
+  passwordResetVerifySchema,
 } from '../validators/schemas';
 
 const router = Router();
@@ -45,7 +45,12 @@ router.post(
   validateBody(passwordResetRequestSchema),
   requestPasswordReset
 );
-router.post('/reset-password', authLimiter, validateBody(resetPasswordSchema), resetPassword);
+router.post(
+  '/password-reset-verify',
+  authLimiter,
+  validateBody(passwordResetVerifySchema),
+  verifyPasswordReset
+);
 router.post('/logout', authenticate, logout);
 router.get('/me', authenticate, getCurrentUser);
 router.post(

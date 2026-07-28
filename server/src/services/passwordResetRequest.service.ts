@@ -1,129 +1,190 @@
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import { Transaction } from 'sequelize';
 import { PasswordResetRequest } from '../models/PasswordResetRequest';
-import { User, UserInstance } from '../models/User';
+import { User } from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
 import { sequelize } from '../config/sequelize';
+import { encryptSecret, decryptSecret } from '../utils/secretCrypto';
+import { getBcryptRounds } from '../utils/settingsCache';
 
-export interface PasswordResetRequestView {
+const CODE_TTL_MS = 30 * 60 * 1000; // 인증번호 만료 30분
+const LOCK_MS = 60 * 60 * 1000; // 3회 오입력 시 잠금 1시간
+const MAX_ATTEMPTS = 3;
+
+// 관리자에게만 노출되는 뷰(복호화된 인증번호 포함). 사용자 응답에는 절대 포함하지 않는다.
+export interface PasswordResetAdminView {
   id: string;
   userId: string;
   name: string | null;
-  status: 'pending' | 'approved' | 'rejected';
+  code: string; // 복호화된 6자리
+  expiresAt: Date;
+  attempts: number;
+  remainingAttempts: number;
   createdAt: Date;
-  resolvedBy: string | null;
-  resolvedAt: Date | null;
+}
+
+// 6자리 인증번호 — 암호학적 난수(앞자리 0 허용, 편향 없음)
+function generateCode(): string {
+  return crypto.randomInt(0, 1_000_000).toString().padStart(6, '0');
+}
+
+// 상수시간 비교(타이밍 공격 방지) — 길이가 다르면 즉시 false
+function safeEqual(a: string, b: string): boolean {
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ba.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ba, bb);
 }
 
 class PasswordResetRequestService {
+  // 사용자당 활성(미완료) 요청 1건
+  private findActive(userId: string, t?: Transaction) {
+    return PasswordResetRequest.findOne({
+      where: { userId, completedAt: null },
+      order: [['createdAt', 'DESC']],
+      ...(t ? { transaction: t, lock: t.LOCK.UPDATE } : {}),
+    });
+  }
+
   /**
-   * 사용자(비로그인)가 아이디로 초기화를 요청한다. 계정 열거 방지를 위해
-   * 존재 여부와 무관하게 호출부는 동일 응답을 반환한다. 활성 계정이 있고
-   * 아직 대기 중인 요청이 없을 때만 새 요청을 생성한다(중복 방지).
+   * 사용자가 아이디로 초기화를 요청 → 6자리 인증번호를 자동 생성해 암호화 저장한다.
+   * ★인증번호는 절대 반환하지 않는다(관리자 목록에서만 복호화 노출).
+   * 계정 열거 방지를 위해 존재 여부와 무관하게 void 반환(응답은 항상 동일).
+   * 잠금 중(lockedUntil>now)에는 재발급하지 않아 잠금을 우회할 수 없다.
    */
   async createRequest(loginId: string): Promise<void> {
     const user = await User.findOne({
       where: { id: loginId, isActive: true, isDeleted: false },
       attributes: ['id'],
     });
-    if (!user) return; // 조용히 무시 (열거 방지)
+    if (!user) return; // 조용히 무시(열거 방지)
 
-    const existing = await PasswordResetRequest.findOne({
-      where: { userId: loginId, status: 'pending' },
-    });
-    if (existing) return; // 이미 대기 중 — 중복 생성 안 함
+    const now = new Date();
+    await sequelize.transaction(async t => {
+      const existing = await this.findActive(loginId, t);
+      if (existing?.lockedUntil && existing.lockedUntil > now) return; // 잠금 중 — 재발급 금지
 
-    await PasswordResetRequest.create({ userId: loginId, status: 'pending' });
-  }
+      const encrypted = encryptSecret(generateCode());
+      const expiresAt = new Date(now.getTime() + CODE_TTL_MS);
 
-  /** 관리자용 — 상태별 요청 목록(사용자 이름 포함). */
-  async listRequests(
-    status: 'pending' | 'approved' | 'rejected' = 'pending'
-  ): Promise<PasswordResetRequestView[]> {
-    // 대기(pending)는 처리 가능한 항목만 보이도록 활성·미삭제 사용자로 INNER JOIN(비활성/삭제
-    // 계정 요청은 approve가 400이라 죽은 항목). 이력(approved/rejected)은 감사 목적상 전부
-    // 노출해야 하므로 LEFT JOIN — 이후 삭제된 사용자도 이름만 null로 보이게 둔다.
-    const onlyActionable = status === 'pending';
-    const rows = await PasswordResetRequest.findAll({
-      where: { status },
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['id', 'name'],
-          where: onlyActionable ? { isActive: true, isDeleted: false } : undefined,
-          required: onlyActionable,
-        },
-      ],
-      order: [['createdAt', 'DESC']],
-      limit: 200,
-    });
-    return rows.map(r => {
-      const user = (r as unknown as { user?: { name?: string } }).user;
-      return {
-        id: r.id,
-        userId: r.userId,
-        name: user?.name ?? null,
-        status: r.status,
-        createdAt: r.createdAt,
-        resolvedBy: r.resolvedBy ?? null,
-        resolvedAt: r.resolvedAt ?? null,
-      };
+      if (existing) {
+        existing.code = encrypted;
+        existing.expiresAt = expiresAt;
+        existing.attempts = 0;
+        existing.lockedUntil = null;
+        existing.status = 'pending';
+        await existing.save({ transaction: t });
+      } else {
+        await PasswordResetRequest.create(
+          { userId: loginId, status: 'pending', code: encrypted, expiresAt, attempts: 0 },
+          { transaction: t }
+        );
+      }
     });
   }
 
   /**
-   * 관리자 수락 — 대상 사용자에게 일회용 재설정 토큰을 발급하고 요청을 approved로 표시한다.
-   * 평문 토큰을 반환하므로 호출부(컨트롤러)에서 재설정 링크를 구성해 관리자에게 보여준다.
+   * 인증번호 검증 + 비밀번호 변경. 3회 오입력 시 요청 폐기 + 1시간 잠금.
+   * 새 비밀번호 복잡도는 컨트롤러에서 먼저 검증(오입력 카운트 소모 전에).
+   * 동시 요청 직렬화를 위해 트랜잭션 + 행 잠금 사용.
    */
-  async approve(
-    requestId: string,
-    adminId: string
-  ): Promise<{ token: string; user: UserInstance }> {
-    // 트랜잭션 + 행 잠금으로 동시 승인 직렬화. 두 관리자가 같은 요청을 동시에 수락하면
-    // 잠금 없이는 둘 다 status 검사를 통과해 토큰을 두 번 발급(나중 토큰이 앞 토큰을 덮어
-    // 먼저 받은 관리자의 링크가 죽음)하는 레이스가 있었다. 잠금으로 두 번째 호출은 첫 호출의
-    // 커밋 후 status='approved'를 보고 거부된다.
-    return sequelize.transaction(async t => {
-      const request = await PasswordResetRequest.findByPk(requestId, {
+  async verifyAndReset(loginId: string, code: string, newPassword: string): Promise<void> {
+    const now = new Date();
+    // ★오입력 카운트/잠금 저장은 반드시 커밋되어야 한다. 트랜잭션 콜백 안에서 throw하면
+    //   Sequelize가 롤백해 attempts 증가가 사라져 잠금이 영영 발동하지 않는다.
+    //   따라서 에러는 콜백에서 '반환'해 저장을 커밋한 뒤, 트랜잭션 밖에서 throw한다.
+    const failure = await sequelize.transaction<AppError | null>(async t => {
+      const req = await this.findActive(loginId, t);
+      const user = await User.findOne({
+        where: { id: loginId, isActive: true, isDeleted: false },
         transaction: t,
-        lock: t.LOCK.UPDATE,
       });
-      if (!request) throw new AppError(404, '요청을 찾을 수 없습니다.');
-      if (request.status !== 'pending') throw new AppError(400, '이미 처리된 요청입니다.');
-      // 자기 자신의 요청을 자가 승인하는 것은 차단(신원 검증 우회 방지). 본인은 프로필에서 변경.
-      if (request.userId === adminId) {
-        throw new AppError(400, '자기 자신의 초기화 요청은 승인할 수 없습니다.');
+      // 요청/사용자 없음 — 동일한 일반 메시지(정보 최소화)
+      if (!req || !user) {
+        return new AppError(400, '유효하지 않은 요청입니다. 초기화를 다시 요청해주세요.');
+      }
+      if (req.lockedUntil && req.lockedUntil > now) {
+        const mins = Math.ceil((req.lockedUntil.getTime() - now.getTime()) / 60000);
+        return new AppError(429, `인증번호를 여러 번 틀렸습니다. ${mins}분 후 다시 요청해주세요.`);
+      }
+      if (!req.code || !req.expiresAt || req.expiresAt <= now) {
+        return new AppError(400, '인증번호가 만료되었습니다. 초기화를 다시 요청해주세요.');
       }
 
-      const user = await User.findOne({
-        where: { id: request.userId, isActive: true, isDeleted: false },
-        transaction: t,
-      });
-      if (!user) throw new AppError(400, '대상 사용자를 찾을 수 없거나 비활성 상태입니다.');
+      const actual = decryptSecret(req.code);
+      if (!safeEqual(actual, code)) {
+        req.attempts += 1;
+        if (req.attempts >= MAX_ATTEMPTS) {
+          req.lockedUntil = new Date(now.getTime() + LOCK_MS);
+          req.code = null; // 잠금 시 코드 폐기
+          req.status = 'locked';
+          await req.save({ transaction: t }); // 커밋됨(정상 반환)
+          return new AppError(429, '인증번호를 3회 틀렸습니다. 1시간 후 다시 초기화를 요청해주세요.');
+        }
+        await req.save({ transaction: t }); // 커밋됨
+        return new AppError(
+          400,
+          `인증번호가 올바르지 않습니다. (남은 시도 ${MAX_ATTEMPTS - req.attempts}회)`
+        );
+      }
 
-      request.status = 'approved';
-      request.resolvedBy = adminId;
-      request.resolvedAt = new Date();
-      await request.save({ transaction: t });
+      // 정답 — 비밀번호 변경(이미 해싱된 값 저장, 기존 세션 전부 무효화)
+      user.password = await bcrypt.hash(newPassword, getBcryptRounds());
+      user._skipPasswordHash = true; // beforeUpdate 재해싱 방지
+      user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+      user.mustChangePassword = false; // 사용자가 직접 정한 비밀번호
+      user.passwordResetToken = null;
+      user.passwordResetExpires = null;
+      await user.save({ transaction: t });
 
-      // 토큰 발급(user.save 포함)을 같은 트랜잭션에 묶는다. SQLite 단일 writer라 트랜잭션 밖
-      // save는 SQLITE_BUSY 교착을 일으킨다. 요청 행 잠금으로 단일 호출만 여기 도달한다.
-      const token = await user.generatePasswordResetToken({ transaction: t });
-
-      return { token, user };
+      req.completedAt = now;
+      req.code = null;
+      req.status = 'completed';
+      await req.save({ transaction: t });
+      return null; // 성공
     });
+
+    if (failure) throw failure;
   }
 
-  /** 관리자 거절 — 요청을 rejected로 표시. 감사 로그용으로 대상 userId를 반환. */
-  async reject(requestId: string, adminId: string): Promise<{ userId: string }> {
-    const request = await PasswordResetRequest.findByPk(requestId);
-    if (!request) throw new AppError(404, '요청을 찾을 수 없습니다.');
-    if (request.status !== 'pending') throw new AppError(400, '이미 처리된 요청입니다.');
+  /** 관리자 — 진행 중(pending·미만료·미잠금) 요청 목록 + 복호화된 인증번호. */
+  async listActive(): Promise<PasswordResetAdminView[]> {
+    const now = new Date();
+    const rows = await PasswordResetRequest.findAll({
+      where: { status: 'pending', completedAt: null },
+      include: [{ model: User, as: 'user', attributes: ['id', 'name'], required: true }],
+      order: [['createdAt', 'DESC']],
+      limit: 200,
+    });
+    return rows
+      .filter(r => r.code && r.expiresAt && r.expiresAt > now)
+      .map(r => {
+        const user = (r as unknown as { user?: { name?: string } }).user;
+        let code = '------';
+        try {
+          code = decryptSecret(r.code as string);
+        } catch {
+          code = '------';
+        }
+        return {
+          id: r.id,
+          userId: r.userId,
+          name: user?.name ?? null,
+          code,
+          expiresAt: r.expiresAt as Date,
+          attempts: r.attempts,
+          remainingAttempts: MAX_ATTEMPTS - r.attempts,
+          createdAt: r.createdAt,
+        };
+      });
+  }
 
-    request.status = 'rejected';
-    request.resolvedBy = adminId;
-    request.resolvedAt = new Date();
-    await request.save();
-    return { userId: request.userId };
+  /** 관리자 — 요청 폐기(전달 완료/취소 처리). */
+  async dismiss(requestId: string): Promise<void> {
+    const req = await PasswordResetRequest.findByPk(requestId);
+    if (!req) throw new AppError(404, '요청을 찾을 수 없습니다.');
+    await req.destroy();
   }
 }
 

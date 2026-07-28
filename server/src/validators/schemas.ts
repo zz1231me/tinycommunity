@@ -35,9 +35,10 @@ export const passwordResetRequestSchema = z.object({
   loginId: z.string().min(1, '아이디를 입력해주세요.').max(50),
 });
 
-// ⚠️ 버그 수정: 클라이언트/컨트롤러가 'password' 필드를 사용하므로 스키마도 'password'로 통일
-export const resetPasswordSchema = z.object({
-  token: z.string().min(1, '토큰은 필수입니다.'),
-  // 길이/복잡도 검사는 resetPassword 컨트롤러에서 AuthValidator.validatePassword()로 처리
+// 인증번호(6자리) 기반 재설정 — 아이디 + 인증번호 + 새 비밀번호.
+// 복잡도 검사는 컨트롤러에서 AuthValidator.validatePassword()로 처리.
+export const passwordResetVerifySchema = z.object({
+  loginId: z.string().min(1, '아이디를 입력해주세요.').max(50),
+  code: z.string().regex(/^\d{6}$/, '인증번호는 6자리 숫자입니다.'),
   password: z.string().min(1, '새 비밀번호는 필수입니다.').max(100),
 });

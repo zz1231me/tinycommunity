@@ -6,8 +6,7 @@ import {
   deleteUser,
   resetPassword,
   getPasswordResetRequests,
-  approvePasswordResetRequest,
-  rejectPasswordResetRequest,
+  dismissPasswordResetRequest,
   approveUser,
   rejectUser,
   deactivateUser,
@@ -76,18 +75,13 @@ router.put('/users/:id', updateUser as RequestHandler);
 router.delete('/users/:id', deleteUser as RequestHandler);
 router.post('/users/:id/reset-password', resetPassword as RequestHandler);
 
-// 비밀번호 초기화 요청 (사용자 요청 → 관리자 승인). /:id 동적 라우트보다 먼저 두지 않아도
-// 경로가 'password-reset-requests'로 구체적이라 충돌 없음.
+// 비밀번호 초기화 요청 (사용자 요청 → 인증번호 자동생성 → 관리자 조회·전달). 승인 단계 없음.
+// 목록은 복호화된 인증번호를 포함하므로 관리자 인증(아래 router.use isAdmin) 필수.
 router.get('/password-reset-requests', getPasswordResetRequests as RequestHandler);
-router.post(
-  '/password-reset-requests/:id/approve',
+router.delete(
+  '/password-reset-requests/:id',
   validateUuidParam('id'),
-  approvePasswordResetRequest as RequestHandler
-);
-router.post(
-  '/password-reset-requests/:id/reject',
-  validateUuidParam('id'),
-  rejectPasswordResetRequest as RequestHandler
+  dismissPasswordResetRequest as RequestHandler
 );
 router.patch('/users/:userId/approve', approveUser as RequestHandler);
 router.delete('/users/:userId/reject', rejectUser as RequestHandler);

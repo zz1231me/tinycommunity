@@ -18,6 +18,7 @@ import {
 import { SiteSettings } from '../models';
 import { invalidateUserCache } from '../middlewares/auth.middleware';
 import { userSessionService } from '../services/userSession.service';
+import { AppError } from '../middlewares/error.middleware';
 import { getSettings, getMinPasswordLength } from '../utils/settingsCache';
 import { isCookieSecure } from '../utils/cookie';
 
@@ -456,7 +457,8 @@ export const uploadAvatar = async (
   }
 };
 
-// 비밀번호 초기화 요청 (비로그인) — 아이디로 요청을 남기면 관리자가 승인 후 재설정 링크를 발급한다.
+// 비밀번호 초기화 요청 (비로그인) — 아이디로 요청하면 6자리 인증번호가 자동 생성돼 관리자에게 표시된다.
+// ★인증번호는 응답에 절대 포함하지 않는다(관리자에게 문의해 전달받는 구조).
 export const requestPasswordReset = async (req: Request, res: Response): Promise<void> => {
   try {
     const { loginId } = req.body as { loginId?: unknown };
@@ -476,7 +478,7 @@ export const requestPasswordReset = async (req: Request, res: Response): Promise
     sendSuccess(
       res,
       null,
-      '비밀번호 초기화 요청이 접수되었습니다. 관리자 승인 후 안내됩니다. (등록되지 않은 아이디도 동일하게 표시됩니다.)'
+      '초기화 요청이 접수되었습니다. 관리자에게 인증번호를 확인한 뒤 입력해주세요. (등록되지 않은 아이디도 동일하게 표시됩니다.)'
     );
   } catch (err) {
     logError('비밀번호 초기화 요청 오류', err);
@@ -484,36 +486,41 @@ export const requestPasswordReset = async (req: Request, res: Response): Promise
   }
 };
 
-// 비밀번호 재설정 (토큰 검증 후 변경)
-export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+// 비밀번호 재설정 (아이디 + 6자리 인증번호 검증 후 변경). 3회 오입력 시 1시간 잠금(서비스 처리).
+export const verifyPasswordReset = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { token, password } = req.body;
+    const { loginId, code, password } = req.body as {
+      loginId?: string;
+      code?: string;
+      password?: string;
+    };
 
-    if (!token || !password) {
-      sendValidationError(res, 'token', '토큰과 새 비밀번호를 입력해주세요.');
+    if (!loginId || !code || !password) {
+      sendValidationError(res, 'code', '아이디·인증번호·새 비밀번호를 모두 입력해주세요.');
       return;
     }
 
+    // 새 비밀번호 복잡도를 먼저 검증 — 잘못된 비밀번호로 오입력 카운트를 소모하지 않도록
     const pwCheck = AuthValidator.validatePassword(password, true);
     if (!pwCheck.valid) {
       sendValidationError(res, 'password', pwCheck.error!);
       return;
     }
 
-    const resetUserId = await authService.resetPassword(token, password);
+    const uid = loginId.trim();
+    await passwordResetRequestService.verifyAndReset(uid, code.trim(), password);
 
-    if (!resetUserId) {
-      sendError(res, 400, '유효하지 않거나 만료된 재설정 링크입니다.');
+    // ✅ 캐시/세션 무효화 (tokenVersion 증가와 함께 기존 로그인 전부 종료)
+    invalidateUserCache(uid);
+    userSessionService.expireAllUserSessions(uid).catch(() => {});
+    logSecurityEvent(req, 'PASSWORD_RESET_COMPLETED', { userId: uid });
+    sendSuccess(res, null, '비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.');
+  } catch (err) {
+    // 서비스가 던지는 AppError(잘못된 인증번호 400 / 잠금·만료 429 등)를 그대로 전달
+    if (err instanceof AppError && err.statusCode < 500) {
+      sendError(res, err.statusCode, err.message);
       return;
     }
-
-    // ✅ 캐시 즉시 무효화 (tokenVersion 증가 후 30초 내 재사용 방지)
-    invalidateUserCache(resetUserId);
-    // 비밀번호 재설정 시 모든 기존 세션 무효화 (탈취된 계정 보호)
-    userSessionService.expireAllUserSessions(resetUserId).catch(() => {});
-    logSecurityEvent(req, 'PASSWORD_RESET_COMPLETED', { userId: resetUserId });
-    sendSuccess(res, null, '비밀번호가 성공적으로 변경되었습니다. 다시 로그인해주세요.');
-  } catch (err) {
     logError('비밀번호 재설정 오류', err);
     sendError(res, 500, '서버 오류가 발생했습니다.');
   }
