@@ -13,6 +13,7 @@ import { AdminSection } from '../common/AdminSection';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import { toast } from '../../../utils/toast';
+import { getApiErrorMessage } from '../../../api/utils';
 
 interface FormState {
   title: string;
@@ -118,7 +119,7 @@ export const AnnouncementManagement = () => {
       cancel();
       await load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '저장에 실패했습니다.');
+      toast.error(getApiErrorMessage(err, '저장에 실패했습니다.'));
     } finally {
       setSaving(false);
     }
@@ -133,7 +134,7 @@ export const AnnouncementManagement = () => {
       toast.success('삭제했습니다.');
       await load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '삭제에 실패했습니다.');
+      toast.error(getApiErrorMessage(err, '삭제에 실패했습니다.'));
     }
   };
 

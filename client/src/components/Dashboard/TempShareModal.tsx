@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { X, UploadCloud, Copy, Clock, FileUp, RotateCcw } from 'lucide-react';
 import { uploadTempShare, type TempShareResult } from '../../api/tempShare';
+import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
+
+const MAX_SIZE = 50 * 1024 * 1024; // 서버 한도와 동일
 
 interface Props {
   open: boolean;
@@ -19,13 +22,30 @@ export function TempShareModal({ open, onClose }: Props) {
   const [remain, setRemain] = useState(0); // 초
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Esc 닫기
+  const reset = useCallback(() => {
+    setResult(null);
+    setProgress(0);
+    setUploading(false);
+  }, []);
+
+  // 닫기 = onClose + 상태 초기화 (Esc·배경·X 모두 동일하게 → 재오픈 시 이전 결과가 남지 않도록)
+  const handleClose = useCallback(() => {
+    onClose();
+    reset();
+  }, [onClose, reset]);
+
+  // Esc 닫기 + 열려 있는 동안 배경 스크롤 잠금
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && handleClose();
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [open, handleClose]);
 
   // 만료 카운트다운
   useEffect(() => {
@@ -39,21 +59,19 @@ export function TempShareModal({ open, onClose }: Props) {
     return () => clearInterval(t);
   }, [result]);
 
-  const reset = useCallback(() => {
-    setResult(null);
-    setProgress(0);
-    setUploading(false);
-  }, []);
-
   const handleFile = useCallback(async (file: File) => {
     if (!file) return;
+    if (file.size > MAX_SIZE) {
+      toast.error('파일이 너무 큽니다. 최대 50MB까지 공유할 수 있습니다.');
+      return;
+    }
     setUploading(true);
     setProgress(0);
     try {
       const r = await uploadTempShare(file, setProgress);
       setResult(r);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '업로드에 실패했습니다.');
+      toast.error(getApiErrorMessage(err, '업로드에 실패했습니다.'));
     } finally {
       setUploading(false);
     }
@@ -85,10 +103,7 @@ export function TempShareModal({ open, onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim"
-      onClick={() => {
-        onClose();
-        reset();
-      }}
+      onClick={handleClose}
     >
       <div
         className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
@@ -103,10 +118,7 @@ export function TempShareModal({ open, onClose }: Props) {
             <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">임시 파일 공유</h2>
           </div>
           <button
-            onClick={() => {
-              onClose();
-              reset();
-            }}
+            onClick={handleClose}
             aria-label="닫기"
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
           >
