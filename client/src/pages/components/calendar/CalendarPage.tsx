@@ -14,7 +14,6 @@ import { toast } from '../../../utils/toast';
 
 import { CalendarEvent, EventFormData, ModalMode } from './types';
 import { dateUtils } from './utils';
-import { setupDayAutoScroll } from './utils/dayAutoScroll';
 import { useCalendarEvents } from './hooks/useCalendarEvents';
 import { CalendarHeader, CalendarView } from './components/CalendarHeader';
 import { CalendarModal } from './components/CalendarModal';
@@ -38,8 +37,6 @@ const DEFAULT_FORM: EventFormData = {
 const CalendarPage: React.FC = () => {
   const { user, isAdmin } = useAuth();
   const calendarRef = useRef<FullCalendar>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const autoScrollCleanupRef = useRef<(() => void) | null>(null);
 
   const {
     events,
@@ -252,21 +249,6 @@ const CalendarPage: React.FC = () => {
     [loadEvents]
   );
 
-  // 이벤트가 (재)렌더된 뒤, 넘치는 날짜 셀에 자동 스크롤을 다시 붙인다.
-  // rAF로 한 프레임 미뤄 레이아웃(높이 캡)이 적용된 다음 넘침을 측정한다.
-  const reinitAutoScroll = useCallback(() => {
-    autoScrollCleanupRef.current?.();
-    autoScrollCleanupRef.current = null;
-    requestAnimationFrame(() => {
-      if (wrapperRef.current) {
-        autoScrollCleanupRef.current = setupDayAutoScroll(wrapperRef.current);
-      }
-    });
-  }, []);
-
-  // 언마운트 시 진행 중인 자동 스크롤 정리
-  useEffect(() => () => autoScrollCleanupRef.current?.(), []);
-
   const eventAllow = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (_: any, draggedEvent: any) => {
@@ -309,7 +291,7 @@ const CalendarPage: React.FC = () => {
 
         {/* 캘린더 본체 */}
         <div className="flex-1 min-h-0 p-3 sm:p-4">
-          <div className="calendar-wrapper h-full" ref={wrapperRef}>
+          <div className="calendar-wrapper h-full">
             <FullCalendar
               ref={calendarRef}
               plugins={[dayGridPlugin, interactionPlugin, listPlugin]}
@@ -332,12 +314,11 @@ const CalendarPage: React.FC = () => {
               eventResize={handleEventResize}
               eventAllow={eventAllow}
               datesSet={handleDatesSet}
-              eventsSet={reinitAutoScroll}
               nowIndicator={true}
               weekends={true}
               fixedWeekCount={false}
               showNonCurrentDates={false}
-              dayMaxEvents={false}
+              dayMaxEvents={true}
               noEventsContent={renderNoEvents}
               dayCellClassNames={dayCellClassNames}
             />
