@@ -12,14 +12,14 @@ const NotFound = () => {
           <div className="p-12 text-center">
             {/* ✅ 404 숫자 - 그라디언트 */}
             <div className="mb-8">
-              <div className="text-9xl font-extrabold bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">
+              <div className="text-9xl font-extrabold bg-gradient-to-r from-secondary-500 to-secondary-700 bg-clip-text text-transparent">
                 404
               </div>
             </div>
 
             {/* ✅ 아이콘 - 그라디언트 배경 */}
             <div className="mb-8 flex justify-center">
-              <div className="w-24 h-24 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-full flex items-center justify-center shadow-lg">
+              <div className="w-24 h-24 bg-gradient-to-br from-secondary-400 to-secondary-600 rounded-full flex items-center justify-center shadow-lg">
                 <svg
                   className="w-12 h-12 text-white"
                   fill="none"
