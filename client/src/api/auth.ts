@@ -130,7 +130,7 @@ export async function register(id: string, password: string, name: string, email
   return data;
 }
 
-// 🔑 비밀번호 초기화 요청 (아이디로 요청 → 관리자 승인)
+// 🔑 비밀번호 초기화 요청 (아이디로 요청 → 6자리 인증번호 자동생성 → 관리자에게 문의)
 export async function requestPasswordReset(loginId: string): Promise<{ message: string }> {
   const res = await fetch('/api/auth/password-reset-request', {
     method: 'POST',
@@ -151,15 +151,19 @@ export async function requestPasswordReset(loginId: string): Promise<{ message: 
   });
 }
 
-// 🔑 비밀번호 재설정 (토큰 + 새 비밀번호)
-export async function resetPassword(token: string, password: string): Promise<{ message: string }> {
-  const res = await fetch('/api/auth/reset-password', {
+// 🔑 비밀번호 재설정 (아이디 + 6자리 인증번호 + 새 비밀번호)
+export async function verifyPasswordReset(
+  loginId: string,
+  code: string,
+  password: string
+): Promise<{ message: string }> {
+  const res = await fetch('/api/auth/password-reset-verify', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-Requested-With': 'XMLHttpRequest',
     },
-    body: JSON.stringify({ token, password }),
+    body: JSON.stringify({ loginId, code, password }),
   });
 
   if (!res.ok) {

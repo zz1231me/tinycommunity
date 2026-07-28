@@ -24,21 +24,14 @@ export const restoreUser = (userId: string): Promise<void> =>
 export const fetchDeletedUsers = (): Promise<User[]> =>
   api.get('/admin/users/deleted').then(unwrap);
 
-// ─── 비밀번호 초기화 요청 (사용자 요청 → 관리자 승인) ──────────────────────────
+// ─── 비밀번호 초기화 요청 (사용자 요청 → 인증번호 자동생성 → 관리자 조회·전달) ──────────
+// ★목록은 복호화된 6자리 인증번호를 포함(관리자 전용). 관리자가 본인 확인 후 사용자에게 전달.
+export const fetchPasswordResetRequests = (): Promise<PasswordResetRequestItem[]> =>
+  api.get('/admin/password-reset-requests').then(unwrap);
 
-export const fetchPasswordResetRequests = (
-  status: 'pending' | 'approved' | 'rejected' = 'pending'
-): Promise<PasswordResetRequestItem[]> =>
-  api.get('/admin/password-reset-requests', { params: { status } }).then(unwrap);
-
-/** 수락 — 일회용 재설정 토큰을 반환(관리자가 본인에게 링크 전달). */
-export const approvePasswordResetRequest = (
-  id: string
-): Promise<{ token: string; loginId: string }> =>
-  api.post(`/admin/password-reset-requests/${id}/approve`).then(unwrap);
-
-export const rejectPasswordResetRequest = (id: string): Promise<void> =>
-  api.post(`/admin/password-reset-requests/${id}/reject`).then(() => undefined);
+/** 폐기 — 인증번호를 전달한 뒤 목록에서 정리. */
+export const dismissPasswordResetRequest = (id: string): Promise<void> =>
+  api.delete(`/admin/password-reset-requests/${id}`).then(() => undefined);
 
 // ─── 보안 로그 ───────────────────────────────────────────────────────────────
 

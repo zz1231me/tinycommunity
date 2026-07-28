@@ -1,92 +1,126 @@
-// src/pages/PasswordResetRequest.tsx - 비밀번호 초기화 요청 페이지 (아이디 → 관리자 승인)
+// src/pages/PasswordResetRequest.tsx
+// 비밀번호 찾기 — 2단계: ①아이디로 요청 → 6자리 인증번호 자동생성(관리자에게 표시)
+//                    ②관리자에게 받은 인증번호 + 새 비밀번호 입력 → 변경
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { requestPasswordReset } from '../api/auth';
+import { requestPasswordReset, verifyPasswordReset } from '../api/auth';
 import { useSiteSettings } from '../store/siteSettings';
+
+type Step = 'request' | 'verify' | 'done';
 
 function PasswordResetRequest() {
   const { settings } = useSiteSettings();
 
+  const [step, setStep] = useState<Step>('request');
   const [loginId, setLoginId] = useState('');
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [showPw, setShowPw] = useState(false);
 
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 에러는 6초 후 자동 소거
   useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(''), 5000);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
+    if (!error) return undefined;
+    const t = setTimeout(() => setError(''), 6000);
+    return () => clearTimeout(t);
   }, [error]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = loginId.trim();
-    if (!trimmed) {
-      setError('아이디를 입력해주세요.');
-      return;
-    }
+    const id = loginId.trim();
+    if (!id) return setError('아이디를 입력해주세요.');
     setError('');
     setIsLoading(true);
-
     try {
-      const result = await requestPasswordReset(trimmed);
-      setSuccessMessage(result.message);
-      setSubmitted(true);
+      const res = await requestPasswordReset(id);
+      setNotice(res.message);
+      setStep('verify');
     } catch (err) {
-      const message = err instanceof Error ? err.message : '요청 처리 중 오류가 발생했습니다.';
-      setError(message);
+      setError(err instanceof Error ? err.message : '요청 처리 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const resend = async () => {
+    setError('');
+    setIsLoading(true);
+    try {
+      await requestPasswordReset(loginId.trim());
+      setNotice('인증번호를 다시 발급했습니다. 관리자에게 새 인증번호를 확인해주세요.');
+      setCode('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '재발급 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const submitVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(code)) return setError('인증번호 6자리를 입력해주세요.');
+    if (password.length < 8) return setError('새 비밀번호는 8자 이상이어야 합니다.');
+    if (password !== confirm) return setError('새 비밀번호가 일치하지 않습니다.');
+    setError('');
+    setIsLoading(true);
+    try {
+      await verifyPasswordReset(loginId.trim(), code, password);
+      setStep('done');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '비밀번호 변경 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const inputCls =
+    'w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 ' +
+    'focus:bg-slate-50 dark:focus:bg-slate-600 focus:ring-2 focus:ring-primary-500/40 outline-none ' +
+    'disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 ' +
+    'placeholder:text-slate-400 dark:placeholder:text-slate-500';
+
+  const primaryBtn =
+    'w-full py-3 px-4 bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-semibold ' +
+    'rounded-xl shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-150 ' +
+    'disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2';
+
+  const Spinner = () => (
+    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
+      <path
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+        className="opacity-75"
+      />
+    </svg>
+  );
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-900">
       <div className="w-full max-w-md">
-        {/* 에러 메시지 */}
+        {/* 알림 배너 */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
-            <div className="flex items-start gap-3">
-              <svg
-                className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <div>
-                <p className="text-sm font-medium text-red-800 dark:text-red-300">오류</p>
-                <p className="text-sm text-red-700 dark:text-red-400 mt-1">{error}</p>
-              </div>
-            </div>
+          <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+            <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
           </div>
         )}
 
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-8">
-          <div className="text-center mb-8">
+        <div className="card p-8">
+          {/* 헤더 */}
+          <div className="text-center mb-7">
             {settings.logoUrl ? (
-              <div className="mb-6">
-                <img
-                  src={settings.logoUrl}
-                  alt={settings.siteName}
-                  className="w-20 h-20 rounded-2xl object-cover mx-auto shadow-md"
-                />
-              </div>
+              <img
+                src={settings.logoUrl}
+                alt={settings.siteName}
+                className="w-16 h-16 rounded-2xl object-cover mx-auto mb-5 shadow-md"
+              />
             ) : (
-              <div className="w-20 h-20 bg-primary-600 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-md">
-                <svg
-                  className="w-10 h-10 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+              <div className="w-16 h-16 bg-primary-600 rounded-2xl mx-auto mb-5 flex items-center justify-center shadow-md">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -96,65 +130,19 @@ function PasswordResetRequest() {
                 </svg>
               </div>
             )}
-
-            <h1 className="text-2xl font-bold mb-2 text-slate-900 dark:text-white">
-              비밀번호 초기화 요청
-            </h1>
+            <h1 className="text-2xl font-bold mb-1.5 text-slate-900 dark:text-white">비밀번호 찾기</h1>
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              {submitted
-                ? '관리자 승인을 기다려주세요'
-                : '아이디를 입력하면 관리자에게 초기화 요청이 전달됩니다'}
+              {step === 'request' && '아이디를 입력하면 관리자에게 인증번호가 표시됩니다'}
+              {step === 'verify' && '관리자에게 받은 6자리 인증번호로 새 비밀번호를 설정하세요'}
+              {step === 'done' && '비밀번호가 변경되었습니다'}
             </p>
           </div>
 
-          {/* 전송 완료 상태 */}
-          {submitted ? (
-            <div>
-              <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl mb-6">
-                <div className="flex items-start gap-3">
-                  <svg
-                    className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <div>
-                    <p className="text-sm font-medium text-green-800 dark:text-green-300">
-                      요청 접수됨
-                    </p>
-                    <p className="text-sm text-green-700 dark:text-green-400 mt-1">
-                      {successMessage}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setSubmitted(false);
-                  setLoginId('');
-                  setSuccessMessage('');
-                }}
-                className="w-full py-3 px-4 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
-              >
-                다른 아이디로 다시 요청하기
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+          {/* STEP 1 — 아이디 요청 */}
+          {step === 'request' && (
+            <form onSubmit={submitRequest} className="space-y-4">
               <div>
-                <label
-                  htmlFor="loginId"
-                  className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
-                >
+                <label htmlFor="loginId" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   아이디
                 </label>
                 <input
@@ -165,69 +153,170 @@ function PasswordResetRequest() {
                   disabled={isLoading}
                   required
                   autoComplete="username"
-                  className="w-full px-4 py-3 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100
-                            focus:bg-slate-50 dark:focus:bg-slate-600 focus:ring-2 focus:ring-primary-500/40
-                            disabled:opacity-50 disabled:cursor-not-allowed
-                            transition-all duration-200
-                            placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                  placeholder="가입 시 사용한 아이디를 입력하세요"
+                  className={inputCls}
+                  placeholder="가입 시 사용한 아이디"
                 />
                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                  관리자가 본인 확인 후 승인하면, 새 비밀번호를 설정할 수 있는 링크를 안내받게
-                  됩니다.
+                  요청하면 6자리 인증번호가 만들어집니다. <b>관리자에게 인증번호를 문의</b>해 다음 단계에서 입력하세요.
                 </p>
               </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-3 px-4 mt-2
-                          bg-primary-600 hover:bg-primary-700 active:bg-primary-800
-                          text-white font-semibold rounded-lg
-                          shadow-sm hover:shadow-md
-                          active:scale-[0.98]
-                          transition-all duration-150
-                          disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100
-                          flex items-center justify-center gap-2"
-              >
+              <button type="submit" disabled={isLoading} className={primaryBtn}>
                 {isLoading ? (
                   <>
-                    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        className="opacity-25"
-                      ></circle>
-                      <path
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        className="opacity-75"
-                      ></path>
-                    </svg>
+                    <Spinner />
                     <span>요청 중...</span>
                   </>
                 ) : (
-                  <span>초기화 요청하기</span>
+                  <span>인증번호 요청하기</span>
                 )}
               </button>
             </form>
           )}
 
-          {/* 로그인 링크 */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              비밀번호가 기억나셨나요?{' '}
-              <Link
-                to="/"
-                className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-semibold transition-colors"
-              >
-                로그인
+          {/* STEP 2 — 인증번호 + 새 비밀번호 */}
+          {step === 'verify' && (
+            <form onSubmit={submitVerify} className="space-y-4">
+              {notice && (
+                <div className="p-3 bg-secondary-50 dark:bg-secondary-900/20 border border-secondary-200 dark:border-secondary-800 rounded-xl">
+                  <p className="text-xs text-secondary-700 dark:text-secondary-300">{notice}</p>
+                </div>
+              )}
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{loginId}</span> 계정 · 인증번호는 30분간 유효합니다.
+              </div>
+
+              <div>
+                <label htmlFor="code" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  인증번호 (6자리)
+                </label>
+                <input
+                  id="code"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={code}
+                  onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  disabled={isLoading}
+                  autoFocus
+                  className={inputCls + ' text-center tracking-[0.5em] text-xl font-mono'}
+                  placeholder="000000"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="pw" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  새 비밀번호
+                </label>
+                <div className="relative">
+                  <input
+                    id="pw"
+                    type={showPw ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    disabled={isLoading}
+                    autoComplete="new-password"
+                    className={inputCls + ' pr-12'}
+                    placeholder="8자 이상, 영문·숫자 포함"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    tabIndex={-1}
+                  >
+                    {showPw ? '숨기기' : '표시'}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="pw2" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  새 비밀번호 확인
+                </label>
+                <input
+                  id="pw2"
+                  type={showPw ? 'text' : 'password'}
+                  value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
+                  disabled={isLoading}
+                  autoComplete="new-password"
+                  className={inputCls}
+                  placeholder="새 비밀번호를 다시 입력"
+                />
+                {confirm && password !== confirm && (
+                  <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">비밀번호가 일치하지 않습니다.</p>
+                )}
+              </div>
+
+              <button type="submit" disabled={isLoading} className={primaryBtn}>
+                {isLoading ? (
+                  <>
+                    <Spinner />
+                    <span>변경 중...</span>
+                  </>
+                ) : (
+                  <span>비밀번호 변경</span>
+                )}
+              </button>
+
+              <div className="flex items-center justify-between text-xs">
+                <button
+                  type="button"
+                  onClick={resend}
+                  disabled={isLoading}
+                  className="text-secondary-600 dark:text-secondary-400 hover:underline disabled:opacity-50"
+                >
+                  인증번호 재발급
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep('request');
+                    setCode('');
+                    setPassword('');
+                    setConfirm('');
+                    setNotice('');
+                  }}
+                  className="text-slate-500 dark:text-slate-400 hover:underline"
+                >
+                  아이디 다시 입력
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* STEP 3 — 완료 */}
+          {step === 'done' && (
+            <div className="space-y-5">
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl flex items-start gap-3">
+                <svg className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-green-800 dark:text-green-300">비밀번호가 변경되었습니다</p>
+                  <p className="text-sm text-green-700 dark:text-green-400 mt-1">새 비밀번호로 로그인해주세요.</p>
+                </div>
+              </div>
+              <Link to="/" className={primaryBtn}>
+                로그인하러 가기
               </Link>
-            </p>
-          </div>
+            </div>
+          )}
+
+          {/* 로그인 링크 */}
+          {step !== 'done' && (
+            <div className="mt-6 text-center">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                비밀번호가 기억나셨나요?{' '}
+                <Link
+                  to="/"
+                  className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-semibold transition-colors"
+                >
+                  로그인
+                </Link>
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 text-center">

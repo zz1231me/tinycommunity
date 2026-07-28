@@ -170,10 +170,11 @@ export interface PasswordResetRequestItem {
   id: string;
   userId: string; // 로그인 아이디
   name: string | null;
-  status: 'pending' | 'approved' | 'rejected';
+  code: string; // 복호화된 6자리 인증번호(관리자 전용) — 사용자에게 전달
+  expiresAt: string;
+  attempts: number;
+  remainingAttempts: number;
   createdAt: string;
-  resolvedBy: string | null;
-  resolvedAt: string | null;
 }
 
 export type TabType =
