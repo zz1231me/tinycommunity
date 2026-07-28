@@ -930,17 +930,22 @@ const startServer = async () => {
     });
   } catch (error) {
     logger.error('❌ API 서버 시작 실패:', error);
+    // ★시작 실패 원인은 환경(NODE_ENV)과 무관하게 항상 전체 스택을 출력 — 안 보이면 진단 불가
+    console.error('─── 시작 실패 상세 ───');
+    console.error(error instanceof Error ? (error.stack ?? error.message) : error);
     process.exit(1);
   }
 };
 
 process.on('unhandledRejection', (reason, _promise) => {
   logger.error('❌ Unhandled Rejection:', reason);
+  console.error(reason instanceof Error ? (reason.stack ?? reason.message) : reason);
   process.exit(1);
 });
 
 process.on('uncaughtException', error => {
   logger.error('❌ Uncaught Exception:', error);
+  console.error(error instanceof Error ? (error.stack ?? error.message) : error);
   process.exit(1);
 });
 
