@@ -66,8 +66,8 @@ export const useCalendarEvents = ({
           event.borderColor ||
           categoryColors[event.category as keyof typeof categoryColors]?.border ||
           DEFAULT_EVENT_COLOR,
-        textColor:
-          categoryColors[event.category as keyof typeof categoryColors]?.textColor ?? '#ffffff',
+        // textColor는 주입하지 않는다 — soft-tint 렌더는 calendar.css가 --ev 기반 color-mix로
+        // 어두운 톤 글자색을 지정한다. 여기서 흰색을 넣으면 인라인 style이 그 위를 덮어 흰 글자가 된다.
         editable: canEditEvent(event),
         startEditable: canEditEvent(event),
         durationEditable: canEditEvent(event),

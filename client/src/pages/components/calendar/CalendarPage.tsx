@@ -308,6 +308,7 @@ const CalendarPage: React.FC = () => {
               headerToolbar={false}
               initialView="dayGridMonth"
               height="100%"
+              expandRows={true}
               events={events}
               selectable={true}
               selectMirror={true}
