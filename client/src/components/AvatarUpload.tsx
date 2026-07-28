@@ -326,11 +326,11 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
           disabled={isLoading || isGenerating}
           title="사진 없이 랜덤 그래픽 아바타를 생성합니다"
           className="
-            px-4 py-2 text-sm font-medium whitespace-nowrap text-violet-600 bg-violet-50
-            rounded-lg hover:bg-violet-100 focus:outline-none focus:ring-2
-            focus:ring-violet-500 focus:ring-opacity-50 transition-colors
+            px-4 py-2 text-sm font-medium whitespace-nowrap text-secondary-700 bg-secondary-50
+            rounded-lg hover:bg-secondary-100 focus:outline-none focus:ring-2
+            focus:ring-secondary-500 focus:ring-opacity-50 transition-colors
             disabled:opacity-50 disabled:cursor-not-allowed
-            dark:text-violet-300 dark:bg-violet-900/40 dark:hover:bg-violet-900/60
+            dark:text-secondary-300 dark:bg-secondary-900/40 dark:hover:bg-secondary-900/60
           "
         >
           {isGenerating ? '생성 중...' : '🎲 랜덤 생성'}

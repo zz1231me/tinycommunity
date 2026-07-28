@@ -134,18 +134,14 @@ function Login() {
   }
 
   return (
-    /* 배경: 미세 그리드 패턴 + 그라디언트 */
+    /* 배경: 클린 서피스 + 은은한 앰비언트 글로우(애플식 미니멀). 점 그리드 제거. */
     <div
       className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden
                  bg-slate-50 dark:bg-slate-950"
-      style={{
-        backgroundImage: `radial-gradient(circle at 1px 1px, rgb(148 163 184 / 0.2) 1px, transparent 0)`,
-        backgroundSize: '28px 28px',
-      }}
     >
-      {/* 배경 블러 오브 */}
-      <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary-400/10 dark:bg-primary-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-violet-400/10 dark:bg-violet-600/8 rounded-full blur-3xl pointer-events-none" />
+      {/* 배경 앰비언트 글로우 — 브랜드 색(그래파이트 + teal 액센트)만 사용 */}
+      <div className="absolute -top-40 -right-40 w-[28rem] h-[28rem] bg-primary-400/10 dark:bg-primary-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-secondary-400/10 dark:bg-secondary-500/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-[400px] relative">
         {/* 관리자 설정 로그인 안내 메시지 (설정에 값이 있을 때만 표시) */}

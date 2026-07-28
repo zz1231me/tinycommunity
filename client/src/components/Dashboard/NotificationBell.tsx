@@ -37,8 +37,8 @@ const TYPE_ICON: Record<string, { icon: React.ReactNode; bg: string; color: stri
   },
   MENTION: {
     icon: <AtSign className="w-4 h-4" />,
-    bg: 'bg-violet-100 dark:bg-violet-900/30',
-    color: 'text-violet-600 dark:text-violet-400',
+    bg: 'bg-secondary-100 dark:bg-secondary-900/30',
+    color: 'text-secondary-600 dark:text-secondary-400',
   },
   SYSTEM: {
     icon: <Bell className="w-4 h-4" />,
