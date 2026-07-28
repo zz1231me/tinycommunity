@@ -124,13 +124,27 @@ export const CustomPageManagement = () => {
             <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">
               HTML
             </label>
-            <textarea
-              className="input min-h-[320px] font-mono text-xs leading-relaxed"
-              value={form.html}
-              onChange={e => setForm(f => ({ ...f, html: e.target.value }))}
-              placeholder="<!doctype html><html>... 내 HTML을 그대로 붙여넣으세요 ...</html>"
-              spellCheck={false}
-            />
+            {/* 편집(좌) + 실시간 미리보기(우, 격리 iframe) */}
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              <textarea
+                className="input min-h-[360px] font-mono text-xs leading-relaxed"
+                value={form.html}
+                onChange={e => setForm(f => ({ ...f, html: e.target.value }))}
+                placeholder="<!doctype html><html>... 내 HTML을 그대로 붙여넣으세요 ...</html>"
+                spellCheck={false}
+              />
+              <div className="flex min-h-[360px] flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="flex-shrink-0 border-b border-slate-100 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-800/50">
+                  미리보기 (사용자 화면과 동일하게 격리 렌더)
+                </div>
+                <iframe
+                  title="미리보기"
+                  srcDoc={form.html}
+                  sandbox="allow-scripts allow-popups allow-forms allow-modals"
+                  className="w-full flex-1 border-0 bg-white"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-6">
