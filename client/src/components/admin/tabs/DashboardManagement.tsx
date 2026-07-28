@@ -23,8 +23,9 @@ import { AdminSection } from '../common/AdminSection';
 const AXIS = '#94a3b8';
 const GRID = 'rgba(148,163,184,0.2)';
 const TEAL = '#14b8a6';
-// 역할 파이용 카테고리 팔레트(보라 제외, 대비 확보)
-const PIE_COLORS = ['#14b8a6', '#0ea5e9', '#f59e0b', '#64748b', '#f43f5e', '#10b981', '#6366f1'];
+const AMBER = '#f59e0b'; // 게시글 계열 — teal과 대비되는 따뜻한 액센트(파랑 배제)
+// 역할 파이 팔레트 — 파랑/보라 배제, graphite·teal 정체성에 맞춘 대비 조합
+const PIE_COLORS = ['#14b8a6', '#0d9488', '#f59e0b', '#64748b', '#f43f5e', '#10b981', '#334155'];
 
 const TOOLTIP_STYLE = {
   background: 'rgba(15,23,42,0.92)',
@@ -192,7 +193,7 @@ const DashboardManagement = () => {
                 <XAxis dataKey="label" tick={{ fill: AXIS, fontSize: 11 }} tickLine={false} axisLine={false} />
                 <YAxis allowDecimals={false} tick={{ fill: AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(148,163,184,0.12)' }} />
-                <Bar dataKey="count" name="게시글" fill="#0ea5e9" radius={[6, 6, 0, 0]} maxBarSize={48} />
+                <Bar dataKey="count" name="게시글" fill={AMBER} radius={[6, 6, 0, 0]} maxBarSize={48} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
