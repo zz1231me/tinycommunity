@@ -17,6 +17,7 @@ import { dateUtils } from './utils';
 import { useCalendarEvents } from './hooks/useCalendarEvents';
 import { CalendarHeader, CalendarView } from './components/CalendarHeader';
 import { CalendarModal } from './components/CalendarModal';
+import { TodayRail } from './components/TodayRail';
 import { ConfirmationModal } from '../../../components/admin/common/ConfirmationModal';
 import './styles/calendar.css';
 
@@ -136,6 +137,26 @@ const CalendarPage: React.FC = () => {
       location: event.extendedProps.location || '',
       color: event.backgroundColor || DEFAULT_EVENT_COLOR,
       backgroundColor: event.backgroundColor || DEFAULT_EVENT_COLOR,
+    });
+    setModalMode('view');
+    setIsModalOpen(true);
+  }, []);
+
+  // 우측 레일에서 일정 클릭 → 상세 모달 열기 (CalendarEvent 직접 사용)
+  const openEventDetail = useCallback((ev: CalendarEvent) => {
+    setSelectedEvent(ev);
+    const startDate = dateUtils.isoToLocalDate(ev.start);
+    const endDate = ev.end ? dateUtils.subtractDay(dateUtils.isoToLocalDate(ev.end)) : startDate;
+    setFormData({
+      title: ev.title,
+      body: ev.body || '',
+      isAllday: ev.isAllday,
+      start: startDate,
+      end: endDate,
+      category: ev.category || 'meeting',
+      location: ev.location || '',
+      color: ev.backgroundColor || DEFAULT_EVENT_COLOR,
+      backgroundColor: ev.backgroundColor || DEFAULT_EVENT_COLOR,
     });
     setModalMode('view');
     setIsModalOpen(true);
@@ -276,10 +297,10 @@ const CalendarPage: React.FC = () => {
 
   /* ──── 렌더 ──── */
   return (
-    <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900">
+    <div className="h-full flex flex-col lg:flex-row bg-slate-50 dark:bg-slate-900">
       {/* 캘린더 카드 */}
       <div
-        className="flex-1 flex flex-col min-h-0 mx-4 my-4 sm:mx-6 sm:my-5
+        className="flex-1 flex flex-col min-h-0 mx-4 my-4 sm:mx-6 sm:my-5 lg:mr-3
                       bg-white dark:bg-slate-900
                       rounded-2xl border border-slate-200 dark:border-slate-800
                       shadow-sm overflow-hidden relative"
@@ -336,6 +357,9 @@ const CalendarPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* 우측 레일 — 오늘/다가오는 일정 (넓은 화면 전용) */}
+      <TodayRail events={events} todayStr={todayStr} onSelect={openEventDetail} />
 
       {/* 이벤트 모달 */}
       <CalendarModal
