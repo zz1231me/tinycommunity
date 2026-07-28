@@ -36,6 +36,20 @@ const TOOLTIP_STYLE = {
   padding: '8px 12px',
 } as const;
 
+// 차트 3종(로그인·가입·게시글)이 공유하는 축/그리드/여백 — 반복 제거
+const AXIS_TICK = { fill: AXIS, fontSize: 11 };
+const CHART_MARGIN = { top: 8, right: 8, left: -18, bottom: 0 };
+const GRID_PROPS = { strokeDasharray: '3 3', stroke: GRID, vertical: false };
+const X_AXIS_PROPS = { dataKey: 'label', tick: AXIS_TICK, tickLine: false, axisLine: false };
+const Y_AXIS_PROPS = {
+  allowDecimals: false,
+  tick: AXIS_TICK,
+  tickLine: false,
+  axisLine: false,
+  width: 32,
+};
+const BAR_CURSOR = { fill: 'rgba(148,163,184,0.12)' };
+
 const monthLabel = (key: string) => `${Number(key.slice(5, 7))}월`;
 const dayLabel = (key: string) => key.slice(5).replace('-', '/');
 
@@ -129,16 +143,16 @@ const DashboardManagement = () => {
           {/* 로그인 활동 (14일) */}
           <ChartCard title="로그인 활동 (최근 14일)">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={loginData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+              <AreaChart data={loginData} margin={CHART_MARGIN}>
                 <defs>
                   <linearGradient id="loginFill" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={TEAL} stopOpacity={0.35} />
                     <stop offset="100%" stopColor={TEAL} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
-                <XAxis dataKey="label" tick={{ fill: AXIS, fontSize: 11 }} tickLine={false} axisLine={false} />
-                <YAxis allowDecimals={false} tick={{ fill: AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
+                <CartesianGrid {...GRID_PROPS} />
+                <XAxis {...X_AXIS_PROPS} />
+                <YAxis {...Y_AXIS_PROPS} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ stroke: TEAL, strokeOpacity: 0.3 }} />
                 <Area type="monotone" dataKey="count" name="로그인" stroke={TEAL} strokeWidth={2} fill="url(#loginFill)" />
               </AreaChart>
@@ -175,11 +189,11 @@ const DashboardManagement = () => {
           {/* 월별 가입 */}
           <ChartCard title="월별 가입">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={signupData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
-                <XAxis dataKey="label" tick={{ fill: AXIS, fontSize: 11 }} tickLine={false} axisLine={false} />
-                <YAxis allowDecimals={false} tick={{ fill: AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(148,163,184,0.12)' }} />
+              <BarChart data={signupData} margin={CHART_MARGIN}>
+                <CartesianGrid {...GRID_PROPS} />
+                <XAxis {...X_AXIS_PROPS} />
+                <YAxis {...Y_AXIS_PROPS} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={BAR_CURSOR} />
                 <Bar dataKey="count" name="가입" fill={TEAL} radius={[6, 6, 0, 0]} maxBarSize={48} />
               </BarChart>
             </ResponsiveContainer>
@@ -188,11 +202,11 @@ const DashboardManagement = () => {
           {/* 월별 게시글 */}
           <ChartCard title="월별 게시글">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={postData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
-                <XAxis dataKey="label" tick={{ fill: AXIS, fontSize: 11 }} tickLine={false} axisLine={false} />
-                <YAxis allowDecimals={false} tick={{ fill: AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(148,163,184,0.12)' }} />
+              <BarChart data={postData} margin={CHART_MARGIN}>
+                <CartesianGrid {...GRID_PROPS} />
+                <XAxis {...X_AXIS_PROPS} />
+                <YAxis {...Y_AXIS_PROPS} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={BAR_CURSOR} />
                 <Bar dataKey="count" name="게시글" fill={AMBER} radius={[6, 6, 0, 0]} maxBarSize={48} />
               </BarChart>
             </ResponsiveContainer>
