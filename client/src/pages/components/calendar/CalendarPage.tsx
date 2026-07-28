@@ -318,7 +318,7 @@ const CalendarPage: React.FC = () => {
               weekends={true}
               fixedWeekCount={false}
               showNonCurrentDates={false}
-              dayMaxEvents={3}
+              dayMaxEvents={4}
               noEventsContent={renderNoEvents}
               dayCellClassNames={dayCellClassNames}
             />

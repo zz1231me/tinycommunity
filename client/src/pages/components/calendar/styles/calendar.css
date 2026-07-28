@@ -304,15 +304,22 @@
 /* ===== 이벤트 ===== */
 .calendar-wrapper .fc-event {
   border: none !important;
-  border-radius: 7px;
+  border-radius: 6px;
   font-weight: 500;
-  font-size: 12.5px;
-  padding: 3px 8px;
-  margin: 2px 3px;
+  font-size: 12px;
+  line-height: 1.35;
+  /* 세로 여백 축소 — 이벤트를 컴팩트하게 쌓아 4개도 빽빽해 보이지 않게 */
+  padding: 1.5px 7px;
+  margin: 1px 3px;
   cursor: pointer;
   /* 플랫 칩 — 검정 drop shadow 제거(부트스트랩/머티리얼 느낌 탈피). hover는 미묘한 명도만 */
   box-shadow: none;
   transition: filter 0.15s ease;
+}
+
+/* 이벤트 사이 간격도 최소화 (FullCalendar 기본 harness 여백 축소) */
+.calendar-wrapper .fc-daygrid-day-events .fc-daygrid-event-harness {
+  margin-top: 1px;
 }
 
 .calendar-wrapper .fc-event:hover {
