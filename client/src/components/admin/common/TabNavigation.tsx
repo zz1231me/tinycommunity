@@ -2,6 +2,7 @@
 import React, { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
+  LayoutDashboard,
   Users,
   ShieldCheck,
   KeyRound,
@@ -40,6 +41,10 @@ export const TabNavigation = React.memo(() => {
 
   const groups = useMemo<TabGroup[]>(
     () => [
+      {
+        label: '개요',
+        tabs: [{ id: 'dashboard', label: '통계', icon: LayoutDashboard }],
+      },
       {
         label: '사용자 · 권한',
         tabs: [

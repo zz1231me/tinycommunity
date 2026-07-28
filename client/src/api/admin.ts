@@ -1,7 +1,11 @@
 // client/src/api/admin.ts — 관리자 전용 API
 import api from './axios';
 import { unwrap } from './utils';
-import { User, PasswordResetRequestItem } from '../types/admin.types';
+import { User, PasswordResetRequestItem, AdminStats } from '../types/admin.types';
+
+// ─── 대시보드 통계 ───────────────────────────────────────────────────────────
+export const fetchAdminStats = (signal?: AbortSignal): Promise<AdminStats> =>
+  api.get('/admin/stats', { signal }).then(unwrap);
 
 // ─── 사용자 승인/거부/비활성화/복구 ───────────────────────────────────────
 

@@ -45,6 +45,7 @@ import { getErrorLogs, deleteErrorLogs } from '../controllers/errorLog.controlle
 import { getLoginHistory, getGlobalLoginHistory } from '../controllers/loginHistory.controller';
 import { getAuditLogs, getUserAuditLogs } from '../controllers/auditLog.controller';
 import { getUserSessions, forceLogoutSession } from '../controllers/userSession.controller';
+import { getAdminStats } from '../controllers/stats.controller';
 import rateLimitAdminRoutes from './rateLimitAdmin.routes';
 import tagRoutes from './tag.routes';
 import {
@@ -67,6 +68,7 @@ router.use(
 
 // ===== 사용자 관리 API =====
 // ⚠️ 정적 라우트를 :id 파라미터 라우트보다 먼저 정의해야 함 (라우팅 우선순위)
+router.get('/stats', getAdminStats as RequestHandler);
 router.get('/users', getAllUsers as RequestHandler);
 router.get('/users/deleted', getDeletedUsers as RequestHandler);
 router.post('/users', createUser as RequestHandler);

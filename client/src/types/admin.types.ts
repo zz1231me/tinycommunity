@@ -190,8 +190,29 @@ export type TabType =
   | 'error-logs'
   | 'tags'
   | 'login-history'
+  | 'dashboard'
   | 'audit-logs'
   | 'reports'
   | 'files'
   | 'ip-management'
   | 'board-managers';
+
+// 관리자 대시보드 통계 (GET /admin/stats)
+export interface AdminStatsBucket {
+  key: string;
+  count: number;
+}
+export interface AdminStats {
+  summary: {
+    totalUsers: number;
+    activeUsers: number;
+    pendingUsers: number;
+    totalPosts: number;
+    totalComments: number;
+    totalBoards: number;
+  };
+  signupsByMonth: AdminStatsBucket[];
+  postsByMonth: AdminStatsBucket[];
+  loginsByDay: AdminStatsBucket[];
+  usersByRole: { role: string; count: number }[];
+}

@@ -7,6 +7,7 @@ import { TabNavigation } from '../../components/admin/common/TabNavigation';
 import { LoadingSpinner } from '../../components/admin/common/LoadingSpinner';
 
 // Lazy load tab components
+const DashboardManagement = lazy(() => import('../../components/admin/tabs/DashboardManagement'));
 const UserManagement = lazy(() => import('../../components/admin/tabs/UserManagement'));
 const BoardManagement = lazy(() => import('../../components/admin/tabs/BoardManagement'));
 const RoleManagement = lazy(() => import('../../components/admin/tabs/RoleManagement'));
@@ -98,7 +99,8 @@ const AdminUserPage = () => {
                 }
               >
                 <Routes>
-                  <Route index element={<Navigate to="users" replace />} />
+                  <Route index element={<Navigate to="dashboard" replace />} />
+                  <Route path="dashboard" element={<DashboardManagement />} />
                   <Route path="users" element={<UserManagement />} />
                   <Route path="boards" element={<BoardManagement />} />
                   <Route path="roles" element={<RoleManagement />} />
