@@ -1,7 +1,8 @@
 // client/src/components/Dashboard/UserDropdown.tsx
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, User, Settings, LogOut } from 'lucide-react';
+import { ChevronDown, User, Settings, LogOut, FileUp } from 'lucide-react';
+import { TempShareModal } from './TempShareModal';
 import { AnimatePresence, motion } from 'framer-motion';
 import { scaleIn } from '../../utils/animations';
 import { Avatar } from '../Avatar';
@@ -14,6 +15,7 @@ import { useUIOverlays } from '../../store/uiOverlays';
 export function UserDropdown() {
   const { getUserName, getUserRole, getUser, clearUser, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [shareOpen, setShareOpen] = useState(false);
 
   // 통합 overlay store — NotificationBell/GlobalSearch와 자동 배타.
   // setIsOpen은 안정 ref 유지 (getState로 호출 시점 최신값 사용)
@@ -140,6 +142,21 @@ export function UserDropdown() {
                 <span>프로필 설정</span>
               </button>
 
+              <button
+                onClick={() => {
+                  setShareOpen(true);
+                  setIsOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg
+                         text-sm text-slate-600 dark:text-slate-400
+                         hover:bg-slate-50 dark:hover:bg-slate-800
+                         hover:text-slate-900 dark:hover:text-slate-200
+                         transition-colors duration-150"
+              >
+                <FileUp className="w-4 h-4 flex-shrink-0 text-slate-400" />
+                <span>임시 파일 공유</span>
+              </button>
+
               {isAdmin() && (
                 <button
                   onClick={() => {
@@ -183,6 +200,8 @@ export function UserDropdown() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <TempShareModal open={shareOpen} onClose={() => setShareOpen(false)} />
     </div>
   );
 }

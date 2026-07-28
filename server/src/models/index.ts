@@ -33,6 +33,7 @@ import { BoardManager } from './BoardManager';
 import { PasswordResetRequest } from './PasswordResetRequest';
 import { CustomPage } from './CustomPage';
 import { Announcement } from './Announcement';
+import { TempShare } from './TempShare';
 
 // ========================================
 // User 관련 관계
@@ -449,6 +450,7 @@ export {
   PasswordResetRequest,
   CustomPage,
   Announcement,
+  TempShare,
 };
 
 // ========================================

@@ -56,6 +56,8 @@ import reportRoutes from './routes/report.routes';
 import boardManagerRoutes from './routes/boardManager.routes';
 import customPageRoutes from './routes/customPage.routes';
 import announcementRoutes from './routes/announcement.routes';
+import tempShareRoutes from './routes/tempShare.routes';
+import { cleanupExpiredTempShares } from './controllers/tempShare.controller';
 
 // ✅ 데이터베이스 설정
 import {
@@ -634,6 +636,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/board-managers', boardManagerRoutes);
 app.use('/api/custom-pages', customPageRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/temp-share', tempShareRoutes);
 
 const imageStaticOptions = {
   maxAge: env.NODE_ENV === 'production' ? '1y' : 0,
@@ -906,6 +909,10 @@ const startServer = async () => {
       },
       24 * 60 * 60 * 1000
     );
+
+    // ✅ 임시 공유 파일 정리 (시작 시 1회 + 2분 주기) — 만료(기본 15분) 링크의 디스크 파일·레코드 삭제
+    void cleanupExpiredTempShares();
+    setInterval(() => void cleanupExpiredTempShares(), 2 * 60 * 1000);
 
     app.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 API 서버 시작: http://0.0.0.0:${PORT}`);
