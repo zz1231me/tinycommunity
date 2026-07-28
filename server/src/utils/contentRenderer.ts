@@ -1,4 +1,4 @@
-// server/src/utils/tiptapRenderer.ts
+// server/src/utils/contentRenderer.ts
 // ✅ Tiptap JSON을 HTML로 변환하는 유틸리티 (서버사이드) - 개선 버전
 import sanitizeHtml from 'sanitize-html';
 import { logInfo } from './logger';
@@ -286,7 +286,7 @@ export interface TiptapDocument {
 
 // ✅ 콘텐츠를 HTML로 변환 — Tiptap JSON 및 CKEditor HTML 모두 지원.
 //   모든 반환 HTML은 sanitize-html을 통과해 서버 측에서 XSS를 1차 차단한다.
-export function renderTiptapToHTML(json: string | TiptapDocument): string {
+export function renderContentToHTML(json: string | TiptapDocument): string {
   try {
     // If it's already an HTML string (CKEditor), sanitize and return
     if (typeof json === 'string') {
@@ -458,7 +458,7 @@ function escapeHtml(text: string | null | undefined): string {
 }
 
 // ✅ 텍스트 요약 생성 (검색 결과용) — Tiptap JSON 및 CKEditor HTML 모두 지원
-export function extractTextFromTiptap(
+export function extractTextFromContent(
   json: string | TiptapDocument,
   maxLength: number = 200
 ): string {
@@ -502,7 +502,7 @@ export function extractTextFromTiptap(
 // Post.contentText 컬럼을 이 값으로 채워, 검색이 태그가 낀 원본 HTML이 아니라
 // 평문에 매칭되도록 한다(예: "<strong>볼드</strong> <i>이탤릭</i>" → "볼드 이탤릭").
 export function extractSearchText(content: string): string {
-  return extractTextFromTiptap(content, Number.MAX_SAFE_INTEGER);
+  return extractTextFromContent(content, Number.MAX_SAFE_INTEGER);
 }
 
 // ✅ 노드에서 텍스트만 추출

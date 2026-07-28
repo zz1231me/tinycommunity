@@ -27,7 +27,7 @@ import { CommentLike } from '../models/CommentLike';
 import { Notification } from '../models/Notification';
 import { BaseService } from './base.service';
 import { AppError } from '../middlewares/error.middleware';
-import { extractTextFromTiptap } from '../utils/tiptapRenderer';
+import { extractTextFromContent } from '../utils/contentRenderer';
 import { sequelize } from '../config/sequelize';
 import { logError } from '../utils/logger';
 import bcrypt from 'bcryptjs';
@@ -281,7 +281,7 @@ export class PostService extends BaseService {
     const postResults = posts.map(post => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const plainPost = post.get({ plain: true }) as any;
-      const contentSummary = extractTextFromTiptap(plainPost.content, 200);
+      const contentSummary = extractTextFromContent(plainPost.content, 200);
       const boardName = plainPost.board?.isPersonal
         ? '📁 나의 개인공간'
         : plainPost.board?.name || plainPost.boardType;
@@ -320,7 +320,7 @@ export class PostService extends BaseService {
         id: String(plain.id),
         type: 'wiki' as const,
         title: plain.title,
-        content: extractTextFromTiptap(plain.content || '', 200),
+        content: extractTextFromContent(plain.content || '', 200),
         boardType: 'wiki',
         boardName: '📖 위키',
         slug: plain.slug,
@@ -366,7 +366,7 @@ export class PostService extends BaseService {
         id: String(plain.id),
         type: 'event' as const,
         title: plain.title,
-        content: extractTextFromTiptap(plain.body || '', 200),
+        content: extractTextFromContent(plain.body || '', 200),
         boardType: 'event',
         boardName: '📅 일정',
         start: plain.start,
@@ -397,7 +397,7 @@ export class PostService extends BaseService {
         id: String(plain.id),
         type: 'memo' as const,
         title: plain.title || '제목 없음',
-        content: extractTextFromTiptap(plain.content || '', 200),
+        content: extractTextFromContent(plain.content || '', 200),
         boardType: 'memo',
         boardName: '📝 메모',
         createdAt: plain.createdAt,

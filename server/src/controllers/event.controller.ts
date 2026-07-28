@@ -5,7 +5,7 @@ import Event from '../models/Event';
 import { User } from '../models/User';
 import EventPermission from '../models/EventPermission';
 import { AuthRequest } from '../types/auth-request';
-import { sanitizeHtmlContent } from '../utils/tiptapRenderer';
+import { sanitizeHtmlContent } from '../utils/contentRenderer';
 import { getSettings } from '../utils/settingsCache';
 import {
   sendSuccess,

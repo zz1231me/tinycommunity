@@ -12,7 +12,7 @@ import fs from 'fs/promises';
 import { logInfo, logError, logSuccess } from '../utils/logger';
 import { postService } from '../services/post.service';
 import { securityLogService } from '../services/securityLog.service';
-import { renderTiptapToHTML } from '../utils/tiptapRenderer';
+import { renderContentToHTML } from '../utils/contentRenderer';
 import { parsePagination } from '../utils/pagination';
 import { AppError } from '../middlewares/error.middleware';
 
@@ -152,7 +152,7 @@ export const getPostById = async (req: AuthRequest, res: Response): Promise<void
       htmlContent = result.post.content;
     } else {
       try {
-        htmlContent = renderTiptapToHTML(result.post.content);
+        htmlContent = renderContentToHTML(result.post.content);
       } catch (error) {
         logError('JSON → HTML 변환 실패', error, { postId: id });
         htmlContent = '<p>콘텐츠를 표시할 수 없습니다.</p>';
@@ -211,7 +211,7 @@ export const verifySecretPost = async (req: AuthRequest, res: Response): Promise
       htmlContent = result.post.content;
     } else {
       try {
-        htmlContent = renderTiptapToHTML(result.post.content);
+        htmlContent = renderContentToHTML(result.post.content);
       } catch (_error) {
         htmlContent = '<p>콘텐츠를 표시할 수 없습니다.</p>';
       }

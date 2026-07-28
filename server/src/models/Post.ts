@@ -11,7 +11,7 @@ import {
 import { sequelize } from '../config/sequelize';
 import { generateRandomId } from '../utils/generateId';
 import { logError } from '../utils/logger';
-import { extractSearchText } from '../utils/tiptapRenderer';
+import { extractSearchText } from '../utils/contentRenderer';
 
 // 타입 전용 import
 import type { UserInstance } from './User';

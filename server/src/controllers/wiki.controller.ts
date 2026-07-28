@@ -3,7 +3,7 @@ import { AuthRequest } from '../types/auth-request';
 import { sendSuccess, sendError, sendValidationError, sendUnauthorized } from '../utils/response';
 import { logError } from '../utils/logger';
 import { wikiService } from '../services/wiki.service';
-import { sanitizeHtmlContent } from '../utils/tiptapRenderer';
+import { sanitizeHtmlContent } from '../utils/contentRenderer';
 import { AppError } from '../middlewares/error.middleware';
 import { isAdminOrManager } from '../config/constants';
 import { SiteSettings } from '../models/SiteSettings';

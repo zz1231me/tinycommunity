@@ -8,7 +8,7 @@ import {
   NonAttribute,
 } from 'sequelize';
 import { sequelize } from '../config/sequelize';
-import { extractSearchText } from '../utils/tiptapRenderer';
+import { extractSearchText } from '../utils/contentRenderer';
 
 // 타입 전용 import
 import type { UserInstance } from './User';

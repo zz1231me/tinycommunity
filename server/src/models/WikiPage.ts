@@ -8,7 +8,7 @@ import {
   NonAttribute,
 } from 'sequelize';
 import { sequelize } from '../config/sequelize';
-import { extractSearchText } from '../utils/tiptapRenderer';
+import { extractSearchText } from '../utils/contentRenderer';
 
 class WikiPageModel extends Model<
   InferAttributes<WikiPageModel>,

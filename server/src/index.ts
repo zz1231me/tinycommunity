@@ -67,7 +67,7 @@ import {
 import { renderIndexHtml } from './utils/indexHtml';
 
 // ✅ 검색용 평문 추출(contentText 백필)
-import { extractSearchText } from './utils/tiptapRenderer';
+import { extractSearchText } from './utils/contentRenderer';
 
 // ✅ 모든 모델 import (관계 설정 포함)
 import './models';
