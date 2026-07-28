@@ -190,7 +190,7 @@
   color: #14b8a6;
 }
 .dark .calendar-wrapper .fc-daygrid-day-number:hover {
-  color: #818cf8;
+  color: #2dd4bf;
 }
 
 /* 주말 날짜 */
@@ -365,8 +365,8 @@
 }
 
 .dark .calendar-wrapper .fc-event-mirror {
-  border-color: #818cf8 !important;
-  background: rgba(129, 140, 248, 0.15) !important;
+  border-color: #2dd4bf !important;
+  background: rgba(45, 212, 191, 0.15) !important;
 }
 
 /* ===== 이벤트 제목 ===== */
@@ -395,8 +395,8 @@
 }
 
 .dark .calendar-wrapper .fc-highlight {
-  background: rgba(129, 140, 248, 0.16) !important;
-  border: 1px dashed rgba(129, 140, 248, 0.4) !important;
+  background: rgba(45, 212, 191, 0.16) !important;
+  border: 1px dashed rgba(45, 212, 191, 0.4) !important;
 }
 
 /* ===== now indicator ===== */
@@ -459,8 +459,8 @@
 }
 
 .dark .calendar-wrapper .fc-list-day.fc-day-today th {
-  background: #1e2040 !important;
-  border-left: 3px solid #818cf8 !important;
+  background: rgba(20, 184, 166, 0.1) !important;
+  border-left: 3px solid #2dd4bf !important;
 }
 
 .calendar-wrapper .fc-list-day.fc-day-today .fc-list-day-text,
@@ -470,7 +470,7 @@
 
 .dark .calendar-wrapper .fc-list-day.fc-day-today .fc-list-day-text,
 .dark .calendar-wrapper .fc-list-day.fc-day-today .fc-list-day-side-text {
-  color: #818cf8 !important;
+  color: #2dd4bf !important;
 }
 
 /* 목록 — 이벤트 행 */
@@ -586,13 +586,13 @@
 }
 
 .dark .calendar-wrapper .fc-daygrid-more-link {
-  color: #818cf8;
-  background: #1e2040;
+  color: #5eead4;
+  background: rgba(20, 184, 166, 0.12);
 }
 
 .dark .calendar-wrapper .fc-daygrid-more-link:hover {
-  background: #252850;
-  color: #a5b4fc;
+  background: rgba(20, 184, 166, 0.22);
+  color: #99f6e4;
 }
 
 /* ===== 둥근 모서리 ===== */
@@ -651,9 +651,8 @@
   }
 
   .calendar-wrapper .fc-col-header-cell {
-    font-size: 10px;
+    font-size: 11px;
     padding: 8px 4px;
-    letter-spacing: 0;
   }
 
   .calendar-wrapper .fc-daygrid-day-number {
