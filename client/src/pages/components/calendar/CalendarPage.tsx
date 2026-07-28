@@ -81,6 +81,15 @@ const CalendarPage: React.FC = () => {
   const handleNext = useCallback(() => calendarRef.current?.getApi().next(), []);
   const handleToday = useCallback(() => calendarRef.current?.getApi().today(), []);
 
+  // 이벤트 색을 CSS 변수(--ev)로 노출 → CSS color-mix로 소프트 틴트(라이트/다크 모드별) 렌더
+  const handleEventDidMount = useCallback(
+    (arg: { el: HTMLElement; event: { backgroundColor: string; borderColor: string } }) => {
+      const color = arg.event.backgroundColor || arg.event.borderColor;
+      if (color) arg.el.style.setProperty('--ev', color);
+    },
+    []
+  );
+
   const handleViewChange = useCallback((view: CalendarView) => {
     calendarRef.current?.getApi().changeView(view);
     setCurrentView(view);
@@ -310,6 +319,7 @@ const CalendarPage: React.FC = () => {
               longPressDelay={200}
               select={handleDateSelect}
               eventClick={handleEventClick}
+              eventDidMount={handleEventDidMount}
               eventDrop={handleEventDrop}
               eventResize={handleEventResize}
               eventAllow={eventAllow}

@@ -112,7 +112,7 @@
 /* ===== 테두리 ===== */
 .calendar-wrapper .fc-theme-standard td,
 .calendar-wrapper .fc-theme-standard th {
-  border-color: #e2e8f0;
+  border-color: #eaedf1; /* 살짝 더 옅게 — airy */
 }
 
 .dark .calendar-wrapper .fc-theme-standard td,
@@ -331,6 +331,19 @@
   filter: brightness(1.12);
 }
 
+/* 소프트 틴트 이벤트 — 진한 단색 블록 대신 '옅은 배경 + 진한 색 텍스트 + 좌측 컬러바'.
+   이벤트 색은 --ev(eventDidMount 주입)로 받아 color-mix로 라이트/다크 톤을 각각 생성. */
+.calendar-wrapper .fc-daygrid-event {
+  background: color-mix(in srgb, var(--ev, #14b8a6) 15%, #ffffff) !important;
+  color: color-mix(in srgb, var(--ev, #14b8a6) 82%, #0f172a) !important;
+  border: none !important;
+  border-left: 3px solid var(--ev, #14b8a6) !important;
+}
+.dark .calendar-wrapper .fc-daygrid-event {
+  background: color-mix(in srgb, var(--ev, #14b8a6) 26%, #0f172a) !important;
+  color: color-mix(in srgb, var(--ev, #14b8a6) 42%, #ffffff) !important;
+}
+
 /* 드래그 중 */
 .calendar-wrapper .fc-event-dragging {
   opacity: 0.85 !important;
@@ -364,6 +377,12 @@
 
 .calendar-wrapper .fc-daygrid-event-dot {
   display: none;
+}
+
+/* 이벤트 시간은 제목보다 흐리게 — 제목 가독성 강조 */
+.calendar-wrapper .fc-event-time {
+  font-weight: 400;
+  opacity: 0.68;
 }
 
 /* ===== 날짜 영역 상단 ===== */
@@ -580,14 +599,14 @@
   color: #99f6e4;
 }
 
-/* ===== 둥근 모서리 ===== */
+/* ===== 둥근 모서리 (4면 통일 — 카드 안에서 자연스럽게) ===== */
 .calendar-wrapper .fc {
-  border-radius: 0 0 12px 12px;
+  border-radius: 14px;
   overflow: hidden;
 }
 
 .calendar-wrapper .fc-scrollgrid {
-  border-radius: 0 0 12px 12px;
+  border-radius: 14px;
   overflow: hidden;
   background: transparent;
 }
