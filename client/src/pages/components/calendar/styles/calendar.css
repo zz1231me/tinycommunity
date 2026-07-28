@@ -343,6 +343,17 @@
 }
 .dark .calendar-wrapper .fc-daygrid-event {
   background: color-mix(in srgb, var(--ev, #14b8a6) 26%, #0f172a) !important;
+}
+/* ★FullCalendar는 글자색을 자식 .fc-event-main에 인라인으로 박는다 — 부모(.fc-daygrid-event)
+   색만 지정하면 자식이 덮어써 흰 글자가 된다. 실제 텍스트 요소에 직접 !important로 강제한다. */
+.calendar-wrapper .fc-daygrid-event .fc-event-main,
+.calendar-wrapper .fc-daygrid-event .fc-event-title,
+.calendar-wrapper .fc-daygrid-event .fc-event-time {
+  color: color-mix(in srgb, var(--ev, #14b8a6) 30%, #1e293b) !important;
+}
+.dark .calendar-wrapper .fc-daygrid-event .fc-event-main,
+.dark .calendar-wrapper .fc-daygrid-event .fc-event-title,
+.dark .calendar-wrapper .fc-daygrid-event .fc-event-time {
   color: color-mix(in srgb, var(--ev, #14b8a6) 42%, #ffffff) !important;
 }
 
