@@ -197,7 +197,8 @@ export type TabType =
   | 'files'
   | 'ip-management'
   | 'board-managers'
-  | 'custom-pages';
+  | 'custom-pages'
+  | 'announcements';
 
 // 관리자 대시보드 통계 (GET /admin/stats)
 export interface AdminStatsBucket {

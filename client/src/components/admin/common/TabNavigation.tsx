@@ -22,6 +22,7 @@ import {
   Settings,
   Gauge,
   Code,
+  Megaphone,
   type LucideIcon,
 } from 'lucide-react';
 import { TabType } from '../../../types/admin.types';
@@ -68,6 +69,7 @@ export const TabNavigation = React.memo(() => {
       {
         label: '활동',
         tabs: [
+          { id: 'announcements', label: '공지사항', icon: Megaphone },
           { id: 'events', label: '이벤트', icon: Calendar },
           { id: 'bookmarks', label: '북마크', icon: Bookmark },
           { id: 'reports', label: '신고', icon: Flag },

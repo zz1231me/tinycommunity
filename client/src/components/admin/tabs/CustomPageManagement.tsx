@@ -12,6 +12,7 @@ import {
 } from '../../../api/customPages';
 import { AdminSection } from '../common/AdminSection';
 import { LoadingSpinner } from '../common/LoadingSpinner';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 import { toast } from '../../../utils/toast';
 
 const EMPTY: CustomPageInput = { slug: '', title: '', html: '', isPublished: false, order: 0 };
@@ -22,6 +23,7 @@ export const CustomPageManagement = () => {
   const [editingId, setEditingId] = useState<string | null>(null); // null=목록, 'new'=신규
   const [form, setForm] = useState<CustomPageInput>(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<CustomPage | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -67,8 +69,10 @@ export const CustomPageManagement = () => {
     }
   };
 
-  const remove = async (p: CustomPage) => {
-    if (!confirm(`"${p.title}" 페이지를 삭제할까요?`)) return;
+  const doDelete = async () => {
+    if (!confirmDelete) return;
+    const p = confirmDelete;
+    setConfirmDelete(null);
     try {
       await deleteCustomPage(p.id);
       toast.success('삭제했습니다.');
@@ -183,6 +187,7 @@ export const CustomPageManagement = () => {
   if (loading && pages.length === 0) return <LoadingSpinner message="불러오는 중..." />;
 
   return (
+    <>
     <AdminSection
       title={`HTML 페이지 (${pages.length})`}
       description="관리자가 직접 HTML을 넣어 만드는 커스텀 페이지입니다."
@@ -236,7 +241,7 @@ export const CustomPageManagement = () => {
               </button>
               <button
                 type="button"
-                onClick={() => remove(p)}
+                onClick={() => setConfirmDelete(p)}
                 title="삭제"
                 className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
               >
@@ -247,6 +252,16 @@ export const CustomPageManagement = () => {
         </div>
       )}
     </AdminSection>
+
+    <ConfirmationModal
+      open={confirmDelete !== null}
+      title="페이지 삭제"
+      message={`"${confirmDelete?.title ?? ''}" 페이지를 삭제할까요?`}
+      variant="danger"
+      onConfirm={doDelete}
+      onCancel={() => setConfirmDelete(null)}
+    />
+    </>
   );
 };
 

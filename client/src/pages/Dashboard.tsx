@@ -9,6 +9,7 @@ import { DashboardSidebar } from '../components/Dashboard/DashboardSidebar';
 import { UserDropdown } from '../components/Dashboard/UserDropdown';
 import { GlobalSearch } from '../components/Dashboard/GlobalSearch';
 import { NotificationBell } from '../components/Dashboard/NotificationBell';
+import { AnnouncementBanner } from '../components/Dashboard/AnnouncementBanner';
 import { CommandPalette } from '../components/common/CommandPalette';
 import { useHotkeys } from 'react-hotkeys-hook';
 
@@ -144,18 +145,22 @@ function Dashboard() {
       <div className="flex flex-1 min-h-0">
         <DashboardSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-slate-900">
+        <main className="flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-slate-900">
+          {/* 상단 공지 배너(게시 중일 때만 노출, 없으면 null → 레이아웃 영향 없음) */}
+          <AnnouncementBanner />
           {/* 콘텐츠 영역 전용 Suspense — 대시보드 내 페이지 이동 시 사이드바/헤더는 유지되고
               이 영역에만 로더가 표시된다. (루트 Suspense가 잡으면 앱 전체가 깜빡이며 재구성됨) */}
-          <Suspense
-            fallback={
-              <div className="flex items-center justify-center py-24">
-                <LoadingSpinner size="md" message="불러오는 중..." />
-              </div>
-            }
-          >
-            <Outlet />
-          </Suspense>
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center py-24">
+                  <LoadingSpinner size="md" message="불러오는 중..." />
+                </div>
+              }
+            >
+              <Outlet />
+            </Suspense>
+          </div>
         </main>
       </div>
 

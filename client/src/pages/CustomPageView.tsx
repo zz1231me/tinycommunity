@@ -50,12 +50,31 @@ export default function CustomPageView() {
 
   return (
     <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-900">
+      {/* 제목바 */}
+      <div className="flex flex-shrink-0 items-center gap-2.5 border-b border-slate-200 bg-white/80 px-5 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
+        <svg
+          className="h-5 w-5 text-slate-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
+        </svg>
+        <h1 className="truncate text-base font-bold text-slate-900 dark:text-slate-100">
+          {page.title}
+        </h1>
+      </div>
       <iframe
         title={page.title}
         srcDoc={page.html}
         // ★allow-same-origin 제외 = 앱과 격리(쿠키/DOM 접근 불가). 스크립트·폼·팝업은 허용.
         sandbox="allow-scripts allow-popups allow-forms allow-modals allow-downloads"
-        className="h-full w-full flex-1 border-0 bg-white"
+        className="w-full flex-1 border-0 bg-white"
       />
     </div>
   );

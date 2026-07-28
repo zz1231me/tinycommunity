@@ -32,6 +32,7 @@ import IpRule from './IpRule';
 import { BoardManager } from './BoardManager';
 import { PasswordResetRequest } from './PasswordResetRequest';
 import { CustomPage } from './CustomPage';
+import { Announcement } from './Announcement';
 
 // ========================================
 // User 관련 관계
@@ -447,6 +448,7 @@ export {
   BoardManager,
   PasswordResetRequest,
   CustomPage,
+  Announcement,
 };
 
 // ========================================
