@@ -7,6 +7,8 @@ import { AppError } from '../middlewares/error.middleware';
 import { sequelize } from '../config/sequelize';
 import { encryptSecret, decryptSecret } from '../utils/secretCrypto';
 import { getBcryptRounds } from '../utils/settingsCache';
+import { notificationService } from './notification.service';
+import { logError } from '../utils/logger';
 
 const CODE_TTL_MS = 30 * 60 * 1000; // 인증번호 만료 30분
 const LOCK_MS = 60 * 60 * 1000; // 3회 오입력 시 잠금 1시간
@@ -56,11 +58,12 @@ class PasswordResetRequestService {
   async createRequest(loginId: string): Promise<void> {
     const user = await User.findOne({
       where: { id: loginId, isActive: true, isDeleted: false },
-      attributes: ['id'],
+      attributes: ['id', 'name'],
     });
     if (!user) return; // 조용히 무시(열거 방지)
 
     const now = new Date();
+    let created = false;
     await sequelize.transaction(async t => {
       const existing = await this.findActive(loginId, t);
       if (existing?.lockedUntil && existing.lockedUntil > now) return; // 잠금 중 — 재발급 금지
@@ -80,8 +83,36 @@ class PasswordResetRequestService {
           { userId: loginId, status: 'pending', code: encrypted, expiresAt, attempts: 0 },
           { transaction: t }
         );
+        created = true;
       }
     });
+
+    // 새 요청이 생성되면 관리자 전원에게 알림(fire-and-forget). ★알림에는 인증번호를 넣지 않는다
+    //    — 관리자가 링크로 목록에 들어가 복호화된 코드를 확인해 전달한다.
+    if (created) void this.notifyAdmins(loginId, user.name ?? null);
+  }
+
+  // 관리자(admin)에게 초기화 요청 알림 발송. 실패해도 요청 흐름은 막지 않는다.
+  private async notifyAdmins(loginId: string, userName: string | null): Promise<void> {
+    try {
+      const admins = await User.findAll({
+        where: { roleId: 'admin', isActive: true, isDeleted: false },
+        attributes: ['id'],
+      });
+      const who = userName ? `${userName}(${loginId})` : loginId;
+      await Promise.all(
+        admins.map(a =>
+          notificationService.create({
+            userId: a.id,
+            type: 'SYSTEM',
+            message: `${who}님이 비밀번호 초기화를 요청했습니다. 인증번호를 확인해 전달하세요.`,
+            link: '/admin/password-reset-requests',
+          })
+        )
+      );
+    } catch (err) {
+      logError('비밀번호 초기화 관리자 알림 발송 실패', err);
+    }
   }
 
   /**
