@@ -83,19 +83,17 @@
   min-height: 110px;
   position: relative;
   transition: background-color 0.12s ease;
-  background: #ffffff;
-}
-
-.dark .calendar-wrapper .fc-daygrid-day {
-  background: #0f172a;
+  /* ★셀에 불투명 배경을 깔지 않는다 — 옆칸으로 넘치는 멀티데이(여러 요일) 이벤트 바를
+     불투명 배경이 덮어버려 첫날만 보이는 버그가 생긴다. 흰 배경은 하위 .calendar-wrapper가 제공하고,
+     hover/other/today는 반투명 틴트만 사용해 이벤트가 비쳐 보이게 한다. */
 }
 
 .calendar-wrapper .fc-daygrid-day:hover {
-  background: #f8fafc;
+  background: rgba(148, 163, 184, 0.1);
 }
 
 .dark .calendar-wrapper .fc-daygrid-day:hover {
-  background: #1e293b;
+  background: rgba(148, 163, 184, 0.12);
 }
 
 @media (max-height: 900px) {
@@ -185,12 +183,12 @@
   color: #60a5fa !important;
 }
 
-/* 이번 달이 아닌 날짜 */
+/* 이번 달이 아닌 날짜 — 반투명 틴트(불투명이면 주말 걸친 멀티데이 바를 가림) */
 .calendar-wrapper .fc-day-other {
-  background: #f8fafc !important;
+  background: rgba(148, 163, 184, 0.06) !important;
 }
 .dark .calendar-wrapper .fc-day-other {
-  background: #0b1121 !important;
+  background: rgba(0, 0, 0, 0.18) !important;
 }
 
 /* 비동기로 일정 데이터가 도착해 렌더될 때 '툭' 튀는 느낌을 완화 — 각 이벤트를 부드럽게 페이드인.
@@ -238,7 +236,7 @@
 /* ===== 오늘 날짜 셀 ===== */
 /* 오늘 표시는 '배지(숫자 원형)' 하나로 충분 — 배경은 아주 옅은 teal 틴트만(중복인 상단 바 제거) */
 .calendar-wrapper .today-highlight {
-  background: #f0fdfa !important;
+  background: rgba(20, 184, 166, 0.08) !important; /* 반투명 — 오늘 걸친 멀티데이 바가 비쳐 보이게 */
   position: relative !important;
 }
 
