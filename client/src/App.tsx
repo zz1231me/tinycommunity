@@ -5,8 +5,9 @@
 // ✅ 라우팅 구조 개선
 // ============================================================================
 
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { lazyWithRetry as lazy } from './utils/lazyWithRetry';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import BoardProtectedRoute from './components/BoardProtectedRoute';

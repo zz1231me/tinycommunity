@@ -1,5 +1,6 @@
 // client/src/pages/AdminUserPage.tsx - 디자인 일관성 개선
-import { lazy, Suspense, useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
+import { lazyWithRetry as lazy } from '../../utils/lazyWithRetry';
 import { Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import { Home } from 'lucide-react';
 import { PageContainer } from '../../components/common/PageContainer';

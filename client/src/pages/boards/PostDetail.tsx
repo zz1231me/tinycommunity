@@ -15,7 +15,8 @@ import {
 } from 'lucide-react';
 import { Avatar } from '../../components/Avatar';
 import { useAccessibleBoards } from '../../hooks/useAccessibleBoards';
-const CommentSection = React.lazy(() => import('./CommentSection'));
+import { lazyWithRetry } from '../../utils/lazyWithRetry';
+const CommentSection = lazyWithRetry(() => import('./CommentSection'));
 import AttachmentList from '../../components/AttachmentList';
 import ImageViewer from '../../components/ImageViewer';
 import SecretPostModal from '../../components/boards/SecretPostModal';

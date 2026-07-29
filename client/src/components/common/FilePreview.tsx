@@ -1,4 +1,5 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, Suspense } from 'react';
+import { lazyWithRetry as lazy } from '../../utils/lazyWithRetry';
 
 // 무거운 미리보기 뷰어(react-pdf/pdf.js, mammoth)는 '미리보기' 클릭 시에만 로드한다.
 // 정적 import 시 게시글 조회 페이지 번들에 ~900KB가 항상 포함되므로 lazy로 코드 분할.

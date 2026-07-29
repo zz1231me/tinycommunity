@@ -1,5 +1,6 @@
 // client/src/pages/components/calendar/components/CalendarModal.tsx
-import React, { lazy, Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
+import { lazyWithRetry as lazy } from '../../../../utils/lazyWithRetry';
 import { ModalMode, CalendarEvent, EventFormData } from '../types';
 import { EventDetailView } from './EventDetailView';
 
