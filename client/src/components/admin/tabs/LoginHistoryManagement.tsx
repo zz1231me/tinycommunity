@@ -99,7 +99,7 @@ export const LoginHistoryManagement = () => {
         {/* 필터 */}
         <form
           onSubmit={handleSearch}
-          className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg flex flex-wrap gap-4 items-end"
+          className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700/60 flex flex-wrap gap-4 items-end"
         >
           <div>
             <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
@@ -110,7 +110,7 @@ export const LoginHistoryManagement = () => {
               value={filterUserId}
               onChange={e => setFilterUserId(e.target.value)}
               placeholder="User ID"
-              className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white text-sm"
+              className="input"
             />
           </div>
           <div>
@@ -120,7 +120,7 @@ export const LoginHistoryManagement = () => {
             <select
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
-              className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white text-sm"
+              className="input"
             >
               <option value="">전체</option>
               <option value="success">성공</option>
@@ -136,7 +136,7 @@ export const LoginHistoryManagement = () => {
               type="date"
               value={filterStartDate}
               onChange={e => setFilterStartDate(e.target.value)}
-              className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white text-sm"
+              className="input"
             />
           </div>
           <div>
@@ -147,7 +147,7 @@ export const LoginHistoryManagement = () => {
               type="date"
               value={filterEndDate}
               onChange={e => setFilterEndDate(e.target.value)}
-              className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white text-sm"
+              className="input"
             />
           </div>
           <button
@@ -159,7 +159,7 @@ export const LoginHistoryManagement = () => {
         </form>
 
         {/* 테이블 */}
-        <div className="bg-white dark:bg-slate-800 shadow rounded-lg overflow-hidden">
+        <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full table-fixed divide-y divide-slate-200 dark:divide-slate-700">
               {/* 칼럼 폭을 헤더와 모든 가상스크롤 행 table에 동일하게 고정해 정렬 일치 */}
@@ -172,19 +172,19 @@ export const LoginHistoryManagement = () => {
               </colgroup>
               <thead className="bg-slate-50 dark:bg-slate-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 w-[160px]">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 w-[160px]">
                     일시
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">
                     사용자
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">
                     IP / User Agent
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">
                     상태
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">
                     실패 사유
                   </th>
                 </tr>

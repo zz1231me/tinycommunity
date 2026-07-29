@@ -159,7 +159,7 @@ export const SecurityLogManagement = () => {
             <button
               onClick={() => void handleExport()}
               disabled={exporting}
-              className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {exporting ? '내보내는 중...' : 'Excel 내보내기'}
             </button>
@@ -169,21 +169,21 @@ export const SecurityLogManagement = () => {
               <button
                 onClick={() => handleDelete('30d')}
                 disabled={deleting}
-                className="px-2 py-1 text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 rounded transition-colors disabled:opacity-50"
+                className="rounded-md px-2 py-1 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors disabled:opacity-50"
               >
                 30일 이전
               </button>
               <button
                 onClick={() => handleDelete('90d')}
                 disabled={deleting}
-                className="px-2 py-1 text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 rounded transition-colors disabled:opacity-50"
+                className="rounded-md px-2 py-1 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors disabled:opacity-50"
               >
                 90일 이전
               </button>
               <button
                 onClick={() => handleDelete('all')}
                 disabled={deleting}
-                className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded transition-colors disabled:opacity-50"
+                className="rounded-md px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
               >
                 전체 삭제
               </button>
@@ -194,7 +194,7 @@ export const SecurityLogManagement = () => {
         {/* 필터 */}
         <form
           onSubmit={handleSearch}
-          className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg flex flex-wrap gap-4 items-end"
+          className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700/60 flex flex-wrap gap-4 items-end"
         >
           <div>
             <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
@@ -205,7 +205,7 @@ export const SecurityLogManagement = () => {
               value={filterUserId}
               onChange={e => setFilterUserId(e.target.value)}
               placeholder="User ID"
-              className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white text-sm"
+              className="input"
             />
           </div>
           <div>
@@ -217,7 +217,7 @@ export const SecurityLogManagement = () => {
               value={filterAction}
               onChange={e => setFilterAction(e.target.value)}
               placeholder="LOGIN_SUCCESS, etc."
-              className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white text-sm"
+              className="input"
             />
           </div>
           <div>
@@ -229,7 +229,7 @@ export const SecurityLogManagement = () => {
               value={filterIp}
               onChange={e => setFilterIp(e.target.value)}
               placeholder="127.0.0.1"
-              className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white text-sm"
+              className="input"
             />
           </div>
           <button
@@ -241,7 +241,7 @@ export const SecurityLogManagement = () => {
         </form>
 
         {/* 로그 테이블 */}
-        <div className="bg-white dark:bg-slate-800 shadow rounded-lg overflow-hidden">
+        <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
           {/* Table header (fixed, not virtualized) */}
           <div className="overflow-x-auto">
             <table className="w-full table-fixed divide-y divide-slate-200 dark:divide-slate-700">
@@ -256,22 +256,22 @@ export const SecurityLogManagement = () => {
               </colgroup>
               <thead className="bg-slate-50 dark:bg-slate-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Time
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Action
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">
                     User
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">
                     IP / Agent
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Details
                   </th>
                 </tr>
