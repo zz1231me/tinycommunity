@@ -184,7 +184,7 @@ export function BoardManagePanel({
   // 삭제는 스타일된 ConfirmationModal로 확인(네이티브 window.confirm 대체)
   const confirmDeleteTag = async () => {
     const id = deleteTargetId;
-    if (id == null) return;
+    if (id === null) return;
     setDeleteTargetId(null);
     setBusyTagId(id);
     try {
