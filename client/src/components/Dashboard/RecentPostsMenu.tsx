@@ -1,8 +1,8 @@
 // client/src/components/Dashboard/RecentPostsMenu.tsx
-// 헤더 — 접근 가능한 게시판들의 '최신 게시물' 드롭다운.
+// 헤더 — 접근 가능한 게시판들의 '최신 소식'. 확인 안 한 글을 순서대로(최신순) 강조해 보여준다.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Newspaper, Lock } from 'lucide-react';
+import { Newspaper, Lock, Circle } from 'lucide-react';
 import { fetchRecentPosts, type RecentPost } from '../../api/posts';
 
 // 간단 상대시간
@@ -18,30 +18,17 @@ function ago(iso: string): string {
   return new Date(iso).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
 }
 
-const SEEN_KEY = 'recentPostsLastSeen'; // 마지막으로 확인한 최신글 시각(ISO)
-
 export function RecentPostsMenu() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [posts, setPosts] = useState<RecentPost[]>([]);
   const [loading, setLoading] = useState(false);
-  const [hasNew, setHasNew] = useState(false); // 안 읽은 새 글 존재 여부(빨간 점)
   const ref = useRef<HTMLDivElement>(null);
-
-  // 가장 최신 글이 '마지막 확인 시각'보다 새로우면 안 읽은 새 글이 있는 것
-  const computeHasNew = (list: RecentPost[]) => {
-    if (list.length === 0) return false;
-    const seen = localStorage.getItem(SEEN_KEY);
-    return !seen || new Date(list[0].createdAt).getTime() > new Date(seen).getTime();
-  };
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const list = await fetchRecentPosts();
-      setPosts(list);
-      // 읽으면 localStorage에 최신글 시각이 저장돼 computeHasNew가 자동으로 false가 된다.
-      setHasNew(computeHasNew(list));
+      setPosts(await fetchRecentPosts());
     } catch {
       /* 헤더 보조 기능 — 조용히 무시 */
     } finally {
@@ -49,25 +36,17 @@ export function RecentPostsMenu() {
     }
   }, []);
 
-  // 마운트 + 2분 주기로 새 글 확인(빨간 점 갱신)
+  // 마운트 + 2분 주기 + 창 포커스 시 갱신 (다른 곳에서 글을 읽고 오면 카운트 반영)
   useEffect(() => {
     void load();
     const t = setInterval(() => void load(), 120_000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const toggle = async () => {
-    const next = !open;
-    setOpen(next);
-    if (next) {
-      // 열면 '읽음' 처리 → 최신글 시각 저장, 빨간 점 제거
-      const list = await fetchRecentPosts().catch(() => posts);
-      setPosts(list);
-      if (list.length > 0) localStorage.setItem(SEEN_KEY, list[0].createdAt);
-      setHasNew(false);
-    }
-  };
+    const onFocus = () => void load();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [load]);
 
   // 바깥 클릭 / Esc 닫기
   useEffect(() => {
@@ -86,23 +65,36 @@ export function RecentPostsMenu() {
 
   const go = (p: RecentPost) => {
     setOpen(false);
+    // 낙관적 읽음 처리 — 클릭 즉시 배지에서 빠지도록
+    setPosts(prev => prev.map(x => (x.id === p.id ? { ...x, isRead: true } : x)));
     navigate(`/dashboard/posts/${p.boardType}/${p.id}`);
   };
+
+  const unread = posts.filter(p => !p.isRead);
+  const unreadCount = unread.length;
+  // 안 읽은 글을 위로(최신순), 그 아래 읽은 글 — "순서대로 차근차근"
+  const ordered = [...unread, ...posts.filter(p => p.isRead)];
 
   return (
     <div className="relative" ref={ref}>
       <button
-        onClick={toggle}
-        aria-label={hasNew ? '최신 게시물 (새 글 있음)' : '최신 게시물'}
-        title={hasNew ? '새 게시물이 있습니다' : '최신 게시물'}
+        onClick={() => {
+          const next = !open;
+          setOpen(next);
+          if (next) void load();
+        }}
+        aria-label={unreadCount > 0 ? `최신 소식 (안 읽음 ${unreadCount})` : '최신 소식'}
+        title={unreadCount > 0 ? `안 읽은 새 글 ${unreadCount}개` : '최신 소식'}
         aria-expanded={open}
         className="relative p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
       >
         <Newspaper className="w-5 h-5" />
-        {hasNew && (
-          <span className="absolute right-1.5 top-1.5 flex h-2 w-2" aria-hidden="true">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+        {unreadCount > 0 && (
+          <span
+            className="absolute -right-0.5 -top-0.5 flex min-w-[1.05rem] h-[1.05rem] items-center justify-center rounded-full bg-red-500 px-1 text-[0.65rem] font-bold leading-none text-white ring-2 ring-white dark:ring-slate-900 animate-pulse"
+            aria-hidden="true"
+          >
+            {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
@@ -112,9 +104,16 @@ export function RecentPostsMenu() {
           className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-800 z-50 animate-scaleIn overflow-hidden"
           role="menu"
         >
-          <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-700">
-            <Newspaper className="h-4 w-4 text-secondary-600" />
-            <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">최신 게시물</span>
+          <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-700">
+            <span className="flex items-center gap-2">
+              <Newspaper className="h-4 w-4 text-secondary-600" />
+              <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">최신 소식</span>
+            </span>
+            {unreadCount > 0 && (
+              <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                안 읽음 {unreadCount}
+              </span>
+            )}
           </div>
 
           <div className="max-h-96 overflow-y-auto py-1">
@@ -123,23 +122,37 @@ export function RecentPostsMenu() {
             ) : posts.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-slate-400">최근 게시물이 없습니다.</div>
             ) : (
-              posts.map(p => (
+              ordered.map(p => (
                 <button
                   key={`${p.boardType}-${p.id}`}
                   onClick={() => go(p)}
                   role="menuitem"
-                  className="flex w-full flex-col gap-0.5 px-4 py-2.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                  className={`flex w-full items-start gap-2.5 px-4 py-2.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 ${
+                    p.isRead ? 'opacity-60' : ''
+                  }`}
                 >
-                  <span className="flex items-center gap-1.5 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
-                    {p.isSecret && <Lock className="h-3 w-3 flex-shrink-0 text-slate-400" />}
-                    <span className="truncate">{p.title}</span>
+                  {/* 안 읽음 표시 점 — 읽은 글은 자리만 차지해 정렬 유지 */}
+                  <span className="mt-1.5 flex-shrink-0" aria-hidden="true">
+                    {p.isRead ? (
+                      <Circle className="h-2 w-2 text-transparent" />
+                    ) : (
+                      <span className="block h-2 w-2 rounded-full bg-red-500" />
+                    )}
                   </span>
-                  <span className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
-                    <span className="truncate">{p.boardName}</span>
-                    <span>·</span>
-                    <span className="flex-shrink-0">{p.authorName}</span>
-                    <span>·</span>
-                    <span className="flex-shrink-0">{ago(p.createdAt)}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5 truncate text-sm text-slate-800 dark:text-slate-100">
+                      {p.isSecret && <Lock className="h-3 w-3 flex-shrink-0 text-slate-400" />}
+                      <span className={`truncate ${p.isRead ? 'font-normal' : 'font-semibold'}`}>
+                        {p.title}
+                      </span>
+                    </span>
+                    <span className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
+                      <span className="truncate">{p.boardName}</span>
+                      <span>·</span>
+                      <span className="flex-shrink-0">{p.authorName}</span>
+                      <span>·</span>
+                      <span className="flex-shrink-0">{ago(p.createdAt)}</span>
+                    </span>
                   </span>
                 </button>
               ))

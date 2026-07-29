@@ -65,7 +65,7 @@ const inputCls = 'input';
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
       {children}
       {required && <span className="text-red-500 ml-1">*</span>}
     </label>
@@ -102,7 +102,7 @@ export const EventForm: React.FC<EventFormProps> = ({
           e.preventDefault();
         }
       }}
-      className="space-y-4"
+      className="space-y-3"
     >
       {/* 일정 종류 */}
       <div>
@@ -125,8 +125,8 @@ export const EventForm: React.FC<EventFormProps> = ({
                   });
                 }}
                 className={`
-                  relative flex flex-col items-center justify-center gap-1.5
-                  px-2 py-3 rounded-xl border-2
+                  relative flex flex-col items-center justify-center gap-1
+                  px-2 py-2 rounded-xl border-2
                   transition-all duration-150
                   ${
                     isSelected

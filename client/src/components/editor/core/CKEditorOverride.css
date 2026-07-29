@@ -78,7 +78,7 @@
 
 /* 일정(이벤트) 에디터 */
 .event-ck-editor-wrapper .ck-editor__editable:not(.ck-editor__nested-editable) {
-  min-height: 150px !important;
+  min-height: 120px !important;
   max-height: 300px !important;
   overflow-y: auto;
 }

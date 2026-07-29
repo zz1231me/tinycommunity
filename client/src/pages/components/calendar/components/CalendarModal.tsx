@@ -113,7 +113,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
       >
         {/* 모달 헤더 */}
         <div
-          className="flex items-center justify-between px-6 py-4
+          className="flex items-center justify-between px-6 py-3
                         border-b border-slate-100 dark:border-slate-800 flex-shrink-0"
         >
           <div className="flex items-center gap-2.5">
@@ -148,7 +148,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
         </div>
 
         {/* 모달 내용 */}
-        <div className="p-6">
+        <div className="p-5">
           {mode === 'view' && selectedEvent && (
             <EventDetailView
               event={selectedEvent}

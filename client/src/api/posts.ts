@@ -9,6 +9,7 @@ export interface RecentPost {
   boardName: string;
   authorName: string;
   isSecret: boolean;
+  isRead: boolean; // 확인(열람) 여부 — 안 읽은 글 강조/카운트에 사용
   createdAt: string;
 }
 export const fetchRecentPosts = (): Promise<RecentPost[]> =>

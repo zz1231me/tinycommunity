@@ -1,6 +1,7 @@
 // client/src/pages/AdminUserPage.tsx - 디자인 일관성 개선
 import { lazy, Suspense, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
+import { Home } from 'lucide-react';
 import { PageContainer } from '../../components/common/PageContainer';
 import { scrollContentToTop } from '../../utils/scroll';
 import { TabNavigation } from '../../components/admin/common/TabNavigation';
@@ -84,7 +85,15 @@ const AdminUserPage = () => {
               />
             </svg>
           }
-        />
+        >
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          >
+            <Home className="h-4 w-4" />
+            홈으로
+          </Link>
+        </PageHeader>
 
         {/* 사이드바 네비게이션 + 콘텐츠 */}
         <div className="flex flex-col gap-6 lg:flex-row">

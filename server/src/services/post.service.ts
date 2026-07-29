@@ -468,7 +468,20 @@ export class PostService extends BaseService {
         { model: User, as: 'user', attributes: ['id', 'name'], required: false },
         { model: Board, as: 'board', attributes: ['name'], required: false },
       ],
-      attributes: ['id', 'title', 'boardType', 'createdAt', 'isSecret'],
+      attributes: [
+        'id',
+        'title',
+        'boardType',
+        'createdAt',
+        'isSecret',
+        // 확인(열람) 여부 — PostReads에 (post,user) 기록이 있으면 읽음
+        [
+          literal(
+            `EXISTS(SELECT 1 FROM PostReads AS pr WHERE pr.PostId = Post.id AND pr.UserId = ${sequelize.escape(userId)})`
+          ),
+          'isRead',
+        ],
+      ],
       order: [['createdAt', 'DESC']],
       limit: Math.min(Math.max(1, limit), 20),
     });
@@ -482,6 +495,7 @@ export class PostService extends BaseService {
         boardName: plain.board?.name ?? plain.boardType,
         authorName: plain.user?.name ?? '알 수 없음',
         isSecret: !!plain.isSecret,
+        isRead: Boolean(plain.isRead),
         createdAt: plain.createdAt,
       };
     });
