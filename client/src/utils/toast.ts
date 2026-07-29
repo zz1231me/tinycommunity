@@ -43,6 +43,18 @@ function ensureAnimStyle(): void {
       from { opacity: 1; transform: translateX(0); }
       to { opacity: 0; transform: translateX(100%); }
     }
+    @keyframes appToastFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes appToastFadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+    @keyframes appToastPopIn {
+      from { opacity: 0; transform: scale(0.94); }
+      to { opacity: 1; transform: scale(1); }
+    }
   `;
   document.head.appendChild(style);
 }
@@ -105,6 +117,102 @@ function showBrowserToast(message: string, type: ToastType, durationMs = 3000): 
   el.addEventListener('click', remove);
 }
 
+const CENTER_ERROR_ID = 'app-center-error';
+
+// 오류만 화면 정중앙에 딤 배경과 함께 크게 표시 — 사용자가 실패를 확실히 인지하도록.
+// (성공/정보/경고는 우측 상단 코너 토스트를 그대로 사용)
+function showCenterError(message: string, durationMs = 6000): void {
+  ensureAnimStyle();
+  // 한 번에 하나만 — 기존 중앙 오류 팝업이 있으면 교체
+  document.getElementById(CENTER_ERROR_ID)?.remove();
+
+  const dark = document.documentElement.classList.contains('dark');
+  const prevFocus = document.activeElement as HTMLElement | null;
+
+  const backdrop = document.createElement('div');
+  backdrop.id = CENTER_ERROR_ID;
+  backdrop.style.cssText = `
+    position: fixed; inset: 0; z-index: 10000;
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    animation: appToastFadeIn 0.15s ease-out;
+  `;
+
+  const card = document.createElement('div');
+  card.setAttribute('role', 'alertdialog');
+  card.setAttribute('aria-modal', 'true');
+  card.style.cssText = `
+    width: 100%; max-width: 340px;
+    background: ${dark ? '#1e293b' : '#ffffff'};
+    border: 1px solid ${dark ? '#334155' : '#e2e8f0'};
+    border-radius: 1rem;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.25);
+    padding: 1.5rem 1.5rem 1.25rem;
+    text-align: center;
+    font-family: system-ui, -apple-system, sans-serif;
+    animation: appToastPopIn 0.18s ease-out;
+  `;
+
+  const icon = document.createElement('div');
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = '!';
+  icon.style.cssText = `
+    width: 48px; height: 48px; margin: 0 auto 0.875rem;
+    border-radius: 9999px;
+    background: ${dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'};
+    color: #ef4444;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; font-weight: 700; line-height: 1;
+  `;
+
+  const msg = document.createElement('p');
+  msg.textContent = message;
+  msg.style.cssText = `
+    margin: 0 0 1.25rem;
+    font-size: 0.9375rem; line-height: 1.5;
+    color: ${dark ? '#f1f5f9' : '#1e293b'};
+    word-break: keep-all;
+  `;
+
+  const btn = document.createElement('button');
+  btn.textContent = '확인';
+  btn.style.cssText = `
+    width: 100%; padding: 0.625rem 1rem;
+    background: #ef4444; color: white;
+    border: none; border-radius: 0.5rem;
+    font-size: 0.875rem; font-weight: 600; cursor: pointer;
+  `;
+
+  card.appendChild(icon);
+  card.appendChild(msg);
+  card.appendChild(btn);
+  backdrop.appendChild(card);
+  document.body.appendChild(backdrop);
+  btn.focus();
+
+  let timer = 0;
+  const close = () => {
+    if (!backdrop.parentNode) return;
+    window.clearTimeout(timer);
+    document.removeEventListener('keydown', onKey);
+    backdrop.style.animation = 'appToastFadeOut 0.15s ease-out';
+    setTimeout(() => backdrop.remove(), 150);
+    prevFocus?.focus?.();
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') close();
+  };
+
+  btn.addEventListener('click', close);
+  backdrop.addEventListener('click', e => {
+    if (e.target === backdrop) close(); // 배경 클릭 시 닫기(카드 클릭은 유지)
+  });
+  document.addEventListener('keydown', onKey);
+  timer = window.setTimeout(close, durationMs); // 방치돼도 자동으로 닫히도록 안전장치
+}
+
 export const toast = {
   success: (message: string) => {
     if (import.meta.env.DEV) console.info('✅ Toast Success:', message);
@@ -112,7 +220,7 @@ export const toast = {
   },
   error: (message: string) => {
     if (import.meta.env.DEV) console.error('❌ Toast Error:', message);
-    showBrowserToast(message, 'error', 4000);
+    showCenterError(message);
   },
   info: (message: string) => {
     if (import.meta.env.DEV) console.info('ℹ️ Toast Info:', message);
