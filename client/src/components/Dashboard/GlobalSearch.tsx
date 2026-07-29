@@ -1,5 +1,6 @@
 // client/src/components/Dashboard/GlobalSearch.tsx
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../api/axios';
 import { formatDate } from '../../utils/date';
@@ -1026,15 +1027,18 @@ export function GlobalSearch() {
         `}</style>
       </div>
 
-      {/* 백드롭 */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/5 dark:bg-black/40 backdrop-blur-[2px] z-[60]"
-          style={{ animation: 'fadeIn 0.2s ease-out' }}
-          onClick={() => setIsOpen(false)}
-          aria-hidden="true"
-        />
-      )}
+      {/* 백드롭 — 헤더의 backdrop-blur가 position:fixed의 기준이 되어 헤더(56px)만 덮던 회색 띠 버그.
+          document.body로 포털해 전체 화면을 덮게 한다. */}
+      {isOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-black/5 dark:bg-black/40 backdrop-blur-[2px] z-[60]"
+            style={{ animation: 'fadeIn 0.2s ease-out' }}
+            onClick={() => setIsOpen(false)}
+            aria-hidden="true"
+          />,
+          document.body
+        )}
     </>
   );
 }

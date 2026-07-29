@@ -384,13 +384,13 @@ const PostDetail = () => {
           </div>
         </header>
 
+        {/* 첨부파일 — 본문 위(제목 바로 아래)에 노출해 먼저 눈에 띄게 */}
+        <AttachmentList attachments={post.attachments || []} />
+
         {/* ✅ 게시글 본문 - 보안이 강화된 HTML 렌더링 */}
         <section className="px-4 sm:px-6 py-6 sm:py-8">
           {post.content && <CKContentRenderer content={post.content} />}
         </section>
-
-        {/* 첨부파일 */}
-        <AttachmentList attachments={post.attachments || []} />
       </main>
 
       {/* ✅ 댓글 섹션 */}
