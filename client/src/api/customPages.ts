@@ -80,5 +80,8 @@ export const fetchBundleFiles = (
   api.get(`/custom-pages/${id}/bundle-files`).then(unwrap);
 
 // 번들 진입 URL(사용자 화면 iframe src). axios baseURL(/api)와 별개로 절대경로가 필요하다.
-export const bundleEntryUrl = (slug: string): string =>
-  `/api/custom-pages/${encodeURIComponent(slug)}/bundle/`;
+// ★진입 파일의 실제 경로로 로드해야 상대경로 자산이 올바르게 풀린다(하위폴더 진입 지원).
+export const bundleEntryUrl = (slug: string, entryFile = 'index.html'): string => {
+  const entry = entryFile.split('/').map(encodeURIComponent).join('/');
+  return `/api/custom-pages/${encodeURIComponent(slug)}/bundle/${entry}`;
+};

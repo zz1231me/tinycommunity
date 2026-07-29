@@ -56,7 +56,7 @@ export const WikiDiffViewer: React.FC<WikiDiffViewerProps> = ({
   }, [versionA.content, versionB.content, labelA, labelB]);
 
   return (
-    <div className="wiki-diff-viewer text-sm overflow-auto">
+    <div className="wiki-diff-viewer text-sm max-h-[70vh] overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
       {/* diff2html generates library-controlled HTML, not user input */}
       <div dangerouslySetInnerHTML={{ __html: diffHtml }} />
     </div>

@@ -74,7 +74,7 @@ export default function CustomPageView() {
       {page.isBundle && slug ? (
         <iframe
           title={page.title}
-          src={bundleEntryUrl(slug)}
+          src={bundleEntryUrl(slug, page.entryFile)}
           sandbox="allow-scripts allow-popups allow-forms allow-modals allow-downloads"
           className="w-full flex-1 border-0 bg-white"
         />
