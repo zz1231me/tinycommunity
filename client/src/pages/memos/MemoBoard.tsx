@@ -6,6 +6,7 @@ import { MemoEditor } from './MemoEditor';
 import { PageHeader } from '../../components/common/PageHeader';
 import { PageContainer } from '../../components/common/PageContainer';
 import { LoadingSpinner } from '../../components/admin/common/LoadingSpinner';
+import { ConfirmationModal } from '../../components/admin/common/ConfirmationModal';
 
 // editorState: null = 에디터 닫힘, Memo = 기존 메모 편집, 'new' = 새 메모 작성
 type EditorState = Memo | 'new' | null;
@@ -192,31 +193,16 @@ const MemoBoard = () => {
         />
       )}
 
-      {/* Delete confirm modal */}
-      {deleteTargetId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-sm w-full p-6">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">메모 삭제</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
-              이 메모를 삭제하시겠습니까?
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setDeleteTargetId(null)}
-                className="px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                삭제
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Delete confirm modal — 전 앱 공통 ConfirmationModal(ESC·백드롭클릭·focus-trap) */}
+      <ConfirmationModal
+        open={deleteTargetId !== null}
+        title="메모 삭제"
+        message="이 메모를 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTargetId(null)}
+      />
     </PageContainer>
   );
 };

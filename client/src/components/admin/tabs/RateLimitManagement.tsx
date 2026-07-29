@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from '../../../api/axios';
 import { useAuth } from '../../../store/auth';
 import { AdminSection } from '../common/AdminSection';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 import { toast } from '../../../utils/toast';
 
 interface RateLimitSetting {
@@ -158,31 +159,15 @@ export const RateLimitManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* 확인 모달 */}
-      {confirmAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center modal-scrim">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-2">
-              정말 실행하시겠습니까?
-            </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">{confirmAction.label}</p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setConfirmAction(null)}
-                className="px-4 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={executeConfirm}
-                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium transition-colors"
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 확인 모달 — 전 앱 공통 ConfirmationModal(ESC·백드롭클릭·focus-trap) */}
+      <ConfirmationModal
+        open={!!confirmAction}
+        title="정말 실행하시겠습니까?"
+        message={confirmAction?.label}
+        variant="danger"
+        onConfirm={executeConfirm}
+        onCancel={() => setConfirmAction(null)}
+      />
 
       {/* 통계 & 관리 */}
       <AdminSection

@@ -144,6 +144,22 @@ const WikiPageRoute = () => {
     }
   };
 
+  // ESC로 확인 모달 닫기(취소 방향) — 다른 모달과 일관
+  useEffect(() => {
+    const deleteOpen = showDeleteConfirm;
+    const navOpen = pendingNavSlug !== undefined;
+    const restoreOpen = restoreContent !== null;
+    if (!deleteOpen && !navOpen && !restoreOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (deleteOpen) setShowDeleteConfirm(false);
+      else if (restoreOpen) setRestoreContent(null);
+      else setPendingNavSlug(undefined);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [showDeleteConfirm, pendingNavSlug, restoreContent]);
+
   const handleDelete = () => {
     setDeleteError(null);
     setShowDeleteConfirm(true);
@@ -337,7 +353,7 @@ const WikiPageRoute = () => {
       {/* 편집 중 이탈 확인 모달 */}
       {pendingNavSlug !== undefined && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-sm w-full p-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg
@@ -384,7 +400,7 @@ const WikiPageRoute = () => {
       {/* 삭제 확인 모달 */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-sm w-full p-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg
@@ -448,7 +464,7 @@ const WikiPageRoute = () => {
       {/* 리비전 복원 확인 모달 */}
       {restoreContent !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-sm w-full p-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg
