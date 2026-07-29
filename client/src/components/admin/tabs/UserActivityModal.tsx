@@ -263,7 +263,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
                     <button
                       onClick={() => setLoginPage(p => Math.max(1, p - 1))}
                       disabled={loginPage === 1}
-                      className="px-3 py-1 rounded border border-slate-300 dark:border-slate-600 text-sm disabled:opacity-50 dark:text-slate-300"
+                      className="px-3 py-1 rounded border border-slate-200 dark:border-slate-600 text-sm disabled:opacity-50 dark:text-slate-300"
                     >
                       이전
                     </button>
@@ -273,7 +273,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
                     <button
                       onClick={() => setLoginPage(p => Math.min(loginTotalPages, p + 1))}
                       disabled={loginPage === loginTotalPages}
-                      className="px-3 py-1 rounded border border-slate-300 dark:border-slate-600 text-sm disabled:opacity-50 dark:text-slate-300"
+                      className="px-3 py-1 rounded border border-slate-200 dark:border-slate-600 text-sm disabled:opacity-50 dark:text-slate-300"
                     >
                       다음
                     </button>
@@ -375,7 +375,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
                     <button
                       onClick={() => setAuditPage(p => Math.max(1, p - 1))}
                       disabled={auditPage === 1}
-                      className="px-3 py-1 rounded border border-slate-300 dark:border-slate-600 text-sm disabled:opacity-50 dark:text-slate-300"
+                      className="px-3 py-1 rounded border border-slate-200 dark:border-slate-600 text-sm disabled:opacity-50 dark:text-slate-300"
                     >
                       이전
                     </button>
@@ -385,7 +385,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
                     <button
                       onClick={() => setAuditPage(p => Math.min(auditTotalPages, p + 1))}
                       disabled={auditPage === auditTotalPages}
-                      className="px-3 py-1 rounded border border-slate-300 dark:border-slate-600 text-sm disabled:opacity-50 dark:text-slate-300"
+                      className="px-3 py-1 rounded border border-slate-200 dark:border-slate-600 text-sm disabled:opacity-50 dark:text-slate-300"
                     >
                       다음
                     </button>

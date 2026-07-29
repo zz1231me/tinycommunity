@@ -545,7 +545,7 @@ export const WikiEditor: React.FC<WikiEditorProps> = ({
           <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
             내용
           </label>
-          <div className="wiki-ck-editor-wrapper border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden">
+          <div className="wiki-ck-editor-wrapper border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
             <CKEditor
               editor={ClassicEditor}
               config={editorConfig}

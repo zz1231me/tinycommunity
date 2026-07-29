@@ -186,7 +186,7 @@ export const TwoFactorSettings = () => {
             autoComplete="current-password"
             className="
               w-full px-4 py-3 text-sm
-              border border-slate-300 dark:border-slate-600 rounded-lg
+              border border-slate-200 dark:border-slate-600 rounded-lg
               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
               bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100
             "
@@ -235,7 +235,7 @@ export const TwoFactorSettings = () => {
             autoComplete="current-password"
             className="
               w-full px-4 py-3 text-sm mb-3
-              border border-slate-300 dark:border-slate-600 rounded-lg
+              border border-slate-200 dark:border-slate-600 rounded-lg
               focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50
               bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100
             "
@@ -249,7 +249,7 @@ export const TwoFactorSettings = () => {
             placeholder="인증 코드 6자리 입력"
             className="
               w-full px-4 py-3 text-center text-xl font-mono tracking-widest
-              border border-slate-300 dark:border-slate-600 rounded-lg
+              border border-slate-200 dark:border-slate-600 rounded-lg
               focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50
               bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100
             "
@@ -328,7 +328,7 @@ export const TwoFactorSettings = () => {
                 placeholder="000000"
                 className="
                   w-full px-4 py-3 text-center text-xl font-mono tracking-widest
-                  border border-slate-300 dark:border-slate-600 rounded-lg
+                  border border-slate-200 dark:border-slate-600 rounded-lg
                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
                   bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100
                 "

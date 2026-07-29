@@ -306,7 +306,7 @@ const UppyFileUpload: React.FC<UppyFileUploadProps> = ({
                 e.stopPropagation();
                 inputRef.current?.click();
               }}
-              className="px-3 py-1.5 text-sm font-medium rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+              className="px-3 py-1.5 text-sm font-medium rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
             >
               파일 선택
             </button>

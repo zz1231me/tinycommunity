@@ -229,7 +229,7 @@ const TagManagement = () => {
                           type="color"
                           value={form.color}
                           onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
-                          className="w-8 h-8 rounded cursor-pointer border border-slate-300 dark:border-slate-600"
+                          className="w-8 h-8 rounded cursor-pointer border border-slate-200 dark:border-slate-600"
                         />
                         <input
                           type="text"

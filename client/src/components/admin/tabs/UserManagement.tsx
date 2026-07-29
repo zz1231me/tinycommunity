@@ -340,7 +340,7 @@ export const UserManagement = () => {
           <select
             value={u.roleId}
             onChange={e => handleUpdateUserRole(u.id, e.target.value)}
-            className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="px-2 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
           >
             {roles.map(r => (
               <option key={r.id} value={r.id}>
@@ -409,7 +409,7 @@ export const UserManagement = () => {
           <div className="flex items-center justify-end gap-1.5">
             <button
               onClick={() => openResetPassword(u.id, u.name)}
-              className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+              className="px-2.5 py-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
             >
               비번 초기화
             </button>
@@ -421,13 +421,13 @@ export const UserManagement = () => {
                   `'${u.name}' 계정을 비활성화하면 로그인이 차단됩니다.`
                 )
               }
-              className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-600 dark:hover:bg-amber-900/20 transition-colors"
+              className="px-2.5 py-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-600 dark:hover:bg-amber-900/20 transition-colors"
             >
               비활성화
             </button>
             <button
               onClick={() => setActivityModal({ userId: u.id, userName: u.name })}
-              className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-secondary-50 hover:border-secondary-300 hover:text-secondary-600 dark:hover:bg-secondary-900/20 transition-colors"
+              className="px-2.5 py-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-secondary-50 hover:border-secondary-300 hover:text-secondary-600 dark:hover:bg-secondary-900/20 transition-colors"
             >
               활동 내역
             </button>
@@ -439,7 +439,7 @@ export const UserManagement = () => {
                   `'${u.name}' 계정을 삭제합니다. 이 작업은 되돌리기 어렵습니다.`
                 )
               }
-              className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-red-50 hover:border-red-300 hover:text-red-600 dark:hover:bg-red-900/20 transition-colors"
+              className="px-2.5 py-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-red-50 hover:border-red-300 hover:text-red-600 dark:hover:bg-red-900/20 transition-colors"
             >
               삭제
             </button>
@@ -662,7 +662,7 @@ export const UserManagement = () => {
                               `'${user.name}' 회원을 승인하면 즉시 로그인이 가능합니다.`
                             )
                           }
-                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 hover:bg-green-700 text-white transition-colors"
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-secondary-600 hover:bg-secondary-700 text-white transition-colors"
                         >
                           승인
                         </button>
@@ -674,7 +674,7 @@ export const UserManagement = () => {
                               `'${user.name}' 회원의 가입 신청을 거부합니다. 이 작업은 되돌릴 수 없습니다.`
                             )
                           }
-                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-red-50 hover:border-red-300 hover:text-red-600 dark:hover:bg-red-900/20 transition-colors"
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-red-50 hover:border-red-300 hover:text-red-600 dark:hover:bg-red-900/20 transition-colors"
                         >
                           거부
                         </button>
@@ -746,7 +746,7 @@ export const UserManagement = () => {
                               `'${user.name}' 계정을 삭제합니다. 이 작업은 되돌릴 수 없습니다.`
                             )
                           }
-                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-red-50 hover:border-red-300 hover:text-red-600 dark:hover:bg-red-900/20 transition-colors"
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-red-50 hover:border-red-300 hover:text-red-600 dark:hover:bg-red-900/20 transition-colors"
                         >
                           삭제
                         </button>
@@ -768,7 +768,7 @@ export const UserManagement = () => {
             <button
               onClick={handleExportUsers}
               disabled={exportingUsers}
-              className="px-3 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+              className="px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
               {exportingUsers ? '내보내는 중...' : 'Excel 내보내기'}
             </button>
@@ -861,14 +861,14 @@ export const UserManagement = () => {
               <button
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
-                className="px-2.5 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-2.5 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 이전
               </button>
               <button
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
-                className="px-2.5 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-2.5 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 다음
               </button>
@@ -936,7 +936,7 @@ export const UserManagement = () => {
                           onClick={() =>
                             requestConfirm('restore', user.id, `'${user.id}' 계정을 복구합니다.`)
                           }
-                          className="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-primary-50 hover:border-primary-300 hover:text-primary-600 dark:hover:bg-primary-900/20 transition-colors"
+                          className="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-primary-50 hover:border-primary-300 hover:text-primary-600 dark:hover:bg-primary-900/20 transition-colors"
                         >
                           복구
                         </button>

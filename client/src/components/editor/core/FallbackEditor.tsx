@@ -87,7 +87,7 @@ const FallbackEditor = forwardRef<FallbackEditorRef, FallbackEditorProps>((props
         <button
           type="button"
           onClick={() => insertMarkdown('**', '**')}
-          className="px-2 py-1 text-xs bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
+          className="px-2 py-1 text-xs bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
           title="굵게"
         >
           <strong>B</strong>
@@ -95,7 +95,7 @@ const FallbackEditor = forwardRef<FallbackEditorRef, FallbackEditorProps>((props
         <button
           type="button"
           onClick={() => insertMarkdown('*', '*')}
-          className="px-2 py-1 text-xs bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
+          className="px-2 py-1 text-xs bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
           title="기울임"
         >
           <em>I</em>
@@ -103,7 +103,7 @@ const FallbackEditor = forwardRef<FallbackEditorRef, FallbackEditorProps>((props
         <button
           type="button"
           onClick={() => insertMarkdown('# ')}
-          className="px-2 py-1 text-xs bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
+          className="px-2 py-1 text-xs bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
           title="제목 1"
         >
           H1
@@ -111,7 +111,7 @@ const FallbackEditor = forwardRef<FallbackEditorRef, FallbackEditorProps>((props
         <button
           type="button"
           onClick={() => insertMarkdown('## ')}
-          className="px-2 py-1 text-xs bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
+          className="px-2 py-1 text-xs bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
           title="제목 2"
         >
           H2
@@ -119,7 +119,7 @@ const FallbackEditor = forwardRef<FallbackEditorRef, FallbackEditorProps>((props
         <button
           type="button"
           onClick={() => insertMarkdown('- ')}
-          className="px-2 py-1 text-xs bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
+          className="px-2 py-1 text-xs bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
           title="목록"
         >
           •
@@ -127,7 +127,7 @@ const FallbackEditor = forwardRef<FallbackEditorRef, FallbackEditorProps>((props
         <button
           type="button"
           onClick={() => insertMarkdown('[', '](url)')}
-          className="px-2 py-1 text-xs bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
+          className="px-2 py-1 text-xs bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
           title="링크"
         >
           🔗
@@ -135,7 +135,7 @@ const FallbackEditor = forwardRef<FallbackEditorRef, FallbackEditorProps>((props
         <button
           type="button"
           onClick={() => insertMarkdown('`', '`')}
-          className="px-2 py-1 text-xs bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
+          className="px-2 py-1 text-xs bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
           title="코드"
         >
           &lt;/&gt;

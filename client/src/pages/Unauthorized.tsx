@@ -96,7 +96,7 @@ const Unauthorized = () => {
                   </div>
                   <button
                     onClick={() => setAutoRedirect(false)}
-                    className="ml-4 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition-colors"
+                    className="ml-4 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition-colors"
                   >
                     자동 이동 중지
                   </button>
