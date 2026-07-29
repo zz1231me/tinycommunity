@@ -62,6 +62,16 @@ export const FileManagement = React.memo(() => {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
 
+  // 삭제 확인 모달 — Esc로 닫기 (다른 모달과 동일한 UX)
+  useEffect(() => {
+    if (!confirmDelete) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setConfirmDelete(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [confirmDelete]);
+
   const fetchFiles = useCallback(async () => {
     setLoading(true);
     try {

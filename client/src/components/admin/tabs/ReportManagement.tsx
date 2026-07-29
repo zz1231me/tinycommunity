@@ -45,6 +45,16 @@ export const ReportManagement = React.memo(() => {
     'reviewed'
   );
 
+  // 신고 처리 모달 — Esc로 닫기 (다른 모달과 동일한 UX)
+  useEffect(() => {
+    if (!reviewTarget) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setReviewTarget(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [reviewTarget]);
+
   const fetchReports = useCallback(async () => {
     setLoading(true);
     try {
