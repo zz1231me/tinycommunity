@@ -552,12 +552,15 @@ const PostEditor = ({ mode }: Props) => {
             <button
               type="button"
               onClick={() => {
-                // 분할 보기를 켤 때만 현재 내용으로 미리보기 초기화.
-                // (비분할 모드는 미리보기가 화면에 없어 매 키 입력 sanitize를 하지 않으므로)
-                if (!splitView) {
-                  const html = editorRef.current?.getInstance()?.getContent?.() ?? '';
-                  setPreviewHtml(sanitizeHTML(html));
-                }
+                // ★분할/비분할은 서로 다른 위치의 에디터 인스턴스라 토글 시 에디터가 remount된다.
+                // CKEditor는 uncontrolled(내용이 인스턴스에만 존재)이므로, 현재 내용을 캡처해
+                // 새로 마운트되는 에디터의 initialContent로 넘기지 않으면 입력 내용이 소실된다.
+                // (기존 편집/임시저장 로드와 동일하게 setInitialContent + editorKey 증가로 재seed)
+                const html = editorRef.current?.getInstance()?.getContent?.() ?? initialContent;
+                setInitialContent(html);
+                setEditorKey(prev => prev + 1);
+                // 분할 보기를 켤 때만 미리보기 초기화(비분할은 미리보기가 화면에 없어 sanitize 불필요)
+                if (!splitView) setPreviewHtml(sanitizeHTML(html));
                 setSplitView(v => !v);
               }}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
