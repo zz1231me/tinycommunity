@@ -408,6 +408,82 @@ export class PostService extends BaseService {
     return { results, count: results.length, query: searchTerm };
   }
 
+  // 사용자가 읽을 수 있는 게시판 id 목록 (역할 canRead + 담당자 + 개인폴더). globalSearch와 동일 기준.
+  private async getAccessibleBoardTypes(userId: string, userRole: string): Promise<string[]> {
+    const [generalBoards, managedBoards, personalBoard] = await Promise.all([
+      BoardAccess.findAll({
+        where: { roleId: userRole, canRead: true },
+        include: [
+          {
+            model: Board,
+            as: 'board',
+            where: { isActive: true, isPersonal: false },
+            required: true,
+            attributes: ['id'],
+          },
+        ],
+        attributes: ['boardId'],
+      }),
+      BoardManager.findAll({
+        where: { userId },
+        include: [
+          {
+            model: Board,
+            as: 'board',
+            where: { isActive: true, isPersonal: false },
+            required: true,
+            attributes: ['id'],
+          },
+        ],
+        attributes: ['boardId'],
+      }),
+      Board.findOne({
+        where: { isPersonal: true, ownerId: userId, isActive: true },
+        attributes: ['id'],
+      }),
+    ]);
+    return [
+      ...new Set([
+        ...generalBoards.map(a => a.boardId),
+        ...managedBoards.map(m => m.boardId),
+        ...(personalBoard ? [personalBoard.id] : []),
+      ]),
+    ];
+  }
+
+  // ✅ 접근 가능한 게시판들의 최신 게시글 (헤더 드롭다운용). 비밀글은 작성자 본인만.
+  async getRecentPosts(userId: string, userRole: string, limit = 8) {
+    const boardTypes = await this.getAccessibleBoardTypes(userId, userRole);
+    if (boardTypes.length === 0) return [];
+    const posts = await Post.findAll({
+      where: {
+        boardType: { [Op.in]: boardTypes },
+        status: 'published',
+        [Op.or]: [{ isSecret: false }, { isSecret: true, UserId: userId }],
+      },
+      include: [
+        { model: User, as: 'user', attributes: ['id', 'name'], required: false },
+        { model: Board, as: 'board', attributes: ['name'], required: false },
+      ],
+      attributes: ['id', 'title', 'boardType', 'createdAt', 'isSecret'],
+      order: [['createdAt', 'DESC']],
+      limit: Math.min(Math.max(1, limit), 20),
+    });
+    return posts.map(p => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const plain = p.get({ plain: true }) as any;
+      return {
+        id: plain.id,
+        title: plain.title,
+        boardType: plain.boardType,
+        boardName: plain.board?.name ?? plain.boardType,
+        authorName: plain.user?.name ?? '알 수 없음',
+        isSecret: !!plain.isSecret,
+        createdAt: plain.createdAt,
+      };
+    });
+  }
+
   // ✅ 게시글 목록 조회
   async getPosts(
     boardType: string,

@@ -86,6 +86,18 @@ export const globalSearch = async (req: AuthRequest, res: Response): Promise<voi
   }
 };
 
+// ✅ 접근 가능한 게시판들의 최신 게시글 (헤더 드롭다운용)
+export const getRecentPosts = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id: userId, role: userRole } = req.user;
+  try {
+    const posts = await postService.getRecentPosts(userId, userRole, 8);
+    sendSuccess(res, posts);
+  } catch (err) {
+    logError('최신 게시물 조회 실패', err, { userId });
+    sendError(res, 500, '최신 게시물을 불러오지 못했습니다.');
+  }
+};
+
 // ✅ 게시글 목록 조회
 export const getPosts = async (req: AuthRequest, res: Response): Promise<void> => {
   const boardType = req.params.boardType;

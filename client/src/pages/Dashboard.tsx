@@ -9,6 +9,7 @@ import { DashboardSidebar } from '../components/Dashboard/DashboardSidebar';
 import { UserDropdown } from '../components/Dashboard/UserDropdown';
 import { GlobalSearch } from '../components/Dashboard/GlobalSearch';
 import { NotificationBell } from '../components/Dashboard/NotificationBell';
+import { RecentPostsMenu } from '../components/Dashboard/RecentPostsMenu';
 import { AnnouncementBanner } from '../components/Dashboard/AnnouncementBanner';
 import { CommandPalette } from '../components/common/CommandPalette';
 import { useHotkeys } from 'react-hotkeys-hook';
@@ -135,6 +136,7 @@ function Dashboard() {
 
           {/* 오른쪽 — 알림 + 유저 드롭다운 */}
           <div className="flex items-center gap-1 flex-shrink-0">
+            <RecentPostsMenu />
             <NotificationBell />
             <UserDropdown />
           </div>

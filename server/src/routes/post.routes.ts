@@ -8,6 +8,7 @@ import {
   updatePost,
   deletePost,
   globalSearch,
+  getRecentPosts,
   verifySecretPost,
   togglePin,
 } from '../controllers/post.controller';
@@ -38,6 +39,14 @@ router.get(
   apiLimiter as RequestHandler,
   authenticate as RequestHandler,
   asyncHandler((req, res) => globalSearch(req as AuthRequest, res))
+);
+
+// 최신 게시물 (헤더 드롭다운). ★'/:boardType' catch-all보다 먼저 선언.
+router.get(
+  '/recent',
+  apiLimiter as RequestHandler,
+  authenticate as RequestHandler,
+  asyncHandler((req, res) => getRecentPosts(req as AuthRequest, res))
 );
 
 /**
