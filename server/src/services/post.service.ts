@@ -29,6 +29,7 @@ import { AppError } from '../middlewares/error.middleware';
 import { extractTextFromContent } from '../utils/contentRenderer';
 import { sequelize } from '../config/sequelize';
 import { logError } from '../utils/logger';
+import { shouldCountView } from '../utils/cache';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
@@ -718,9 +719,10 @@ export class PostService extends BaseService {
     }
 
     // ✅ 조회수 증가 (수정/삭제 시 skipViewCount=true 로 우회)
+    // ★같은 사용자가 30분 안에 다시 열면(새로고침) 중복 증가하지 않는다(shouldCountView 쿨다운).
     // increment는 원자적으로 실행되며, 이후 reload로 최신 값을 반영
     // silent: true — 조회수 증가가 updatedAt을 건드리지 않도록 (조회만 해도 '수정됨' 표시되는 버그 방지)
-    if (!skipViewCount) {
+    if (!skipViewCount && requestUserId && shouldCountView(requestUserId, post.id)) {
       await Post.increment('viewCount', { by: 1, where: { id: post.id }, silent: true });
       await post.reload();
     }
@@ -737,7 +739,7 @@ export class PostService extends BaseService {
   }
 
   // ✅ 비밀글 비밀번호 검증 후 전체 데이터 반환
-  async verifySecretPost(id: string, password: string, boardType?: string) {
+  async verifySecretPost(id: string, password: string, boardType?: string, requestUserId?: string) {
     const post = await Post.findByPk(id, {
       include: [{ model: User, as: 'user', attributes: ['id', 'name', 'avatar'] }],
     });
@@ -758,8 +760,11 @@ export class PostService extends BaseService {
     if (!isMatch) throw new AppError(401, '비밀번호가 올바르지 않습니다.');
 
     // silent: true — 조회수 증가가 updatedAt을 건드리지 않도록 ('수정됨' 오표시 방지)
-    await Post.increment('viewCount', { by: 1, where: { id: post.id }, silent: true });
-    await post.reload();
+    // ★같은 사용자 30분 쿨다운 — 비밀번호 재입력/새로고침으로 중복 증가하지 않게
+    if (requestUserId && shouldCountView(requestUserId, post.id)) {
+      await Post.increment('viewCount', { by: 1, where: { id: post.id }, silent: true });
+      await post.reload();
+    }
 
     const attachments = this.formatAttachments(post.attachments);
     const postData = post.get({ plain: true }) as any;

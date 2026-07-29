@@ -201,7 +201,7 @@ export const verifySecretPost = async (req: AuthRequest, res: Response): Promise
   }
 
   try {
-    const result = await postService.verifySecretPost(id, password, boardType);
+    const result = await postService.verifySecretPost(id, password, boardType, userId);
 
     // ✅ 비밀글 인증 성공 보안 로그
     securityLogService

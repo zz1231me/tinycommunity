@@ -12,6 +12,20 @@ const cache = new NodeCache({
   useClones: false, // 성능 향상을 위해 복제 비활성화
 });
 
+// ── 조회수 중복 증가 방지 ──
+// 같은 사용자가 같은 글을 짧은 시간(30분) 안에 다시 열면(=새로고침) 조회수를 또 올리지 않는다.
+const viewCountCache = new NodeCache({ stdTTL: 60 * 30, checkperiod: 120, useClones: false });
+/**
+ * 이 사용자가 이 글의 조회수를 지금 증가시켜도 되는지 판단한다.
+ * 쿨다운(30분) 안에 이미 봤으면 false(증가 스킵), 아니면 true를 반환하며 쿨다운을 새로 건다.
+ */
+export const shouldCountView = (userId: string, postId: string): boolean => {
+  const key = `${userId}:${postId}`;
+  if (viewCountCache.get(key)) return false;
+  viewCountCache.set(key, 1);
+  return true;
+};
+
 // 캐시 미들웨어 팩토리 - ✅ 사용자별 캐시 지원
 export const cacheMiddleware = (keyPrefix: string, ttl?: number) => {
   return (req: Request, res: Response, next: NextFunction): void => {
