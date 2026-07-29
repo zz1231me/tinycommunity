@@ -195,7 +195,7 @@ export const ErrorLogManagement = () => {
             <select
               value={filterSeverity}
               onChange={e => setFilterSeverity(e.target.value)}
-              className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              className="input"
             >
               <option value="">전체</option>
               <option value="info">Info</option>
@@ -213,7 +213,7 @@ export const ErrorLogManagement = () => {
               value={filterUserId}
               onChange={e => setFilterUserId(e.target.value)}
               placeholder="사용자 ID"
-              className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              className="input"
             />
           </div>
           <div>
@@ -224,7 +224,7 @@ export const ErrorLogManagement = () => {
               type="date"
               value={filterDateFrom}
               onChange={e => setFilterDateFrom(e.target.value)}
-              className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              className="input"
             />
           </div>
           <div>
@@ -235,7 +235,7 @@ export const ErrorLogManagement = () => {
               type="date"
               value={filterDateTo}
               onChange={e => setFilterDateTo(e.target.value)}
-              className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              className="input"
             />
           </div>
           <button

@@ -89,7 +89,7 @@ const ChangePassword = () => {
             onChange={e => setCurrent(e.target.value)}
             placeholder="임시 비밀번호"
             autoComplete="current-password"
-            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+            className="input"
           />
           <input
             type="password"
@@ -97,7 +97,7 @@ const ChangePassword = () => {
             onChange={e => setNext(e.target.value)}
             placeholder={`새 비밀번호 (${settings.minPasswordLength}자 이상${settings.requireUppercase ? ', 대문자' : ''}${settings.requireLowercase ? ', 소문자' : ''}${settings.requireNumberOrSpecial ? ', 숫자/특수문자' : ''} 포함)`}
             autoComplete="new-password"
-            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+            className="input"
           />
           <input
             type="password"
@@ -105,7 +105,7 @@ const ChangePassword = () => {
             onChange={e => setConfirm(e.target.value)}
             placeholder="새 비밀번호 확인"
             autoComplete="new-password"
-            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+            className="input"
           />
 
           <button
