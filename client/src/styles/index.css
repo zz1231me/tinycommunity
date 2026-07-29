@@ -43,6 +43,13 @@
   --color-secondary-800: #115e59;
   --color-secondary-900: #134e4a;
 
+  /* ── 보조텍스트 가독성: 흐린 slate-400/500을 한 단계 진하게 ──
+     이 두 톤은 앱 전체에서 거의 글자 전용(bg/border 사용 극소수)이라
+     텍스트 선명도만 개선된다. 기존 slate-400(#94a3b8)은 흰 배경 대비 3.7:1로
+     WCAG AA(4.5:1) 미달이었다. */
+  --color-slate-400: #64748b; /* was #94a3b8 (3.7:1) → 4.7:1 AA✓ */
+  --color-slate-500: #475569; /* was #64748b → 7:1, 더 또렷하게 */
+
   /* ── Neutral: Slate ── */
   --color-neutral-50: #f8fafc;
   --color-neutral-100: #f1f5f9;
@@ -136,8 +143,9 @@ html.dark {
 body {
   font-family: var(--font-sans);
   @apply bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* antialiased는 맥에서 글자를 얇게 렌더링해 흐릿해 보임 → auto(서브픽셀)로 더 또렷하게 */
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
   word-break: keep-all;
   line-height: 1.65;
   letter-spacing: -0.01em; /* 한국어 자간 최적화 */

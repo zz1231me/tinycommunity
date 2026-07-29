@@ -1,7 +1,7 @@
 // client/src/components/Dashboard/UserDropdown.tsx
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, User, Settings, LogOut, FileUp } from 'lucide-react';
+import { ChevronDown, User, Settings, LogOut, Share2 } from 'lucide-react';
 import { TempShareModal } from './TempShareModal';
 import { AnimatePresence, motion } from 'framer-motion';
 import { scaleIn } from '../../utils/animations';
@@ -153,8 +153,8 @@ export function UserDropdown() {
                          hover:text-slate-900 dark:hover:text-slate-200
                          transition-colors duration-150"
               >
-                <FileUp className="w-4 h-4 flex-shrink-0 text-slate-400" />
-                <span>임시 파일 공유</span>
+                <Share2 className="w-4 h-4 flex-shrink-0 text-slate-400" />
+                <span>파일공유</span>
               </button>
 
               {isAdmin() && (

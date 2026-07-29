@@ -102,6 +102,11 @@
  * DARK MODE — Semantic Surface Tokens (Override)
  * ============================================================ */
 .dark {
+  /* 라이트모드에서 진하게 한 slate-400/500을 다크모드에선 원래 밝은 값으로 복원.
+     (다크 배경 위 보조텍스트는 밝아야 대비가 확보됨 — index.css @theme 오버라이드 상쇄) */
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+
   --surface-page: #0f172a; /* slate-900 */
   --surface-card: #1e293b; /* slate-800 */
   --surface-subtle: #172032; /* slate-850 */

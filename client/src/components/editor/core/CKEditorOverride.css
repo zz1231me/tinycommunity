@@ -539,3 +539,25 @@
   background-color: #1e3a8a !important;
   color: #eff6ff !important;
 }
+
+/* ── 이미지 업로드 진행 표시 — 파일공유 모달과 동일한 teal 톤으로 통일 ──
+   CKEditor는 이미지 삽입 시 자리표시자 위에 진행바(.ck-progress-bar)와
+   로더(.ck-upload-placeholder-loader)를 그린다. 기본 파랑 → secondary(teal). */
+.ck-editor__editable .ck-progress-bar {
+  background: #14b8a6 !important; /* secondary-500 */
+  height: 3px !important;
+}
+/* 업로드 중 자리표시자를 은은한 teal 배경으로 */
+.ck-editor__editable .image-inline.ck-appear,
+.ck-editor__editable .image.ck-appear {
+  background: rgba(20, 184, 166, 0.06);
+}
+/* 로딩 스피너(원형 로더) 색을 teal로 */
+.ck-editor__editable .ck-upload-placeholder-loader::after {
+  border-color: #99f6e4 !important; /* secondary-200 */
+  border-top-color: #14b8a6 !important; /* secondary-500 */
+}
+/* 업로드 완료 체크 아이콘 배경도 teal */
+.ck-editor__editable .ck-image-upload-complete-icon {
+  background: #14b8a6 !important;
+}
