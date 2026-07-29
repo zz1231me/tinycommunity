@@ -1028,11 +1028,14 @@ export function GlobalSearch() {
       </div>
 
       {/* 백드롭 — 헤더의 backdrop-blur가 position:fixed의 기준이 되어 헤더(56px)만 덮던 회색 띠 버그.
-          document.body로 포털해 전체 화면을 덮게 한다. */}
+          document.body로 포털해 전체 화면을 덮게 한다.
+          ★z-index는 헤더(z-50)보다 낮은 z-40이어야 함: 검색 패널은 헤더 stacking context 안에
+          있어(z-70은 그 내부값) 백드롭이 헤더보다 위(z-60)면 패널까지 덮여 흐려진다.
+          z-40이면 백드롭이 헤더 아래로 깔려 페이지만 흐려지고 검색창은 선명하게 유지된다. */}
       {isOpen &&
         createPortal(
           <div
-            className="fixed inset-0 bg-black/5 dark:bg-black/40 backdrop-blur-[2px] z-[60]"
+            className="fixed inset-0 bg-black/5 dark:bg-black/40 backdrop-blur-[2px] z-40"
             style={{ animation: 'fadeIn 0.2s ease-out' }}
             onClick={() => setIsOpen(false)}
             aria-hidden="true"
