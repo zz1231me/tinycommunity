@@ -1,6 +1,7 @@
 // client/src/components/Dashboard/TempShareModal.tsx
 // 파일공유 모달 — 파일 업로드 → 15분짜리 공유 링크 반환(만료 후 서버에서 자동 삭제).
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, UploadCloud, Copy, Clock, Share2, RotateCcw, CheckCircle2, FileIcon } from 'lucide-react';
 import { uploadTempShare, type TempShareResult } from '../../api/tempShare';
 import { getApiErrorMessage } from '../../api/utils';
@@ -102,7 +103,9 @@ export function TempShareModal({ open, onClose }: Props) {
 
   if (!open) return null;
 
-  return (
+  // 헤더의 backdrop-blur가 position:fixed의 containing block이 되어 모달이 헤더(56px)
+  // 기준으로 찌그러지는 문제 → document.body로 포털해 뷰포트 기준 중앙 정렬을 보장.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim"
       onClick={handleClose}
@@ -241,6 +244,7 @@ export function TempShareModal({ open, onClose }: Props) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
