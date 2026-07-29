@@ -19,6 +19,7 @@ export type Post = {
   };
   isPinned?: boolean;
   isRead?: boolean;
+  attachmentCount?: number; // 첨부파일 개수(0/undefined면 없음)
   tags?: Tag[];
 };
 

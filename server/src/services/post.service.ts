@@ -588,6 +588,7 @@ export class PostService extends BaseService {
           'isSecret',
           'secretType',
           'isPinned',
+          'attachments',
           [
             literal(
               `(SELECT COUNT(*) FROM comments AS c WHERE c.PostId = Post.id AND c.deletedAt IS NULL)`
@@ -630,6 +631,9 @@ export class PostService extends BaseService {
         // 본인 비밀글이 아니면 secretType도 마스킹 (password/users 타입 노출 방지)
         secretType: isOwnSecret ? postData.secretType || null : null,
         isPinned: postData.isPinned || false,
+        // 첨부파일 존재 표시(개수만) — 파일명 등 상세는 노출하지 않고, 타인 비밀글은 마스킹
+        attachmentCount:
+          revealAuthor && Array.isArray(postData.attachments) ? postData.attachments.length : 0,
         isRead: userId ? Boolean(postData.isRead) : undefined,
         tags: postData.tags || [],
         user: revealAuthor ? postData.user : null,

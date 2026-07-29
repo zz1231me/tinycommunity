@@ -43,6 +43,7 @@ export interface PostListResponse {
     secretType?: 'password' | 'users' | null;
     isPinned?: boolean;
     isRead?: boolean;
+    attachmentCount?: number; // 첨부파일 개수(0이면 없음)
     tags?: Array<{ id: number; name: string; color: string }>;
   }>;
   pagination: {

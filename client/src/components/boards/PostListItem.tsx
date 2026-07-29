@@ -1,7 +1,7 @@
 import React from 'react';
 import { DEFAULT_TAG_COLOR } from '../../constants/colors';
 import { Avatar } from '../Avatar';
-import { PinIcon, LockIcon, EyeIcon, HeartIcon, ChatIcon } from '../common/Icons';
+import { PinIcon, LockIcon, EyeIcon, HeartIcon, ChatIcon, PaperclipIcon } from '../common/Icons';
 import { Post } from '../../types/board.types';
 
 const isSafeColor = (color: string): boolean =>
@@ -108,6 +108,18 @@ export const PostListItem: React.FC<PostListItemProps> = ({
                   );
                 })}
               </div>
+            )}
+
+            {/* 첨부파일 표시 */}
+            {post.attachmentCount !== undefined && post.attachmentCount > 0 && (
+              <span
+                className="inline-flex flex-shrink-0 items-center gap-0.5 text-slate-400 dark:text-slate-500"
+                title={`첨부파일 ${post.attachmentCount}개`}
+                aria-label={`첨부파일 ${post.attachmentCount}개`}
+              >
+                <PaperclipIcon className="w-3.5 h-3.5" />
+                <span className="text-xs tabular-nums">{post.attachmentCount}</span>
+              </span>
             )}
 
             {/* 댓글 수 */}
