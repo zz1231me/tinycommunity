@@ -1,5 +1,6 @@
 // client/src/components/Dashboard/NotificationBell.tsx
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Bell, MessageSquare, Heart, AtSign, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -74,7 +75,14 @@ export function NotificationBell() {
   // 전체 삭제 2단계 확인(실수 클릭 방지) + 진행 상태
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearing, setClearing] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null); // 벨 버튼 래퍼(앵커)
+  const dropdownRef = useRef<HTMLDivElement>(null); // body로 포털된 드롭다운
+  // 포털된 드롭다운 위치 — 헤더의 backdrop-blur가 position:fixed의 containing block이 되어
+  // 헤더 안에서 fixed로 두면 트랩되므로(모바일 정렬 깨짐) body로 포털하고 벨 rect 기준으로 계산한다.
+  const [pos, setPos] = useState<{ top: number; left?: number; right: number; width?: string }>({
+    top: 0,
+    right: 8,
+  });
   // 페이지네이션 경합 가드: 패널 재오픈(fetchNotifications)이 in-flight loadMore보다 늦게
   // 도착한 stale 페이지를 append 하지 않도록 세대(generation) 번호로 무효화한다.
   const reqGenRef = useRef(0);
@@ -133,16 +141,46 @@ export function NotificationBell() {
     }
   }, [open, fetchNotifications]);
 
-  // 외부 클릭 닫기
+  // 외부 클릭 닫기 — 포털된 드롭다운도 "안쪽"으로 취급(둘 다 벗어날 때만 닫힘)
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const t = e.target as Node;
+      const inAnchor = panelRef.current?.contains(t);
+      const inDropdown = dropdownRef.current?.contains(t);
+      if (!inAnchor && !inDropdown) setOpen(false);
     };
     if (open) document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open, setOpen]);
+
+  // 포털 드롭다운 위치 계산 — 벨 rect 기준. 열림 중 resize/scroll에 추종.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const compute = () => {
+      const el = panelRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const top = r.bottom + 8;
+      if (window.matchMedia('(min-width: 640px)').matches) {
+        // 데스크톱: 벨 오른쪽 정렬, 24rem 폭
+        setPos({
+          top,
+          right: Math.round(window.innerWidth - r.right),
+          width: 'min(24rem, calc(100vw - 1rem))',
+        });
+      } else {
+        // 모바일: 좌우 8px 여백 풀폭 시트
+        setPos({ top, left: 8, right: 8 });
+      }
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    window.addEventListener('scroll', compute, true);
+    return () => {
+      window.removeEventListener('resize', compute);
+      window.removeEventListener('scroll', compute, true);
+    };
+  }, [open]);
 
   const handleRead = async (n: Notification) => {
     try {
@@ -229,161 +267,174 @@ export function NotificationBell() {
         )}
       </button>
 
-      {/* 드롭다운 패널 */}
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            variants={scaleIn}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-            style={{ originX: 1, originY: 0 }}
-            role="dialog"
-            aria-label="알림 목록"
-            // 모바일: 헤더 바로 아래 가로 전체(여백 8px) 시트 형태로 고정
-            // 데스크톱: 알림벨 옆에 24rem 폭 dropdown으로 표시
-            className="fixed left-2 right-2 top-14 w-auto sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[min(24rem,calc(100vw-1rem))] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden"
-          >
-            {/* 헤더 */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-              <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
-                알림
-                {unreadCount > 0 && (
-                  <span className="badge badge-red ml-2 px-1.5 font-bold">{unreadCount}</span>
-                )}
-              </h3>
-              <div className="flex items-center gap-2">
-                {unreadCount > 0 && (
-                  <button
-                    onClick={handleMarkAll}
-                    className="text-xs text-primary-600 dark:text-primary-400 hover:underline font-medium"
-                  >
-                    모두 읽음
-                  </button>
-                )}
-                {notifications.length > 0 &&
-                  !loading &&
-                  !fetchError &&
-                  (confirmClear ? (
-                    <span className="flex items-center gap-1.5">
-                      <span className="text-xs text-slate-500 dark:text-slate-400">전체 삭제?</span>
-                      <button
-                        onClick={handleClearAll}
-                        disabled={clearing}
-                        className="text-xs text-red-600 dark:text-red-400 hover:underline font-medium disabled:opacity-50"
-                      >
-                        {clearing ? '삭제 중...' : '삭제'}
-                      </button>
-                      <button
-                        onClick={() => setConfirmClear(false)}
-                        className="text-xs text-slate-500 dark:text-slate-400 hover:underline font-medium"
-                      >
-                        취소
-                      </button>
-                    </span>
-                  ) : (
+      {/* 드롭다운 패널 — body로 포털(헤더 backdrop-blur의 containing block 트랩 회피).
+          위치는 pos(벨 rect 기준)로 fixed 지정. */}
+      {createPortal(
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              ref={dropdownRef}
+              variants={scaleIn}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              style={{
+                originX: 1,
+                originY: 0,
+                position: 'fixed',
+                top: pos.top,
+                left: pos.left,
+                right: pos.right,
+                width: pos.width,
+              }}
+              role="dialog"
+              aria-label="알림 목록"
+              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-[70] overflow-hidden"
+            >
+              {/* 헤더 */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+                <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
+                  알림
+                  {unreadCount > 0 && (
+                    <span className="badge badge-red ml-2 px-1.5 font-bold">{unreadCount}</span>
+                  )}
+                </h3>
+                <div className="flex items-center gap-2">
+                  {unreadCount > 0 && (
                     <button
-                      onClick={() => setConfirmClear(true)}
-                      className="text-xs text-red-500 dark:text-red-400 hover:underline font-medium"
+                      onClick={handleMarkAll}
+                      className="text-xs text-primary-600 dark:text-primary-400 hover:underline font-medium"
                     >
-                      전체 삭제
+                      모두 읽음
                     </button>
-                  ))}
-              </div>
-            </div>
-
-            {/* 목록 */}
-            {loading ? (
-              <div className="flex items-center justify-center py-10">
-                <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : fetchError ? (
-              <div className="flex flex-col items-center justify-center py-10 px-4 text-slate-500 dark:text-slate-400">
-                <Bell className="w-10 h-10 mb-3 text-red-400 dark:text-red-500" />
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  알림을 불러올 수 없습니다
-                </p>
-                <p className="text-xs mb-4 text-center">
-                  네트워크 상태를 확인하고 다시 시도해주세요.
-                </p>
-                <button onClick={fetchNotifications} className="btn-primary px-4 py-2 text-xs">
-                  다시 시도
-                </button>
-              </div>
-            ) : notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-slate-400 dark:text-slate-500">
-                <Bell className="w-10 h-10 mb-3 opacity-40" />
-                <p className="text-sm">새 알림이 없습니다</p>
-              </div>
-            ) : (
-              <motion.div
-                variants={stagger}
-                initial="hidden"
-                animate="visible"
-                className="max-h-96 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700"
-              >
-                {notifications.map(n => {
-                  const typeInfo = TYPE_ICON[n.type] ?? TYPE_ICON.SYSTEM;
-                  return (
-                    <motion.div
-                      key={n.id}
-                      variants={listItem}
-                      onClick={() => handleRead(n)}
-                      className={`group flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 ${
-                        !n.isRead ? 'bg-primary-50/60 dark:bg-primary-900/10' : ''
-                      }`}
-                    >
-                      {/* 타입 아이콘 */}
-                      <span
-                        className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 ${typeInfo.bg} ${typeInfo.color}`}
-                      >
-                        {typeInfo.icon}
-                      </span>
-
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className={`text-sm leading-snug ${!n.isRead ? 'text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400'}`}
-                        >
-                          {n.message}
-                        </p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                          {formatTime(n.createdAt)}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 flex-shrink-0 ml-1">
-                        {!n.isRead && (
-                          <span className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0" />
-                        )}
+                  )}
+                  {notifications.length > 0 &&
+                    !loading &&
+                    !fetchError &&
+                    (confirmClear ? (
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          전체 삭제?
+                        </span>
                         <button
-                          onClick={e => handleDelete(e, n.id)}
-                          className="min-w-[36px] min-h-[36px] p-2 inline-flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
-                          aria-label="알림 삭제"
+                          onClick={handleClearAll}
+                          disabled={clearing}
+                          className="text-xs text-red-600 dark:text-red-400 hover:underline font-medium disabled:opacity-50"
                         >
-                          <X className="w-4 h-4" />
+                          {clearing ? '삭제 중...' : '삭제'}
                         </button>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
-            )}
-
-            {/* 더 보기 버튼 */}
-            {nextCursor && !loading && (
-              <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-700">
-                <button
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="w-full py-1.5 text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium transition-colors disabled:opacity-50"
-                >
-                  {loadingMore ? '로드 중...' : '더 보기'}
-                </button>
+                        <button
+                          onClick={() => setConfirmClear(false)}
+                          className="text-xs text-slate-500 dark:text-slate-400 hover:underline font-medium"
+                        >
+                          취소
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmClear(true)}
+                        className="text-xs text-red-500 dark:text-red-400 hover:underline font-medium"
+                      >
+                        전체 삭제
+                      </button>
+                    ))}
+                </div>
               </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+              {/* 목록 */}
+              {loading ? (
+                <div className="flex items-center justify-center py-10">
+                  <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : fetchError ? (
+                <div className="flex flex-col items-center justify-center py-10 px-4 text-slate-500 dark:text-slate-400">
+                  <Bell className="w-10 h-10 mb-3 text-red-400 dark:text-red-500" />
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    알림을 불러올 수 없습니다
+                  </p>
+                  <p className="text-xs mb-4 text-center">
+                    네트워크 상태를 확인하고 다시 시도해주세요.
+                  </p>
+                  <button onClick={fetchNotifications} className="btn-primary px-4 py-2 text-xs">
+                    다시 시도
+                  </button>
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-slate-400 dark:text-slate-500">
+                  <Bell className="w-10 h-10 mb-3 opacity-40" />
+                  <p className="text-sm">새 알림이 없습니다</p>
+                </div>
+              ) : (
+                <motion.div
+                  variants={stagger}
+                  initial="hidden"
+                  animate="visible"
+                  className="max-h-96 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700"
+                >
+                  {notifications.map(n => {
+                    const typeInfo = TYPE_ICON[n.type] ?? TYPE_ICON.SYSTEM;
+                    return (
+                      <motion.div
+                        key={n.id}
+                        variants={listItem}
+                        onClick={() => handleRead(n)}
+                        className={`group flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 ${
+                          !n.isRead ? 'bg-primary-50/60 dark:bg-primary-900/10' : ''
+                        }`}
+                      >
+                        {/* 타입 아이콘 */}
+                        <span
+                          className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 ${typeInfo.bg} ${typeInfo.color}`}
+                        >
+                          {typeInfo.icon}
+                        </span>
+
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={`text-sm leading-snug ${!n.isRead ? 'text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400'}`}
+                          >
+                            {n.message}
+                          </p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                            {formatTime(n.createdAt)}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 flex-shrink-0 ml-1">
+                          {!n.isRead && (
+                            <span className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0" />
+                          )}
+                          <button
+                            onClick={e => handleDelete(e, n.id)}
+                            className="min-w-[36px] min-h-[36px] p-2 inline-flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+                            aria-label="알림 삭제"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              )}
+
+              {/* 더 보기 버튼 */}
+              {nextCursor && !loading && (
+                <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-700">
+                  <button
+                    onClick={loadMore}
+                    disabled={loadingMore}
+                    className="w-full py-1.5 text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium transition-colors disabled:opacity-50"
+                  >
+                    {loadingMore ? '로드 중...' : '더 보기'}
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
