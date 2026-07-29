@@ -68,10 +68,45 @@ export default function CustomPageView() {
         <h1 className="truncate text-base font-bold text-slate-900 dark:text-slate-100">
           {page.title}
         </h1>
+        {/* 외부 URL 페이지 — 임베드가 차단(X-Frame-Options)될 수 있어 새 탭 열기 폴백 제공 */}
+        {page.externalUrl && (
+          <a
+            href={page.externalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-secondary-600 hover:bg-secondary-50 dark:text-secondary-400 dark:hover:bg-secondary-900/20"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+              />
+            </svg>
+            새 탭에서 열기
+          </a>
+        )}
       </div>
-      {/* 번들 페이지는 URL 서빙(상대경로 자산 로드), 단일 HTML은 srcDoc.
-          ★두 경우 모두 allow-same-origin 제외 = 앱과 격리(쿠키/DOM 접근 불가). */}
-      {page.isBundle && slug ? (
+      {/* 렌더 우선순위: 외부 URL > 번들 > 단일 HTML.
+          - 외부 URL: 크로스오리진 iframe이라 브라우저 동일출처정책이 앱과 자동 격리(외부 사이트는 자기
+            오리진에서 실행 → 앱 쿠키/DOM 접근 불가). allow-same-origin은 "그 사이트 자신" 기준이라 안전.
+          - 번들/HTML: allow-same-origin 제외로 앱과 격리. */}
+      {page.externalUrl ? (
+        <iframe
+          title={page.title}
+          src={page.externalUrl}
+          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-downloads"
+          referrerPolicy="no-referrer"
+          className="w-full flex-1 border-0 bg-white"
+        />
+      ) : page.isBundle && slug ? (
         <iframe
           title={page.title}
           src={bundleEntryUrl(slug, page.entryFile)}

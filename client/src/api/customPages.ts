@@ -19,6 +19,8 @@ export interface CustomPage extends CustomPageSummary {
   bundlePath?: string | null; // 관리자 응답에 포함(내부 경로). null=단일 HTML
   isBundle?: boolean; // 사용자 조회(getPageBySlug) 응답에 포함
   entryFile?: string; // 번들 진입 파일
+  // 외부 URL 임베드 페이지 — 있으면 이 URL을 iframe으로 표시(html/번들보다 우선)
+  externalUrl?: string | null;
 }
 
 export interface CustomPageInput {
@@ -28,6 +30,7 @@ export interface CustomPageInput {
   isPublished: boolean;
   order: number;
   entryFile?: string; // 번들 진입 파일 변경(선택)
+  externalUrl?: string | null; // 외부 URL 임베드(선택). 빈 문자열/null이면 URL 페이지 아님
 }
 
 export interface BundleUploadResult {

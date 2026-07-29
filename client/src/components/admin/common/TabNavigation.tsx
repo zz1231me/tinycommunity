@@ -63,7 +63,7 @@ export const TabNavigation = React.memo(() => {
           { id: 'board-managers', label: '게시판 담당자', icon: UserCog },
           { id: 'tags', label: '태그', icon: Tag },
           { id: 'files', label: '파일', icon: Files },
-          { id: 'custom-pages', label: 'HTML 페이지', icon: Code },
+          { id: 'custom-pages', label: '커스텀 페이지', icon: Code },
         ],
       },
       {

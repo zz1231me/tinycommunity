@@ -11,6 +11,7 @@ import {
   UploadCloud,
   FolderArchive,
   Code,
+  Globe,
 } from 'lucide-react';
 import {
   fetchAllPages,
@@ -28,8 +29,15 @@ import { ConfirmationModal } from '../common/ConfirmationModal';
 import { toast } from '../../../utils/toast';
 import { getApiErrorMessage } from '../../../api/utils';
 
-const EMPTY: CustomPageInput = { slug: '', title: '', html: '', isPublished: false, order: 0 };
-type Mode = 'html' | 'bundle';
+const EMPTY: CustomPageInput = {
+  slug: '',
+  title: '',
+  html: '',
+  isPublished: false,
+  order: 0,
+  externalUrl: '',
+};
+type Mode = 'html' | 'bundle' | 'url';
 const BUNDLE_MAX_MB = 100; // 서버 BUNDLE_MAX_ZIP와 일치
 
 export const CustomPageManagement = () => {
@@ -84,11 +92,15 @@ export const CustomPageManagement = () => {
       html: p.html,
       isPublished: p.isPublished,
       order: p.order,
+      externalUrl: p.externalUrl ?? '',
     });
     setEditingId(p.id);
     setEditingSlug(p.slug);
     resetBundle();
-    if (p.bundlePath) {
+    // 타입 판정: 외부 URL > 번들 > HTML
+    if (p.externalUrl) {
+      setMode('url');
+    } else if (p.bundlePath) {
       setMode('bundle');
       // 진입 파일 선택용 목록 로드
       fetchBundleFiles(p.id)
@@ -121,13 +133,25 @@ export const CustomPageManagement = () => {
       toast.error(`ZIP이 너무 큽니다. 최대 ${BUNDLE_MAX_MB}MB까지 가능합니다.`);
       return;
     }
+    // URL 페이지는 URL이 반드시 필요(형식 최종 검증은 서버가 수행)
+    if (mode === 'url' && !form.externalUrl?.trim()) {
+      toast.error('임베드할 URL을 입력해주세요.');
+      return;
+    }
     setSaving(true);
     // 신규 번들 페이지의 후속 단계(업로드 등)가 실패하면 방금 만든 빈 페이지를 롤백한다.
     let createdNewId: string | null = null;
     try {
-      if (mode === 'html') {
-        if (editingId === 'new') await createCustomPage(form);
-        else if (editingId) await updateCustomPage(editingId, form);
+      if (mode === 'url') {
+        // URL 페이지: html/번들 없이 externalUrl만. (html은 비워서 저장)
+        const payload = { ...form, html: '', externalUrl: form.externalUrl?.trim() || '' };
+        if (editingId === 'new') await createCustomPage(payload);
+        else if (editingId) await updateCustomPage(editingId, payload);
+      } else if (mode === 'html') {
+        // HTML 페이지: externalUrl은 비워 저장(이전에 URL이었다면 해제)
+        const payload = { ...form, externalUrl: '' };
+        if (editingId === 'new') await createCustomPage(payload);
+        else if (editingId) await updateCustomPage(editingId, payload);
       } else {
         // 번들 모드: (신규면) 페이지 먼저 생성 → ZIP 업로드 → 필드/진입파일 저장
         let id = editingId;
@@ -183,8 +207,8 @@ export const CustomPageManagement = () => {
     const isNew = editingId === 'new';
     return (
       <AdminSection
-        title={isNew ? 'HTML 페이지 추가' : 'HTML 페이지 수정'}
-        description="저장된 내용은 사용자 화면에서 격리(sandbox)된 iframe으로 렌더됩니다. 스크립트도 동작하지만 앱의 쿠키·데이터엔 접근할 수 없습니다."
+        title={isNew ? '커스텀 페이지 추가' : '커스텀 페이지 수정'}
+        description="HTML 직접 입력·폴더(ZIP) 업로드·외부 URL 임베드 중 선택합니다. 사용자 화면에서 격리(sandbox)된 iframe으로 렌더되어 앱의 쿠키·데이터엔 접근할 수 없습니다."
         actions={
           <button type="button" onClick={cancel} className="btn-secondary gap-1.5">
             <X className="h-4 w-4" />
@@ -220,6 +244,19 @@ export const CustomPageManagement = () => {
             >
               <FolderArchive className="h-4 w-4" />
               폴더(ZIP) 업로드
+            </button>
+            <button
+              type="button"
+              onClick={() => isNew && setMode('url')}
+              disabled={!isNew && mode !== 'url'}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                mode === 'url'
+                  ? 'border-secondary-500 bg-secondary-50 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-300'
+                  : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'
+              } ${!isNew && mode !== 'url' ? 'cursor-not-allowed opacity-40' : ''}`}
+            >
+              <Globe className="h-4 w-4" />
+              외부 URL
             </button>
           </div>
 
@@ -279,6 +316,57 @@ export const CustomPageManagement = () => {
                   />
                 </div>
               </div>
+            </div>
+          ) : mode === 'url' ? (
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  임베드할 URL *
+                </label>
+                <input
+                  className="input font-mono"
+                  type="url"
+                  inputMode="url"
+                  value={form.externalUrl ?? ''}
+                  onChange={e => setForm(f => ({ ...f, externalUrl: e.target.value }))}
+                  placeholder="https://example.com/page"
+                  spellCheck={false}
+                />
+                <p className="mt-1 text-xs text-slate-400">
+                  입력한 주소를 사용자 화면에 iframe으로 표시합니다. <b>http:// 또는 https://</b> 로
+                  시작해야 합니다.
+                </p>
+              </div>
+
+              {form.externalUrl?.trim() && (
+                <div className="flex min-h-[360px] flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 bg-slate-50 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-800/50">
+                    <span className="text-xs font-medium text-slate-400">미리보기</span>
+                    <a
+                      href={form.externalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-secondary-600 hover:underline dark:text-secondary-400"
+                    >
+                      <ExternalLink className="h-3 w-3" />새 탭
+                    </a>
+                  </div>
+                  <iframe
+                    title="URL 미리보기"
+                    src={form.externalUrl}
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
+                    referrerPolicy="no-referrer"
+                    className="w-full flex-1 border-0 bg-white"
+                  />
+                </div>
+              )}
+
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
+                ⚠️ 많은 사이트(구글·네이버·유튜브 메인·은행 등)는 보안 정책(X-Frame-Options)으로
+                다른 사이트에서의 iframe 표시를 차단합니다. 이런 경우 화면이 비어 보일 수 있으며,
+                사용자는 제목 옆 “새 탭에서 열기”로 접속할 수 있습니다. 임베드가 허용된
+                주소(문서·지도 embed·사내 시스템 등)를 사용하세요.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -396,8 +484,8 @@ export const CustomPageManagement = () => {
   return (
     <>
       <AdminSection
-        title={`HTML 페이지 (${pages.length})`}
-        description="관리자가 HTML을 직접 넣거나 폴더(ZIP)를 업로드해 만드는 커스텀 페이지입니다."
+        title={`커스텀 페이지 (${pages.length})`}
+        description="HTML 직접 입력·폴더(ZIP) 업로드·외부 URL 임베드로 만드는 사이드바 페이지입니다."
         actions={
           <button type="button" onClick={startNew} className="btn-primary gap-1.5">
             <Plus className="h-4 w-4" />새 페이지
@@ -417,11 +505,18 @@ export const CustomPageManagement = () => {
                     <span className="font-semibold text-slate-800 dark:text-slate-100">
                       {p.title}
                     </span>
-                    {p.bundlePath && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                        <FolderArchive className="h-3 w-3" />
-                        폴더
+                    {p.externalUrl ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
+                        <Globe className="h-3 w-3" />
+                        URL
                       </span>
+                    ) : (
+                      p.bundlePath && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                          <FolderArchive className="h-3 w-3" />
+                          폴더
+                        </span>
+                      )
                     )}
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${

@@ -9,10 +9,13 @@ export interface CustomPageAttributes {
   id: string;
   slug: string; // URL 식별자 (예: 'guide') — /dashboard/pages/:slug
   title: string;
-  html: string; // 관리자가 넣은 원문 HTML (sandbox iframe에서 격리 렌더). 번들 페이지면 '' 유지.
+  html: string; // 관리자가 넣은 원문 HTML (sandbox iframe에서 격리 렌더). 번들/URL 페이지면 '' 유지.
   // 번들(ZIP 폴더 업로드) 페이지: 압축 해제된 정적 파일 디렉터리(uploads 기준 상대경로). null이면 단일 HTML 페이지.
   bundlePath: string | null;
   entryFile: string; // 번들 진입 파일 (기본 index.html)
+  // 외부 URL 임베드 페이지: 이 값이 있으면 사용자 화면에서 해당 URL을 iframe으로 표시(html/번들보다 우선).
+  // http(s)만 허용(컨트롤러에서 검증). null이면 URL 페이지가 아님.
+  externalUrl: string | null;
   isPublished: boolean;
   order: number; // 사이드바 정렬
   createdBy: string; // 작성/수정 관리자 ID
@@ -22,7 +25,7 @@ export interface CustomPageAttributes {
 
 export interface CustomPageCreationAttributes extends Optional<
   CustomPageAttributes,
-  'id' | 'isPublished' | 'order' | 'html' | 'bundlePath' | 'entryFile'
+  'id' | 'isPublished' | 'order' | 'html' | 'bundlePath' | 'entryFile' | 'externalUrl'
 > {}
 
 export class CustomPage
@@ -35,6 +38,7 @@ export class CustomPage
   declare public html: string;
   declare public bundlePath: string | null;
   declare public entryFile: string;
+  declare public externalUrl: string | null;
   declare public isPublished: boolean;
   declare public order: number;
   declare public createdBy: string;
@@ -76,6 +80,12 @@ CustomPage.init(
       allowNull: false,
       defaultValue: 'index.html',
       comment: '번들 진입 파일(기본 index.html)',
+    },
+    externalUrl: {
+      type: DataTypes.STRING(2048),
+      allowNull: true,
+      defaultValue: null,
+      comment: '외부 URL 임베드 페이지: http(s) URL(iframe src). null=URL 페이지 아님',
     },
     isPublished: {
       type: DataTypes.BOOLEAN,
