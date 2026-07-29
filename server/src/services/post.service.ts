@@ -455,10 +455,13 @@ export class PostService extends BaseService {
   async getRecentPosts(userId: string, userRole: string, limit = 8) {
     const boardTypes = await this.getAccessibleBoardTypes(userId, userRole);
     if (boardTypes.length === 0) return [];
+    // 최근 7일 이내 게시글만 노출
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const posts = await Post.findAll({
       where: {
         boardType: { [Op.in]: boardTypes },
         status: 'published',
+        createdAt: { [Op.gte]: weekAgo },
         [Op.or]: [{ isSecret: false }, { isSecret: true, UserId: userId }],
       },
       include: [

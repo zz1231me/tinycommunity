@@ -18,17 +18,30 @@ function ago(iso: string): string {
   return new Date(iso).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
 }
 
+const SEEN_KEY = 'recentPostsLastSeen'; // 마지막으로 확인한 최신글 시각(ISO)
+
 export function RecentPostsMenu() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [posts, setPosts] = useState<RecentPost[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasNew, setHasNew] = useState(false); // 안 읽은 새 글 존재 여부(빨간 점)
   const ref = useRef<HTMLDivElement>(null);
+
+  // 가장 최신 글이 '마지막 확인 시각'보다 새로우면 안 읽은 새 글이 있는 것
+  const computeHasNew = (list: RecentPost[]) => {
+    if (list.length === 0) return false;
+    const seen = localStorage.getItem(SEEN_KEY);
+    return !seen || new Date(list[0].createdAt).getTime() > new Date(seen).getTime();
+  };
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      setPosts(await fetchRecentPosts());
+      const list = await fetchRecentPosts();
+      setPosts(list);
+      // 읽으면 localStorage에 최신글 시각이 저장돼 computeHasNew가 자동으로 false가 된다.
+      setHasNew(computeHasNew(list));
     } catch {
       /* 헤더 보조 기능 — 조용히 무시 */
     } finally {
@@ -36,10 +49,24 @@ export function RecentPostsMenu() {
     }
   }, []);
 
-  const toggle = () => {
+  // 마운트 + 2분 주기로 새 글 확인(빨간 점 갱신)
+  useEffect(() => {
+    void load();
+    const t = setInterval(() => void load(), 120_000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const toggle = async () => {
     const next = !open;
     setOpen(next);
-    if (next) load();
+    if (next) {
+      // 열면 '읽음' 처리 → 최신글 시각 저장, 빨간 점 제거
+      const list = await fetchRecentPosts().catch(() => posts);
+      setPosts(list);
+      if (list.length > 0) localStorage.setItem(SEEN_KEY, list[0].createdAt);
+      setHasNew(false);
+    }
   };
 
   // 바깥 클릭 / Esc 닫기
@@ -66,12 +93,18 @@ export function RecentPostsMenu() {
     <div className="relative" ref={ref}>
       <button
         onClick={toggle}
-        aria-label="최신 게시물"
-        title="최신 게시물"
+        aria-label={hasNew ? '최신 게시물 (새 글 있음)' : '최신 게시물'}
+        title={hasNew ? '새 게시물이 있습니다' : '최신 게시물'}
         aria-expanded={open}
-        className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+        className="relative p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
       >
         <Newspaper className="w-5 h-5" />
+        {hasNew && (
+          <span className="absolute right-1.5 top-1.5 flex h-2 w-2" aria-hidden="true">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+          </span>
+        )}
       </button>
 
       {open && (

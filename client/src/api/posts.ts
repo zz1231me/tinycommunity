@@ -3,7 +3,7 @@ import { unwrap } from './utils';
 
 // 접근 가능한 게시판들의 최신 게시글 (헤더 드롭다운)
 export interface RecentPost {
-  id: number;
+  id: string;
   title: string;
   boardType: string;
   boardName: string;
