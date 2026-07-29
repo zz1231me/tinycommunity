@@ -118,13 +118,15 @@ function showBrowserToast(message: string, type: ToastType, durationMs = 3000): 
 }
 
 const CENTER_ERROR_ID = 'app-center-error';
+// 현재 떠 있는 중앙 오류 팝업의 정리 함수(리스너/타이머 포함). 교체 시 반드시 호출해 누수 방지.
+let closeActiveError: ((immediate?: boolean) => void) | null = null;
 
 // 오류만 화면 정중앙에 딤 배경과 함께 크게 표시 — 사용자가 실패를 확실히 인지하도록.
 // (성공/정보/경고는 우측 상단 코너 토스트를 그대로 사용)
 function showCenterError(message: string, durationMs = 6000): void {
   ensureAnimStyle();
-  // 한 번에 하나만 — 기존 중앙 오류 팝업이 있으면 교체
-  document.getElementById(CENTER_ERROR_ID)?.remove();
+  // 한 번에 하나만 — 기존 팝업을 리스너/타이머까지 정리하고 즉시 제거
+  closeActiveError?.(true);
 
   const dark = document.documentElement.classList.contains('dark');
   const prevFocus = document.activeElement as HTMLElement | null;
@@ -193,10 +195,15 @@ function showCenterError(message: string, durationMs = 6000): void {
   btn.focus();
 
   let timer = 0;
-  const close = () => {
+  const close = (immediate = false) => {
     if (!backdrop.parentNode) return;
     window.clearTimeout(timer);
     document.removeEventListener('keydown', onKey);
+    closeActiveError = null;
+    if (immediate) {
+      backdrop.remove(); // 교체 시 애니메이션 없이 즉시 제거(잔상/이중 배경 방지)
+      return;
+    }
     backdrop.style.animation = 'appToastFadeOut 0.15s ease-out';
     setTimeout(() => backdrop.remove(), 150);
     prevFocus?.focus?.();
@@ -205,12 +212,13 @@ function showCenterError(message: string, durationMs = 6000): void {
     if (e.key === 'Escape') close();
   };
 
-  btn.addEventListener('click', close);
+  btn.addEventListener('click', () => close());
   backdrop.addEventListener('click', e => {
     if (e.target === backdrop) close(); // 배경 클릭 시 닫기(카드 클릭은 유지)
   });
   document.addEventListener('keydown', onKey);
-  timer = window.setTimeout(close, durationMs); // 방치돼도 자동으로 닫히도록 안전장치
+  timer = window.setTimeout(() => close(), durationMs); // 방치돼도 자동으로 닫히도록 안전장치
+  closeActiveError = close; // 다음 오류가 이 팝업을 정리할 수 있도록 등록
 }
 
 export const toast = {
