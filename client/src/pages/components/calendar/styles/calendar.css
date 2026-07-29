@@ -334,9 +334,6 @@
 .calendar-wrapper .fc-daygrid-event-harness:has(> .fc-event-start.fc-event-end) {
   right: 0 !important;
 }
-.calendar-wrapper .fc-daygrid-block-event {
-  overflow: hidden;
-}
 
 .calendar-wrapper .fc-event:hover {
   filter: brightness(0.94);
