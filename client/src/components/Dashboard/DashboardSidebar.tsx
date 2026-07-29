@@ -1,7 +1,7 @@
 // client/src/components/Dashboard/DashboardSidebar.tsx
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Pencil, BookOpen, Settings, Folder, Link, FileText } from 'lucide-react';
+import { Calendar, Pencil, BookOpen, Settings, Link, FileText } from 'lucide-react';
 import { fetchPublishedPages, type CustomPageSummary } from '../../api/customPages';
 import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
@@ -149,35 +149,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
             </div>
           )}
 
-          {/* 개인 공간 */}
-          {!boardsLoading && personalBoards.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between px-3 mb-1.5">
-                <p className="text-xs font-bold text-amber-600 dark:text-amber-400 tracking-wide select-none flex items-center gap-1.5">
-                  <Folder className="w-3 h-3" />
-                  개인 공간
-                </p>
-                <span
-                  className="text-xs font-semibold text-amber-700 dark:text-amber-500
-                                 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full
-                                 border border-amber-200 dark:border-amber-800/40"
-                >
-                  나만
-                </span>
-              </div>
-              <div className="space-y-0.5">
-                {personalBoards.map(board => (
-                  <SidebarNav
-                    key={board.id}
-                    label={board.name}
-                    to={`posts/${board.id}`}
-                    closeSidebar={onClose}
-                    icon={<Folder className="w-4.5 h-4.5 text-amber-500" />}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+          {/* 개인 공간은 프로필 드롭다운(헤더)에서 진입 — 사이드바 중복 노출 제거 */}
 
           {/* 도구 */}
           <div>

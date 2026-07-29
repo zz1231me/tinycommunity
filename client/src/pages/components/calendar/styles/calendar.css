@@ -325,6 +325,19 @@
   margin-top: 1px;
 }
 
+/* ★일정 드래그(다른 요일로 이동)가 안 되던 버그 수정.
+   FullCalendar가 단일일 이벤트 harness에 right:-100px를 인라인으로 넣어 이벤트 칩이 셀 폭을
+   넘어 옆 날짜 칸까지 ~100px 삐져나온다. 그 삐져나온 영역이 옆 칸의 mousedown을 가로채,
+   이벤트를 끌면 '이벤트 이동'이 아니라 '날짜 범위 선택(새 일정)'으로 오작동했다.
+   단일일(fc-event-start와 fc-event-end 동시) harness를 셀 안에 가두면 클릭이 이벤트에 정확히
+   잡혀 드래그가 정상 동작한다. (다중일 이벤트는 start/end가 분리돼 매칭되지 않으므로 스팬 유지) */
+.calendar-wrapper .fc-daygrid-event-harness:has(> .fc-event-start.fc-event-end) {
+  right: 0 !important;
+}
+.calendar-wrapper .fc-daygrid-block-event {
+  overflow: hidden;
+}
+
 .calendar-wrapper .fc-event:hover {
   filter: brightness(0.94);
   z-index: 10;
