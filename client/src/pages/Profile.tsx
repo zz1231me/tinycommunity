@@ -414,7 +414,7 @@ export default function Profile() {
           >
             {/* 1. 프로필 탭 */}
             {activeTab === 'profile' && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-start">
                 {/* 아바타 */}
                 <div className="card p-6 text-center">
                   <AvatarUpload
