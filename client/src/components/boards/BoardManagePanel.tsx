@@ -4,7 +4,8 @@ import { Tag } from '../../types/board.types';
 import { getTags, createTag, updateTag, deleteTag } from '../../api/tags';
 import { updateBoardInfo } from '../../api/boards';
 import { toast } from '../../utils/toast';
-import { DEFAULT_TAG_COLOR } from '../../constants/colors';
+import { DEFAULT_TAG_COLOR, TAG_COLOR_PALETTE, suggestTagColor } from '../../constants/colors';
+import { ConfirmationModal } from '../admin/common/ConfirmationModal';
 
 interface BoardManagePanelProps {
   boardType: string;
@@ -15,6 +16,47 @@ interface BoardManagePanelProps {
 }
 
 const DEFAULT_COLOR = DEFAULT_TAG_COLOR;
+
+/** 색상 빠른 선택 — 추천 팔레트 스와치 + 직접 선택(커스텀). 매번 수동으로 고르는 번거로움 해소. */
+function ColorSwatches({ value, onChange }: { value: string; onChange: (c: string) => void }) {
+  const isPreset = TAG_COLOR_PALETTE.some(c => c.toLowerCase() === value.toLowerCase());
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {TAG_COLOR_PALETTE.map(c => (
+        <button
+          key={c}
+          type="button"
+          onClick={() => onChange(c)}
+          aria-label={`색상 ${c}`}
+          aria-pressed={value.toLowerCase() === c.toLowerCase()}
+          className={`w-6 h-6 rounded-full transition-transform hover:scale-110 ${
+            value.toLowerCase() === c.toLowerCase()
+              ? 'ring-2 ring-offset-2 ring-slate-400 dark:ring-offset-slate-900 scale-110'
+              : ''
+          }`}
+          style={{ backgroundColor: c }}
+        />
+      ))}
+      {/* 커스텀 색상 직접 선택 */}
+      <label
+        title="직접 선택"
+        className={`relative w-6 h-6 rounded-full cursor-pointer overflow-hidden border border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center ${
+          !isPreset ? 'ring-2 ring-offset-2 ring-slate-400 dark:ring-offset-slate-900' : ''
+        }`}
+        style={!isPreset ? { backgroundColor: value } : undefined}
+      >
+        <input
+          type="color"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          aria-label="태그 색상 직접 선택"
+          className="absolute inset-0 opacity-0 cursor-pointer"
+        />
+        {isPreset && <span className="text-xs text-slate-400 leading-none">+</span>}
+      </label>
+    </div>
+  );
+}
 
 /** 게시판 내 관리 패널 — 담당자/관리자가 이 게시판의 기본정보와 태그를 관리 */
 export function BoardManagePanel({
@@ -32,11 +74,12 @@ export function BoardManagePanel({
   // 태그
   const [tags, setTags] = useState<Tag[]>([]);
   const [loadingTags, setLoadingTags] = useState(true);
-  const [newTag, setNewTag] = useState({ name: '', color: DEFAULT_COLOR });
+  const [newTag, setNewTag] = useState({ name: '', color: suggestTagColor([]) });
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: '', color: DEFAULT_COLOR });
   const [busyTagId, setBusyTagId] = useState<number | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -57,7 +100,11 @@ export function BoardManagePanel({
     let mounted = true;
     getTags(boardType)
       .then(data => {
-        if (mounted) setTags(data);
+        if (mounted) {
+          setTags(data);
+          // 기존 태그가 안 쓴 색을 새 태그 기본색으로 자동 추천 → 매번 고를 필요 없음
+          setNewTag(p => ({ ...p, color: suggestTagColor(data.map(t => t.color || DEFAULT_COLOR)) }));
+        }
       })
       .catch(() => {
         if (mounted) toast.error('태그를 불러오지 못했습니다.');
@@ -99,8 +146,10 @@ export function BoardManagePanel({
         color: newTag.color,
         boardId: boardType,
       });
-      setTags(prev => [...prev, tag]);
-      setNewTag({ name: '', color: DEFAULT_COLOR });
+      const nextTags = [...tags, tag];
+      setTags(nextTags);
+      // 다음 태그 색도 자동 추천(직전 색과 겹치지 않게)
+      setNewTag({ name: '', color: suggestTagColor(nextTags.map(t => t.color || DEFAULT_COLOR)) });
       toast.success('태그가 추가되었습니다.');
     } catch {
       toast.error('태그 추가에 실패했습니다. (이름 중복 여부 확인)');
@@ -132,8 +181,11 @@ export function BoardManagePanel({
     }
   };
 
-  const handleDeleteTag = async (id: number) => {
-    if (!window.confirm('이 태그를 삭제하시겠습니까? 게시글에서도 제거됩니다.')) return;
+  // 삭제는 스타일된 ConfirmationModal로 확인(네이티브 window.confirm 대체)
+  const confirmDeleteTag = async () => {
+    const id = deleteTargetId;
+    if (id == null) return;
+    setDeleteTargetId(null);
     setBusyTagId(id);
     try {
       await deleteTag(id);
@@ -231,33 +283,37 @@ export function BoardManagePanel({
               <span className="ml-1.5 text-xs font-normal text-slate-400">이 게시판 전용</span>
             </h3>
 
-            {/* 새 태그 추가 */}
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
+            {/* 새 태그 추가 — 색상은 자동 추천(팔레트 스와치 + 직접 선택) */}
+            <div className="space-y-2">
+              <ColorSwatches
                 value={newTag.color}
-                onChange={e => setNewTag(p => ({ ...p, color: e.target.value }))}
-                aria-label="새 태그 색상"
-                className="w-9 h-9 flex-shrink-0 rounded border border-slate-300 dark:border-slate-600 cursor-pointer bg-transparent"
+                onChange={c => setNewTag(p => ({ ...p, color: c }))}
               />
-              <input
-                type="text"
-                value={newTag.name}
-                onChange={e => setNewTag(p => ({ ...p, name: e.target.value }))}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleCreateTag();
-                }}
-                placeholder="새 태그 이름"
-                maxLength={50}
-                className={inputCls}
-              />
-              <button
-                onClick={handleCreateTag}
-                disabled={creating}
-                className="btn-primary flex-shrink-0"
-              >
-                추가
-              </button>
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-4 h-4 flex-shrink-0 rounded-full border border-black/5 dark:border-white/10"
+                  style={{ backgroundColor: newTag.color }}
+                  aria-hidden="true"
+                />
+                <input
+                  type="text"
+                  value={newTag.name}
+                  onChange={e => setNewTag(p => ({ ...p, name: e.target.value }))}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleCreateTag();
+                  }}
+                  placeholder="새 태그 이름"
+                  maxLength={50}
+                  className={inputCls}
+                />
+                <button
+                  onClick={handleCreateTag}
+                  disabled={creating}
+                  className="btn-primary flex-shrink-0"
+                >
+                  추가
+                </button>
+              </div>
             </div>
 
             {/* 태그 목록 */}
@@ -273,35 +329,39 @@ export function BoardManagePanel({
                     className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-700"
                   >
                     {editingId === tag.id ? (
-                      <>
-                        <input
-                          type="color"
+                      <div className="w-full space-y-2">
+                        <ColorSwatches
                           value={editForm.color}
-                          onChange={e => setEditForm(p => ({ ...p, color: e.target.value }))}
-                          aria-label="태그 색상"
-                          className="w-8 h-8 flex-shrink-0 rounded border border-slate-300 dark:border-slate-600 cursor-pointer bg-transparent"
+                          onChange={c => setEditForm(p => ({ ...p, color: c }))}
                         />
-                        <input
-                          type="text"
-                          value={editForm.name}
-                          onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
-                          maxLength={50}
-                          className={`${inputCls} py-1`}
-                        />
-                        <button
-                          onClick={() => handleSaveEdit(tag.id)}
-                          disabled={busyTagId === tag.id}
-                          className="btn-primary px-2.5 py-1 text-xs"
-                        >
-                          저장
-                        </button>
-                        <button
-                          onClick={() => setEditingId(null)}
-                          className="px-2.5 py-1 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
-                        >
-                          취소
-                        </button>
-                      </>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-4 h-4 flex-shrink-0 rounded-full border border-black/5 dark:border-white/10"
+                            style={{ backgroundColor: editForm.color }}
+                            aria-hidden="true"
+                          />
+                          <input
+                            type="text"
+                            value={editForm.name}
+                            onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
+                            maxLength={50}
+                            className={`${inputCls} py-1`}
+                          />
+                          <button
+                            onClick={() => handleSaveEdit(tag.id)}
+                            disabled={busyTagId === tag.id}
+                            className="btn-primary px-2.5 py-1 text-xs"
+                          >
+                            저장
+                          </button>
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="px-2.5 py-1 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
+                          >
+                            취소
+                          </button>
+                        </div>
+                      </div>
                     ) : (
                       <>
                         <span
@@ -321,7 +381,7 @@ export function BoardManagePanel({
                           수정
                         </button>
                         <button
-                          onClick={() => handleDeleteTag(tag.id)}
+                          onClick={() => setDeleteTargetId(tag.id)}
                           disabled={busyTagId === tag.id}
                           className="px-2 py-1 text-xs text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg disabled:opacity-50"
                         >
@@ -336,6 +396,16 @@ export function BoardManagePanel({
           </section>
         </div>
       </motion.div>
+
+      <ConfirmationModal
+        open={deleteTargetId !== null}
+        title="태그 삭제"
+        message="이 태그를 삭제하시겠습니까? 게시글에서도 제거됩니다."
+        confirmLabel="삭제"
+        variant="danger"
+        onConfirm={confirmDeleteTag}
+        onCancel={() => setDeleteTargetId(null)}
+      />
     </div>
   );
 }

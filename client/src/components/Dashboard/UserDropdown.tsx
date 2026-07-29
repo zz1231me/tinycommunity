@@ -1,8 +1,9 @@
 // client/src/components/Dashboard/UserDropdown.tsx
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, User, Settings, LogOut, Share2 } from 'lucide-react';
+import { ChevronDown, User, Settings, LogOut, Share2, Folder } from 'lucide-react';
 import { TempShareModal } from './TempShareModal';
+import { useAccessibleBoards } from '../../hooks/useAccessibleBoards';
 import { AnimatePresence, motion } from 'framer-motion';
 import { scaleIn } from '../../utils/animations';
 import { Avatar } from '../Avatar';
@@ -16,6 +17,8 @@ export function UserDropdown() {
   const { getUserName, getUserRole, getUser, clearUser, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [shareOpen, setShareOpen] = useState(false);
+  // 개인 공간(개인 폴더) — 드롭다운에서 바로 진입. 보통 사용자당 1개.
+  const { personalBoards } = useAccessibleBoards();
 
   // 통합 overlay store — NotificationBell/GlobalSearch와 자동 배타.
   // setIsOpen은 안정 ref 유지 (getState로 호출 시점 최신값 사용)
@@ -141,6 +144,23 @@ export function UserDropdown() {
                 <User className="w-4 h-4 flex-shrink-0 text-slate-400" />
                 <span>프로필 설정</span>
               </button>
+
+              {personalBoards.length > 0 && (
+                <button
+                  onClick={() => {
+                    navigate(`/dashboard/posts/${personalBoards[0].id}`);
+                    setIsOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg
+                           text-sm text-slate-600 dark:text-slate-400
+                           hover:bg-slate-50 dark:hover:bg-slate-800
+                           hover:text-slate-900 dark:hover:text-slate-200
+                           transition-colors duration-150"
+                >
+                  <Folder className="w-4 h-4 flex-shrink-0 text-amber-500" />
+                  <span>개인 공간</span>
+                </button>
+              )}
 
               <button
                 onClick={() => {
