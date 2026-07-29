@@ -48,8 +48,6 @@ export interface UserInstance extends Model<
   isActive: CreationOptional<boolean>;
   isApproved: CreationOptional<boolean>;
   mustChangePassword: CreationOptional<boolean>;
-  isEmailVerified: CreationOptional<boolean>;
-  emailVerificationToken: CreationOptional<string | null>;
   passwordResetToken: CreationOptional<string | null>;
   passwordResetExpires: CreationOptional<Date | null>;
   failedLoginAttempts: CreationOptional<number>;
@@ -59,8 +57,6 @@ export interface UserInstance extends Model<
 
   // ✅ 프로필
   avatar: CreationOptional<string | null>;
-  bio: CreationOptional<string | null>;
-  phoneNumber: CreationOptional<string | null>;
 
   // ✅ 2FA (Two-Factor Authentication)
   twoFactorEnabled: CreationOptional<boolean>;
@@ -96,8 +92,6 @@ class UserModel
   declare public isActive: CreationOptional<boolean>;
   declare public isApproved: CreationOptional<boolean>;
   declare public mustChangePassword: CreationOptional<boolean>;
-  declare public isEmailVerified: CreationOptional<boolean>;
-  declare public emailVerificationToken: CreationOptional<string | null>;
   declare public passwordResetToken: CreationOptional<string | null>;
   declare public passwordResetExpires: CreationOptional<Date | null>;
   declare public failedLoginAttempts: CreationOptional<number>;
@@ -106,8 +100,6 @@ class UserModel
   declare public lastLoginIp: CreationOptional<string | null>;
 
   declare public avatar: CreationOptional<string | null>;
-  declare public bio: CreationOptional<string | null>;
-  declare public phoneNumber: CreationOptional<string | null>;
 
   declare public twoFactorEnabled: CreationOptional<boolean>;
   declare public twoFactorSecret: CreationOptional<string | null>;
@@ -214,13 +206,10 @@ class UserModel
 
       // 민감 데이터 삭제 (GDPR)
       this.email = null;
-      this.phoneNumber = null;
       this.twoFactorSecret = null;
       this.twoFactorEnabled = false;
       this.passwordResetToken = null;
       this.passwordResetExpires = null;
-      this.emailVerificationToken = null;
-      this.bio = null;
       this.avatar = null;
       this.anonymizedName = anonymizedName;
       this.isDeleted = true;
@@ -246,7 +235,6 @@ class UserModel
       twoFactorSecret: _twoFactorSecret,
       passwordResetToken: _passwordResetToken,
       passwordResetExpires: _passwordResetExpires,
-      emailVerificationToken: _emailVerificationToken,
       tokenVersion: _tokenVersion,
       failedLoginAttempts: _failedLoginAttempts,
       lockUntil: _lockUntil,
@@ -328,16 +316,6 @@ UserModel.init(
       field: 'must_change_password',
       comment: '관리자 초기화 후 강제 비밀번호 변경 필요 여부',
     },
-    isEmailVerified: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-      comment: '이메일 인증 여부',
-    },
-    emailVerificationToken: {
-      type: DataTypes.STRING(64),
-      allowNull: true,
-    },
     passwordResetToken: {
       type: DataTypes.STRING(64),
       allowNull: true,
@@ -369,20 +347,6 @@ UserModel.init(
       type: DataTypes.STRING(500),
       allowNull: true,
       comment: '프로필 이미지 URL',
-    },
-    bio: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-      validate: {
-        len: [0, 500],
-      },
-    },
-    phoneNumber: {
-      type: DataTypes.STRING(20),
-      allowNull: true,
-      validate: {
-        is: /^[0-9\-\+\(\)\s]+$/,
-      },
     },
     twoFactorEnabled: {
       type: DataTypes.BOOLEAN,

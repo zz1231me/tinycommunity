@@ -151,14 +151,6 @@ export async function addDatabaseIndexes(): Promise<void> {
         description: '읽음 수 집계',
       },
 
-      // ── PostBookmark ──────────────────────────────────
-      {
-        table: 'post_bookmarks',
-        name: 'idx_post_bookmarks_user',
-        fields: ['UserId', 'createdAt'],
-        description: '사용자 북마크',
-      },
-
       // ── Notifications ─────────────────────────────────
       {
         table: 'notifications',

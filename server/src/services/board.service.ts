@@ -9,7 +9,6 @@ import { PostTag } from '../models/PostTag';
 import { Comment } from '../models/Comment';
 import { PostLike } from '../models/PostLike';
 import { PostRead } from '../models/PostRead';
-import { PostBookmark } from '../models/PostBookmark';
 import { BoardManager } from '../models/BoardManager';
 import { CommentLike } from '../models/CommentLike';
 import { Notification } from '../models/Notification';
@@ -205,7 +204,6 @@ export class BoardService extends BaseService {
         await Comment.destroy({ where: childWhere, transaction: t, force: true });
         await PostLike.destroy({ where: childWhere, transaction: t });
         await PostRead.destroy({ where: childWhere, transaction: t });
-        await PostBookmark.destroy({ where: childWhere, transaction: t });
         await PostTag.destroy({ where: childWhere, transaction: t });
         // 이 글들을 가리키는 알림(댓글/좋아요)도 링크가 죽으므로 정리(deletePost와 동일).
         await Notification.destroy({

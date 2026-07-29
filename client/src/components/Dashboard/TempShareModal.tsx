@@ -210,5 +210,3 @@ export function TempShareModal({ open, onClose }: Props) {
     </div>
   );
 }
-
-export default TempShareModal;

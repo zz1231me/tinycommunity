@@ -22,7 +22,6 @@ import { Comment } from '../models/Comment';
 import { PostLike } from '../models/PostLike';
 import { PostTag } from '../models/PostTag';
 import { PostRead } from '../models/PostRead';
-import { PostBookmark } from '../models/PostBookmark';
 import { CommentLike } from '../models/CommentLike';
 import { Notification } from '../models/Notification';
 import { BaseService } from './base.service';
@@ -1091,7 +1090,6 @@ export class PostService extends BaseService {
       // 파생 데이터는 hard-delete (복구 가치 없음)
       await PostLike.destroy({ where: { PostId: post.id }, transaction: t });
       await PostRead.destroy({ where: { PostId: post.id }, transaction: t });
-      await PostBookmark.destroy({ where: { PostId: post.id }, transaction: t });
       await PostTag.destroy({ where: { PostId: post.id }, transaction: t });
       // 이 글을 가리키는 알림(댓글/좋아요/멘션)은 링크가 죽으므로 정리 — 사용자 알림이라 감사가치 없음.
       // (신고(Report)는 모더레이션/감사 기록이고 글은 soft-delete라 paranoid:false로 계속 조회되므로 보존)
@@ -1139,7 +1137,6 @@ export class PostService extends BaseService {
         await Comment.destroy({ where: childWhere, transaction: t, force: true });
         await PostLike.destroy({ where: childWhere, transaction: t });
         await PostRead.destroy({ where: childWhere, transaction: t });
-        await PostBookmark.destroy({ where: childWhere, transaction: t });
         await PostTag.destroy({ where: childWhere, transaction: t });
         await Post.destroy({ where: { id: { [Op.in]: postIds } }, transaction: t, force: true });
       });

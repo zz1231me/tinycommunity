@@ -70,5 +70,3 @@ export function AnnouncementBanner() {
     </div>
   );
 }
-
-export default AnnouncementBanner;

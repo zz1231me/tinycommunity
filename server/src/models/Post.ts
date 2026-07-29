@@ -40,11 +40,8 @@ export interface PostInstance extends Model<
   boardType: ForeignKey<string>;
   viewCount: CreationOptional<number>;
   isPinned: CreationOptional<boolean>;
-  isNotice: CreationOptional<boolean>;
   status: CreationOptional<'draft' | 'published' | 'archived'>;
-  publishedAt: CreationOptional<Date | null>;
   deletedAt: CreationOptional<Date | null>;
-  deletedBy: CreationOptional<string | null>;
   UserId: ForeignKey<string | null>; // ✅ null 허용
   // 비밀글
   isSecret: CreationOptional<boolean>;
@@ -76,11 +73,8 @@ class PostModel
   declare public boardType: ForeignKey<string>;
   declare public viewCount: CreationOptional<number>;
   declare public isPinned: CreationOptional<boolean>;
-  declare public isNotice: CreationOptional<boolean>;
   declare public status: CreationOptional<'draft' | 'published' | 'archived'>;
-  declare public publishedAt: CreationOptional<Date | null>;
   declare public deletedAt: CreationOptional<Date | null>;
-  declare public deletedBy: CreationOptional<string | null>;
   declare public UserId: ForeignKey<string | null>; // ✅ null 허용
   declare public attachments: Attachment[] | null;
   declare public isSecret: CreationOptional<boolean>;
@@ -190,32 +184,16 @@ PostModel.init(
       defaultValue: false,
       comment: '상단 고정 여부',
     },
-    isNotice: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-      comment: '공지사항 여부',
-    },
     status: {
       type: DataTypes.ENUM('draft', 'published', 'archived'),
       allowNull: false,
       defaultValue: 'published',
       comment: '게시글 상태',
     },
-    publishedAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      comment: '발행일시',
-    },
     deletedAt: {
       type: DataTypes.DATE,
       allowNull: true,
       comment: '삭제일시 (소프트 삭제)',
-    },
-    deletedBy: {
-      type: DataTypes.STRING(50),
-      allowNull: true,
-      comment: '삭제자 ID',
     },
     UserId: {
       type: DataTypes.STRING(50),
@@ -326,16 +304,6 @@ PostModel.init(
       beforeSave: async post => {
         if (post.isNewRecord || post.changed('content')) {
           post.contentText = extractSearchText(post.content || '');
-        }
-      },
-      beforeCreate: async post => {
-        if (post.status === 'published' && !post.publishedAt) {
-          post.publishedAt = new Date();
-        }
-      },
-      beforeUpdate: async post => {
-        if (post.changed('status') && post.status === 'published' && !post.publishedAt) {
-          post.publishedAt = new Date();
         }
       },
     },

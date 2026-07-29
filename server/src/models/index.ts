@@ -16,7 +16,6 @@ import { PostLike } from './PostLike';
 import { CommentLike } from './CommentLike';
 import { CommentReaction } from './CommentReaction';
 import { Notification } from './Notification';
-import { PostBookmark } from './PostBookmark';
 import { PostRead } from './PostRead';
 import { Tag } from './Tag';
 import { PostTag } from './PostTag';
@@ -235,28 +234,6 @@ User.hasMany(CommentReaction, {
 CommentReaction.belongsTo(User, { foreignKey: 'UserId', as: 'user' });
 
 // ========================================
-// PostBookmark 관련 관계
-// ========================================
-
-// Post ↔ PostBookmark
-Post.hasMany(PostBookmark, {
-  foreignKey: 'PostId',
-  as: 'bookmarks',
-  onDelete: 'CASCADE',
-  hooks: true,
-});
-PostBookmark.belongsTo(Post, { foreignKey: 'PostId', as: 'post' });
-
-// User ↔ PostBookmark
-User.hasMany(PostBookmark, {
-  foreignKey: 'UserId',
-  as: 'postBookmarks',
-  onDelete: 'CASCADE',
-  hooks: true,
-});
-PostBookmark.belongsTo(User, { foreignKey: 'UserId', as: 'user' });
-
-// ========================================
 // Notification 관련 관계
 // ========================================
 
@@ -433,7 +410,6 @@ export {
   CommentLike,
   CommentReaction,
   Notification,
-  PostBookmark,
   PostRead,
   Tag,
   PostTag,

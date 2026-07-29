@@ -32,7 +32,6 @@ export interface CommentInstance extends Model<
 
   // 반응/좋아요
   likeCount: CreationOptional<number>;
-  dislikeCount: CreationOptional<number>;
 
   // 수정/삭제 추적
   isEdited: CreationOptional<boolean>;
@@ -64,7 +63,6 @@ class CommentModel
   declare public path: CreationOptional<string>;
 
   declare public likeCount: CreationOptional<number>;
-  declare public dislikeCount: CreationOptional<number>;
 
   declare public isEdited: CreationOptional<boolean>;
   declare public editedAt: CreationOptional<Date | null>;
@@ -157,14 +155,6 @@ CommentModel.init(
       comment: '계층 구조 경로',
     },
     likeCount: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0,
-      validate: {
-        min: 0,
-      },
-    },
-    dislikeCount: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
