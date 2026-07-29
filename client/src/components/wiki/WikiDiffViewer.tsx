@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import * as Diff from 'diff';
 import { html as diff2html } from 'diff2html';
 import 'diff2html/bundles/css/diff2html.min.css';
+import './WikiDiffViewer.css';
 
 interface WikiVersion {
   content: string;

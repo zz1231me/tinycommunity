@@ -30,7 +30,7 @@ import { getApiErrorMessage } from '../../../api/utils';
 
 const EMPTY: CustomPageInput = { slug: '', title: '', html: '', isPublished: false, order: 0 };
 type Mode = 'html' | 'bundle';
-const BUNDLE_MAX_MB = 30; // 서버 BUNDLE_MAX_ZIP와 일치
+const BUNDLE_MAX_MB = 100; // 서버 BUNDLE_MAX_ZIP와 일치
 
 export const CustomPageManagement = () => {
   const [pages, setPages] = useState<CustomPage[]>([]);
@@ -292,7 +292,7 @@ export const CustomPageManagement = () => {
                   {zipFile ? zipFile.name : 'index.html이 포함된 폴더를 ZIP으로 압축해 선택'}
                 </span>
                 <span className="text-xs text-slate-400">
-                  .zip · 최대 30MB · 상대경로 자산 지원
+                  .zip · 최대 100MB · 상대경로 자산 지원
                 </span>
                 <input
                   type="file"

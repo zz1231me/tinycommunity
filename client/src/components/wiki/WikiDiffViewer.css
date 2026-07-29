@@ -1,0 +1,11 @@
+/* WikiDiffViewer.css
+ * diff2html side-by-side의 줄번호(.d2h-code-side-linenumber)는 position:absolute다.
+ * 그런데 감싼 요소들이 모두 static이면 줄번호의 containing block이 '문서'가 되어,
+ * 스크롤 컨테이너(.wiki-diff-viewer, overflow-auto)를 스크롤할 때 코드 라인만 움직이고
+ * 줄번호는 제자리에 남아 아래로 떨어져 나온다("맨 아래 따로 붙어서 노는" 그래픽 깨짐).
+ * → 스크롤되는 콘텐츠 안쪽 요소(.d2h-file-side-diff)를 positioning context로 만들면
+ *   줄번호가 콘텐츠와 함께 스크롤되어 항상 코드 라인과 정렬된다.
+ */
+.wiki-diff-viewer .d2h-file-side-diff {
+  position: relative;
+}
