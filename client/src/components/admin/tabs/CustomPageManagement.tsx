@@ -21,6 +21,7 @@ import { getApiErrorMessage } from '../../../api/utils';
 
 const EMPTY: CustomPageInput = { slug: '', title: '', html: '', isPublished: false, order: 0 };
 type Mode = 'html' | 'bundle';
+const BUNDLE_MAX_MB = 30; // 서버 BUNDLE_MAX_ZIP와 일치
 
 export const CustomPageManagement = () => {
   const [pages, setPages] = useState<CustomPage[]>([]);
@@ -100,7 +101,14 @@ export const CustomPageManagement = () => {
       toast.error('업로드할 ZIP 파일을 선택해주세요.');
       return;
     }
+    // ZIP 크기 사전 검증(서버 상한과 동일) — 큰 업로드 낭비 방지
+    if (mode === 'bundle' && zipFile && zipFile.size > BUNDLE_MAX_MB * 1024 * 1024) {
+      toast.error(`ZIP이 너무 큽니다. 최대 ${BUNDLE_MAX_MB}MB까지 가능합니다.`);
+      return;
+    }
     setSaving(true);
+    // 신규 번들 페이지의 후속 단계(업로드 등)가 실패하면 방금 만든 빈 페이지를 롤백한다.
+    let createdNewId: string | null = null;
     try {
       if (mode === 'html') {
         if (editingId === 'new') await createCustomPage(form);
@@ -111,6 +119,7 @@ export const CustomPageManagement = () => {
         if (id === 'new') {
           const created = await createCustomPage({ ...form, html: '' });
           id = created.id;
+          createdNewId = created.id;
         }
         let entryToSave = bundleEntry;
         if (zipFile && id) {
@@ -131,6 +140,8 @@ export const CustomPageManagement = () => {
       cancel();
       await load();
     } catch (err) {
+      // 방금 만든 신규 페이지가 있으면 정리(빈 페이지가 남지 않도록)
+      if (createdNewId) await deleteCustomPage(createdNewId).catch(() => {});
       toast.error(getApiErrorMessage(err, '저장에 실패했습니다.'));
     } finally {
       setSaving(false);
