@@ -46,14 +46,11 @@ export const BLOCKED_EXTENSIONS_FLOOR = [
   '.jsw',
   '.jsv',
   '.jspf',
-  '.exe',
-  '.bat',
-  '.cmd',
-  '.com',
-  '.pif',
-  '.scr',
-  '.vbs',
-  '.vbe',
+  // 데스크톱 실행파일(.exe .bat .cmd .com .pif .scr .vbs .vbe)은 floor에서 제외.
+  //  - 리눅스 서버에서 실행되지 않아 웹셸 위험 없음
+  //  - 브라우저가 인라인 실행하지 않고 다운로드만 하므로 저장형 XSS도 아님
+  //  → 다운로드받은 사람 PC에서만 위험(=서버 보안과 무관)하여 허용.
+  //  ※ 서버 실행/저장형 XSS 위험이 있는 .js .html .svg 등은 아래에 그대로 유지.
   '.js',
   '.jar',
   '.sh',
