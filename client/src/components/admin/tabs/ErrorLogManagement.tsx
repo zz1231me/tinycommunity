@@ -238,10 +238,7 @@ export const ErrorLogManagement = () => {
               className="input"
             />
           </div>
-          <button
-            type="submit"
-            className="btn-primary px-4 py-1.5"
-          >
+          <button type="submit" className="btn-primary px-4 py-1.5">
             검색
           </button>
           <button

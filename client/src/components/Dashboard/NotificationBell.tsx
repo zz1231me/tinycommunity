@@ -249,9 +249,7 @@ export function NotificationBell() {
               <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
                 알림
                 {unreadCount > 0 && (
-                  <span className="badge badge-red ml-2 px-1.5 font-bold">
-                    {unreadCount}
-                  </span>
+                  <span className="badge badge-red ml-2 px-1.5 font-bold">{unreadCount}</span>
                 )}
               </h3>
               <div className="flex items-center gap-2">
@@ -308,10 +306,7 @@ export function NotificationBell() {
                 <p className="text-xs mb-4 text-center">
                   네트워크 상태를 확인하고 다시 시도해주세요.
                 </p>
-                <button
-                  onClick={fetchNotifications}
-                  className="btn-primary px-4 py-2 text-xs"
-                >
+                <button onClick={fetchNotifications} className="btn-primary px-4 py-2 text-xs">
                   다시 시도
                 </button>
               </div>

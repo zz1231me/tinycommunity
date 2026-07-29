@@ -10,7 +10,10 @@ export interface TempShareResult {
   expiresAt: string;
 }
 
-export const uploadTempShare = (file: File, onProgress?: (pct: number) => void): Promise<TempShareResult> => {
+export const uploadTempShare = (
+  file: File,
+  onProgress?: (pct: number) => void
+): Promise<TempShareResult> => {
   const form = new FormData();
   form.append('file', file);
   return uploadApi

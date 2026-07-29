@@ -149,7 +149,10 @@ class PasswordResetRequestService {
           req.lockedUntil = new Date(now.getTime() + LOCK_MS);
           req.code = null; // 잠금 시 코드 폐기 (잠금 상태는 lockedUntil로 판단 — status 컬럼 미변경)
           await req.save({ transaction: t }); // 커밋됨(정상 반환)
-          return new AppError(429, '인증번호를 3회 틀렸습니다. 1시간 후 다시 초기화를 요청해주세요.');
+          return new AppError(
+            429,
+            '인증번호를 3회 틀렸습니다. 1시간 후 다시 초기화를 요청해주세요.'
+          );
         }
         await req.save({ transaction: t }); // 커밋됨
         return new AppError(

@@ -687,9 +687,7 @@ export default function Profile() {
                                   {deviceLabel(s.userAgent)}
                                 </span>
                                 {s.isCurrent && (
-                                  <span className="badge badge-primary">
-                                    현재 기기
-                                  </span>
+                                  <span className="badge badge-primary">현재 기기</span>
                                 )}
                               </div>
                             </td>

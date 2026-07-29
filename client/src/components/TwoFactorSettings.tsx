@@ -132,11 +132,7 @@ export const TwoFactorSettings = () => {
         <div>
           <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
             🔐 2단계 인증 (2FA)
-            {is2FAEnabled && (
-              <span className="badge badge-success">
-                활성화됨
-              </span>
-            )}
+            {is2FAEnabled && <span className="badge badge-success">활성화됨</span>}
           </h4>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
             {is2FAEnabled

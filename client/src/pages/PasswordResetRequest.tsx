@@ -121,7 +121,12 @@ function PasswordResetRequest() {
               />
             ) : (
               <div className="w-16 h-16 bg-primary-600 rounded-2xl mx-auto mb-5 flex items-center justify-center shadow-md">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-8 h-8 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -131,7 +136,9 @@ function PasswordResetRequest() {
                 </svg>
               </div>
             )}
-            <h1 className="text-2xl font-bold mb-1.5 text-slate-900 dark:text-white">비밀번호 찾기</h1>
+            <h1 className="text-2xl font-bold mb-1.5 text-slate-900 dark:text-white">
+              비밀번호 찾기
+            </h1>
             <p className="text-sm text-slate-600 dark:text-slate-400">
               {step === 'request' && '아이디를 입력하면 관리자에게 인증번호가 표시됩니다'}
               {step === 'verify' && '관리자에게 받은 6자리 인증번호로 새 비밀번호를 설정하세요'}
@@ -143,7 +150,10 @@ function PasswordResetRequest() {
           {step === 'request' && (
             <form onSubmit={submitRequest} className="space-y-4">
               <div>
-                <label htmlFor="loginId" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label
+                  htmlFor="loginId"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
+                >
                   아이디
                 </label>
                 <input
@@ -158,7 +168,8 @@ function PasswordResetRequest() {
                   placeholder="가입 시 사용한 아이디"
                 />
                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                  요청하면 6자리 인증번호가 만들어집니다. <b>관리자에게 인증번호를 문의</b>해 다음 단계에서 입력하세요.
+                  요청하면 6자리 인증번호가 만들어집니다. <b>관리자에게 인증번호를 문의</b>해 다음
+                  단계에서 입력하세요.
                 </p>
               </div>
               <button type="submit" disabled={isLoading} className={primaryBtn}>
@@ -183,11 +194,17 @@ function PasswordResetRequest() {
                 </div>
               )}
               <div className="text-xs text-slate-500 dark:text-slate-400">
-                <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{loginId}</span> 계정 · 인증번호는 30분간 유효합니다.
+                <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
+                  {loginId}
+                </span>{' '}
+                계정 · 인증번호는 30분간 유효합니다.
               </div>
 
               <div>
-                <label htmlFor="code" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label
+                  htmlFor="code"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
+                >
                   인증번호 (6자리)
                 </label>
                 <input
@@ -205,7 +222,10 @@ function PasswordResetRequest() {
               </div>
 
               <div>
-                <label htmlFor="pw" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label
+                  htmlFor="pw"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
+                >
                   새 비밀번호
                 </label>
                 <div className="relative">
@@ -231,7 +251,10 @@ function PasswordResetRequest() {
               </div>
 
               <div>
-                <label htmlFor="pw2" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label
+                  htmlFor="pw2"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
+                >
                   새 비밀번호 확인
                 </label>
                 <input
@@ -245,7 +268,9 @@ function PasswordResetRequest() {
                   placeholder="새 비밀번호를 다시 입력"
                 />
                 {confirm && password !== confirm && (
-                  <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">비밀번호가 일치하지 않습니다.</p>
+                  <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">
+                    비밀번호가 일치하지 않습니다.
+                  </p>
                 )}
               </div>
 
@@ -290,12 +315,26 @@ function PasswordResetRequest() {
           {step === 'done' && (
             <div className="space-y-5">
               <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl flex items-start gap-3">
-                <svg className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 <div>
-                  <p className="text-sm font-medium text-green-800 dark:text-green-300">비밀번호가 변경되었습니다</p>
-                  <p className="text-sm text-green-700 dark:text-green-400 mt-1">새 비밀번호로 로그인해주세요.</p>
+                  <p className="text-sm font-medium text-green-800 dark:text-green-300">
+                    비밀번호가 변경되었습니다
+                  </p>
+                  <p className="text-sm text-green-700 dark:text-green-400 mt-1">
+                    새 비밀번호로 로그인해주세요.
+                  </p>
                 </div>
               </div>
               <Link to="/" className={primaryBtn}>

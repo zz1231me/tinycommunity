@@ -121,10 +121,7 @@ const MemoBoard = () => {
 
       {/* New memo button */}
       <div className="mb-6">
-        <button
-          onClick={handleNewMemo}
-          className="btn-primary px-4 py-2"
-        >
+        <button onClick={handleNewMemo} className="btn-primary px-4 py-2">
           <span className="text-lg">+</span>새 메모 작성
         </button>
       </div>

@@ -2,7 +2,16 @@
 // 파일공유 모달 — 파일 업로드 → 15분짜리 공유 링크 반환(만료 후 서버에서 자동 삭제).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, UploadCloud, Copy, Clock, Share2, RotateCcw, CheckCircle2, FileIcon } from 'lucide-react';
+import {
+  X,
+  UploadCloud,
+  Copy,
+  Clock,
+  Share2,
+  RotateCcw,
+  CheckCircle2,
+  FileIcon,
+} from 'lucide-react';
 import { uploadTempShare, type TempShareResult } from '../../api/tempShare';
 import { getApiErrorMessage } from '../../api/utils';
 import { useSiteSettings } from '../../store/siteSettings';
@@ -13,7 +22,8 @@ interface Props {
   onClose: () => void;
 }
 
-const fmtSize = (n: number) => (n < 1024 * 1024 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
+const fmtSize = (n: number) =>
+  n < 1024 * 1024 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`;
 
 export function TempShareModal({ open, onClose }: Props) {
   const [uploading, setUploading] = useState(false);
@@ -62,29 +72,33 @@ export function TempShareModal({ open, onClose }: Props) {
     return () => clearInterval(t);
   }, [result]);
 
-  const handleFile = useCallback(async (file: File) => {
-    if (!file) return;
-    if (file.size > maxSize) {
-      toast.error(`파일이 너무 큽니다. 최대 ${maxMb}MB까지 공유할 수 있습니다.`);
-      return;
-    }
-    setUploading(true);
-    setProgress(0);
-    try {
-      const r = await uploadTempShare(file, setProgress);
-      setResult(r);
-    } catch (err) {
-      toast.error(getApiErrorMessage(err, '업로드에 실패했습니다.'));
-    } finally {
-      setUploading(false);
-    }
-  }, [maxSize, maxMb]);
+  const handleFile = useCallback(
+    async (file: File) => {
+      if (!file) return;
+      if (file.size > maxSize) {
+        toast.error(`파일이 너무 큽니다. 최대 ${maxMb}MB까지 공유할 수 있습니다.`);
+        return;
+      }
+      setUploading(true);
+      setProgress(0);
+      try {
+        const r = await uploadTempShare(file, setProgress);
+        setResult(r);
+      } catch (err) {
+        toast.error(getApiErrorMessage(err, '업로드에 실패했습니다.'));
+      } finally {
+        setUploading(false);
+      }
+    },
+    [maxSize, maxMb]
+  );
 
   const shareUrl = result ? `${window.location.origin}${result.url}` : '';
 
   const copy = async () => {
     try {
-      if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(shareUrl);
+      if (navigator.clipboard && window.isSecureContext)
+        await navigator.clipboard.writeText(shareUrl);
       else {
         const ta = document.createElement('textarea');
         ta.value = shareUrl;
@@ -200,7 +214,9 @@ export function TempShareModal({ open, onClose }: Props) {
                   <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                     {result.originalName}
                   </p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500">{fmtSize(result.size)}</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    {fmtSize(result.size)}
+                  </p>
                 </div>
               </div>
 
@@ -211,7 +227,10 @@ export function TempShareModal({ open, onClose }: Props) {
                   onFocus={e => e.currentTarget.select()}
                   className="input flex-1 font-mono text-xs"
                 />
-                <button onClick={copy} className="btn-primary flex-shrink-0 gap-1.5 px-3 py-2 text-sm">
+                <button
+                  onClick={copy}
+                  className="btn-primary flex-shrink-0 gap-1.5 px-3 py-2 text-sm"
+                >
                   <Copy className="h-4 w-4" />
                   복사
                 </button>
@@ -237,8 +256,8 @@ export function TempShareModal({ open, onClose }: Props) {
               </div>
 
               <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-700 dark:bg-amber-900/20 dark:text-amber-400/90">
-                링크는 로그인 없이 누구나 열 수 있으니 필요한 사람에게만 전달하세요. 만료되면 서버에서도
-                자동 삭제됩니다.
+                링크는 로그인 없이 누구나 열 수 있으니 필요한 사람에게만 전달하세요. 만료되면
+                서버에서도 자동 삭제됩니다.
               </p>
             </div>
           )}

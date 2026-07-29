@@ -103,7 +103,10 @@ export function BoardManagePanel({
         if (mounted) {
           setTags(data);
           // 기존 태그가 안 쓴 색을 새 태그 기본색으로 자동 추천 → 매번 고를 필요 없음
-          setNewTag(p => ({ ...p, color: suggestTagColor(data.map(t => t.color || DEFAULT_COLOR)) }));
+          setNewTag(p => ({
+            ...p,
+            color: suggestTagColor(data.map(t => t.color || DEFAULT_COLOR)),
+          }));
         }
       })
       .catch(() => {

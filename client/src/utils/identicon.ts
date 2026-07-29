@@ -59,7 +59,13 @@ function drawGeometric(ctx: CanvasRenderingContext2D, size: number, h1: number, 
   ctx.globalAlpha = 0.6;
   // 큰 원
   ctx.beginPath();
-  ctx.arc(rand(size * 0.3, size * 0.7), rand(size * 0.3, size * 0.7), rand(size * 0.25, size * 0.4), 0, Math.PI * 2);
+  ctx.arc(
+    rand(size * 0.3, size * 0.7),
+    rand(size * 0.3, size * 0.7),
+    rand(size * 0.25, size * 0.4),
+    0,
+    Math.PI * 2
+  );
   ctx.fillStyle = hsl(h2, 85, 70);
   ctx.fill();
   // 삼각형

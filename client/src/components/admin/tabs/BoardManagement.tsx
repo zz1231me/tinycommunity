@@ -141,7 +141,10 @@ function SortableBoardRow({
       <td className="px-3 py-3 text-right">
         {editing ? (
           <div className="flex items-center justify-end gap-1.5">
-            <button onClick={() => onSaveEdit(board.id)} className="btn-primary px-3 py-1.5 text-xs">
+            <button
+              onClick={() => onSaveEdit(board.id)}
+              className="btn-primary px-3 py-1.5 text-xs"
+            >
               저장
             </button>
             <button
@@ -173,8 +176,16 @@ function SortableBoardRow({
 }
 
 export const BoardManagement = () => {
-  const { boards, fetchBoards, addBoard, updateBoard, reorderBoards, deleteBoard, loading, dataLoaded } =
-    useBoardManagement();
+  const {
+    boards,
+    fetchBoards,
+    addBoard,
+    updateBoard,
+    reorderBoards,
+    deleteBoard,
+    loading,
+    dataLoaded,
+  } = useBoardManagement();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),

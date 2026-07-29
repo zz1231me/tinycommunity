@@ -99,10 +99,7 @@ export class ErrorBoundary extends Component<Props, State> {
             )}
 
             <div className="flex gap-3 justify-center">
-              <button
-                onClick={this.handleReload}
-                className="btn-primary px-6"
-              >
+              <button onClick={this.handleReload} className="btn-primary px-6">
                 새로고침
               </button>
               <button

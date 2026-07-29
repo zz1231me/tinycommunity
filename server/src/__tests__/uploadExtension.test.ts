@@ -20,7 +20,9 @@ function buildApp() {
     validateUploadedFile({ validateContent: false }), // 첨부=다운로드 전용: 내용검증 생략
     (req, res) => {
       const files = (req.files as Express.Multer.File[]) ?? [];
-      res.status(200).json({ ok: true, stored: files.map(f => f.filename), paths: files.map(f => f.path) });
+      res
+        .status(200)
+        .json({ ok: true, stored: files.map(f => f.filename), paths: files.map(f => f.path) });
     }
   );
   app.post(
@@ -97,12 +99,10 @@ describe('첨부 업로드 — 확장자 화이트리스트 제거', () => {
 
   it('확장자 없는 파일(README)도 허용한다', async () => {
     const res = track(
-      await request(app)
-        .post('/t-file')
-        .attach('files', Buffer.from('readme'), {
-          filename: 'README',
-          contentType: 'application/octet-stream',
-        })
+      await request(app).post('/t-file').attach('files', Buffer.from('readme'), {
+        filename: 'README',
+        contentType: 'application/octet-stream',
+      })
     );
     expect(res.status).toBe(200);
   });
@@ -237,12 +237,10 @@ describe('이미지 업로드 — 인라인 서빙 경로 저장형 XSS 방어',
   it('이미지 경로는 내용(magic number)을 계속 검증한다 — 내용이 PNG가 아니면 거부', async () => {
     // 첨부(문서)는 내용검증을 생략하지만, 인라인 서빙되는 이미지 경로는 유지됨을 확인
     const res = track(
-      await request(app)
-        .post('/t-image')
-        .attach('image', Buffer.from('not really a png image'), {
-          filename: 'fake.png',
-          contentType: 'image/png',
-        })
+      await request(app).post('/t-image').attach('image', Buffer.from('not really a png image'), {
+        filename: 'fake.png',
+        contentType: 'image/png',
+      })
     );
     expect(res.status).toBe(400);
   });

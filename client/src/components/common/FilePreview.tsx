@@ -52,9 +52,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ attachment }) => {
 
       {expanded && (
         <div className="mt-2 border-t border-slate-200 dark:border-slate-700">
-          <Suspense
-            fallback={<div className="p-4 text-sm text-slate-500">미리보기 로딩 중…</div>}
-          >
+          <Suspense fallback={<div className="p-4 text-sm text-slate-500">미리보기 로딩 중…</div>}>
             {previewType === 'pdf' && (
               <PdfViewer url={downloadUrl} filename={attachment.originalName} />
             )}

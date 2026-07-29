@@ -236,7 +236,12 @@
 /* ===== 오늘 날짜 셀 ===== */
 /* 오늘 표시는 '배지(숫자 원형)' 하나로 충분 — 배경은 아주 옅은 teal 틴트만(중복인 상단 바 제거) */
 .calendar-wrapper .today-highlight {
-  background: rgba(20, 184, 166, 0.08) !important; /* 반투명 — 오늘 걸친 멀티데이 바가 비쳐 보이게 */
+  background: rgba(
+    20,
+    184,
+    166,
+    0.08
+  ) !important; /* 반투명 — 오늘 걸친 멀티데이 바가 비쳐 보이게 */
   position: relative !important;
 }
 

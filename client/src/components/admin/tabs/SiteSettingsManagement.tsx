@@ -864,7 +864,6 @@ export const SiteSettingsManagement = () => {
         </div>
       </AdminSection>
 
-
       {/* ── 10. 보안 고급 설정 ────────────────────────────────────────────── */}
       <AdminSection title="보안 고급 설정">
         <div className="space-y-4">
@@ -1025,11 +1024,7 @@ export const SiteSettingsManagement = () => {
             '변경 취소'
           )}
         </button>
-        <button
-          type="submit"
-          disabled={saving}
-          className="btn-primary"
-        >
+        <button type="submit" disabled={saving} className="btn-primary">
           {saving ? (
             <>
               <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">

@@ -19,8 +19,10 @@ export interface PasswordResetRequestAttributes {
   updatedAt?: Date;
 }
 
-export interface PasswordResetRequestCreationAttributes
-  extends Optional<PasswordResetRequestAttributes, 'id' | 'status' | 'attempts'> {}
+export interface PasswordResetRequestCreationAttributes extends Optional<
+  PasswordResetRequestAttributes,
+  'id' | 'status' | 'attempts'
+> {}
 
 export class PasswordResetRequest
   extends Model<PasswordResetRequestAttributes, PasswordResetRequestCreationAttributes>

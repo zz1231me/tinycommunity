@@ -319,9 +319,7 @@ export const RateLimitManagement = () => {
                       {setting.applyTo}
                     </td>
                     <td className="px-3 py-3 text-center">
-                      <span
-                        className={`badge ${setting.enabled ? 'badge-success' : 'badge-gray'}`}
-                      >
+                      <span className={`badge ${setting.enabled ? 'badge-success' : 'badge-gray'}`}>
                         <span
                           className={`w-1.5 h-1.5 rounded-full ${setting.enabled ? 'bg-green-500' : 'bg-slate-400'}`}
                         />

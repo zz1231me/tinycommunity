@@ -127,10 +127,7 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
                 </button>
               )}
               {canEdit && (
-                <button
-                  onClick={onEdit}
-                  className="btn-primary gap-1.5 px-4 py-2"
-                >
+                <button onClick={onEdit} className="btn-primary gap-1.5 px-4 py-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"

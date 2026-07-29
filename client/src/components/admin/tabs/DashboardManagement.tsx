@@ -127,12 +127,37 @@ const DashboardManagement = () => {
     <div className="space-y-6">
       {/* 요약 카드 */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        <StatCard icon={<Users className="w-5 h-5" />} label="전체 사용자" value={summary.totalUsers} accent />
-        <StatCard icon={<UserCheck className="w-5 h-5" />} label="활성" value={summary.activeUsers} />
-        <StatCard icon={<UserPlus className="w-5 h-5" />} label="승인 대기" value={summary.pendingUsers} />
-        <StatCard icon={<FileText className="w-5 h-5" />} label="게시글" value={summary.totalPosts} />
-        <StatCard icon={<MessageSquare className="w-5 h-5" />} label="댓글" value={summary.totalComments} />
-        <StatCard icon={<LayoutGrid className="w-5 h-5" />} label="게시판" value={summary.totalBoards} />
+        <StatCard
+          icon={<Users className="w-5 h-5" />}
+          label="전체 사용자"
+          value={summary.totalUsers}
+          accent
+        />
+        <StatCard
+          icon={<UserCheck className="w-5 h-5" />}
+          label="활성"
+          value={summary.activeUsers}
+        />
+        <StatCard
+          icon={<UserPlus className="w-5 h-5" />}
+          label="승인 대기"
+          value={summary.pendingUsers}
+        />
+        <StatCard
+          icon={<FileText className="w-5 h-5" />}
+          label="게시글"
+          value={summary.totalPosts}
+        />
+        <StatCard
+          icon={<MessageSquare className="w-5 h-5" />}
+          label="댓글"
+          value={summary.totalComments}
+        />
+        <StatCard
+          icon={<LayoutGrid className="w-5 h-5" />}
+          label="게시판"
+          value={summary.totalBoards}
+        />
       </div>
 
       <AdminSection
@@ -153,8 +178,18 @@ const DashboardManagement = () => {
                 <CartesianGrid {...GRID_PROPS} />
                 <XAxis {...X_AXIS_PROPS} />
                 <YAxis {...Y_AXIS_PROPS} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ stroke: TEAL, strokeOpacity: 0.3 }} />
-                <Area type="monotone" dataKey="count" name="로그인" stroke={TEAL} strokeWidth={2} fill="url(#loginFill)" />
+                <Tooltip
+                  contentStyle={TOOLTIP_STYLE}
+                  cursor={{ stroke: TEAL, strokeOpacity: 0.3 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="count"
+                  name="로그인"
+                  stroke={TEAL}
+                  strokeWidth={2}
+                  fill="url(#loginFill)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -194,7 +229,13 @@ const DashboardManagement = () => {
                 <XAxis {...X_AXIS_PROPS} />
                 <YAxis {...Y_AXIS_PROPS} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} cursor={BAR_CURSOR} />
-                <Bar dataKey="count" name="가입" fill={TEAL} radius={[6, 6, 0, 0]} maxBarSize={48} />
+                <Bar
+                  dataKey="count"
+                  name="가입"
+                  fill={TEAL}
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={48}
+                />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -207,7 +248,13 @@ const DashboardManagement = () => {
                 <XAxis {...X_AXIS_PROPS} />
                 <YAxis {...Y_AXIS_PROPS} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} cursor={BAR_CURSOR} />
-                <Bar dataKey="count" name="게시글" fill={AMBER} radius={[6, 6, 0, 0]} maxBarSize={48} />
+                <Bar
+                  dataKey="count"
+                  name="게시글"
+                  fill={AMBER}
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={48}
+                />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>

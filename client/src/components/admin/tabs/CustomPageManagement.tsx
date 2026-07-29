@@ -2,7 +2,16 @@
 // 두 가지 방식: (1) HTML 직접 입력, (2) 폴더를 ZIP으로 압축해 업로드(index.html + 자산).
 // 저장된 내용은 사용자 화면에서 sandbox iframe으로 격리 렌더된다(앱과 분리).
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2, ExternalLink, Save, X, UploadCloud, FolderArchive, Code } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  ExternalLink,
+  Save,
+  X,
+  UploadCloud,
+  FolderArchive,
+  Code,
+} from 'lucide-react';
 import {
   fetchAllPages,
   createCustomPage,
@@ -69,7 +78,13 @@ export const CustomPageManagement = () => {
     setEditingId('new');
   };
   const startEdit = (p: CustomPage) => {
-    setForm({ slug: p.slug, title: p.title, html: p.html, isPublished: p.isPublished, order: p.order });
+    setForm({
+      slug: p.slug,
+      title: p.title,
+      html: p.html,
+      isPublished: p.isPublished,
+      order: p.order,
+    });
     setEditingId(p.id);
     setEditingSlug(p.slug);
     resetBundle();
@@ -125,7 +140,8 @@ export const CustomPageManagement = () => {
         if (zipFile && id) {
           const r = await uploadPageBundle(id, zipFile, setUploadPct);
           setBundleHtmlFiles(r.htmlFiles);
-          entryToSave = bundleEntry && r.htmlFiles.includes(bundleEntry) ? bundleEntry : r.entryFile;
+          entryToSave =
+            bundleEntry && r.htmlFiles.includes(bundleEntry) ? bundleEntry : r.entryFile;
           setBundleEntry(entryToSave);
         }
         if (id) {
@@ -231,7 +247,8 @@ export const CustomPageManagement = () => {
                 placeholder="guide (영문 소문자·숫자·하이픈)"
               />
               <p className="mt-1 text-xs text-slate-400">
-                /dashboard/pages/<span className="font-mono">{form.slug || 'slug'}</span> 로 열립니다.
+                /dashboard/pages/<span className="font-mono">{form.slug || 'slug'}</span> 로
+                열립니다.
               </p>
             </div>
           </div>
@@ -274,7 +291,9 @@ export const CustomPageManagement = () => {
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   {zipFile ? zipFile.name : 'index.html이 포함된 폴더를 ZIP으로 압축해 선택'}
                 </span>
-                <span className="text-xs text-slate-400">.zip · 최대 30MB · 상대경로 자산 지원</span>
+                <span className="text-xs text-slate-400">
+                  .zip · 최대 30MB · 상대경로 자산 지원
+                </span>
                 <input
                   type="file"
                   accept=".zip,application/zip"
@@ -331,9 +350,9 @@ export const CustomPageManagement = () => {
               )}
 
               <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
-                자산은 <span className="font-mono">./style.css</span> 처럼 <b>상대경로</b>로 참조하세요.
-                서버 실행 파일(.php/.jsp/.sh 등)은 업로드가 거부됩니다. 페이지는 앱과 격리된
-                sandbox에서 렌더됩니다.
+                자산은 <span className="font-mono">./style.css</span> 처럼 <b>상대경로</b>로
+                참조하세요. 서버 실행 파일(.php/.jsp/.sh 등)은 업로드가 거부됩니다. 페이지는 앱과
+                격리된 sandbox에서 렌더됩니다.
               </p>
             </div>
           )}
@@ -381,8 +400,7 @@ export const CustomPageManagement = () => {
         description="관리자가 HTML을 직접 넣거나 폴더(ZIP)를 업로드해 만드는 커스텀 페이지입니다."
         actions={
           <button type="button" onClick={startNew} className="btn-primary gap-1.5">
-            <Plus className="h-4 w-4" />
-            새 페이지
+            <Plus className="h-4 w-4" />새 페이지
           </button>
         }
       >
@@ -396,7 +414,9 @@ export const CustomPageManagement = () => {
               <div key={p.id} className="card flex items-center gap-3 p-3.5">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-800 dark:text-slate-100">{p.title}</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-100">
+                      {p.title}
+                    </span>
                     {p.bundlePath && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                         <FolderArchive className="h-3 w-3" />
@@ -413,7 +433,9 @@ export const CustomPageManagement = () => {
                       {p.isPublished ? '게시됨' : '비공개'}
                     </span>
                   </div>
-                  <div className="truncate font-mono text-xs text-slate-400">/dashboard/pages/{p.slug}</div>
+                  <div className="truncate font-mono text-xs text-slate-400">
+                    /dashboard/pages/{p.slug}
+                  </div>
                 </div>
                 {p.isPublished && (
                   <a

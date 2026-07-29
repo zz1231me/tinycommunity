@@ -71,10 +71,7 @@ const ChangePassword = () => {
           </p>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="card p-6 space-y-4"
-        >
+        <form onSubmit={handleSubmit} className="card p-6 space-y-4">
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">새 비밀번호 설정</h1>
 
           {error && (
@@ -108,11 +105,7 @@ const ChangePassword = () => {
             className="input"
           />
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="btn-primary w-full"
-          >
+          <button type="submit" disabled={submitting} className="btn-primary w-full">
             {submitting ? '변경 중...' : '비밀번호 변경'}
           </button>
         </form>

@@ -106,11 +106,7 @@ export const MemoEditor: React.FC<MemoEditorProps> = ({
             >
               취소
             </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="btn-primary px-4 py-2"
-            >
+            <button type="submit" disabled={isSaving} className="btn-primary px-4 py-2">
               {isSaving ? '저장 중...' : '저장'}
             </button>
           </div>

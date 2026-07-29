@@ -30,10 +30,7 @@ const Forbidden = () => {
           관리자에게 문의해주세요.
         </p>
         <div className="mt-8">
-          <button
-            onClick={() => navigate('/')}
-            className="btn-primary"
-          >
+          <button onClick={() => navigate('/')} className="btn-primary">
             메인으로 돌아가기
           </button>
         </div>

@@ -31,9 +31,7 @@ export function createDynamicUploader(getInstance: () => multer.Multer): multer.
       }
       const instance = getInstance() as unknown as Record<string | symbol, unknown>;
       const val = instance[prop];
-      return typeof val === 'function'
-        ? (val as (...a: unknown[]) => unknown).bind(instance)
-        : val;
+      return typeof val === 'function' ? (val as (...a: unknown[]) => unknown).bind(instance) : val;
     },
   });
 }

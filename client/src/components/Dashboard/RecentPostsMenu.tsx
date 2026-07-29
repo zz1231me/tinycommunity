@@ -132,7 +132,9 @@ export function RecentPostsMenu() {
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-700">
             <span className="flex items-center gap-2">
               <Newspaper className="h-4 w-4 text-secondary-600" />
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">최신 소식</span>
+              <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                최신 소식
+              </span>
             </span>
             {unreadCount > 0 && (
               <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-600 dark:bg-red-900/30 dark:text-red-400">
@@ -145,7 +147,9 @@ export function RecentPostsMenu() {
             {loading && posts.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-slate-400">불러오는 중…</div>
             ) : posts.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-slate-400">최근 게시물이 없습니다.</div>
+              <div className="px-4 py-8 text-center text-sm text-slate-400">
+                최근 게시물이 없습니다.
+              </div>
             ) : (
               ordered.map(p => (
                 <button

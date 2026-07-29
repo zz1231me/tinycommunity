@@ -324,9 +324,7 @@ export const UserManagement = () => {
         return (
           <div>
             <div className="font-medium text-slate-900 dark:text-slate-100">{u.name}</div>
-            {u.email && (
-              <div className="text-xs text-slate-400 dark:text-slate-500">{u.email}</div>
-            )}
+            {u.email && <div className="text-xs text-slate-400 dark:text-slate-500">{u.email}</div>}
           </div>
         );
       },
@@ -616,11 +614,7 @@ export const UserManagement = () => {
       {pendingUsers.length > 0 && (
         <AdminSection
           title={`승인 대기 (${pendingUsers.length}명)`}
-          actions={
-            <span className="badge badge-warning py-1">
-              조치 필요
-            </span>
-          }
+          actions={<span className="badge badge-warning py-1">조치 필요</span>}
         >
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
@@ -834,10 +828,7 @@ export const UserManagement = () => {
                 </tr>
               ) : (
                 table.getRowModel().rows.map(row => (
-                  <tr
-                    key={row.id}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-700/50"
-                  >
+                  <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                     {row.getVisibleCells().map(cell => (
                       <td
                         key={cell.id}

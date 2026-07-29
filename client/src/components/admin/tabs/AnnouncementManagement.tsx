@@ -49,15 +49,38 @@ function statusOf(a: Announcement): { label: string; tone: string; detail: strin
   const now = Date.now();
   const start = new Date(a.startAt).getTime();
   const end = a.endAt ? new Date(a.endAt).getTime() : null;
-  if (!a.isActive) return { label: '비활성', tone: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400', detail: '' };
+  if (!a.isActive)
+    return {
+      label: '비활성',
+      tone: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+      detail: '',
+    };
   if (now < start) {
     const d = Math.ceil((start - now) / DAY);
-    return { label: '예정', tone: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300', detail: `${d}일 후 시작` };
+    return {
+      label: '예정',
+      tone: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+      detail: `${d}일 후 시작`,
+    };
   }
-  if (end !== null && now > end) return { label: '종료', tone: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400', detail: '' };
-  if (end === null) return { label: '게시중', tone: 'bg-secondary-100 text-secondary-700 dark:bg-secondary-900/40 dark:text-secondary-300', detail: '무기한' };
+  if (end !== null && now > end)
+    return {
+      label: '종료',
+      tone: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+      detail: '',
+    };
+  if (end === null)
+    return {
+      label: '게시중',
+      tone: 'bg-secondary-100 text-secondary-700 dark:bg-secondary-900/40 dark:text-secondary-300',
+      detail: '무기한',
+    };
   const d = Math.ceil((end - now) / DAY);
-  return { label: '게시중', tone: 'bg-secondary-100 text-secondary-700 dark:bg-secondary-900/40 dark:text-secondary-300', detail: `${d}일 남음` };
+  return {
+    label: '게시중',
+    tone: 'bg-secondary-100 text-secondary-700 dark:bg-secondary-900/40 dark:text-secondary-300',
+    detail: `${d}일 남음`,
+  };
 }
 
 const fmt = (iso: string | null) => (iso ? iso.slice(0, 10) : '무기한');
@@ -244,8 +267,7 @@ export const AnnouncementManagement = () => {
         description="게시 기간과 상태를 관리합니다."
         actions={
           <button type="button" onClick={startNew} className="btn-primary gap-1.5">
-            <Plus className="h-4 w-4" />
-            새 공지
+            <Plus className="h-4 w-4" />새 공지
           </button>
         }
       >
@@ -261,11 +283,15 @@ export const AnnouncementManagement = () => {
                 <div key={a.id} className="card flex items-center gap-3 p-3.5">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      {a.isPinned && <Pin className="h-3.5 w-3.5 flex-shrink-0 text-secondary-600" />}
+                      {a.isPinned && (
+                        <Pin className="h-3.5 w-3.5 flex-shrink-0 text-secondary-600" />
+                      )}
                       <span className="truncate font-semibold text-slate-800 dark:text-slate-100">
                         {a.title}
                       </span>
-                      <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${st.tone}`}>
+                      <span
+                        className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${st.tone}`}
+                      >
                         {st.label}
                       </span>
                       {st.detail && (

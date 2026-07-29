@@ -74,9 +74,7 @@ export const uploadPageBundle = (
     .then(unwrap);
 };
 
-export const fetchBundleFiles = (
-  id: string
-): Promise<{ entryFile: string; htmlFiles: string[] }> =>
+export const fetchBundleFiles = (id: string): Promise<{ entryFile: string; htmlFiles: string[] }> =>
   api.get(`/custom-pages/${id}/bundle-files`).then(unwrap);
 
 // 번들 진입 URL(사용자 화면 iframe src). axios baseURL(/api)와 별개로 절대경로가 필요하다.

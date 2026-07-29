@@ -166,10 +166,7 @@ export function ReportButton({ targetType, targetId, className = '' }: ReportBut
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     검토 후 적절한 조치를 취하겠습니다.
                   </p>
-                  <button
-                    onClick={handleClose}
-                    className="btn-primary mt-4 px-6 py-2"
-                  >
+                  <button onClick={handleClose} className="btn-primary mt-4 px-6 py-2">
                     확인
                   </button>
                 </div>

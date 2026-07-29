@@ -318,10 +318,7 @@ export const PermissionManagement = () => {
             boards.map(board => {
               const isDirty = dirtyBoards.has(board.id);
               return (
-                <div
-                  key={board.id}
-                  className="card p-6"
-                >
+                <div key={board.id} className="card p-6">
                   <div className="mb-4 flex items-center justify-between">
                     <h3 className="flex items-baseline gap-2 text-base font-semibold text-slate-800 dark:text-slate-100">
                       {board.name}

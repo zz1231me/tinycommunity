@@ -197,10 +197,7 @@ export const ReportManagement = React.memo(() => {
       ) : (
         <div className="space-y-3">
           {reports.map(report => (
-            <div
-              key={report.id}
-              className="card p-4"
-            >
+            <div key={report.id} className="card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -212,9 +209,7 @@ export const ReportManagement = React.memo(() => {
                     >
                       {STATUS_LABELS[report.status]}
                     </span>
-                    <span className="badge badge-red">
-                      {REASON_LABELS[report.reason]}
-                    </span>
+                    <span className="badge badge-red">{REASON_LABELS[report.reason]}</span>
                   </div>
 
                   {report.targetInfo && (

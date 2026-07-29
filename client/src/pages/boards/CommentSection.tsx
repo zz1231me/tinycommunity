@@ -432,9 +432,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                       {userName}
                     </span>
                     {isReply && (
-                      <span className="badge badge-primary px-1.5 flex-shrink-0">
-                        답글
-                      </span>
+                      <span className="badge badge-primary px-1.5 flex-shrink-0">답글</span>
                     )}
                     <time
                       dateTime={toISOString(comment.createdAt)}
@@ -444,9 +442,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                       {formatRelativeDate(comment.createdAt)}
                     </time>
                     {comment.isEdited && (
-                      <span className="badge badge-warning px-1.5 flex-shrink-0">
-                        수정됨
-                      </span>
+                      <span className="badge badge-warning px-1.5 flex-shrink-0">수정됨</span>
                     )}
                   </div>
 

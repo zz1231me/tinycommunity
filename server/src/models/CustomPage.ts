@@ -20,11 +20,10 @@ export interface CustomPageAttributes {
   updatedAt?: Date;
 }
 
-export interface CustomPageCreationAttributes
-  extends Optional<
-    CustomPageAttributes,
-    'id' | 'isPublished' | 'order' | 'html' | 'bundlePath' | 'entryFile'
-  > {}
+export interface CustomPageCreationAttributes extends Optional<
+  CustomPageAttributes,
+  'id' | 'isPublished' | 'order' | 'html' | 'bundlePath' | 'entryFile'
+> {}
 
 export class CustomPage
   extends Model<CustomPageAttributes, CustomPageCreationAttributes>

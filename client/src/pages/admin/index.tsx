@@ -37,9 +37,7 @@ const IpManagement = lazy(() => import('../../components/admin/tabs/IpManagement
 const BoardManagerManagement = lazy(
   () => import('../../components/admin/tabs/BoardManagerManagement')
 );
-const CustomPageManagement = lazy(
-  () => import('../../components/admin/tabs/CustomPageManagement')
-);
+const CustomPageManagement = lazy(() => import('../../components/admin/tabs/CustomPageManagement'));
 const AnnouncementManagement = lazy(
   () => import('../../components/admin/tabs/AnnouncementManagement')
 );

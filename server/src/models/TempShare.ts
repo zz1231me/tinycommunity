@@ -36,7 +36,11 @@ TempShare.init(
     originalName: { type: DataTypes.STRING(255), allowNull: false },
     storedName: { type: DataTypes.STRING(255), allowNull: false },
     size: { type: DataTypes.INTEGER, allowNull: false },
-    mimetype: { type: DataTypes.STRING(150), allowNull: false, defaultValue: 'application/octet-stream' },
+    mimetype: {
+      type: DataTypes.STRING(150),
+      allowNull: false,
+      defaultValue: 'application/octet-stream',
+    },
     uploadedBy: { type: DataTypes.STRING(50), allowNull: false },
     expiresAt: { type: DataTypes.DATE, allowNull: false },
   },

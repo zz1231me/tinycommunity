@@ -15,11 +15,10 @@ export interface AnnouncementAttributes {
   updatedAt?: Date;
 }
 
-export interface AnnouncementCreationAttributes
-  extends Optional<
-    AnnouncementAttributes,
-    'id' | 'endAt' | 'isActive' | 'isPinned' | 'startAt'
-  > {}
+export interface AnnouncementCreationAttributes extends Optional<
+  AnnouncementAttributes,
+  'id' | 'endAt' | 'isActive' | 'isPinned' | 'startAt'
+> {}
 
 export class Announcement
   extends Model<AnnouncementAttributes, AnnouncementCreationAttributes>

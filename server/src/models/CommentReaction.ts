@@ -10,11 +10,10 @@ import { sequelize } from '../config/sequelize';
 
 // 댓글 이모지 리액션 — 한 사용자가 한 댓글에 여러 이모지를 달 수 있고(각 이모지 1회),
 // (CommentId, UserId, emoji) 유니크로 중복 방지. CommentLike(단일 좋아요)와 별개 테이블.
-export interface CommentReactionInstance
-  extends Model<
-    InferAttributes<CommentReactionInstance>,
-    InferCreationAttributes<CommentReactionInstance>
-  > {
+export interface CommentReactionInstance extends Model<
+  InferAttributes<CommentReactionInstance>,
+  InferCreationAttributes<CommentReactionInstance>
+> {
   id: CreationOptional<number>;
   CommentId: ForeignKey<number>;
   UserId: ForeignKey<string>;

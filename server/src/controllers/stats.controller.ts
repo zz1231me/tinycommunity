@@ -86,10 +86,12 @@ export const getAdminStats = async (_req: Request, res: Response): Promise<void>
     const roleName = new Map(
       (roles as unknown as Array<{ id: string; name: string }>).map(r => [r.id, r.name])
     );
-    const usersByRole = (roleRows as unknown as Array<{ roleId: string; count: number }>).map(r => ({
-      role: roleName.get(r.roleId) ?? r.roleId ?? '미지정',
-      count: Number(r.count),
-    }));
+    const usersByRole = (roleRows as unknown as Array<{ roleId: string; count: number }>).map(
+      r => ({
+        role: roleName.get(r.roleId) ?? r.roleId ?? '미지정',
+        count: Number(r.count),
+      })
+    );
 
     sendSuccess(res, {
       summary: {

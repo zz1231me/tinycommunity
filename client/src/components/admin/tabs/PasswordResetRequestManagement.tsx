@@ -14,7 +14,8 @@ const minsLeft = (expiresAt: string): number =>
   Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 60000));
 
 // 6자리를 000 000 형태로 표시
-const pretty = (code: string) => (code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code);
+const pretty = (code: string) =>
+  code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code;
 
 export const PasswordResetRequestManagement = () => {
   const [requests, setRequests] = useState<PasswordResetRequestItem[]>([]);
@@ -106,9 +107,9 @@ export const PasswordResetRequestManagement = () => {
         <div className="mb-5 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-900/20 dark:text-amber-300">
           <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <span>
-            <strong>인증번호 전달은 곧 본인 확인입니다.</strong> 요청자가 실제 계정 주인인지 대면·전화
-            등으로 확인한 뒤, 인증번호를 본인에게만 알려주세요. 인증번호는 30분간 유효하며 3회 오입력
-            시 1시간 잠깁니다.
+            <strong>인증번호 전달은 곧 본인 확인입니다.</strong> 요청자가 실제 계정 주인인지
+            대면·전화 등으로 확인한 뒤, 인증번호를 본인에게만 알려주세요. 인증번호는 30분간 유효하며
+            3회 오입력 시 1시간 잠깁니다.
           </span>
         </div>
 

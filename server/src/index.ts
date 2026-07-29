@@ -956,7 +956,8 @@ const startServer = async () => {
       console.error('DB code:', orig.code, '| errno:', orig.errno, '| sqlState:', orig.sqlState);
       console.error('DB msg :', orig.sqlMessage || orig.message);
     }
-    if (!e?.sql && !orig) console.error(error instanceof Error ? (error.stack ?? error.message) : error);
+    if (!e?.sql && !orig)
+      console.error(error instanceof Error ? (error.stack ?? error.message) : error);
     process.exit(1);
   }
 };

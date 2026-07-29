@@ -232,10 +232,7 @@ export const SecurityLogManagement = () => {
               className="input"
             />
           </div>
-          <button
-            type="submit"
-            className="btn-primary px-4 py-2"
-          >
+          <button type="submit" className="btn-primary px-4 py-2">
             검색
           </button>
         </form>

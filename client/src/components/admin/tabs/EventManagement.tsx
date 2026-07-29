@@ -100,14 +100,16 @@ export const EventManagement = () => {
   const filteredEvents = events.filter(e => {
     if (search) {
       const q = search.toLowerCase();
-      if (!e.title.toLowerCase().includes(q) && !e.user.name.toLowerCase().includes(q)) return false;
+      if (!e.title.toLowerCase().includes(q) && !e.user.name.toLowerCase().includes(q))
+        return false;
     }
     if (categoryFilter && (e.category || '') !== categoryFilter) return false;
     const endT = new Date(e.end).getTime();
     const startT = new Date(e.start).getTime();
     if (periodFilter === 'upcoming' && endT < now) return false;
     if (periodFilter === 'past' && endT >= now) return false;
-    if (periodFilter === 'thisMonth' && (startT < monthStart || startT >= nextMonthStart)) return false;
+    if (periodFilter === 'thisMonth' && (startT < monthStart || startT >= nextMonthStart))
+      return false;
     return true;
   });
 
@@ -148,9 +150,7 @@ export const EventManagement = () => {
       <AdminSection
         title="이벤트 권한 설정"
         actions={
-          <span
-            className={`badge py-1 ${savingEvents ? 'badge-warning' : 'badge-success'}`}
-          >
+          <span className={`badge py-1 ${savingEvents ? 'badge-warning' : 'badge-success'}`}>
             {savingEvents ? '저장 중...' : '자동 저장됨'}
           </span>
         }
@@ -186,9 +186,7 @@ export const EventManagement = () => {
                   {eventPermissions.map(p => (
                     <tr key={p.roleId} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                       <td className="px-3 py-3">
-                        <span className="badge badge-info">
-                          {p.role?.name || p.roleId}
-                        </span>
+                        <span className="badge badge-info">{p.role?.name || p.roleId}</span>
                       </td>
                       {(['canCreate', 'canRead', 'canUpdate', 'canDelete'] as const).map(key => (
                         <td key={key} className="px-3 py-3 text-center">
@@ -303,7 +301,9 @@ export const EventManagement = () => {
                     colSpan={5}
                     className="px-3 py-8 text-center text-slate-400 dark:text-slate-500"
                   >
-                    {events.length === 0 ? '등록된 일정이 없습니다.' : '조건에 맞는 일정이 없습니다.'}
+                    {events.length === 0
+                      ? '등록된 일정이 없습니다.'
+                      : '조건에 맞는 일정이 없습니다.'}
                   </td>
                 </tr>
               ) : (

@@ -102,7 +102,6 @@ class PostModel
     }
     return safeValues;
   }
-
 }
 
 // 모델 초기화
