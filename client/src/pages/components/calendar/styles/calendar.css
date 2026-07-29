@@ -325,14 +325,15 @@
   margin-top: 1px;
 }
 
-/* ★일정 드래그(다른 요일로 이동)가 안 되던 버그 수정.
-   FullCalendar가 단일일 이벤트 harness에 right:-100px를 인라인으로 넣어 이벤트 칩이 셀 폭을
-   넘어 옆 날짜 칸까지 ~100px 삐져나온다. 그 삐져나온 영역이 옆 칸의 mousedown을 가로채,
-   이벤트를 끌면 '이벤트 이동'이 아니라 '날짜 범위 선택(새 일정)'으로 오작동했다.
-   단일일(fc-event-start와 fc-event-end 동시) harness를 셀 안에 가두면 클릭이 이벤트에 정확히
-   잡혀 드래그가 정상 동작한다. (다중일 이벤트는 start/end가 분리돼 매칭되지 않으므로 스팬 유지) */
-.calendar-wrapper .fc-daygrid-event-harness:has(> .fc-event-start.fc-event-end) {
-  right: 0 !important;
+/* ★일정 드래그(다른 요일로 이동)가 안 되던 버그 수정 — 근본 원인은 '스택 순서'다.
+   여러 칸을 먹는(다중일) 이벤트는 첫 칸의 events 컨테이너에서 harness가 right:-Npx로 옆 칸까지
+   뻗어나가는데, 옆 날짜 칸의 .fc-daygrid-day-events가 DOM 순서상 뒤에 그려져 그 뻗어나온
+   이벤트 위를 덮는다. 그 결과 이벤트의 2번째 칸부터는 클릭이 이벤트가 아니라 셀에 잡혀,
+   끌면 '이동'이 아니라 '날짜 범위 선택(새 일정)'으로 오작동해 드래그가 안 됐다.
+   harness를 날짜 셀 컨테이너보다 위로 올리면(z-index) 이벤트 전체가 클릭·드래그된다.
+   (harness 폭은 그대로 두므로 다중일 스팬 표시는 유지된다.) */
+.calendar-wrapper .fc-daygrid-event-harness {
+  z-index: 3;
 }
 
 .calendar-wrapper .fc-event:hover {
