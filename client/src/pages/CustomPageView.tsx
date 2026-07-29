@@ -3,7 +3,7 @@
 // allow-same-origin을 주지 않으므로 iframe 안 스크립트는 앱의 쿠키/localStorage/DOM에 접근 불가.
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchPageBySlug, type CustomPage } from '../api/customPages';
+import { fetchPageBySlug, bundleEntryUrl, type CustomPage } from '../api/customPages';
 import { LoadingSpinner } from '../components/common/LoadingStates';
 
 export default function CustomPageView() {
@@ -69,13 +69,23 @@ export default function CustomPageView() {
           {page.title}
         </h1>
       </div>
-      <iframe
-        title={page.title}
-        srcDoc={page.html}
-        // ★allow-same-origin 제외 = 앱과 격리(쿠키/DOM 접근 불가). 스크립트·폼·팝업은 허용.
-        sandbox="allow-scripts allow-popups allow-forms allow-modals allow-downloads"
-        className="w-full flex-1 border-0 bg-white"
-      />
+      {/* 번들 페이지는 URL 서빙(상대경로 자산 로드), 단일 HTML은 srcDoc.
+          ★두 경우 모두 allow-same-origin 제외 = 앱과 격리(쿠키/DOM 접근 불가). */}
+      {page.isBundle && slug ? (
+        <iframe
+          title={page.title}
+          src={bundleEntryUrl(slug)}
+          sandbox="allow-scripts allow-popups allow-forms allow-modals allow-downloads"
+          className="w-full flex-1 border-0 bg-white"
+        />
+      ) : (
+        <iframe
+          title={page.title}
+          srcDoc={page.html}
+          sandbox="allow-scripts allow-popups allow-forms allow-modals allow-downloads"
+          className="w-full flex-1 border-0 bg-white"
+        />
+      )}
     </div>
   );
 }

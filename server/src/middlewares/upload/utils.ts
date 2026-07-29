@@ -69,6 +69,7 @@ export async function initializeUploadDirs(): Promise<void> {
     ensureUploadDir(UPLOAD_DIRS.FILES),
     ensureUploadDir(UPLOAD_DIRS.IMAGES),
     ensureUploadDir(UPLOAD_DIRS.AVATARS),
+    ensureUploadDir(UPLOAD_DIRS.CUSTOM_PAGES),
   ]);
 }
 

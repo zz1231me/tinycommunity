@@ -55,4 +55,6 @@ export const UPLOAD_DIRS = {
   FILES: path.join(__dirname, '../../../uploads/files'),
   IMAGES: path.join(__dirname, '../../../uploads/images'),
   AVATARS: path.join(__dirname, '../../../uploads/avatars'),
+  // 커스텀 HTML 페이지 번들(ZIP 해제 정적 파일). 하위에 페이지 id별 디렉터리.
+  CUSTOM_PAGES: path.join(__dirname, '../../../uploads/custom-pages'),
 };

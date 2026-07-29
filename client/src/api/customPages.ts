@@ -15,6 +15,10 @@ export interface CustomPage extends CustomPageSummary {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  // 번들(폴더 ZIP 업로드) 페이지
+  bundlePath?: string | null; // 관리자 응답에 포함(내부 경로). null=단일 HTML
+  isBundle?: boolean; // 사용자 조회(getPageBySlug) 응답에 포함
+  entryFile?: string; // 번들 진입 파일
 }
 
 export interface CustomPageInput {
@@ -23,6 +27,13 @@ export interface CustomPageInput {
   html: string;
   isPublished: boolean;
   order: number;
+  entryFile?: string; // 번들 진입 파일 변경(선택)
+}
+
+export interface BundleUploadResult {
+  id: string;
+  entryFile: string;
+  htmlFiles: string[];
 }
 
 // 사용자
@@ -44,3 +55,30 @@ export const updateCustomPage = (id: string, data: CustomPageInput): Promise<Cus
 
 export const deleteCustomPage = (id: string): Promise<void> =>
   api.delete(`/custom-pages/${id}`).then(() => undefined);
+
+// ── 번들(ZIP) ──
+export const uploadPageBundle = (
+  id: string,
+  zip: File,
+  onProgress?: (pct: number) => void
+): Promise<BundleUploadResult> => {
+  const fd = new FormData();
+  fd.append('bundle', zip);
+  return api
+    .post(`/custom-pages/${id}/bundle`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: e => {
+        if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100));
+      },
+    })
+    .then(unwrap);
+};
+
+export const fetchBundleFiles = (
+  id: string
+): Promise<{ entryFile: string; htmlFiles: string[] }> =>
+  api.get(`/custom-pages/${id}/bundle-files`).then(unwrap);
+
+// 번들 진입 URL(사용자 화면 iframe src). axios baseURL(/api)와 별개로 절대경로가 필요하다.
+export const bundleEntryUrl = (slug: string): string =>
+  `/api/custom-pages/${encodeURIComponent(slug)}/bundle/`;
