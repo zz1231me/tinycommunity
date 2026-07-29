@@ -23,6 +23,7 @@ export function RecentPostsMenu() {
   const [open, setOpen] = useState(false);
   const [posts, setPosts] = useState<RecentPost[]>([]);
   const [loading, setLoading] = useState(false);
+  const [tick, setTick] = useState(0); // 안 읽은 제목 회전 인덱스(헤더 인라인 프리뷰)
   const ref = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -47,6 +48,17 @@ export function RecentPostsMenu() {
       window.removeEventListener('focus', onFocus);
     };
   }, [load]);
+
+  // 안 읽은 글이 여러 개면 제목을 4초마다 차근차근 회전(헤더 인라인 프리뷰)
+  useEffect(() => {
+    const n = posts.filter(p => !p.isRead).length;
+    if (n <= 1) {
+      setTick(0);
+      return;
+    }
+    const t = setInterval(() => setTick(v => v + 1), 4000);
+    return () => clearInterval(t);
+  }, [posts]);
 
   // 바깥 클릭 / Esc 닫기
   useEffect(() => {
@@ -74,6 +86,8 @@ export function RecentPostsMenu() {
   const unreadCount = unread.length;
   // 안 읽은 글을 위로(최신순), 그 아래 읽은 글 — "순서대로 차근차근"
   const ordered = [...unread, ...posts.filter(p => p.isRead)];
+  // 헤더에 미리 보여줄 현재 회전 대상 제목(안 읽은 글 중)
+  const preview = unreadCount > 0 ? unread[tick % unreadCount] : null;
 
   return (
     <div className="relative" ref={ref}>
@@ -84,14 +98,25 @@ export function RecentPostsMenu() {
           if (next) void load();
         }}
         aria-label={unreadCount > 0 ? `최신 소식 (안 읽음 ${unreadCount})` : '최신 소식'}
-        title={unreadCount > 0 ? `안 읽은 새 글 ${unreadCount}개` : '최신 소식'}
+        title={preview ? preview.title : '최신 소식'}
         aria-expanded={open}
-        className="relative p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+        className={`flex items-center gap-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors ${
+          preview ? 'py-1.5 pl-2 pr-2' : 'p-2'
+        }`}
       >
-        <Newspaper className="w-5 h-5" />
+        <Newspaper className="h-5 w-5 flex-shrink-0" />
+        {/* 안 읽은 최신 제목 인라인 프리뷰 (넓은 화면에서만, 회전) */}
+        {preview && (
+          <span
+            key={preview.id}
+            className="hidden max-w-[9rem] truncate text-xs font-medium text-slate-600 dark:text-slate-300 animate-fadeIn lg:block"
+          >
+            {preview.title}
+          </span>
+        )}
         {unreadCount > 0 && (
           <span
-            className="absolute -right-0.5 -top-0.5 flex min-w-[1.05rem] h-[1.05rem] items-center justify-center rounded-full bg-red-500 px-1 text-[0.65rem] font-bold leading-none text-white ring-2 ring-white dark:ring-slate-900 animate-pulse"
+            className="flex-shrink-0 rounded-full bg-red-500 px-1.5 text-[0.65rem] font-bold leading-[1.05rem] text-white animate-pulse"
             aria-hidden="true"
           >
             {unreadCount > 9 ? '9+' : unreadCount}
