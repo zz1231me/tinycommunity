@@ -270,10 +270,10 @@
   border-radius: 0.5rem;
   /* 본문과 확실히 구분되도록 테두리·그림자를 진하게(레이어드 섀도) */
   box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.14),
-    0 10px 24px rgba(0, 0, 0, 0.24);
-  border: 1px solid rgb(100, 116, 139);
-  /* slate-400 — 기본 상태에서도 경계가 또렷하게 */
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgb(203, 213, 225);
+  /* slate-300 — 옅고 자연스러운 경계(읽기 뷰 기본값은 ContentImageStyles가 우선) */
   /* 정렬/블록화는 래퍼(figure.image)가 담당 — bare <img>(에디터 insert.type:'auto'의
      인라인 이미지)는 텍스트 흐름을 유지해 자동 가운데정렬되지 않는다.
      Tailwind preflight의 img{display:block}을 덮어써 인라인 흐름을 보장. */
@@ -282,11 +282,11 @@
 }
 
 .dark .ck-content-view img {
-  border-color: rgb(148, 163, 184);
-  /* slate-400 — 어두운 배경에서 이미지 경계가 더 또렷하게 */
+  border-color: rgb(71, 85, 105);
+  /* slate-600 — 어두운 배경에서 은은한 경계 */
   box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.45),
-    0 10px 24px rgba(0, 0, 0, 0.62);
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 /* figure 래퍼 이미지(block/정렬/리사이즈)는 래퍼를 채우는 블록 — 정렬·크기는 figure.image가 담당 */
@@ -500,17 +500,17 @@
   border-radius: 0.5rem;
   /* bare <img>와 동일하게 진한 테두리·그림자로 본문과 구분 */
   box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.14),
-    0 10px 24px rgba(0, 0, 0, 0.24);
-  border: 1px solid rgb(100, 116, 139);
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgb(203, 213, 225);
   margin: 0;
 }
 
 .dark .ck-content-view figure.image img {
-  border-color: rgb(148, 163, 184);
+  border-color: rgb(71, 85, 105);
   box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.45),
-    0 10px 24px rgba(0, 0, 0, 0.62);
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .ck-content-view figure.image figcaption {

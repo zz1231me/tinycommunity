@@ -9,18 +9,18 @@
     border-color 0.15s ease,
     box-shadow 0.15s ease !important;
   border-radius: 8px !important;
-  /* 기본 상태에서도 본문과 또렷이 구분되는 테두리(slate-500) — 이전엔 transparent라 안 보였음 */
-  border: 1px solid rgb(100, 116, 139) !important;
+  /* 옅고 자연스러운 테두리(slate-300) — 본문과 살짝 구분되는 정도 */
+  border: 1px solid rgb(203, 213, 225) !important;
   box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.14),
-    0 10px 24px rgba(0, 0, 0, 0.24) !important;
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.1) !important;
 }
 
 .dark .content-image-clickable {
-  border-color: rgb(148, 163, 184) !important;
+  border-color: rgb(71, 85, 105) !important; /* slate-600 — 어두운 배경에서 은은하게 */
   box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.45),
-    0 10px 24px rgba(0, 0, 0, 0.62) !important;
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.4) !important;
 }
 
 /* 호버 시 클릭 가능함을 강조(primary 색 테두리) — border-width는 그대로라 레이아웃 흔들림 없음 */

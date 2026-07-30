@@ -363,9 +363,9 @@
   border-radius: 0.5rem;
   /* 읽기 뷰(CKContentView)와 동일하게 본문과 확실히 구분되는 진한 테두리·그림자 */
   box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.14),
-    0 10px 24px rgba(0, 0, 0, 0.24);
-  border: 1px solid rgb(100, 116, 139);
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgb(203, 213, 225);
 }
 .ck-editor__editable figure.image figcaption {
   font-size: 0.875rem !important;
