@@ -365,7 +365,7 @@
   box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.14),
     0 10px 24px rgba(0, 0, 0, 0.24);
-  border: 1px solid rgb(203, 213, 225);
+  border: 1px solid rgb(148, 163, 184);
 }
 .ck-editor__editable figure.image figcaption {
   font-size: 0.875rem !important;
