@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
@@ -35,24 +35,31 @@
 
     <!-- ✅ Pretendard Variable — 한국어 최적화 무료 폰트 (dynamic subset → 빠른 로딩) -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link rel="stylesheet" as="style" crossorigin
-      href="https://cdn.jsdelivr.net/npm/pretendard@latest/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+    <link
+      rel="stylesheet"
+      as="style"
+      crossorigin
+      href="https://cdn.jsdelivr.net/npm/pretendard@latest/dist/web/variable/pretendardvariable-dynamic-subset.css"
+    />
 
     <!-- ✅ Theme Color for Mobile -->
     <meta name="theme-color" content="#3B82F6" />
-    
+
     <!-- ✅ Content Security Policy (XSS Prevention) -->
-    <meta http-equiv="Content-Security-Policy" 
-          content="default-src 'self';
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self';
                    script-src 'self' 'unsafe-inline' 'unsafe-eval';
                    style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
                    font-src 'self' https://cdn.jsdelivr.net data:;
                    img-src 'self' data: blob: https:;
-                   connect-src 'self' http://localhost:* https://localhost:* ws://localhost:*;" />
-    
+                   connect-src 'self' http://localhost:* https://localhost:* ws://localhost:*;
+                   frame-src 'self' https: http:;"
+    />
+
     <!-- ✅ X-Content-Type-Options -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-    
+
     <!-- ✅ Referrer Policy -->
     <meta name="referrer" content="strict-origin-when-cross-origin" />
   </head>

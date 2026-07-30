@@ -55,10 +55,6 @@ import tagRoutes from './routes/tag.routes';
 import reportRoutes from './routes/report.routes';
 import boardManagerRoutes from './routes/boardManager.routes';
 import customPageRoutes from './routes/customPage.routes';
-import {
-  getCustomPageFrameSrc,
-  refreshCustomPageFrameOrigins,
-} from './controllers/customPage.controller';
 import announcementRoutes from './routes/announcement.routes';
 import tempShareRoutes from './routes/tempShare.routes';
 import { cleanupExpiredTempShares } from './controllers/tempShare.controller';
@@ -425,18 +421,11 @@ app.use(
         imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
         fontSrc: ["'self'", 'data:'],
         connectSrc: ["'self'"],
-        // 동영상 임베드 신뢰 호스트만 허용 — client/server sanitizer allowlist와 동기화
-        frameSrc: [
-          "'self'",
-          'https://www.youtube.com',
-          'https://youtube.com',
-          'https://www.youtube-nocookie.com',
-          'https://youtube-nocookie.com',
-          'https://player.vimeo.com',
-          // 관리자가 커스텀 페이지에 등록한 외부 URL 오리진만 동적 허용(임의 https 전체 개방 아님).
-          // 페이지 CRUD 시 refreshCustomPageFrameOrigins()로 갱신되며, 비어 있으면 'self'로 무해 대체.
-          () => getCustomPageFrameSrc() || "'self'",
-        ],
+        // iframe 임베드 허용 — 관리자 커스텀 페이지(외부 URL/번들)와 게시글 동영상 임베드용.
+        // frame-src만 넓게 열되(임의 http/https 프레이밍 허용), 나머지 CSP(script/connect 등 XSS 방어)는
+        // 엄격 유지. 사용자 게시글의 iframe은 sanitizer가 youtube/vimeo만 허용하므로 실질 위험 낮음.
+        // index.html의 meta CSP frame-src와 동일하게 맞춤.
+        frameSrc: ["'self'", 'https:', 'http:'],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: env.NODE_ENV === 'production' ? [] : null,
       },
@@ -883,9 +872,6 @@ const startServer = async () => {
     // 모델에 추가된 신규 컬럼 보강 — 모든 DB(sqlite/mysql/mariadb/postgres) + 모든 테이블.
     // sync alter가 컬럼을 못 붙인 경우의 안전망(QueryInterface로 dialect 자동 처리).
     await ensureAllModelColumns();
-
-    // 커스텀 페이지 외부 URL 오리진을 CSP frame-src 캐시에 초기 로드
-    await refreshCustomPageFrameOrigins();
 
     // 기존 게시글/위키/이벤트의 검색용 평문 백필 — 신규 컬럼이 추가된 직후 1회 실행
     await backfillSearchText();
