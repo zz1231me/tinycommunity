@@ -272,7 +272,7 @@
   box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.14),
     0 10px 24px rgba(0, 0, 0, 0.24);
-  border: 1px solid rgb(148, 163, 184);
+  border: 1px solid rgb(100, 116, 139);
   /* slate-400 — 기본 상태에서도 경계가 또렷하게 */
   /* 정렬/블록화는 래퍼(figure.image)가 담당 — bare <img>(에디터 insert.type:'auto'의
      인라인 이미지)는 텍스트 흐름을 유지해 자동 가운데정렬되지 않는다.
@@ -502,7 +502,7 @@
   box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.14),
     0 10px 24px rgba(0, 0, 0, 0.24);
-  border: 1px solid rgb(148, 163, 184);
+  border: 1px solid rgb(100, 116, 139);
   margin: 0;
 }
 
