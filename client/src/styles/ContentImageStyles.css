@@ -1,19 +1,29 @@
-/* ContentImageStyles.css - 이미지 스타일링 */
+/* ContentImageStyles.css - 읽기 뷰 이미지(클릭 확대) 스타일링.
+   ★이 클래스는 읽기 뷰에서 JS(useContentImageHandler)가 이미지에 부여하며 !important라
+   CKContentView.css의 이미지 border/shadow보다 우선한다. 따라서 "기본 상태 경계"는 여기서 결정된다.
+   에디터(CKEditorOverride.css)와 톤을 맞춘다. */
 
 .content-image-clickable {
   cursor: pointer !important;
   transition:
-    border 0.15s ease,
+    border-color 0.15s ease,
     box-shadow 0.15s ease !important;
   border-radius: 8px !important;
-  border: 2px solid transparent !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  /* 기본 상태에서도 본문과 또렷이 구분되는 테두리(slate-500) — 이전엔 transparent라 안 보였음 */
+  border: 1px solid rgb(100, 116, 139) !important;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.14),
+    0 10px 24px rgba(0, 0, 0, 0.24) !important;
 }
 
 .dark .content-image-clickable {
-  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.08) !important;
+  border-color: rgb(148, 163, 184) !important;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.45),
+    0 10px 24px rgba(0, 0, 0, 0.62) !important;
 }
 
+/* 호버 시 클릭 가능함을 강조(primary 색 테두리) — border-width는 그대로라 레이아웃 흔들림 없음 */
 .content-image-hover {
   border-color: var(--color-primary-500) !important;
   box-shadow: 0 4px 20px rgba(99, 102, 241, 0.25) !important;
