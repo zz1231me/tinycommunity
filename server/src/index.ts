@@ -55,6 +55,10 @@ import tagRoutes from './routes/tag.routes';
 import reportRoutes from './routes/report.routes';
 import boardManagerRoutes from './routes/boardManager.routes';
 import customPageRoutes from './routes/customPage.routes';
+import {
+  getCustomPageFrameSrc,
+  refreshCustomPageFrameOrigins,
+} from './controllers/customPage.controller';
 import announcementRoutes from './routes/announcement.routes';
 import tempShareRoutes from './routes/tempShare.routes';
 import { cleanupExpiredTempShares } from './controllers/tempShare.controller';
@@ -429,6 +433,9 @@ app.use(
           'https://www.youtube-nocookie.com',
           'https://youtube-nocookie.com',
           'https://player.vimeo.com',
+          // 관리자가 커스텀 페이지에 등록한 외부 URL 오리진만 동적 허용(임의 https 전체 개방 아님).
+          // 페이지 CRUD 시 refreshCustomPageFrameOrigins()로 갱신되며, 비어 있으면 'self'로 무해 대체.
+          () => getCustomPageFrameSrc() || "'self'",
         ],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: env.NODE_ENV === 'production' ? [] : null,
@@ -876,6 +883,9 @@ const startServer = async () => {
     // 모델에 추가된 신규 컬럼 보강 — 모든 DB(sqlite/mysql/mariadb/postgres) + 모든 테이블.
     // sync alter가 컬럼을 못 붙인 경우의 안전망(QueryInterface로 dialect 자동 처리).
     await ensureAllModelColumns();
+
+    // 커스텀 페이지 외부 URL 오리진을 CSP frame-src 캐시에 초기 로드
+    await refreshCustomPageFrameOrigins();
 
     // 기존 게시글/위키/이벤트의 검색용 평문 백필 — 신규 컬럼이 추가된 직후 1회 실행
     await backfillSearchText();
