@@ -10,23 +10,20 @@ import { toast } from '../../../utils/toast';
 
 // 태그 색 팔레트 — 새 태그마다 여기서 랜덤 기본색을 뽑고, 원클릭 스와치로도 제공.
 // (임의 RGB 대신 큐레이션 팔레트로 대비·톤을 보장)
+// 원색(Tailwind-500 레인보우) 대신 살짝 차분한(muted) 톤 — 촌스럽지 않고 서로 조화롭게.
 const TAG_PALETTE = [
-  '#ef4444',
-  '#f97316',
-  '#f59e0b',
-  '#eab308',
-  '#84cc16',
-  '#22c55e',
-  '#10b981',
-  '#14b8a6',
-  '#06b6d4',
-  '#3b82f6',
-  '#6366f1',
-  '#8b5cf6',
-  '#a855f7',
-  '#ec4899',
-  '#f43f5e',
-  '#64748b',
+  '#64748b', // slate
+  '#4d908e', // muted teal
+  '#4a7ba6', // muted azure
+  '#5e6ba8', // muted indigo
+  '#8a6fa8', // muted violet
+  '#a87f9e', // dusty mauve
+  '#b56576', // dusty rose
+  '#c9836b', // muted coral
+  '#c9a15e', // muted gold
+  '#8a9a5b', // olive
+  '#5c9a72', // muted green
+  '#7d8597', // slate gray
 ];
 const randomTagColor = () => TAG_PALETTE[Math.floor(Math.random() * TAG_PALETTE.length)];
 

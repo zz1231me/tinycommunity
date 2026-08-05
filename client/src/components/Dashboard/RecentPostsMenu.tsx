@@ -100,23 +100,23 @@ export function RecentPostsMenu() {
         aria-label={unreadCount > 0 ? `최신 소식 (안 읽음 ${unreadCount})` : '최신 소식'}
         title={preview ? preview.title : '최신 소식'}
         aria-expanded={open}
-        className={`flex items-center gap-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors ${
-          preview ? 'py-1.5 pl-2 pr-2' : 'p-2'
+        className={`flex items-center gap-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors ${
+          preview ? 'py-2 pl-2.5 pr-2.5' : 'p-2'
         }`}
       >
-        <Newspaper className="h-5 w-5 flex-shrink-0" />
-        {/* 안 읽은 최신 제목 인라인 프리뷰 (넓은 화면에서만, 회전) */}
+        <Newspaper className="h-6 w-6 flex-shrink-0" />
+        {/* 안 읽은 최신 제목 인라인 프리뷰 (회전) */}
         {preview && (
           <span
             key={preview.id}
-            className="hidden max-w-[9rem] truncate text-xs font-medium text-slate-600 dark:text-slate-300 animate-fadeIn lg:block"
+            className="hidden max-w-[13rem] truncate text-sm font-medium text-slate-600 dark:text-slate-300 animate-fadeIn md:block"
           >
             {preview.title}
           </span>
         )}
         {unreadCount > 0 && (
           <span
-            className="flex-shrink-0 rounded-full bg-red-500 px-1.5 text-[0.65rem] font-bold leading-[1.05rem] text-white animate-pulse"
+            className="flex-shrink-0 rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold leading-none text-white animate-pulse"
             aria-hidden="true"
           >
             {unreadCount > 9 ? '9+' : unreadCount}

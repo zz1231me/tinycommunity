@@ -1,7 +1,8 @@
 import React from 'react';
 import { DEFAULT_TAG_COLOR } from '../../constants/colors';
 import { Avatar } from '../Avatar';
-import { PinIcon, LockIcon, EyeIcon, HeartIcon, ChatIcon, PaperclipIcon } from '../common/Icons';
+import { LockIcon, EyeIcon, HeartIcon, ChatIcon, PaperclipIcon } from '../common/Icons';
+import { Pin } from 'lucide-react';
 import { Post } from '../../types/board.types';
 
 const isSafeColor = (color: string): boolean =>
@@ -58,7 +59,13 @@ export const PostListItem: React.FC<PostListItemProps> = ({
         <div className="col-span-12 sm:col-span-8">
           <div className="flex items-center gap-2 min-w-0">
             {/* 고정 아이콘 */}
-            {post.isPinned && <PinIcon className="w-4 h-4 text-amber-500 flex-shrink-0" />}
+            {post.isPinned && (
+              <Pin
+                className="w-4 h-4 text-amber-500 flex-shrink-0"
+                fill="currentColor"
+                aria-label="고정된 게시글"
+              />
+            )}
 
             {/* 비밀글 아이콘 */}
             {post.isSecret && (

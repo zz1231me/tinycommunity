@@ -20,7 +20,7 @@ interface DashboardSidebarProps {
 // 섹션 헤더
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="px-3 mb-2 text-xs font-bold text-slate-500 dark:text-slate-500 tracking-wide select-none">
+    <p className="px-3 mb-2 text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500 select-none">
       {children}
     </p>
   );
@@ -97,7 +97,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
     `}
     >
       <SimpleBar className="h-full overscroll-contain" autoHide={false}>
-        <nav className="p-3 space-y-5 pt-4">
+        <nav className="p-3 pt-4 [&>div+div]:mt-5 [&>div+div]:border-t [&>div+div]:border-slate-200/60 dark:[&>div+div]:border-slate-800/70 [&>div+div]:pt-5">
           {/* 메인 */}
           <div>
             <SectionLabel>메인</SectionLabel>

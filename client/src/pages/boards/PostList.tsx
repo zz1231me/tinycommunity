@@ -321,7 +321,7 @@ const PostList = () => {
           { label: boardInfo?.name || '게시판' },
         ]}
         title={boardInfo?.name || '게시판'}
-        description={`${boardInfo?.description || '게시글 목록을 확인하세요'}\n총 ${pagination?.totalCount || 0}개의 게시글`}
+        description={`${boardInfo?.description || '게시글 목록을 확인하세요'} · 총 ${pagination?.totalCount || 0}개`}
         icon={
           <svg
             className="w-6 h-6 text-primary-600 dark:text-primary-400"

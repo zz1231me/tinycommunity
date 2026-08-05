@@ -19,7 +19,7 @@ interface PageHeaderProps {
 export const PageHeader = React.memo(
   ({ title, description, icon, breadcrumbs, children }: PageHeaderProps) => {
     return (
-      <div className="mb-6 pb-5 border-b border-slate-200 dark:border-slate-700/60">
+      <div className="mb-4 pb-3 border-b border-slate-200 dark:border-slate-700/60">
         {breadcrumbs && breadcrumbs.length > 0 && (
           <nav aria-label="breadcrumb" className="mb-3">
             <ol className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
