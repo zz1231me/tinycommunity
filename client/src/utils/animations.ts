@@ -1,8 +1,9 @@
 import { Variants } from 'framer-motion';
 
 export const fadeInUp: Variants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: 'easeOut' } },
+  // 진입이 즉시 또렷하게 보이도록 짧고 빠르게(이전 0.25s+16px는 페이드 중간이 흐릿하게 보였음)
+  hidden: { opacity: 0, y: 8 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.16, ease: 'easeOut' } },
 };
 
 export const stagger: Variants = {

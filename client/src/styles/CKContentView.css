@@ -585,39 +585,18 @@
   color: #eff6ff !important;
 }
 
-/* ✅ 페이지 나누기 — CKEditor 출력: <div class="page-break"><span>&nbsp;</span></div> */
+/* ✅ 페이지 나누기 — CKEditor 출력: <div class="page-break"><span>&nbsp;</span></div>
+   읽기 뷰에서는 "페이지 구분선" 라벨(에디터 개념) 없이 은은한 구분선만 표시 */
 .ck-content-view .page-break {
-  border-top: 3px dashed #9ca3af;
-  margin: 1.5rem 0;
-  position: relative;
-  text-align: center;
-  overflow: visible;
+  border-top: 1px dashed rgb(203, 213, 225);
+  margin: 1.75rem 0;
 }
 /* DOMPurify가 display:none 인라인 스타일을 제거하므로 CSS로 강제 숨김 */
 .ck-content-view .page-break > span {
-  visibility: hidden;
-  font-size: 0;
-  line-height: 0;
-}
-/* 가상 요소로 "페이지 구분선" 레이블 표시 */
-.ck-content-view .page-break::after {
-  content: '── 페이지 구분선 ──';
-  display: inline-block;
-  background: white;
-  padding: 0 0.75rem;
-  font-size: 0.75rem;
-  color: #9ca3af;
-  position: absolute;
-  top: -0.7rem;
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
+  display: none;
 }
 .dark .ck-content-view .page-break {
-  border-top-color: #4b5563;
-}
-.dark .ck-content-view .page-break::after {
-  background: #111827;
+  border-top-color: rgb(71, 85, 105);
 }
 
 /* ✅ 반응형 처리 */

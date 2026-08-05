@@ -250,42 +250,7 @@ const WikiPageRoute = () => {
               </svg>
               새 페이지
             </button>
-            {currentPage && !isEditing && !isCreating && (
-              <>
-                <button
-                  onClick={() => {
-                    setIsEditing(true);
-                    setIsCreating(false);
-                    setSaveError(null);
-                  }}
-                  className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors font-medium"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                  편집
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors font-medium"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                  삭제
-                </button>
-              </>
-            )}
+            {/* 페이지 액션(편집·삭제·이력)은 제목 옆 WikiDetail로 이동 — 상단 툴바 중복 제거 */}
             {saveError && (
               <span className="text-xs text-red-500 ml-2 flex items-center gap-1">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -333,6 +298,7 @@ const WikiPageRoute = () => {
               setIsEditing(true);
               setIsCreating(false);
             }}
+            onDelete={canEdit ? handleDelete : undefined}
             onRestore={canEdit ? handleRestore : undefined}
           />
         ) : (
