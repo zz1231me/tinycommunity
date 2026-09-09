@@ -204,7 +204,7 @@ const IpManagement: React.FC = () => {
               <select
                 value={formType}
                 onChange={e => setFormType(e.target.value as IpRuleType)}
-                className="input-field w-full text-sm"
+                className="input-field w-full"
               >
                 <option value="blacklist">블랙리스트 (차단)</option>
                 <option value="whitelist">화이트리스트 (허용)</option>
@@ -218,7 +218,7 @@ const IpManagement: React.FC = () => {
                 value={formIp}
                 onChange={e => setFormIp(e.target.value)}
                 placeholder="192.168.1.1 또는 192.168.0.0/24"
-                className="input-field w-full text-sm font-mono"
+                className="input-field w-full font-mono"
               />
             </div>
             {/* 설명 */}
@@ -229,7 +229,7 @@ const IpManagement: React.FC = () => {
                 value={formDesc}
                 onChange={e => setFormDesc(e.target.value)}
                 placeholder="예: 사무실 IP, 악성 봇 등"
-                className="input-field w-full text-sm"
+                className="input-field w-full"
               />
             </div>
           </div>

@@ -67,7 +67,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({ selectedTags, onChange
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="태그 검색..."
-          className="input py-1.5 text-sm"
+          className="input input-sm"
         />
       )}
 

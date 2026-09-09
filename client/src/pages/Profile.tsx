@@ -373,7 +373,7 @@ export default function Profile() {
                             }}
                             maxLength={50}
                             autoFocus
-                            className="input flex-1 max-w-[200px] py-1.5"
+                            className="input input-sm flex-1 max-w-[200px]"
                           />
                           <button
                             onClick={handleNameSave}
@@ -442,8 +442,8 @@ export default function Profile() {
 
             {activeTab === 'security' && (
               <div className="card mb-6 overflow-hidden">
-                <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-                  <h3 className="font-semibold text-slate-900 dark:text-slate-100">활성 세션</h3>
+                <div className="border-b border-slate-100 px-4 py-3 sm:px-6 dark:border-slate-700">
+                  <h3 className="card-title">활성 세션</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     현재 로그인된 기기 목록 · 다른 기기는 종료할 수 있습니다
                   </p>
@@ -513,8 +513,8 @@ export default function Profile() {
 
             {activeTab === 'security' && (
               <div className="card overflow-hidden">
-                <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-                  <h3 className="font-semibold text-slate-900 dark:text-slate-100">접속 기록</h3>
+                <div className="border-b border-slate-100 px-4 py-3 sm:px-6 dark:border-slate-700">
+                  <h3 className="card-title">접속 기록</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     로그인 성공/실패, 로그아웃 이력
                   </p>

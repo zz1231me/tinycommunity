@@ -737,7 +737,7 @@ export const UserManagement = () => {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="아이디 / 이름 검색..."
-              className="input w-48 py-1.5"
+              className="input input-sm w-48"
             />
           </div>
         }

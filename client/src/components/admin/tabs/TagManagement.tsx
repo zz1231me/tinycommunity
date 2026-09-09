@@ -205,7 +205,7 @@ const TagManagement = () => {
                         onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                         required
                         placeholder="태그 이름"
-                        className="input w-auto py-1.5"
+                        className="input input-sm w-auto"
                       />
                     </div>
                     <div>
@@ -221,7 +221,7 @@ const TagManagement = () => {
                           type="text"
                           value={form.color}
                           onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
-                          className="input w-24 py-1.5 font-mono"
+                          className="input input-sm w-24 font-mono"
                         />
                         <button
                           type="button"
@@ -258,7 +258,7 @@ const TagManagement = () => {
                         value={form.description}
                         onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                         placeholder="선택사항"
-                        className="input w-auto py-1.5"
+                        className="input input-sm w-auto"
                       />
                     </div>
                     <div className="flex gap-2">

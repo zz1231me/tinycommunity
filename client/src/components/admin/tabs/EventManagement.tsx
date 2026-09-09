@@ -210,7 +210,7 @@ export const EventManagement = () => {
               setPage(1);
             }}
             placeholder="제목 / 작성자 검색..."
-            className="input w-56 py-1.5"
+            className="input input-sm w-56"
           />
           <select
             value={periodFilter}
@@ -218,7 +218,7 @@ export const EventManagement = () => {
               setPeriodFilter(e.target.value as PeriodFilter);
               setPage(1);
             }}
-            className="input w-auto py-1.5"
+            className="input input-sm w-auto"
           >
             <option value="all">전체 기간</option>
             <option value="upcoming">예정</option>
@@ -231,7 +231,7 @@ export const EventManagement = () => {
               setCategoryFilter(e.target.value);
               setPage(1);
             }}
-            className="input w-auto py-1.5"
+            className="input input-sm w-auto"
           >
             <option value="">전체 분류</option>
             {categoryOptions.map(c => (
