@@ -1,0 +1,725 @@
+/* client/src/pages/components/calendar/styles/calendar.css */
+
+/* ===== 기본 설정 ===== */
+.calendar-wrapper {
+  --fc-border-color: var(--color-slate-200);
+  --fc-today-bg-color: transparent;
+  --fc-neutral-bg-color: #ffffff;
+  --fc-list-event-hover-bg-color: var(--color-slate-100);
+  display: block;
+  width: 100%;
+  height: 100%;
+  font-family:
+    'Pretendard',
+    'Noto Sans KR',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  background: #ffffff;
+}
+
+.dark .calendar-wrapper {
+  --fc-border-color: var(--color-slate-700);
+  --fc-neutral-bg-color: var(--color-slate-900);
+  --fc-list-event-hover-bg-color: var(--color-slate-800);
+  background: var(--color-slate-900);
+}
+
+.calendar-wrapper .fc {
+  font-family: inherit;
+  height: 100%;
+  background: transparent;
+}
+
+/* ===== CKEditor (이벤트 폼) ===== */
+/* 에디터 내용 영역 최소 높이 */
+.event-ck-editor-wrapper .ck-editor__editable {
+  min-height: 160px;
+  font-size: var(--text-sm);
+  line-height: 1.65;
+  color: var(--color-slate-800);
+}
+
+.dark .event-ck-editor-wrapper .ck-editor__editable {
+  color: var(--color-slate-200);
+  background: var(--color-slate-800);
+}
+
+.event-ck-editor-wrapper .ck.ck-editor__editable_inline {
+  padding: 0.75rem 1rem;
+}
+
+/* 툴바 래핑 허용 (shouldNotGroupWhenFull: true 와 함께 동작) */
+.event-ck-editor-wrapper .ck-toolbar__items {
+  flex-wrap: wrap;
+}
+
+.event-ck-editor-wrapper .ck.ck-toolbar {
+  border-bottom: 1px solid var(--color-slate-200);
+  background: var(--color-slate-50);
+  padding: 4px 6px;
+}
+
+.dark .event-ck-editor-wrapper .ck.ck-toolbar {
+  border-bottom-color: var(--color-slate-700);
+  background: var(--color-slate-800);
+}
+
+/* CKEditor 포커스 상태 — 외부 래퍼에 ring 표시 */
+.event-ck-editor-wrapper:focus-within {
+  border-color: var(--color-secondary-500) !important;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+  border-radius: 8px;
+}
+
+.dark .event-ck-editor-wrapper:focus-within {
+  border-color: var(--color-secondary-400) !important;
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.2);
+}
+
+/* ===== 날짜 셀 ===== */
+.calendar-wrapper .fc-daygrid-day {
+  min-height: 110px;
+  position: relative;
+  transition: background-color 0.12s ease;
+  /* ★셀에 불투명 배경을 깔지 않는다 — 옆칸으로 넘치는 멀티데이(여러 요일) 이벤트 바를
+     불투명 배경이 덮어버려 첫날만 보이는 버그가 생긴다. 흰 배경은 하위 .calendar-wrapper가 제공하고,
+     hover/other/today는 반투명 틴트만 사용해 이벤트가 비쳐 보이게 한다. */
+}
+
+.calendar-wrapper .fc-daygrid-day:hover {
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.dark .calendar-wrapper .fc-daygrid-day:hover {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+@media (max-height: 900px) {
+  .calendar-wrapper .fc-daygrid-day {
+    min-height: 90px;
+  }
+}
+@media (max-height: 700px) {
+  .calendar-wrapper .fc-daygrid-day {
+    min-height: 72px;
+  }
+}
+
+/* ===== 테두리 ===== */
+.calendar-wrapper .fc-theme-standard td,
+.calendar-wrapper .fc-theme-standard th {
+  border-color: var(--color-slate-200); /* 살짝 더 옅게 — airy */
+}
+
+.dark .calendar-wrapper .fc-theme-standard td,
+.dark .calendar-wrapper .fc-theme-standard th {
+  border-color: var(--color-slate-700);
+}
+
+/* ===== 헤더 (요일) ===== */
+.calendar-wrapper .fc-col-header-cell {
+  background: var(--color-slate-50);
+  font-weight: 600;
+  color: var(--color-slate-500);
+  border-bottom: 1px solid var(--color-slate-200);
+  padding: 11px 8px;
+  font-size: var(--text-xs);
+}
+
+.dark .calendar-wrapper .fc-col-header-cell {
+  background: var(--color-slate-800);
+  color: var(--color-slate-400);
+  border-bottom-color: var(--color-slate-700);
+}
+
+.calendar-wrapper .fc-col-header-cell.fc-day-sun {
+  color: #ef4444 !important;
+}
+.calendar-wrapper .fc-col-header-cell.fc-day-sat {
+  color: #2563eb !important; /* 토요일=파랑(한국 캘린더 관례) */
+}
+.dark .calendar-wrapper .fc-col-header-cell.fc-day-sun {
+  color: #f87171 !important;
+}
+.dark .calendar-wrapper .fc-col-header-cell.fc-day-sat {
+  color: #60a5fa !important;
+}
+
+/* ===== 날짜 숫자 ===== */
+.calendar-wrapper .fc-daygrid-day-number {
+  color: var(--color-slate-800);
+  font-weight: 500;
+  /* 하단 패딩 축소 — 날짜와 일정 사이 빈 공간을 좁혀 일정을 위로 당긴다 */
+  padding: 6px 10px 1px;
+  font-size: var(--text-xs);
+  transition: color 0.12s ease;
+  display: inline-block;
+}
+
+.dark .calendar-wrapper .fc-daygrid-day-number {
+  color: var(--color-slate-300);
+}
+
+.calendar-wrapper .fc-daygrid-day-number:hover {
+  color: var(--color-secondary-500);
+}
+.dark .calendar-wrapper .fc-daygrid-day-number:hover {
+  color: var(--color-secondary-400);
+}
+
+/* 주말 날짜 */
+.calendar-wrapper .fc-daygrid-day.fc-day-sun .fc-daygrid-day-number {
+  color: #ef4444 !important;
+}
+.calendar-wrapper .fc-daygrid-day.fc-day-sat .fc-daygrid-day-number {
+  color: #2563eb !important; /* 토요일=파랑(한국 캘린더 관례) */
+}
+.dark .calendar-wrapper .fc-daygrid-day.fc-day-sun .fc-daygrid-day-number {
+  color: #f87171 !important;
+}
+.dark .calendar-wrapper .fc-daygrid-day.fc-day-sat .fc-daygrid-day-number {
+  color: #60a5fa !important;
+}
+
+/* 이번 달이 아닌 날짜 — 반투명 틴트(불투명이면 주말 걸친 멀티데이 바를 가림) */
+.calendar-wrapper .fc-day-other {
+  background: rgba(148, 163, 184, 0.06) !important;
+}
+.dark .calendar-wrapper .fc-day-other {
+  background: rgba(0, 0, 0, 0.18) !important;
+}
+
+/* 비동기로 일정 데이터가 도착해 렌더될 때 '툭' 튀는 느낌을 완화 — 각 이벤트를 부드럽게 페이드인.
+   opacity만 애니메이션(위치/레이아웃 불변 → 연속일정 안전). 로딩 체감을 줄인다. */
+@keyframes fc-event-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.calendar-wrapper .fc-daygrid-event-harness,
+.calendar-wrapper .fc-daygrid-day-bottom {
+  animation: fc-event-fade-in 0.7s ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .calendar-wrapper .fc-daygrid-event-harness,
+  .calendar-wrapper .fc-daygrid-day-bottom {
+    animation: none;
+  }
+}
+
+.calendar-wrapper .fc-day-other .fc-daygrid-day-number {
+  color: var(--color-slate-300);
+  font-weight: 400;
+}
+.dark .calendar-wrapper .fc-day-other .fc-daygrid-day-number {
+  color: var(--color-slate-600);
+}
+
+.calendar-wrapper .fc-daygrid-day.fc-day-other.fc-day-sun .fc-daygrid-day-number {
+  color: #fca5a5 !important;
+}
+.calendar-wrapper .fc-daygrid-day.fc-day-other.fc-day-sat .fc-daygrid-day-number {
+  color: #93c5fd !important;
+}
+.dark .calendar-wrapper .fc-daygrid-day.fc-day-other.fc-day-sun .fc-daygrid-day-number {
+  color: #7f1d1d !important;
+}
+.dark .calendar-wrapper .fc-daygrid-day.fc-day-other.fc-day-sat .fc-daygrid-day-number {
+  color: #1e3a8a !important;
+}
+
+/* ===== 오늘 날짜 셀 ===== */
+/* 오늘 표시는 '배지(숫자 원형)' 하나로 충분 — 배경은 아주 옅은 teal 틴트만(중복인 상단 바 제거) */
+.calendar-wrapper .today-highlight {
+  background: rgba(
+    20,
+    184,
+    166,
+    0.08
+  ) !important; /* 반투명 — 오늘 걸친 멀티데이 바가 비쳐 보이게 */
+  position: relative !important;
+}
+
+.dark .calendar-wrapper .today-highlight {
+  background: rgba(20, 184, 166, 0.08) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   오늘 날짜 숫자 배지
+   fc-day-today  : FullCalendar 가 자동으로 추가하는 클래스
+   today-highlight: dayCellClassNames 콜백으로 추가하는 클래스
+   두 셀렉터를 모두 사용해 렌더 타이밍 이슈로 한 쪽이 늦게
+   적용되더라도 배지 스타일이 반드시 적용되도록 합니다.
+   ───────────────────────────────────────────────────────────── */
+.calendar-wrapper .fc-day-today .fc-daygrid-day-number,
+.calendar-wrapper .today-highlight .fc-daygrid-day-number {
+  /* 깔끔한 채움 원형 배지 — drop shadow 제거(무거운 옛날 느낌 탈피) */
+  background: var(--color-secondary-600) !important; /* teal 액센트 */
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 9999px !important;
+  min-width: 27px !important;
+  min-height: 27px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 6px 8px 2px !important;
+  padding: 2px 6px !important;
+  font-size: var(--text-xs) !important;
+  box-shadow: none !important;
+  position: relative !important;
+  z-index: 10 !important;
+  line-height: 1 !important;
+  text-align: center !important;
+}
+
+/* 오늘이 일요일 */
+.calendar-wrapper .fc-day-today.fc-day-sun .fc-daygrid-day-number,
+.calendar-wrapper .today-highlight.fc-day-sun .fc-daygrid-day-number {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+.dark .calendar-wrapper .fc-day-today.fc-day-sun .fc-daygrid-day-number,
+.dark .calendar-wrapper .today-highlight.fc-day-sun .fc-daygrid-day-number {
+  background: #f87171 !important;
+  color: #ffffff !important;
+}
+
+/* 오늘이 토요일 */
+.calendar-wrapper .fc-day-today.fc-day-sat .fc-daygrid-day-number,
+.calendar-wrapper .today-highlight.fc-day-sat .fc-daygrid-day-number {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.dark .calendar-wrapper .fc-day-today.fc-day-sat .fc-daygrid-day-number,
+.dark .calendar-wrapper .today-highlight.fc-day-sat .fc-daygrid-day-number {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+/* ===== 이벤트 ===== */
+.calendar-wrapper .fc-event {
+  border: none !important;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  /* 세로 여백 — 글자를 키운 만큼 살짝 여유 */
+  padding: 2.5px 9px;
+  margin: 2px 3px;
+  cursor: pointer;
+  /* 플랫 칩 — 검정 drop shadow 제거(부트스트랩/머티리얼 느낌 탈피). hover는 미묘한 명도만 */
+  box-shadow: none;
+  transition: filter 0.15s ease;
+}
+
+/* 이벤트 사이 간격도 최소화 (FullCalendar 기본 harness 여백 축소) */
+.calendar-wrapper .fc-daygrid-day-events .fc-daygrid-event-harness {
+  margin-top: 1px;
+}
+
+/* ★일정 드래그(다른 요일로 이동)가 안 되던 버그 수정 — 근본 원인은 '스택 순서'다.
+   여러 칸을 먹는(다중일) 이벤트는 첫 칸의 events 컨테이너에서 harness가 right:-Npx로 옆 칸까지
+   뻗어나가는데, 옆 날짜 칸의 .fc-daygrid-day-events가 DOM 순서상 뒤에 그려져 그 뻗어나온
+   이벤트 위를 덮는다. 그 결과 이벤트의 2번째 칸부터는 클릭이 이벤트가 아니라 셀에 잡혀,
+   끌면 '이동'이 아니라 '날짜 범위 선택(새 일정)'으로 오작동해 드래그가 안 됐다.
+   harness를 날짜 셀 컨테이너보다 위로 올리면(z-index) 이벤트 전체가 클릭·드래그된다.
+   (harness 폭은 그대로 두므로 다중일 스팬 표시는 유지된다.) */
+.calendar-wrapper .fc-daygrid-event-harness {
+  z-index: 3;
+}
+
+.calendar-wrapper .fc-event:hover {
+  filter: brightness(0.94);
+  z-index: 10;
+}
+
+.dark .calendar-wrapper .fc-event:hover {
+  filter: brightness(1.12);
+}
+
+/* 소프트 틴트 이벤트 — 진한 단색 블록 대신 '옅은 배경 + 진한 색 텍스트'(좌측 컬러바 없음).
+   이벤트 색은 --ev(eventDidMount 주입)로 받아 color-mix로 라이트/다크 톤을 각각 생성. */
+.calendar-wrapper .fc-daygrid-event {
+  background: color-mix(in srgb, var(--ev, var(--color-secondary-500)) 18%, #ffffff) !important;
+  /* 글자는 '어두운 슬레이트 + 약간의 색 힌트' — 밝은 카테고리(노랑·회색)도 대비 확보.
+     색 정체성은 배경 틴트가 전달한다. */
+  color: color-mix(
+    in srgb,
+    var(--ev, var(--color-secondary-500)) 20%,
+    var(--color-slate-900)
+  ) !important;
+  border: none !important;
+}
+.dark .calendar-wrapper .fc-daygrid-event {
+  background: color-mix(
+    in srgb,
+    var(--ev, var(--color-secondary-500)) 26%,
+    var(--color-slate-900)
+  ) !important;
+}
+/* ★FullCalendar는 글자색을 자식 .fc-event-main에 인라인으로 박는다 — 부모(.fc-daygrid-event)
+   색만 지정하면 자식이 덮어써 흰 글자가 된다. 실제 텍스트 요소에 직접 !important로 강제한다. */
+.calendar-wrapper .fc-daygrid-event .fc-event-main,
+.calendar-wrapper .fc-daygrid-event .fc-event-title,
+.calendar-wrapper .fc-daygrid-event .fc-event-time {
+  color: color-mix(
+    in srgb,
+    var(--ev, var(--color-secondary-500)) 20%,
+    var(--color-slate-900)
+  ) !important;
+}
+.dark .calendar-wrapper .fc-daygrid-event .fc-event-main,
+.dark .calendar-wrapper .fc-daygrid-event .fc-event-title,
+.dark .calendar-wrapper .fc-daygrid-event .fc-event-time {
+  color: color-mix(in srgb, var(--ev, var(--color-secondary-500)) 42%, #ffffff) !important;
+}
+
+/* 드래그 중 */
+.calendar-wrapper .fc-event-dragging {
+  opacity: 0.85 !important;
+  z-index: 9999 !important;
+  transform: scale(1.04) rotate(-0.5deg) !important;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18) !important;
+}
+
+.dark .calendar-wrapper .fc-event-dragging {
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+.calendar-wrapper .fc-event-mirror {
+  opacity: 0.45 !important;
+  border: 2px dashed var(--color-secondary-500) !important;
+  background: rgba(20, 184, 166, 0.08) !important;
+}
+
+.dark .calendar-wrapper .fc-event-mirror {
+  border-color: var(--color-secondary-400) !important;
+  background: rgba(45, 212, 191, 0.15) !important;
+}
+
+/* ===== 이벤트 제목 ===== */
+.calendar-wrapper .fc-event-title {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-wrapper .fc-daygrid-event-dot {
+  display: none;
+}
+
+/* 이벤트 시간은 제목보다 흐리게 — 제목 가독성 강조 */
+.calendar-wrapper .fc-event-time {
+  font-weight: 400;
+  opacity: 0.68;
+}
+
+/* ===== 날짜 영역 상단 ===== */
+.calendar-wrapper .fc-daygrid-day-top {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+/* ===== 선택 영역 ===== */
+.calendar-wrapper .fc-highlight {
+  background: rgba(20, 184, 166, 0.12) !important;
+  border: 1px dashed rgba(20, 184, 166, 0.35) !important;
+}
+
+.dark .calendar-wrapper .fc-highlight {
+  background: rgba(45, 212, 191, 0.16) !important;
+  border: 1px dashed rgba(45, 212, 191, 0.4) !important;
+}
+
+/* ===== now indicator ===== */
+.calendar-wrapper .fc-timegrid-now-indicator-line {
+  border-color: var(--color-secondary-500);
+  border-width: 2px;
+}
+
+.calendar-wrapper .fc-timegrid-now-indicator-arrow {
+  border-top-color: var(--color-secondary-500);
+  border-bottom-color: var(--color-secondary-500);
+}
+
+/* ===== 주간 뷰 (dayGridWeek) ===== */
+.calendar-wrapper .fc-dayGridWeek-view .fc-daygrid-day {
+  min-height: 160px;
+}
+
+/* ===== 목록 뷰 (listMonth) ===== */
+.calendar-wrapper .fc-list {
+  border: none;
+}
+
+/* 목록 — 날짜 헤더 행 */
+.calendar-wrapper .fc-list-day th {
+  background: var(--color-slate-50) !important;
+  border-color: var(--color-slate-200) !important;
+  padding: 0;
+}
+
+.dark .calendar-wrapper .fc-list-day th {
+  background: var(--color-slate-800) !important;
+  border-color: var(--color-slate-700) !important;
+}
+
+.calendar-wrapper .fc-list-day-cushion {
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendar-wrapper .fc-list-day-text,
+.calendar-wrapper .fc-list-day-side-text {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-slate-600);
+  text-decoration: none !important;
+}
+
+.dark .calendar-wrapper .fc-list-day-text,
+.dark .calendar-wrapper .fc-list-day-side-text {
+  color: var(--color-slate-400);
+}
+
+/* 오늘 날짜 헤더 강조 */
+.calendar-wrapper .fc-list-day.fc-day-today th {
+  background: var(--color-secondary-50) !important;
+  border-left: 3px solid var(--color-secondary-500) !important;
+}
+
+.dark .calendar-wrapper .fc-list-day.fc-day-today th {
+  background: rgba(20, 184, 166, 0.1) !important;
+  border-left: 3px solid var(--color-secondary-400) !important;
+}
+
+.calendar-wrapper .fc-list-day.fc-day-today .fc-list-day-text,
+.calendar-wrapper .fc-list-day.fc-day-today .fc-list-day-side-text {
+  color: var(--color-secondary-700) !important;
+}
+
+.dark .calendar-wrapper .fc-list-day.fc-day-today .fc-list-day-text,
+.dark .calendar-wrapper .fc-list-day.fc-day-today .fc-list-day-side-text {
+  color: var(--color-secondary-400) !important;
+}
+
+/* 목록 — 이벤트 행 */
+.calendar-wrapper .fc-list-event {
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.calendar-wrapper .fc-list-event td {
+  border-color: var(--color-slate-100) !important;
+  padding: 10px 16px;
+}
+
+.dark .calendar-wrapper .fc-list-event td {
+  border-color: var(--color-slate-800) !important;
+}
+
+.calendar-wrapper .fc-list-event:hover td {
+  background: var(--color-slate-50) !important;
+}
+
+.dark .calendar-wrapper .fc-list-event:hover td {
+  background: var(--color-slate-800) !important;
+}
+
+/* 이벤트 컬러 도트 */
+.calendar-wrapper .fc-list-event-dot {
+  border-width: 5px;
+  border-radius: 50%;
+}
+
+/* 이벤트 제목 */
+.calendar-wrapper .fc-list-event-title a {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-slate-800);
+  text-decoration: none;
+}
+
+.dark .calendar-wrapper .fc-list-event-title a {
+  color: var(--color-slate-200);
+}
+
+/* 이벤트 시간 */
+.calendar-wrapper .fc-list-event-time {
+  font-size: var(--text-2xs);
+  color: var(--color-slate-400);
+  white-space: nowrap;
+  min-width: 60px;
+}
+
+/* 목록 — 빈 상태 */
+.calendar-wrapper .fc-list-empty {
+  background: transparent;
+}
+
+.calendar-wrapper .fc-list-empty-cushion {
+  padding: 56px 24px;
+  text-align: center;
+}
+
+.calendar-wrapper .fc-no-events-msg {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--text-sm);
+  color: var(--color-slate-400);
+}
+
+.calendar-wrapper .fc-no-events-msg::before {
+  content: '';
+  display: block;
+  width: 48px;
+  height: 48px;
+  background-color: var(--color-slate-100);
+  border-radius: 12px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 28px;
+}
+
+.dark .calendar-wrapper .fc-no-events-msg {
+  color: var(--color-slate-500);
+}
+
+.dark .calendar-wrapper .fc-no-events-msg::before {
+  background-color: var(--color-slate-800);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'/%3E%3C/svg%3E");
+}
+
+/* ===== "+N개 더보기" 링크 ===== */
+.calendar-wrapper .fc-daygrid-more-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--color-secondary-700);
+  background: var(--color-secondary-50);
+  border-radius: 9999px;
+  padding: 2px 8px;
+  margin: 1px 3px;
+  text-decoration: none;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.calendar-wrapper .fc-daygrid-more-link:hover {
+  background: var(--color-secondary-100);
+  color: var(--color-secondary-700);
+}
+
+.dark .calendar-wrapper .fc-daygrid-more-link {
+  color: var(--color-secondary-300);
+  background: rgba(20, 184, 166, 0.12);
+}
+
+.dark .calendar-wrapper .fc-daygrid-more-link:hover {
+  background: rgba(20, 184, 166, 0.22);
+  color: var(--color-secondary-200);
+}
+
+/* ===== 둥근 모서리 (4면 통일 — 카드 안에서 자연스럽게) =====
+   담고 있는 카드가 12px 이므로 안쪽은 그보다 작아야 한다.
+   예전 값(14px)은 바깥 카드보다 더 둥글어서 모서리가 어긋나 보였다. */
+.calendar-wrapper .fc {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.calendar-wrapper .fc-scrollgrid {
+  border-radius: 8px;
+  overflow: hidden;
+  background: transparent;
+}
+
+.calendar-wrapper .fc-view-harness {
+  background: transparent;
+}
+
+.calendar-wrapper .fc-scroller {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  background: transparent;
+}
+
+/* ===== 커스텀 스크롤바 ===== */
+.calendar-wrapper .fc-scroller::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.calendar-wrapper .fc-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.calendar-wrapper .fc-scroller::-webkit-scrollbar-thumb {
+  background: var(--color-slate-300);
+  border-radius: 3px;
+}
+
+.calendar-wrapper .fc-scroller::-webkit-scrollbar-thumb:hover {
+  background: var(--color-slate-400);
+}
+
+.dark .calendar-wrapper .fc-scroller::-webkit-scrollbar-thumb {
+  background: var(--color-slate-700);
+}
+
+.dark .calendar-wrapper .fc-scroller::-webkit-scrollbar-thumb:hover {
+  background: var(--color-slate-600);
+}
+
+/* ===== 반응형 ===== */
+@media (max-width: 768px) {
+  .calendar-wrapper .fc-daygrid-day {
+    min-height: 72px;
+  }
+
+  .calendar-wrapper .fc-col-header-cell {
+    font-size: var(--text-2xs);
+    padding: 8px 4px;
+  }
+
+  .calendar-wrapper .fc-daygrid-day-number {
+    font-size: var(--text-2xs);
+    padding: 5px 7px;
+  }
+
+  .calendar-wrapper .fc-event {
+    font-size: var(--text-2xs);
+    padding: 2px 7px;
+  }
+
+  .calendar-wrapper .today-highlight .fc-daygrid-day-number {
+    min-width: 26px !important;
+    min-height: 22px !important;
+    font-size: var(--text-2xs) !important;
+    margin: 4px 6px !important;
+  }
+
+  .calendar-wrapper .fc-list-event td {
+    padding: 8px 12px;
+  }
+  .calendar-wrapper .fc-list-day-cushion {
+    padding: 8px 12px;
+  }
+}

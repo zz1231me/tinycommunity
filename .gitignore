@@ -1,0 +1,55 @@
+
+# 빌드 결과물
+build/
+dist/
+out/
+.next/
+node_modules/
+
+# 에디터 설정
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code 로컬 설정 (사용자별 설정 파일)
+.claude/
+CLAUDE.md
+
+# 운영체제
+.DS_Store
+Thumbs.db
+
+# 환경변수 (시크릿 포함 — .env.sample만 추적)
+.env
+.env.*
+!.env.sample
+
+# 로그
+logs/
+*.log
+
+# 테스트 커버리지
+coverage/
+.nyc_output/
+
+# Database
+*.sqlite
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+*.db
+
+# 업로드 파일
+server/uploads/
+
+# TypeScript 빌드 캐시
+*.tsbuildinfo
+
+# SSL/TLS 인증서
+*.pem
+*.key
+*.crt
+*.cert
+server/:memory:
+server/_memory_

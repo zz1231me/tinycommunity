@@ -1,0 +1,53 @@
+{
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0",
+    "target": "ES2022",
+    "module": "commonjs",
+    "lib": ["ES2022"],
+    
+    // 경로 설정
+    "rootDir": "./src",
+    "baseUrl": "./src",
+    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "types": ["node", "jest"],
+    "outDir": "./dist",
+    
+    // 모듈 해석
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    
+    // ✅ TypeScript 5.8 신규 기능 활성화 (점진적 적용)
+    "strict": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    
+    // ✅ TypeScript 5.8: 인덱스 접근 안전성 강화 (일시 비활성화 - 점진 적용)
+    // "noUncheckedIndexedAccess": true,
+    
+    // ✅ TypeScript 5.8: 명시적 오버라이드
+    "noImplicitOverride": true,
+    
+    // ✅ TypeScript 5.8: 옵셔널 프로퍼티 타입 엄격화 (일시 비활성화 - 점진 적용)
+    // "exactOptionalPropertyTypes": true,
+    
+    // 성능 최적화
+    "skipLibCheck": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    
+    // 소스맵 (개발용)
+    "sourceMap": true,
+    
+    // 데코레이터 지원
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }, 
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+}

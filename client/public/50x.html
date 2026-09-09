@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>서버에 연결할 수 없습니다</title>
+    <!--
+      nginx 의 error_page 500 501 502 504 가 가리키는 파일.
+
+      여기서 바깥 파일(/assets/*.css, 폰트 등)을 부르면 안 된다 — 이 화면이 뜬다는 건
+      백엔드가 죽었다는 뜻이고, 그 자산들도 같이 못 받아 오기 때문이다. 전부 인라인이다.
+
+      public/ 에 두는 이유: Vite 가 이 폴더를 client/dist 로 그대로 복사하므로
+      빌드할 때마다 자동으로 따라간다. 예전에는 이 파일이 아예 없어서, 백엔드가 멈추면
+      nginx 가 "50x.html 을 못 찾겠다" 며 502 대신 404 를 돌려줬다.
+      진짜 원인(connect() failed)이 404 뒤에 숨어 버려 한참을 헤맸다.
+    -->
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --line: #e2e8f0;
+        --text: #0f172a;
+        --muted: #64748b;
+        --code-bg: #f1f5f9;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f172a;
+          --card: #1e293b;
+          --line: #334155;
+          --text: #f1f5f9;
+          --muted: #94a3b8;
+          --code-bg: #0f172a;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          'Pretendard',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          'Malgun Gothic',
+          sans-serif;
+        line-height: 1.6;
+      }
+      .card {
+        width: 100%;
+        max-width: 520px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 32px;
+      }
+      .icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: #fef2f2;
+        color: #dc2626;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        margin-bottom: 18px;
+      }
+      @media (prefers-color-scheme: dark) {
+        .icon {
+          background: rgba(220, 38, 38, 0.15);
+        }
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 20px;
+        font-weight: 700;
+      }
+      p {
+        margin: 0 0 20px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .hint {
+        border-top: 1px solid var(--line);
+        padding-top: 18px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .hint strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+      code {
+        background: var(--code-bg);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 1px 6px;
+        font-size: 12px;
+        font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+      }
+      button {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: transparent;
+        color: var(--text);
+        border-radius: 10px;
+        padding: 9px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      button:hover {
+        background: var(--code-bg);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="icon">!</div>
+      <h1>서버에 연결할 수 없습니다</h1>
+      <p>
+        웹 서버는 살아 있지만 뒤쪽 애플리케이션 서버가 응답하지 않습니다. 잠시 후 다시 시도해주세요.
+      </p>
+      <button type="button" onclick="location.reload()">다시 시도</button>
+
+      <div class="hint" style="margin-top: 22px">
+        <strong>관리자라면</strong> — 애플리케이션 서버가 떠 있는지 먼저 확인하세요.
+        <code>nginx.conf</code> 의 <code>upstream app_server</code> 가 가리키는 주소와 포트에서
+        실제로 듣고 있어야 합니다. 자세한 원인은 nginx 오류 로그의
+        <code>connect() failed</code> 줄에 남습니다.
+      </div>
+    </main>
+  </body>
+</html>

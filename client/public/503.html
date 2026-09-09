@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>점검 중입니다</title>
+    <!--
+      nginx 의 error_page 가 가리키는 파일. 바깥 파일(CSS·폰트)을 부르지 않는다 —
+      이 화면이 뜨는 상황에서는 그것들도 못 받아 올 수 있기 때문이다.
+      public/ 에 두면 Vite 가 client/dist 로 그대로 복사해 빌드마다 따라간다.
+    -->
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --line: #e2e8f0;
+        --text: #0f172a;
+        --muted: #64748b;
+        --code-bg: #f1f5f9;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f172a;
+          --card: #1e293b;
+          --line: #334155;
+          --text: #f1f5f9;
+          --muted: #94a3b8;
+          --code-bg: #0f172a;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          'Pretendard',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          'Malgun Gothic',
+          sans-serif;
+        line-height: 1.6;
+      }
+      .card {
+        width: 100%;
+        max-width: 520px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 32px;
+      }
+      .icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: #fef2f2;
+        color: #dc2626;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        margin-bottom: 18px;
+      }
+      @media (prefers-color-scheme: dark) {
+        .icon {
+          background: rgba(220, 38, 38, 0.15);
+        }
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 20px;
+        font-weight: 700;
+      }
+      p {
+        margin: 0 0 20px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .hint {
+        border-top: 1px solid var(--line);
+        padding-top: 18px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .hint strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+      code {
+        background: var(--code-bg);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 1px 6px;
+        font-size: 12px;
+        font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+      }
+      button {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: transparent;
+        color: var(--text);
+        border-radius: 10px;
+        padding: 9px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      button:hover {
+        background: var(--code-bg);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="icon">🛠</div>
+      <h1>점검 중입니다</h1>
+      <p>
+        지금은 서비스를 이용할 수 없습니다. 점검이 끝나면 정상으로 돌아옵니다.
+      </p>
+      <button type="button" onclick="location.reload()">다시 시도</button>
+
+      <div class="hint" style="margin-top: 22px">
+        <strong>관리자라면</strong> — 관리자 페이지의 <code>점검 모드</code> 설정을 확인하세요.
+      </div>
+    </main>
+  </body>
+</html>

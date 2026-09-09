@@ -1,0 +1,200 @@
+// client/src/pages/Dashboard.tsx
+import { useEffect, Suspense } from 'react';
+import { useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
+import { LoadingSpinner } from '../components/common/LoadingStates';
+import { useAuth } from '../store/auth';
+import { useSiteSettings } from '../store/siteSettings';
+import { useUIOverlays } from '../store/uiOverlays';
+import { DashboardSidebar } from '../components/Dashboard/DashboardSidebar';
+import { UserDropdown } from '../components/Dashboard/UserDropdown';
+import { GlobalSearch } from '../components/Dashboard/GlobalSearch';
+import { NotificationBell } from '../components/Dashboard/NotificationBell';
+import { MessageBadge } from '../components/messages/MessageBadge';
+import { RecentPostsMenu } from '../components/Dashboard/RecentPostsMenu';
+import { AnnouncementBanner } from '../components/Dashboard/AnnouncementBanner';
+import { CommandPalette } from '../components/common/CommandPalette';
+import { useHotkeys } from 'react-hotkeys-hook';
+
+function Dashboard() {
+  const { isAuthenticated } = useAuth();
+  const { settings } = useSiteSettings();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // 사이드바/dropdown 통합 store — 한 번에 하나의 dropdown만 열리고
+  // 사이드바 토글 시 다른 dropdown을 자동으로 닫는다 (모바일 레이어 충돌 해소).
+  const sidebarOpen = useUIOverlays(s => s.sidebarOpen);
+  const toggleSidebar = useUIOverlays(s => s.toggleSidebar);
+  const closeSidebar = useUIOverlays(s => s.closeSidebar);
+  const isCommandOpen = useUIOverlays(s => s.activeDropdown === 'commandPalette');
+  const openCommand = useUIOverlays(s => s.openDropdown);
+  const closeCommand = useUIOverlays(s => s.closeDropdown);
+
+  // ⚠️ ⌘K는 GlobalSearch(콘텐츠 검색)가 점유.
+  //    네비게이션 팔레트는 VSCode 컨벤션과 동일하게 ⌘⇧P / Ctrl+Shift+P로 분리.
+  useHotkeys(
+    'ctrl+shift+p, meta+shift+p',
+    e => {
+      e.preventDefault();
+      openCommand('commandPalette');
+    },
+    { enableOnFormTags: false }
+  );
+
+  // ⚠️ /dashboard → /dashboard/calendar 리다이렉트는 App.tsx의 <Route index>가 이미 처리.
+  //    여기서 또 navigate하면 마운트 직후 두 번 라우팅되어 깜빡임 발생.
+
+  useEffect(() => {
+    if (!isAuthenticated) navigate('/', { replace: true });
+  }, [isAuthenticated, navigate]);
+
+  // 페이지 이동 시 모든 overlay 닫기 (모바일에서 메뉴 클릭 후 사이드바/dropdown 잔존 방지)
+  const closeAll = useUIOverlays(s => s.closeAll);
+  useEffect(() => {
+    closeAll();
+  }, [location.pathname, closeAll]);
+
+  return (
+    <div className="h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+      {/* 헤더 */}
+      {/* 앱 바 — 반투명 유리가 아니라 불투명한 면으로 둔다.
+          아래 내용이 비쳐 보이면 스크롤할 때마다 머리 부분이 미세하게 일렁여
+          화면이 '떠 있는' 느낌을 준다. 업무 화면에서는 틀이 가만히 있어야
+          내용에 집중할 수 있다. 경계는 흐림이 아니라 선 하나로 짓는다. */}
+      <header
+        className="h-14 flex-shrink-0 border-b border-slate-200 bg-white
+                   dark:border-slate-700/70 dark:bg-slate-900
+                   flex items-center px-2 sm:px-5 z-50"
+      >
+        {/* 320px(iPhone SE) 에서는 로고 + 아이콘 4개만으로 이미 폭이 찬다.
+            검색창이 0 까지 줄어도 20px 정도 모자라 헤더가 화면 밖으로 밀렸다 —
+            가장 좁을 때만 여백을 좁히고, sm 이상에서는 원래대로 되돌린다. */}
+        <div className="w-full flex items-center justify-between gap-2 sm:gap-3">
+          {/* 왼쪽 — 햄버거 + 로고 */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* 모바일 메뉴 버튼 */}
+            <button
+              onClick={() => toggleSidebar()}
+              className="p-2 text-slate-500 dark:text-slate-400
+                         hover:bg-slate-100 dark:hover:bg-slate-800
+                         rounded-lg transition-colors lg:hidden"
+              aria-label={sidebarOpen ? '메뉴 닫기' : '메뉴 열기'}
+              aria-expanded={sidebarOpen}
+              aria-controls="dashboard-sidebar"
+            >
+              <svg
+                aria-hidden="true"
+                focusable="false"
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
+
+            {/* 로고 */}
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-3 hover:opacity-75 transition-opacity"
+              title={`${settings.siteName} 홈으로 이동`}
+            >
+              {settings.logoUrl ? (
+                <img
+                  src={settings.logoUrl}
+                  alt={settings.siteName}
+                  className="w-7 h-7 rounded-lg object-cover flex-shrink-0"
+                />
+              ) : (
+                <div
+                  className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700
+                                flex items-center justify-center flex-shrink-0 shadow-sm shadow-primary-500/30"
+                >
+                  <svg
+                    aria-hidden="true"
+                    focusable="false"
+                    className="w-4 h-4 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
+                  </svg>
+                </div>
+              )}
+              <span className="hidden sm:block text-sm font-semibold text-slate-800 dark:text-slate-100 truncate max-w-40">
+                {settings.siteName}
+              </span>
+            </Link>
+          </div>
+
+          {/* 중앙 — 글로벌 검색 */}
+          <GlobalSearch />
+
+          {/* 오른쪽 — 알림 + 유저 드롭다운 */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <RecentPostsMenu />
+            <MessageBadge />
+            <NotificationBell />
+            <UserDropdown />
+          </div>
+        </div>
+      </header>
+
+      {/* 바디 */}
+      <div className="flex flex-1 min-h-0">
+        <DashboardSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
+
+        {/* min-w-0: flex 아이템의 기본 min-width:auto 는 내용보다 좁아지지 않아,
+            내용이 넓은 페이지(위키 2단 등)에서 main 이 뷰포트를 넘겨 가로 스크롤을 만든다. */}
+        <main className="flex-1 flex flex-col min-h-0 min-w-0 bg-slate-50 dark:bg-slate-900">
+          {/* 상단 공지 배너(게시 중일 때만 노출, 없으면 null → 레이아웃 영향 없음) */}
+          <AnnouncementBanner />
+          {/* 콘텐츠 영역 전용 Suspense — 대시보드 내 페이지 이동 시 사이드바/헤더는 유지되고
+              이 영역에만 로더가 표시된다. (루트 Suspense가 잡으면 앱 전체가 깜빡이며 재구성됨) */}
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center py-24">
+                  <LoadingSpinner size="md" message="불러오는 중..." />
+                </div>
+              }
+            >
+              <Outlet />
+            </Suspense>
+          </div>
+        </main>
+      </div>
+
+      {/* 모바일 사이드바 백드롭 */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm z-30 transition-opacity lg:hidden"
+          onClick={closeSidebar}
+          aria-hidden="true"
+        />
+      )}
+
+      <CommandPalette
+        open={isCommandOpen}
+        onOpenChange={open => {
+          if (open) openCommand('commandPalette');
+          else closeCommand('commandPalette');
+        }}
+      />
+    </div>
+  );
+}
+
+export default Dashboard;
