@@ -24,7 +24,12 @@ export const getMyPosts = async (req: AuthRequest, res: Response): Promise<void>
         where: { UserId: userId },
         include: [{ model: Board, as: 'board', attributes: ['name'], required: false }],
         attributes: ['id', 'title', 'boardType', 'viewCount', 'createdAt', 'isSecret'],
-        order: [['createdAt', 'DESC']],
+        // 시각이 같으면 id 로 가른다. 같은 밀리초의 행이 있으면 MySQL/MariaDB 는 페이지마다
+        // 순서를 다르게 줄 수 있어, 어떤 글은 두 번 나오고 어떤 글은 빠진다.
+        order: [
+          ['createdAt', 'DESC'],
+          ['id', 'DESC'],
+        ],
         limit,
         offset,
       }),
@@ -90,7 +95,10 @@ export const getMyComments = async (req: AuthRequest, res: Response): Promise<vo
           },
         ],
         attributes: ['id', 'content', 'PostId', 'createdAt'],
-        order: [['createdAt', 'DESC']],
+        order: [
+          ['createdAt', 'DESC'],
+          ['id', 'DESC'],
+        ],
         limit,
         offset,
       }),
@@ -138,7 +146,10 @@ export const getMySecurityLogs = async (req: AuthRequest, res: Response): Promis
           action: { [Op.in]: ['LOGIN_SUCCESS', 'LOGIN_FAILED', 'LOGOUT'] },
         },
         attributes: ['id', 'action', 'ipAddress', 'userAgent', 'createdAt'],
-        order: [['createdAt', 'DESC']],
+        order: [
+          ['createdAt', 'DESC'],
+          ['id', 'DESC'],
+        ],
         limit,
         offset,
       }),

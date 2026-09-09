@@ -87,7 +87,11 @@ export const postScrapService = {
         ],
         [literal(scrappedAt), 'scrappedAt'],
       ],
-      order: [[literal('scrappedAt'), 'DESC']],
+      // 시각이 같으면 id 로 가른다 — 없으면 페이지 경계에서 글이 중복·누락된다.
+      order: [
+        [literal('scrappedAt'), 'DESC'],
+        ['id', 'DESC'],
+      ],
       limit: safeLimit,
       offset: (safePage - 1) * safeLimit,
       subQuery: false,

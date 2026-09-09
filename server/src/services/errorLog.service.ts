@@ -51,7 +51,11 @@ export class ErrorLogService extends BaseService {
     const offset = (page - 1) * limit;
     const { count, rows } = await ErrorLog.findAndCountAll({
       where,
-      order: [['createdAt', 'DESC']],
+      // 시각이 같으면 id 로 가른다 — 없으면 페이지 경계에서 행이 중복·누락된다.
+      order: [
+        ['createdAt', 'DESC'],
+        ['id', 'DESC'],
+      ],
       limit,
       offset,
     });

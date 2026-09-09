@@ -145,7 +145,10 @@ export class CommentService extends BaseService {
       where: { PostId: postId },
       attributes: ATTRS,
       include: userInclude,
-      // DoS 방지: 게시글당 최대 개수는 관리자 설정값 사용
+      // DoS 방지: 게시글당 최대 개수는 관리자 설정값 사용.
+      // 정렬을 함께 걸어야 상한에 걸렸을 때 잘려 나가는 대상이 정해진다 —
+      // 정렬이 없으면 DB 가 임의 순서로 주고, 최종 정렬은 아래에서 다시 한다.
+      order: [['id', 'ASC']],
       limit: getCommentSettings().maxCount,
     });
 
