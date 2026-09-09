@@ -1,11 +1,32 @@
+import http from 'http';
 import request from 'supertest';
-import { app } from '../index';
+import { app as expressApp } from '../index';
 import { User } from '../models/User';
 import { Role } from '../models/Role';
 import { Board } from '../models/Board';
 import { BoardAccess } from '../models/BoardAccess';
 import { SiteSettings } from '../models/SiteSettings';
 import { refreshSettingsCache } from '../utils/settingsCache';
+
+/**
+ * 테스트 전체가 함께 쓰는 서버.
+ *
+ * supertest 는 request(app) 에 넘긴 것이 아직 듣고 있지 않으면 요청마다 임시 서버를
+ * 띄웠다 닫는다. 스위트 전체로는 수천 번의 listen/close 가 되고, 그만큼 임시 포트가
+ * 빠르게 재사용되면서 가끔 응답이 뒤섞이거나(Parse Error) 소켓이 끊긴다(socket hang up).
+ * 전체 실행에서 대여섯 번에 한 번꼴로 아무 테스트나 무작위로 실패했다.
+ *
+ * 이미 듣고 있는 서버를 넘기면 supertest 는 그것을 그대로 쓰고 닫지도 않는다.
+ */
+const app = http.createServer(expressApp);
+
+/** setup.ts 가 스위트마다 호출한다. 이미 듣고 있으면 아무 일도 하지 않는다. */
+export function startTestServer(): Promise<void> {
+  if (app.listening) return Promise.resolve();
+  return new Promise(resolve => {
+    app.listen(0, () => resolve());
+  });
+}
 
 export { app };
 

@@ -2,8 +2,13 @@
 import { sequelize } from '../config/sequelize';
 import '../models'; // 모든 모델 + 관계 초기화
 import { initializeUploadDirs } from '../middlewares/upload/utils';
+import { startTestServer } from './helpers';
 
 beforeAll(async () => {
+  // 모든 스위트가 서버 하나를 함께 쓴다. 요청마다 임시 서버를 띄웠다 닫으면
+  // 임시 포트가 빠르게 재사용되면서 응답이 뒤섞이거나 소켓이 끊긴다(helpers.ts 참고).
+  await startTestServer();
+
   // 업로드 디렉터리는 startServer() 가 만드는데 테스트는 app 만 가져다 쓴다.
   // 디렉터리가 없으면 multer 가 저장 단계에서 실패해 업로드가 들어가는 테스트가 전부
   // 깨진다 — 개발 머신에는 폴더가 남아 있어 드러나지 않고, 새로 받은 저장소에서만 터진다.
