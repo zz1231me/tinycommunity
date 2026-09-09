@@ -168,7 +168,7 @@ export const AnnouncementManagement = () => {
         title={editingId === 'new' ? '공지 등록' : '공지 수정'}
         description="게시 기간(시작~종료) 동안 사용자에게 배너로 표시됩니다. 종료일을 비우면 무기한입니다."
         actions={
-          <button type="button" onClick={cancel} className="btn-secondary gap-1.5">
+          <button type="button" onClick={cancel} className="btn-secondary">
             <X className="h-4 w-4" />
             취소
           </button>
@@ -241,7 +241,7 @@ export const AnnouncementManagement = () => {
           </div>
 
           <div className="flex justify-end border-t border-slate-100 pt-4 dark:border-slate-800">
-            <button type="button" onClick={save} disabled={saving} className="btn-primary gap-1.5">
+            <button type="button" onClick={save} disabled={saving} className="btn-primary">
               <Save className="h-4 w-4" />
               {saving ? '저장 중…' : '저장'}
             </button>
@@ -260,7 +260,7 @@ export const AnnouncementManagement = () => {
         title={`공지사항 (${items.length})`}
         description="게시 기간과 상태를 관리합니다."
         actions={
-          <button type="button" onClick={startNew} className="btn-primary gap-1.5">
+          <button type="button" onClick={startNew} className="btn-primary">
             <Plus className="h-4 w-4" />새 공지
           </button>
         }
@@ -297,7 +297,7 @@ export const AnnouncementManagement = () => {
                   <button
                     type="button"
                     onClick={() => startEdit(a)}
-                    className="btn-secondary px-3 py-1.5 text-xs"
+                    className="btn-secondary btn-sm"
                   >
                     수정
                   </button>

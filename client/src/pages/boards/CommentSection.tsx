@@ -556,11 +556,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                         {editCommentLen.toLocaleString()}/{ops.MAX_CHARS}자
                       </span>
                       <div className="flex gap-2">
-                        <button
-                          onClick={ops.handleEditCancel}
-                          className="px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-400
-                                     hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                        >
+                        <button onClick={ops.handleEditCancel} className="btn-secondary">
                           취소
                         </button>
                         <button
@@ -570,7 +566,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                             editCommentLen > ops.MAX_CHARS ||
                             ops.editContent === comment.content
                           }
-                          className="btn-primary px-3 py-1.5 text-sm"
+                          className="btn-primary"
                         >
                           저장
                         </button>
@@ -672,8 +668,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                             ops.setReplyContent('');
                             ops.setReplyError('');
                           }}
-                          className="px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-400
-                                     hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                          className="btn-secondary"
                         >
                           취소
                         </button>
@@ -684,7 +679,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                             replyCommentLen > ops.MAX_CHARS ||
                             ops.replySubmitting
                           }
-                          className="btn-primary px-4 py-1.5 text-sm"
+                          className="btn-primary"
                         >
                           {ops.replySubmitting ? (
                             <>

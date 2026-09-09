@@ -287,7 +287,7 @@ export const PermissionManagement = () => {
               type="button"
               onClick={handleSaveAll}
               disabled={saving || dirtyCount === 0}
-              className="btn-primary gap-1.5 px-4 py-2"
+              className="btn-primary"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? '저장 중' : dirtyCount > 0 ? `저장 (${dirtyCount})` : '저장됨'}

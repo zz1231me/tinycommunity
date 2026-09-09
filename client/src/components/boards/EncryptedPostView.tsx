@@ -139,7 +139,7 @@ export const EncryptedPostView: React.FC<EncryptedPostViewProps> = ({
                     exit={{ opacity: 0, scale: 0.95, y: -6 }}
                     transition={{ duration: 0.15 }}
                     onClick={() => setShowForm(true)}
-                    className="btn-primary flex items-center gap-2 px-6 py-3 shadow-md shadow-primary-500/20"
+                    className="btn-primary gap-2 px-6 shadow-md shadow-primary-500/20"
                   >
                     <UnlockKeyhole className="w-4 h-4" />
                     복호화하기

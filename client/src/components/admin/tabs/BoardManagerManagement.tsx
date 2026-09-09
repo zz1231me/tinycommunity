@@ -225,7 +225,7 @@ const BoardManagerManagement = () => {
                       onClick={handleAdd}
                       disabled={!selectedUserId || isAdding}
                       style={{ outline: 'none', border: 'none' }}
-                      className="btn-primary px-4 py-2 flex-shrink-0"
+                      className="btn-primary flex-shrink-0"
                     >
                       {isAdding ? '추가 중...' : '추가'}
                     </button>

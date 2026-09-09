@@ -159,10 +159,7 @@ function SortableBoardRow({
       <td className="admin-td text-right">
         {editing ? (
           <div className="flex items-center justify-end gap-1.5">
-            <button
-              onClick={() => onSaveEdit(board.id)}
-              className="btn-primary px-3 py-1.5 text-xs"
-            >
+            <button onClick={() => onSaveEdit(board.id)} className="btn-primary btn-sm">
               저장
             </button>
             <button
@@ -361,7 +358,7 @@ export const BoardManagement = () => {
           <button
             onClick={handleAddBoard}
             disabled={!boardForm.id || !boardForm.name}
-            className="btn-primary px-4 py-2"
+            className="btn-primary"
           >
             게시판 추가
           </button>

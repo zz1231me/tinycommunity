@@ -56,7 +56,7 @@ export function NewConversationButton() {
       <button
         type="button"
         onClick={() => setPicking(true)}
-        className="btn-secondary flex items-center gap-1.5 px-3 py-1.5 text-xs"
+        className="btn-secondary btn-sm flex items-center"
       >
         <Plus className="h-3.5 w-3.5" />새 대화
       </button>

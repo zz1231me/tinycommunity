@@ -276,7 +276,7 @@ function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: 
               type="submit"
               disabled={!canSend}
               aria-label="메시지 보내기"
-              className="btn-primary flex-shrink-0 px-3 py-2 disabled:opacity-40"
+              className="btn-primary flex-shrink-0 disabled:opacity-40"
             >
               <Send className="h-4 w-4" />
             </button>

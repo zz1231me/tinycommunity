@@ -145,7 +145,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
         {/* 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">활동 내역</h2>
+            <h2 className="card-title">활동 내역</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {userName} ({userId})
             </p>

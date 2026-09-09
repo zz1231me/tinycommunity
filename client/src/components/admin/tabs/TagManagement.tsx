@@ -227,7 +227,7 @@ const TagManagement = () => {
                           type="button"
                           onClick={() => setForm(f => ({ ...f, color: randomTagColor() }))}
                           title="랜덤 색상"
-                          className="btn-secondary px-2 py-1.5"
+                          className="btn-secondary btn-sm"
                         >
                           🎲
                         </button>
@@ -266,7 +266,7 @@ const TagManagement = () => {
                         type="submit"
                         disabled={isSaving}
                         style={{ outline: 'none', border: 'none' }}
-                        className="btn-primary px-4 py-1.5"
+                        className="btn-primary btn-sm"
                       >
                         {isSaving ? '저장 중...' : editingTag ? '수정' : '추가'}
                       </button>

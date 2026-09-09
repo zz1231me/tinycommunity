@@ -53,9 +53,7 @@ const SecretPostModal: React.FC<SecretPostModalProps> = ({
           {/* Header */}
           <div className="text-center mb-6">
             <div className="text-5xl mb-3">{isEncrypted ? '🔐' : '🔒'}</div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-1">
-              {isEncrypted ? 'E2EE 암호화 글' : '비밀글'}
-            </h2>
+            <h2 className="card-title mb-1">{isEncrypted ? 'E2EE 암호화 글' : '비밀글'}</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-xs mx-auto">
               {postTitle}
             </p>

@@ -224,7 +224,7 @@ export const ReportManagement = React.memo(() => {
                       setReviewStatus('reviewed');
                       setReviewNote('');
                     }}
-                    className="btn-primary flex-shrink-0 px-3 py-1.5 text-xs"
+                    className="btn-primary btn-sm flex-shrink-0"
                   >
                     처리
                   </button>
@@ -326,7 +326,7 @@ export const ReportManagement = React.memo(() => {
               <button
                 onClick={() => void handleReview()}
                 disabled={reviewing === reviewTarget.id}
-                className="btn-primary px-4 py-2"
+                className="btn-primary"
               >
                 {reviewing === reviewTarget.id && (
                   <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

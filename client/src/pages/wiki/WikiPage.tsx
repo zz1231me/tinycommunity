@@ -304,7 +304,7 @@ const WikiPageRoute = () => {
                 setIsEditing(false);
                 setSaveError(null);
               }}
-              className="btn-primary gap-1.5 px-3 py-1.5"
+              className="btn-primary"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path

@@ -6,6 +6,7 @@ import { MemoEditor } from './MemoEditor';
 import { PageHeader } from '../../components/common/PageHeader';
 import { PageContainer } from '../../components/common/PageContainer';
 import { LoadingSpinner } from '../../components/admin/common/LoadingSpinner';
+import { Plus } from 'lucide-react';
 import { ConfirmationModal } from '../../components/admin/common/ConfirmationModal';
 
 // editorState: null = 에디터 닫힘, Memo = 기존 메모 편집, 'new' = 새 메모 작성
@@ -122,8 +123,8 @@ const MemoBoard = () => {
 
       {/* New memo button */}
       <div className="mb-6">
-        <button onClick={handleNewMemo} className="btn-primary px-4 py-2">
-          <span className="text-lg">+</span>새 메모 작성
+        <button onClick={handleNewMemo} className="btn-primary">
+          <Plus className="h-4 w-4" />새 메모 작성
         </button>
       </div>
 

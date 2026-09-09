@@ -128,7 +128,7 @@ export const PasswordResetRequestManagement = () => {
                     <button
                       type="button"
                       onClick={() => copyCode(req.code)}
-                      className="btn-primary flex-shrink-0 gap-1.5 px-3 py-1.5 text-xs"
+                      className="btn-primary btn-sm flex-shrink-0"
                     >
                       <Copy className="h-3.5 w-3.5" />
                       복사

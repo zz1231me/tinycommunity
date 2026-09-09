@@ -354,9 +354,28 @@ body {
            border-t border-slate-200 dark:border-slate-700;
   }
 
-  /* 카드 머리글의 제목 — 페이지 제목(h1)보다 한 단계 아래, 본문보다 한 단계 위 */
+  /* ── 제목 층위 ────────────────────────────────────────────────────────
+   * 같은 자리의 제목인데 화면마다 크기·굵기가 달랐다. 헤딩 태그의 스타일 조합만
+   * 29가지였다 — 문서 제목이 24px 인 곳과 30px 인 곳, 카드 제목이 15px·16px 에
+   * 굵기는 600·700 이 섞였다. 화면을 옮길 때 미세하게 어긋나는 그 느낌이
+   * "정리가 안 됐다" 로 읽힌다.
+   *
+   * 층위는 넷이다:
+   *   doc-title    24px/700  글·위키처럼 '내용 자체의 제목'
+   *   page-title   20px/600  화면 이름 (PageHeader 가 쓴다)
+   *   card-title   16px/600  카드·구역 머리글
+   *   본문          15px      (text-sm)
+   * 카드 제목이 16px 인 이유: 15px 이면 본문과 같아져 머리글로 읽히지 않는다. */
+  .doc-title {
+    @apply text-2xl font-bold leading-snug text-slate-900 dark:text-slate-100;
+  }
+
+  .page-title {
+    @apply text-xl font-semibold leading-tight text-slate-900 dark:text-slate-100;
+  }
+
   .card-title {
-    @apply text-sm font-semibold text-slate-900 dark:text-slate-100;
+    @apply text-base font-semibold text-slate-900 dark:text-slate-100;
   }
 
   /* ── 관리자 표 ──────────────────────────────────────────────────────────
@@ -399,9 +418,12 @@ body {
    * 바꾼 것은 크기와 움직임이다: 업무 화면에는 버튼이 한 줄에 서너 개씩 놓이는데
    * px-5·rounded-xl·누를 때 튀는 효과는 그 줄을 장난스럽고 커 보이게 만든다.
    * 눌리는 느낌은 색 변화로 충분하다. */
+  /* 투명 테두리를 두는 이유: btn-secondary·btn-danger 는 1px 테두리가 있어 2px 더 높다.
+     둘을 나란히 놓는 자리가 많은데(목록 옆 '새 글 작성', '취소' 옆 '저장') 그때마다
+     위아래가 어긋났다. 테두리를 투명으로 채워 세 변형의 상자 크기를 같게 만든다. */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-1.5
-           px-4 py-2
+           px-4 py-2 border border-transparent
            bg-slate-900 hover:bg-slate-800 active:bg-slate-700
            dark:bg-slate-100 dark:hover:bg-white dark:active:bg-slate-200
            text-white dark:text-slate-900 text-sm font-medium

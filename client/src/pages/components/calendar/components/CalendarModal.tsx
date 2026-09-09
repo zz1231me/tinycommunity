@@ -124,9 +124,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
             >
               {meta.icon}
             </div>
-            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-              {meta.label}
-            </h2>
+            <h2 className="card-title">{meta.label}</h2>
           </div>
 
           <button

@@ -165,9 +165,7 @@ function Register() {
               </div>
             )}
 
-            <h1 className="text-3xl font-bold mb-2 text-slate-900 dark:text-white">
-              {settings.siteName} 회원가입
-            </h1>
+            <h1 className="doc-title mb-2">{settings.siteName} 회원가입</h1>
             <p className="text-sm text-slate-600 dark:text-slate-400">새 계정을 만들어보세요</p>
             {/* ✅ 승인 시스템 안내 추가 */}
             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">

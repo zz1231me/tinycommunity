@@ -133,7 +133,7 @@ const IpManagement: React.FC = () => {
       {/* 헤더 */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">IP 접근 제어</h2>
+          <h2 className="card-title">IP 접근 제어</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             화이트리스트(허용) / 블랙리스트(차단) 규칙을 관리합니다. 캐시 주기: 30초
           </p>

@@ -153,7 +153,7 @@ export function BookmarkManagement() {
           <button
             onClick={handleCreate}
             disabled={!formData.name || !formData.url}
-            className="btn-primary px-4 py-2"
+            className="btn-primary"
           >
             추가
           </button>
@@ -286,7 +286,7 @@ export function BookmarkManagement() {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => handleUpdate(bookmark.id)}
-                            className="btn-primary px-3 py-1.5 text-xs"
+                            className="btn-primary btn-sm"
                           >
                             저장
                           </button>

@@ -204,7 +204,7 @@ export const CustomPageManagement = () => {
         title={isNew ? '커스텀 페이지 추가' : '커스텀 페이지 수정'}
         description="HTML 직접 입력·폴더(ZIP) 업로드·외부 URL 임베드 중 선택합니다. 사용자 화면에서 격리(sandbox)된 iframe으로 렌더되어 앱의 쿠키·데이터엔 접근할 수 없습니다."
         actions={
-          <button type="button" onClick={cancel} className="btn-secondary gap-1.5">
+          <button type="button" onClick={cancel} className="btn-secondary">
             <X className="h-4 w-4" />
             취소
           </button>
@@ -450,7 +450,7 @@ export const CustomPageManagement = () => {
           </div>
 
           <div className="flex justify-end border-t border-slate-100 pt-4 dark:border-slate-800">
-            <button type="button" onClick={save} disabled={saving} className="btn-primary gap-1.5">
+            <button type="button" onClick={save} disabled={saving} className="btn-primary">
               <Save className="h-4 w-4" />
               {saving ? '저장 중…' : '저장'}
             </button>
@@ -469,7 +469,7 @@ export const CustomPageManagement = () => {
         title={`커스텀 페이지 (${pages.length})`}
         description="HTML 직접 입력·폴더(ZIP) 업로드·외부 URL 임베드로 만드는 사이드바 페이지입니다."
         actions={
-          <button type="button" onClick={startNew} className="btn-primary gap-1.5">
+          <button type="button" onClick={startNew} className="btn-primary">
             <Plus className="h-4 w-4" />새 페이지
           </button>
         }
@@ -523,11 +523,7 @@ export const CustomPageManagement = () => {
                     <ExternalLink className="h-4 w-4" />
                   </a>
                 )}
-                <button
-                  type="button"
-                  onClick={() => startEdit(p)}
-                  className="btn-secondary px-3 py-1.5 text-xs"
-                >
+                <button type="button" onClick={() => startEdit(p)} className="btn-secondary btn-sm">
                   수정
                 </button>
                 <button

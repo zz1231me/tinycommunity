@@ -294,7 +294,9 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
           {/* 북마크 */}
           <div>
             <div className="flex items-center justify-between px-3 mb-1.5">
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-wide select-none">
+              {/* SectionLabel 과 같은 글자 규칙 — 컴포넌트를 쓰지 않는 이유는 이 줄에만
+                  오른쪽 버튼이 함께 놓여 바깥 여백을 부모가 정하기 때문이다. */}
+              <p className="text-2xs font-semibold uppercase tracking-[0.08em] text-slate-400 select-none">
                 북마크
               </p>
               {isAdmin && (

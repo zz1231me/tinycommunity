@@ -360,7 +360,7 @@ export function NotificationBell() {
                   <p className="text-xs mb-4 text-center">
                     네트워크 상태를 확인하고 다시 시도해주세요.
                   </p>
-                  <button onClick={fetchNotifications} className="btn-primary px-4 py-2 text-xs">
+                  <button onClick={fetchNotifications} className="btn-primary text-xs">
                     다시 시도
                   </button>
                 </div>

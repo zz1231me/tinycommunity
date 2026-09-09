@@ -31,9 +31,7 @@ export function ComposeDialog({
   return (
     <ModalShell label={`${recipientName}님에게 메시지`} onClose={onClose}>
       <div className="p-5">
-        <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-          {recipientName}님에게 메시지
-        </h3>
+        <h3 className="card-title">{recipientName}님에게 메시지</h3>
 
         <textarea
           rows={5}

@@ -194,7 +194,7 @@ const FeatureManagement = () => {
             <button
               type="button"
               onClick={() => setDraft({})}
-              className="btn-secondary flex items-center gap-1.5"
+              className="btn-secondary flex items-center"
             >
               <RotateCcw className="h-4 w-4" />
               되돌리기
@@ -203,7 +203,7 @@ const FeatureManagement = () => {
               type="button"
               disabled={save.isPending}
               onClick={() => save.mutate()}
-              className="btn-primary flex items-center gap-1.5"
+              className="btn-primary flex items-center"
             >
               <Save className="h-4 w-4" />
               {save.isPending ? '저장 중…' : '저장'}

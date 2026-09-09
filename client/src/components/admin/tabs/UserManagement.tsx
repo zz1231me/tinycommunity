@@ -506,7 +506,7 @@ export const UserManagement = () => {
               <button
                 onClick={handleResetPassword}
                 disabled={resetting || resetCode.length !== 6}
-                className="btn-primary px-4 py-2"
+                className="btn-primary"
               >
                 {resetting ? '초기화 중...' : '초기화'}
               </button>
@@ -585,7 +585,7 @@ export const UserManagement = () => {
           <button
             onClick={handleAddUser}
             disabled={!userForm.id || !userForm.name || !userForm.role}
-            className="btn-primary px-4 py-2"
+            className="btn-primary"
           >
             계정 생성
           </button>

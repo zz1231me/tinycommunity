@@ -276,9 +276,11 @@ const PostDetail = () => {
         </nav>
 
         <div className="flex flex-shrink-0 items-center gap-2">
+          {/* 좁은 화면에서는 옆의 수정·삭제와 같이 아이콘만 남긴다.
+              한쪽만 글자를 유지하면 같은 줄의 버튼 높이가 어긋난다. */}
           <button onClick={handleBack} aria-label="목록으로 돌아가기" className="btn-secondary">
-            <ArrowLeft className="mr-1.5 h-4 w-4" />
-            목록
+            <ArrowLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">목록</span>
           </button>
           {canEditOrDelete && (
             <>
@@ -286,7 +288,7 @@ const PostDetail = () => {
                 onClick={handleEdit}
                 disabled={isDeleting}
                 aria-label="게시글 수정"
-                className="btn-secondary flex items-center gap-1.5"
+                className="btn-secondary flex items-center"
               >
                 <Pencil className="h-4 w-4" />
                 <span className="hidden sm:inline">수정</span>
@@ -295,7 +297,7 @@ const PostDetail = () => {
                 onClick={() => setShowDeleteConfirm(true)}
                 disabled={isDeleting}
                 aria-label="게시글 삭제"
-                className="btn-danger flex items-center gap-1.5"
+                className="btn-danger flex items-center"
               >
                 {isDeleting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -318,9 +320,7 @@ const PostDetail = () => {
                 <Pin className="h-5 w-5 text-amber-500" fill="currentColor" />
               </span>
             )}
-            <h1 className="flex-1 text-2xl font-bold leading-snug text-slate-900 dark:text-slate-100">
-              {post.title}
-            </h1>
+            <h1 className="doc-title flex-1">{post.title}</h1>
             {/* 핀은 상태를 바꾸는 관리 동작이라 제목 옆에 둔다 */}
             {canPin && boardType && id && (
               <PinButton

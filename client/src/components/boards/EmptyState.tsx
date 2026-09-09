@@ -124,10 +124,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
         첫 번째 게시글을 작성해보세요.
       </p>
-      <button
-        onClick={onNewPost}
-        className="btn-primary inline-flex items-center gap-2 px-5 py-2 text-sm"
-      >
+      <button onClick={onNewPost} className="btn-primary gap-2 px-5">
         <svg
           aria-hidden="true"
           focusable="false"

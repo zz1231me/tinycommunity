@@ -28,9 +28,7 @@ export const AdminSection = React.memo(
             flex-shrink-0 만 주고 줄바꿈을 막으면 버튼이 많은 구역(보안 로그·오류 로그)에서
             묶음이 화면 밖으로 나가 페이지가 옆으로 밀린다. */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-slate-200 pb-2 dark:border-slate-700/60">
-          <h2 className="min-w-0 flex-1 truncate text-base font-semibold text-slate-900 dark:text-slate-100">
-            {title}
-          </h2>
+          <h2 className="card-title min-w-0 flex-1 truncate">{title}</h2>
           {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
         </div>
         <div>{children}</div>

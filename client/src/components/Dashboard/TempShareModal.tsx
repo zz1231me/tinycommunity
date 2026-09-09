@@ -130,7 +130,7 @@ export function TempShareModal({ open, onClose }: Props) {
             <Share2 className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1 pt-0.5">
-            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">파일공유</h2>
+            <h2 className="card-title">파일공유</h2>
             <p className="mt-0.5 text-xs text-slate-400">
               링크 하나로 빠르게 전달 · 15분 뒤 자동 삭제
             </p>
@@ -216,10 +216,7 @@ export function TempShareModal({ open, onClose }: Props) {
                   onFocus={e => e.currentTarget.select()}
                   className="input flex-1 font-mono text-xs"
                 />
-                <button
-                  onClick={copy}
-                  className="btn-primary flex-shrink-0 gap-1.5 px-3 py-2 text-sm"
-                >
+                <button onClick={copy} className="btn-primary flex-shrink-0">
                   <Copy className="h-4 w-4" />
                   복사
                 </button>

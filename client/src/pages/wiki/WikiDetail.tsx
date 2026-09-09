@@ -105,9 +105,7 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
 
           {/* 제목 + 편집 버튼 */}
           <div className="flex items-start justify-between gap-4 mb-4">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white leading-tight">
-              {page.title}
-            </h1>
+            <h1 className="doc-title">{page.title}</h1>
             <div className="flex items-center gap-2 flex-shrink-0">
               {canEdit && (
                 <button
@@ -130,7 +128,7 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
                 </button>
               )}
               {canEdit && (
-                <button onClick={onEdit} className="btn-primary gap-1.5 px-4 py-2">
+                <button onClick={onEdit} className="btn-primary">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"

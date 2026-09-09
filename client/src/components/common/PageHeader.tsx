@@ -83,9 +83,7 @@ export const PageHeader = React.memo(
               </div>
             )}
             <div className="min-w-0">
-              <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 leading-tight truncate">
-                {title}
-              </h1>
+              <h1 className="page-title truncate">{title}</h1>
               {description && (
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 whitespace-pre-wrap">
                   {description}

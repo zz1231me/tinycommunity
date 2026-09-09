@@ -99,7 +99,7 @@ export const WikiHistory: React.FC<WikiHistoryProps> = ({ slug, currentContent, 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200">
+        <h3 className="card-title">
           편집 이력
           {revisions.length > 0 && (
             <span className="ml-2 text-xs font-normal text-slate-400">({revisions.length}건)</span>
