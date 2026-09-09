@@ -1,8 +1,14 @@
 // 테스트 DB 초기화 - 테스트 프레임워크 로드 후 실행됨 (jest setupFilesAfterEnv)
 import { sequelize } from '../config/sequelize';
 import '../models'; // 모든 모델 + 관계 초기화
+import { initializeUploadDirs } from '../middlewares/upload/utils';
 
 beforeAll(async () => {
+  // 업로드 디렉터리는 startServer() 가 만드는데 테스트는 app 만 가져다 쓴다.
+  // 디렉터리가 없으면 multer 가 저장 단계에서 실패해 업로드가 들어가는 테스트가 전부
+  // 깨진다 — 개발 머신에는 폴더가 남아 있어 드러나지 않고, 새로 받은 저장소에서만 터진다.
+  await initializeUploadDirs();
+
   // SQLite 인메모리 DB 동기화
   // authenticate()로 연결이 살아있을 때만 sync — --runInBand에서 스위트 간 재사용
   try {
