@@ -72,7 +72,7 @@ const ChangePassword = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="card p-6 space-y-4">
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">새 비밀번호 설정</h1>
+          <h1 className="page-title">새 비밀번호 설정</h1>
 
           {error && (
             <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">

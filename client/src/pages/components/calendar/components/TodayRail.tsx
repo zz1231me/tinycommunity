@@ -87,7 +87,7 @@ export function TodayRail({ events, todayStr, onSelect }: TodayRailProps) {
       {/* 오늘 일정 */}
       <section className="card p-4">
         <div className="mb-3 flex items-baseline justify-between">
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">오늘 일정</h3>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">오늘 일정</h3>
           <span className="text-xs font-medium text-slate-400">{label(todayStr)}</span>
         </div>
         {today.length === 0 ? (
@@ -103,7 +103,9 @@ export function TodayRail({ events, todayStr, onSelect }: TodayRailProps) {
 
       {/* 다가오는 일정 */}
       <section className="card p-4">
-        <h3 className="mb-3 text-sm font-bold text-slate-800 dark:text-slate-100">다가오는 일정</h3>
+        <h3 className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          다가오는 일정
+        </h3>
         {upcoming.length === 0 ? (
           <ListState>예정된 일정이 없습니다.</ListState>
         ) : (

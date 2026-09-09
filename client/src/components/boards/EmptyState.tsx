@@ -36,9 +36,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             />
           </svg>
         </div>
-        <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
-          선택한 태그에 해당하는 글이 없습니다
-        </h3>
+        <h3 className="card-title mb-1.5">선택한 태그에 해당하는 글이 없습니다</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 text-center leading-relaxed mb-5">
           {selectedTagCount}개 태그로 필터링한 결과가 없습니다.
           <br />
@@ -76,9 +74,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             />
           </svg>
         </div>
-        <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
-          검색 결과가 없습니다
-        </h3>
+        <h3 className="card-title mb-1.5">검색 결과가 없습니다</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 text-center leading-relaxed">
           <span className="font-medium text-slate-700 dark:text-slate-300">
             &lsquo;{debouncedSearchTerm}&rsquo;
@@ -118,9 +114,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           />
         </svg>
       </div>
-      <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
-        아직 게시글이 없습니다
-      </h3>
+      <h3 className="card-title mb-1.5">아직 게시글이 없습니다</h3>
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
         첫 번째 게시글을 작성해보세요.
       </p>

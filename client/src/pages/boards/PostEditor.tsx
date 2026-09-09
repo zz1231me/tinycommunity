@@ -486,7 +486,7 @@ const PostEditor = ({ mode }: Props) => {
             />
           </svg>
         </button>
-        <h1 className="min-w-0 truncate text-xl font-semibold leading-tight text-slate-900 dark:text-slate-100">
+        <h1 className="page-title min-w-0 truncate">
           {boardTitle}
           <span className="mx-1.5 text-slate-300 dark:text-slate-600">·</span>
           <span className="font-medium text-slate-500 dark:text-slate-400">
@@ -624,9 +624,7 @@ const PostEditor = ({ mode }: Props) => {
               <PanelResizeHandle className="w-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-primary-400 transition-colors cursor-col-resize" />
               <Panel defaultSize={50} minSize={30}>
                 <div className="h-full overflow-y-auto p-6">
-                  <h1 className="text-xl font-bold mb-4 text-slate-900 dark:text-slate-100">
-                    {title}
-                  </h1>
+                  <h1 className="doc-title mb-4">{title}</h1>
                   {/* previewHtml은 sanitizeHTML()로 정화 완료 */}
                   <div
                     ref={previewRef}

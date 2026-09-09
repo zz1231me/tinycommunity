@@ -470,9 +470,7 @@ export const UserManagement = () => {
         <div className="fixed inset-0 z-[70] flex items-center justify-center modal-scrim p-4">
           <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 space-y-4">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">
-                비밀번호 초기화
-              </h3>
+              <h3 className="card-title">비밀번호 초기화</h3>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 '{resetTarget.name}' 계정의 임시 비밀번호로 사용할 6자리 숫자를 입력하세요. 사용자는
                 이 번호로 로그인 후 비밀번호를 변경해야 합니다.

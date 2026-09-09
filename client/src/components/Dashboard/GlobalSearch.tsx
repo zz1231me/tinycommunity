@@ -890,7 +890,7 @@ export function GlobalSearch() {
                             <div
                               className={`w-1 h-4 bg-gradient-to-b ${TYPE_ACCENT[type]} rounded-full shadow-sm`}
                             />
-                            <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-wide">
+                            <h3 className="text-xs font-semibold text-slate-800 dark:text-slate-200 tracking-wide">
                               {group.boardName}
                             </h3>
                             <span

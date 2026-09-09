@@ -57,9 +57,7 @@ export const MemoEditor: React.FC<MemoEditorProps> = ({
           }}
           className="p-6 space-y-4"
         >
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-            {memo ? '메모 수정' : '새 메모'}
-          </h2>
+          <h2 className="card-title">{memo ? '메모 수정' : '새 메모'}</h2>
 
           {/* Color selector */}
           <div className="flex items-center gap-2">

@@ -433,9 +433,7 @@ export const WikiEditor: React.FC<WikiEditorProps> = ({
     <div className="flex-1 overflow-y-auto">
       {/* 편집기 헤더 */}
       <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-          {page ? '페이지 편집' : '새 페이지 만들기'}
-        </h2>
+        <h2 className="card-title">{page ? '페이지 편집' : '새 페이지 만들기'}</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
           {page ? `슬러그: /${page.slug}` : '새로운 위키 페이지를 작성합니다'}
         </p>

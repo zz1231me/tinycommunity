@@ -93,7 +93,7 @@ const CalendarHeaderBase: React.FC<CalendarHeaderProps> = ({
           </div>
 
           {/* 제목 */}
-          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 tabular-nums">
             {title}
           </h2>
         </div>

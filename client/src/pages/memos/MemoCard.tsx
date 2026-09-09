@@ -57,11 +57,7 @@ export const MemoCard: React.FC<MemoCardProps> = ({
       </button>
 
       {/* Title */}
-      {memo.title && (
-        <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm mb-2 pr-6 line-clamp-1">
-          {memo.title}
-        </h3>
-      )}
+      {memo.title && <h3 className="card-title mb-2 pr-6 line-clamp-1">{memo.title}</h3>}
 
       {/* Content */}
       <p className="text-slate-700 dark:text-slate-200 text-xs whitespace-pre-wrap line-clamp-4 min-h-[2rem]">

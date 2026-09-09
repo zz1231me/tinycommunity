@@ -545,7 +545,7 @@ export const SiteSettingsManagement = () => {
               키(todo/doing/done)는 코드가 고정한다 — 저장된 값과 동작('진행 중'이면
               담당자 자동 지정)이 이름에 흔들리면 안 된다. 화면에 뜨는 말만 팀에 맞춘다. */}
           <div className="pt-2">
-            <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               업무 상태 이름
             </h4>
             <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
@@ -588,7 +588,7 @@ export const SiteSettingsManagement = () => {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 상품과 확률
               </h4>
               <span

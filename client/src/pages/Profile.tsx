@@ -338,7 +338,7 @@ export default function Profile() {
                     showName={false}
                     allowDelete={true}
                   />
-                  <h2 className="mt-4 font-bold text-slate-900 dark:text-slate-100 text-lg">
+                  <h2 className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
                     {user.name}
                   </h2>
                   <span

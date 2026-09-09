@@ -401,9 +401,7 @@ const WikiPageRoute = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                  저장하지 않은 변경사항
-                </h3>
+                <h3 className="card-title">저장하지 않은 변경사항</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   페이지를 이동하면 변경사항이 사라집니다.
                 </p>
@@ -448,9 +446,7 @@ const WikiPageRoute = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                  페이지 삭제
-                </h3>
+                <h3 className="card-title">페이지 삭제</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   이 작업은 되돌릴 수 없습니다.
                 </p>
@@ -512,9 +508,7 @@ const WikiPageRoute = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                  이 버전으로 복원
-                </h3>
+                <h3 className="card-title">이 버전으로 복원</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   현재 내용이 선택한 버전으로 바뀝니다(새 이력으로 기록).
                 </p>

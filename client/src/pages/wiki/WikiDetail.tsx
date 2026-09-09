@@ -71,37 +71,40 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
       />
       <div className="flex-1 overflow-y-auto bg-white dark:bg-slate-900">
         <div className="max-w-[var(--content-width-reading)] mx-auto px-6 py-8">
-          {/* 브레드크럼 */}
-          <nav className="flex items-center gap-1.5 text-sm mb-6 flex-wrap">
-            {breadcrumb.map((p, i) => (
-              <React.Fragment key={p.id}>
-                {i > 0 && (
-                  <svg
-                    className="w-3.5 h-3.5 text-slate-400 flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+          {/* 경로 — 최상위 문서는 경로에 자기 이름만 남아 바로 아래 제목과 겹친다.
+              보여 줄 상위 문서가 있을 때만 그린다. */}
+          {breadcrumb.length > 1 && (
+            <nav className="flex items-center gap-1.5 text-sm mb-6 flex-wrap">
+              {breadcrumb.map((p, i) => (
+                <React.Fragment key={p.id}>
+                  {i > 0 && (
+                    <svg
+                      className="w-3.5 h-3.5 text-slate-400 flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  )}
+                  <span
+                    className={
+                      i === breadcrumb.length - 1
+                        ? 'text-slate-900 dark:text-white font-semibold'
+                        : 'text-slate-500 dark:text-slate-400'
+                    }
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                )}
-                <span
-                  className={
-                    i === breadcrumb.length - 1
-                      ? 'text-slate-900 dark:text-white font-semibold'
-                      : 'text-slate-500 dark:text-slate-400'
-                  }
-                >
-                  {p.title}
-                </span>
-              </React.Fragment>
-            ))}
-          </nav>
+                    {p.title}
+                  </span>
+                </React.Fragment>
+              ))}
+            </nav>
+          )}
 
           {/* 제목 + 편집 버튼 */}
           <div className="flex items-start justify-between gap-4 mb-4">
@@ -213,7 +216,7 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
           {/* 하위 페이지 */}
           {childPages.length > 0 && (
             <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800">
-              <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 tracking-wider mb-4">
+              <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400 tracking-wider mb-4">
                 하위 페이지
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
