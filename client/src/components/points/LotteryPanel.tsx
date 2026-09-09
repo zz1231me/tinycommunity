@@ -1,6 +1,8 @@
 // client/src/components/points/LotteryPanel.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { Gift, Loader2, TicketCheck } from 'lucide-react';
+import { ScratchCard } from './ScratchCard';
 import {
   drawLottery,
   fetchPointHistory,
@@ -19,14 +21,99 @@ const REASON_LABEL: Record<PointEntry['reason'], string> = {
   admin: '관리자',
 };
 
-/** 릴이 도는 최소 시간(ms). 서버가 곧바로 답해도 이만큼은 굴러야 '뽑았다'로 읽힌다 */
-const ROLL_MS = 900;
+/** 숫자가 섞이는 최소 시간(ms). 서버가 곧바로 답해도 이만큼은 돌아야 '뽑았다'로 읽힌다 */
+const ROLL_MS = 700;
 
-/** 움직임을 줄여 달라고 설정한 사람에게는 릴을 굴리지 않는다 */
+/** 움직임을 줄여 달라고 설정한 사람에게는 섞기·긁기·축포를 모두 건너뛴다 */
 function prefersReducedMotion(): boolean {
   return (
     typeof window !== 'undefined' &&
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+  );
+}
+
+/** 짧은 진동 — 지원하지 않는 기기에서는 아무 일도 일어나지 않는다 */
+function buzz(pattern: number | number[]) {
+  try {
+    navigator.vibrate?.(pattern);
+  } catch {
+    // 진동은 있으면 좋은 것이지 없으면 안 되는 것이 아니다
+  }
+}
+
+/**
+ * 숫자가 목표값까지 굴러 올라가게 한다(잔액 표시용).
+ *
+ * 처음 받은 값은 굴리지 않고 그대로 보여 준다. 0 에서 굴려 올리면 값이 바뀐 것처럼
+ * 보이고, 무엇보다 화면이 숨겨져 requestAnimationFrame 이 멈춘 상태에서는 0 인 채로
+ * 굳는다 — 잔액이 0 으로 보이는 것은 연출이 아니라 틀린 값이다.
+ */
+function useCountUp(target: number, enabled: boolean, ready: boolean): number {
+  const [shown, setShown] = useState(target);
+  const fromRef = useRef(target);
+  const seeded = useRef(false);
+  useEffect(() => {
+    // 아직 서버 값이 없다 — 불러오는 동안의 0 을 시작점으로 삼으면 안 된다
+    if (!ready) return;
+    // 화면이 숨겨져 있으면 requestAnimationFrame 이 멈춘다. 그대로 두면 굴러가다 만
+    // 숫자가 화면에 남는다 — 보이지 않는 동안은 굴리지 말고 바로 맞춘다.
+    if (!enabled || !seeded.current || document.hidden) {
+      seeded.current = true;
+      setShown(target);
+      fromRef.current = target;
+      return;
+    }
+    const from = fromRef.current;
+    if (from === target) return;
+    const started = performance.now();
+    const DUR = 650;
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - started) / DUR);
+      // 끝에서 부드럽게 멈춘다
+      const eased = 1 - Math.pow(1 - t, 3);
+      setShown(Math.round(from + (target - from) * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+      else fromRef.current = target;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, enabled, ready]);
+  return shown;
+}
+
+/** 당첨 순간의 축포. 금액이 클수록 조각이 많아진다. */
+function Celebration({ tier }: { tier: number }) {
+  const count = 10 + Math.round(tier * 18);
+  const pieces = Array.from({ length: count }, (_, i) => {
+    const angle = (i / count) * Math.PI * 2 + (i % 2) * 0.3;
+    const dist = 60 + ((i * 37) % 70);
+    return {
+      id: i,
+      x: Math.cos(angle) * dist,
+      y: Math.sin(angle) * dist - 20,
+      delay: (i % 6) * 0.015,
+      hue: [
+        'bg-secondary-400',
+        'bg-secondary-500',
+        'bg-amber-400',
+        'bg-primary-400',
+        'bg-secondary-300',
+      ][i % 5],
+    };
+  });
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {pieces.map(p => (
+        <motion.span
+          key={p.id}
+          initial={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+          animate={{ opacity: 0, x: p.x, y: p.y, scale: 0.4 }}
+          transition={{ duration: 0.75, delay: p.delay, ease: 'easeOut' }}
+          className={`absolute left-1/2 top-1/2 h-1.5 w-1.5 rounded-full ${p.hue}`}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -45,6 +132,11 @@ export function LotteryPanel() {
   /** 릴에 지금 떠 있는 숫자. null 이면 릴이 멈춘 상태 */
   const [reel, setReel] = useState<number | null>(null);
   const reelTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** 은박을 덮을지 — 움직임을 줄인 설정이면 덮지 않고 바로 보여 준다 */
+  const [covered, setCovered] = useState(false);
+  /** 덮개가 걷힌 뒤에만 축포를 터뜨린다 */
+  const [celebrate, setCelebrate] = useState(0);
+  const motionOk = !prefersReducedMotion();
 
   // 화면을 떠날 때 릴이 계속 돌지 않도록 정리한다
   useEffect(
@@ -79,15 +171,28 @@ export function LotteryPanel() {
     };
   }, []);
 
+  /** 덮개가 걷힌 순간 — 알림·진동·축포를 여기서 한 번에 낸다 */
+  const revealResult = useCallback((isBlank: boolean, amount: number) => {
+    if (isBlank) {
+      toast.info('아쉽지만 꽝입니다.');
+      buzz(18);
+    } else {
+      toast.success(`${amount.toLocaleString()}P 당첨!`);
+      buzz([0, 28, 45, 28]);
+      setCelebrate(c => c + 1);
+    }
+  }, []);
+
   const handleDraw = async () => {
     if (drawing || !status) return;
     setDrawing(true);
     setLast(null);
+    setCovered(false);
 
     // 릴에 띄울 숫자는 실제로 나올 수 있는 것만 넣는다.
     // 꽝 확률이 0 인 표에서 '0P' 가 지나가면 나올 수 없는 결과를 보여 주게 된다.
     const faces = [...status.prizes.map(p => p.amount), ...(status.blankWeight > 0 ? [0] : [])];
-    const roll = !prefersReducedMotion();
+    const roll = motionOk;
     if (roll) {
       setReel(faces[0]);
       reelTimer.current = setInterval(() => {
@@ -107,9 +212,10 @@ export function LotteryPanel() {
       }
 
       setLast({ amount: result.amount, cost: result.cost, isBlank: result.isBlank });
+      // 결과는 이미 정해졌다. 덮개는 그것을 언제 볼지만 정한다.
+      setCovered(roll);
       await reload();
-      if (result.isBlank) toast.info('아쉽지만 꽝입니다.');
-      else toast.success(`${result.amount.toLocaleString()}P 당첨!`);
+      if (!roll) revealResult(result.isBlank, result.amount);
     } catch (err) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -127,10 +233,66 @@ export function LotteryPanel() {
     }
   };
 
+  const shownBalance = useCountUp(status?.balance ?? 0, motionOk, !!status);
+
   if (loading) return <LoadingSpinner size="sm" message="포인트 정보를 불러오는 중..." />;
   if (!status) return null;
 
   const soldOut = status.drawsLeft <= 0;
+
+  // 가장 큰 상금 대비 이번 금액 — 축포의 양을 정한다
+  const maxPrize = Math.max(1, ...status.prizes.map(p => p.amount));
+  const winTier = last && !last.isBlank ? Math.min(1, last.amount / maxPrize) : 0;
+
+  const board = (
+    <div
+      aria-live="polite"
+      className="flex h-24 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60"
+    >
+      {reel !== null ? (
+        <span
+          key={reel}
+          className="animate-[pulse_0.5s_ease-in-out_infinite] text-3xl font-bold tabular-nums text-slate-400 dark:text-slate-500"
+        >
+          {reel.toLocaleString()}P
+        </span>
+      ) : last ? (
+        <div className="text-center">
+          <motion.p
+            key={`${last.amount}-${celebrate}`}
+            initial={motionOk ? { scale: 0.6, opacity: 0 } : false}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 16 }}
+            className={`text-3xl font-bold tabular-nums ${
+              last.isBlank
+                ? 'text-slate-400 dark:text-slate-500'
+                : 'text-secondary-600 dark:text-secondary-400'
+            }`}
+          >
+            {last.isBlank ? '꽝' : `+${last.amount.toLocaleString()}P`}
+          </motion.p>
+          {last.cost > 0 && (
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              참가비 −{last.cost.toLocaleString()}P · 합계{' '}
+              <span className="font-semibold">
+                {last.amount - last.cost >= 0 ? '+' : ''}
+                {(last.amount - last.cost).toLocaleString()}P
+              </span>
+            </p>
+          )}
+        </div>
+      ) : (
+        <span className="text-sm text-slate-400">뽑기를 눌러 보세요</span>
+      )}
+    </div>
+  );
+
+  const resultBox =
+    covered && last ? (
+      <ScratchCard onRevealed={() => revealResult(last.isBlank, last.amount)}>{board}</ScratchCard>
+    ) : (
+      board
+    );
 
   return (
     <div className="space-y-5">
@@ -138,7 +300,7 @@ export function LotteryPanel() {
         <div>
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400">보유 포인트</p>
           <p className="mt-0.5 text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
-            {status.balance.toLocaleString()}
+            {shownBalance.toLocaleString()}
             <span className="ml-1 text-base font-semibold text-slate-500 dark:text-slate-400">
               P
             </span>
@@ -163,43 +325,15 @@ export function LotteryPanel() {
         )}
       </div>
 
-      {/* 추첨 표시창 — 도는 동안 나올 수 있는 금액들이 지나가고, 멈추면 결과가 남는다.
+      {/* 추첨 표시창.
+          누르면 숫자가 섞이고(서버를 기다리는 동안), 답이 오면 그 자리를 은박이 덮는다.
+          긁어서 걷어 내면 결과가 드러나고 그때 축포가 터진다.
+          결과는 덮개 아래에 이미 그려져 있다 — 낭독기는 바로 읽고, 캔버스를 못 쓰는
+          환경에서는 덮개 없이 그대로 보인다.
           자리를 늘 차지하게 둬서, 결과가 나올 때 아래 내용이 밀리지 않는다. */}
-      <div
-        aria-live="polite"
-        className="flex h-24 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60"
-      >
-        {reel !== null ? (
-          <span
-            key={reel}
-            className="animate-[pulse_0.5s_ease-in-out_infinite] text-3xl font-bold tabular-nums text-slate-400 dark:text-slate-500"
-          >
-            {reel.toLocaleString()}P
-          </span>
-        ) : last ? (
-          <div className="text-center">
-            <p
-              className={`text-3xl font-bold tabular-nums ${
-                last.isBlank
-                  ? 'text-slate-400 dark:text-slate-500'
-                  : 'text-secondary-600 dark:text-secondary-400'
-              }`}
-            >
-              {last.isBlank ? '꽝' : `+${last.amount.toLocaleString()}P`}
-            </p>
-            {last.cost > 0 && (
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                참가비 −{last.cost.toLocaleString()}P · 합계{' '}
-                <span className="font-semibold">
-                  {last.amount - last.cost >= 0 ? '+' : ''}
-                  {(last.amount - last.cost).toLocaleString()}P
-                </span>
-              </p>
-            )}
-          </div>
-        ) : (
-          <span className="text-sm text-slate-400">뽑기를 눌러 보세요</span>
-        )}
+      <div className="relative">
+        {resultBox}
+        {celebrate > 0 && !last?.isBlank && <Celebration key={celebrate} tier={winTier} />}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

@@ -5,9 +5,43 @@
 // 한도 초과 응답을 사용자 말로 옮기는지.
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { createElement } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LotteryPanel } from './LotteryPanel';
 import type { DrawResult, PointStatus } from '../../api/points';
+
+// framer-motion 의 애니메이션은 happy-dom 에서 취소될 때 잡히지 않는 AbortError 를 남긴다.
+// 태그는 그대로 두고(테스트가 selector 로 p 를 찾는다) 애니메이션 속성만 걷어 낸다.
+vi.mock('framer-motion', () => {
+  const strip = (tag: string) =>
+    function Motion({
+      initial: _i,
+      animate: _a,
+      exit: _e,
+      transition: _t,
+      whileHover: _wh,
+      whileTap: _wt,
+      layout: _l,
+      ...rest
+    }: Record<string, unknown>) {
+      return createElement(tag, rest);
+    };
+  // 태그별로 한 번만 만들어 재사용한다. 접근할 때마다 새 컴포넌트를 돌려주면
+  // React 가 매 렌더마다 그 자리를 통째로 갈아 끼워, 방금 찾은 노드가 문서에서 떨어진다.
+  const cache = new Map<string, ReturnType<typeof strip>>();
+  return {
+    motion: new Proxy(
+      {},
+      {
+        get: (_t, tag: string) => {
+          if (!cache.has(tag)) cache.set(tag, strip(tag));
+          return cache.get(tag);
+        },
+      }
+    ),
+    AnimatePresence: ({ children }: { children?: unknown }) => children,
+  };
+});
 
 const fetchPointStatus = vi.hoisted(() => vi.fn());
 const fetchPointHistory = vi.hoisted(() => vi.fn());
@@ -87,7 +121,33 @@ describe('뽑기', () => {
     render(<LotteryPanel />);
 
     fireEvent.click(await screen.findByRole('button', { name: /뽑기/ }));
-    expect(await screen.findByText('+700P')).toBeInTheDocument();
+    // 결과가 뜨기 전에 숫자가 섞이는 시간(ROLL_MS)이 있다. 기본 1초로는 아슬아슬하다.
+    expect(await screen.findByText('+700P', {}, { timeout: 4000 })).toBeInTheDocument();
+  });
+
+  it('움직임을 줄인 설정이면 은박으로 덮지 않고 바로 보여준다', async () => {
+    // 긁는 동작을 할 수 없거나 원치 않는 사람이 결과를 못 보는 일이 없어야 한다.
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+      matches: q.includes('prefers-reduced-motion'),
+      media: q,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+      onchange: null,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      drawLottery.mockResolvedValue(result());
+      render(<LotteryPanel />);
+      fireEvent.click(await screen.findByRole('button', { name: /뽑기/ }));
+      // 섞는 시간도 덮개도 없다 — 곧바로 결과가 있어야 한다
+      expect(await screen.findByText('+700P')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: '바로 확인' })).not.toBeInTheDocument();
+    } finally {
+      window.matchMedia = original;
+    }
   });
 
   it('꽝을 당첨처럼 그리지 않는다', async () => {
@@ -96,7 +156,7 @@ describe('뽑기', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /뽑기/ }));
     // '+0P' 같은 표기가 나오면 안 된다
-    expect(await screen.findByText('꽝', { selector: 'p' })).toBeInTheDocument();
+    expect(await screen.findByText('꽝', { selector: 'p' }, { timeout: 4000 })).toBeInTheDocument();
     expect(screen.queryByText('+0P')).not.toBeInTheDocument();
   });
 
