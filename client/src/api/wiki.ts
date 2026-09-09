@@ -1,8 +1,8 @@
 import api from './axios';
 import { unwrap } from './utils';
-import { WikiPage, WikiRevision } from '../types/wiki.types';
+import { WikiPage, WikiTreePage, WikiRevision } from '../types/wiki.types';
 
-export async function getWikiPageTree(): Promise<WikiPage[]> {
+export async function getWikiPageTree(): Promise<WikiTreePage[]> {
   const res = await api.get('/wiki');
   return unwrap(res);
 }

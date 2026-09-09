@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { WikiPage } from '../../types/wiki.types';
+import { WikiTreePage } from '../../types/wiki.types';
 import { Link, useParams } from 'react-router-dom';
 
 interface WikiSidebarProps {
-  pages: WikiPage[];
+  pages: WikiTreePage[];
   isEditing?: boolean;
   onInterceptNav?: (slug: string | null) => void; // null = 홈
 }
 
 // Build tree from flat array
-function buildTree(pages: WikiPage[]): WikiPage[] {
-  const map = new Map<number, WikiPage & { children: WikiPage[] }>();
-  const roots: WikiPage[] = [];
+function buildTree(pages: WikiTreePage[]): WikiTreePage[] {
+  const map = new Map<number, WikiTreePage & { children: WikiTreePage[] }>();
+  const roots: WikiTreePage[] = [];
 
   pages.forEach(p => map.set(p.id, { ...p, children: [] }));
   pages.forEach(p => {
@@ -27,7 +27,7 @@ function buildTree(pages: WikiPage[]): WikiPage[] {
 const MAX_WIKI_DEPTH = 10;
 
 interface WikiTreeNodeProps {
-  page: WikiPage & { children?: WikiPage[] };
+  page: WikiTreePage & { children?: WikiTreePage[] };
   currentSlug?: string;
   depth: number;
   isEditing?: boolean;
@@ -108,7 +108,7 @@ const WikiTreeNode: React.FC<WikiTreeNodeProps> = ({
           {(page.children || []).map(child => (
             <WikiTreeNode
               key={child.id}
-              page={child as WikiPage & { children?: WikiPage[] }}
+              page={child as WikiTreePage & { children?: WikiTreePage[] }}
               currentSlug={currentSlug}
               depth={depth + 1}
               isEditing={isEditing}
@@ -180,7 +180,7 @@ export const WikiSidebar: React.FC<WikiSidebarProps> = ({ pages, isEditing, onIn
             {tree.map(page => (
               <WikiTreeNode
                 key={page.id}
-                page={page as WikiPage & { children?: WikiPage[] }}
+                page={page as WikiTreePage & { children?: WikiTreePage[] }}
                 currentSlug={slug}
                 depth={0}
                 isEditing={isEditing}

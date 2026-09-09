@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { safeStorage } from '../../utils/safeStorage';
 import { useParams, useNavigate } from 'react-router-dom';
-import { WikiPage as WikiPageType } from '../../types/wiki.types';
+import { WikiPage as WikiPageType, WikiTreePage } from '../../types/wiki.types';
 import {
   getWikiPageTree,
   getWikiPageBySlug,
@@ -43,7 +43,7 @@ const WikiPageRoute = () => {
       });
   }, []);
 
-  const [allPages, setAllPages] = useState<WikiPageType[]>([]);
+  const [allPages, setAllPages] = useState<WikiTreePage[]>([]);
   const [currentPage, setCurrentPage] = useState<WikiPageType | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);

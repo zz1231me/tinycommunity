@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { WikiPage } from '../../types/wiki.types';
+import { WikiPage, WikiTreePage } from '../../types/wiki.types';
 import { sanitizeHTML } from '../../utils/htmlSanitizer';
 import { formatDate } from '../../utils/date';
 import { useContentImageHandler } from '../../hooks/useContentImageHandler';
@@ -13,7 +13,7 @@ import 'highlight.js/styles/atom-one-dark.min.css';
 
 interface WikiDetailProps {
   page: WikiPage;
-  allPages: WikiPage[];
+  allPages: WikiTreePage[];
   canEdit: boolean;
   onEdit: () => void;
   onDelete?: () => void;
@@ -48,9 +48,10 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
   }, [page.content]);
 
   // Build breadcrumb (visited set prevents infinite loop on circular parentId)
-  const breadcrumb: WikiPage[] = [];
+  // 현재 페이지(본문 있음)와 트리 노드(본문 없음)가 섞이므로 트리 타입으로 모은다.
+  const breadcrumb: WikiTreePage[] = [];
   const visited = new Set<number>();
-  let current: WikiPage | undefined = page;
+  let current: WikiTreePage | undefined = page;
   while (current && !visited.has(current.id)) {
     visited.add(current.id);
     breadcrumb.unshift(current);

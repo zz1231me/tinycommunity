@@ -50,7 +50,7 @@ import {
 import 'ckeditor5/ckeditor5.css';
 import '../../components/editor/core/CKEditorOverride.css';
 import koTranslations from 'ckeditor5/translations/ko.js';
-import { WikiPage } from '../../types/wiki.types';
+import { WikiPage, WikiTreePage } from '../../types/wiki.types';
 
 // Module-level ref for upload function (avoids stale closure in CKEditor plugin)
 type WikiUploadFn = (
@@ -225,7 +225,8 @@ const WIKI_LINK_CONFIG = {
 
 interface WikiEditorProps {
   page?: WikiPage | null;
-  allPages: WikiPage[];
+  /** 상위 문서 고르기용 — 본문은 필요 없다 */
+  allPages: WikiTreePage[];
   onSave: (data: {
     slug: string;
     title: string;

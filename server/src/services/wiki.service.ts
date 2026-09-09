@@ -11,6 +11,21 @@ export class WikiService extends BaseService {
     const where = showAll ? {} : { isPublished: true };
     return WikiPage.findAll({
       where,
+      // 본문은 빼고 준다. 이 응답은 사이드바 트리와 breadcrumb 에만 쓰여
+      // 제목·슬러그·부모만 있으면 되는데, 본문까지 실으면 문서가 늘어날수록
+      // 위키를 열 때마다 전체 문서를 통째로 내려받게 된다.
+      attributes: [
+        'id',
+        'slug',
+        'title',
+        'parentId',
+        'order',
+        'isPublished',
+        'authorId',
+        'lastEditorId',
+        'createdAt',
+        'updatedAt',
+      ],
       order: [
         ['parentId', 'ASC'],
         ['order', 'ASC'],
