@@ -79,6 +79,9 @@ export default function Drafts() {
   const { data, isLoading, isError } = useQuery({
     queryKey: draftKeys.all,
     queryFn: ({ signal }) => fetchDrafts(signal),
+    // 초안은 글쓰기 화면이 자동 저장으로 만든다. 그쪽은 이 키를 무효화하지 않으므로
+    // 전역 staleTime(5분)을 따르면 방금 쓰던 글이 목록에 없다.
+    refetchOnMount: 'always',
   });
 
   const remove = useMutation({

@@ -30,6 +30,9 @@ export function PostsTab() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: profileKeys.posts(page),
     queryFn: () => getMyPosts(page, 10),
+    // 글은 다른 화면에서 쓰고 지운다. 전역 staleTime(5분)을 따르면 방금 쓴 글이
+    // 이 목록에 없다.
+    refetchOnMount: 'always',
     // 쪽을 넘길 때 이전 쪽 내용을 유지한다. 없으면 건수가 0건으로,
     // 쪽수가 1로 잠깐 떨어지면서 아래 페이지 막대가 사라졌다 다시 나타난다.
     placeholderData: prev => prev,

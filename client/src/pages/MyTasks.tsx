@@ -27,6 +27,9 @@ export default function MyTasks() {
   const { data, isLoading, isError } = useQuery({
     queryKey: taskKeys.mine(statuses.join(',')),
     queryFn: ({ signal }) => fetchMyTasks(statuses, signal),
+    // 담당자·상태는 글 상세에서 바뀌는데 그쪽이 이 키를 무효화하지 않는다.
+    // 전역 staleTime 이 5분이라 이것이 없으면 방금 맡은 일이 목록에 뜨지 않는다.
+    refetchOnMount: 'always',
   });
 
   return (
