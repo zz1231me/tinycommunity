@@ -411,6 +411,7 @@ const EVENT_PLUGINS: PluginList = [
   Indent,
   IndentBlock,
   BlockQuote,
+  BlockEscape, // 마지막 블록에서 빠져나오는 길 (인용구·이미지가 마지막일 때)
   PasteFromOffice,
   RemoveFormat,
 ];
