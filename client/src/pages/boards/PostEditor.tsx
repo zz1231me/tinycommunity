@@ -1,9 +1,9 @@
 // client/src/pages/boards/PostEditor.tsx
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCodeHighlight } from '../../hooks/useCodeHighlight';
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { Columns2 } from 'lucide-react';
-import hljs from 'highlight.js/lib/common';
 import 'highlight.js/styles/atom-one-dark.min.css';
 
 import {
@@ -80,11 +80,7 @@ const PostEditor = ({ mode }: Props) => {
   const previewRef = useRef<HTMLDivElement>(null);
 
   // 분할 보기 미리보기 코드 블록 syntax highlight
-  useEffect(() => {
-    previewRef.current?.querySelectorAll<HTMLElement>('pre code').forEach(block => {
-      if (!block.dataset.highlighted) hljs.highlightElement(block);
-    });
-  }, [previewHtml]);
+  useCodeHighlight(previewRef);
 
   // 비밀글 상태
   const [isSecret, setIsSecret] = useState(false);

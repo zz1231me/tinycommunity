@@ -1,5 +1,6 @@
 // client/src/pages/boards/CommentSection.tsx
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useCodeHighlight } from '../../hooks/useCodeHighlight';
 import { copyText } from '../../utils/clipboard';
 import {
   VirtualizedCommentList,
@@ -20,7 +21,6 @@ import MentionAutocomplete, {
   type MentionEditor,
 } from '../../components/editor/MentionAutocomplete';
 import { toast } from '../../utils/toast';
-import hljs from 'highlight.js/lib/common';
 import 'highlight.js/styles/atom-one-dark.min.css';
 import 'ckeditor5/ckeditor5.css';
 import '../../components/editor/core/CKEditorOverride.css';
@@ -122,11 +122,7 @@ const CommentContent = React.memo<{ content: string }>(({ content }) => {
   const ref = useRef<HTMLDivElement>(null);
   // 정화 이후에 멘션을 강조한다(정화 전에 넣으면 삽입한 span 이 제거될 수 있다)
   const sanitized = highlightMentions(sanitizeCommentHTML(content));
-  useEffect(() => {
-    ref.current?.querySelectorAll<HTMLElement>('pre code').forEach(block => {
-      if (!block.dataset.highlighted) hljs.highlightElement(block);
-    });
-  }, [sanitized]);
+  useCodeHighlight(ref);
   // content is sanitized via DOMPurify (sanitizeCommentHTML) before rendering
   return (
     <div

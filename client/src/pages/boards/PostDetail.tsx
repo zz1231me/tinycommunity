@@ -14,6 +14,7 @@
 //  8. 읽음 확인   — 작성자·게시판 담당자만
 //  9. 관련 글 → 댓글
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCodeHighlight } from '../../hooks/useCodeHighlight';
 import { Link, useParams } from 'react-router-dom';
 import { DEFAULT_TAG_COLOR } from '../../constants/colors';
 import {
@@ -44,7 +45,6 @@ import { ReadReceipts } from '../../components/boards/ReadReceipts';
 import { PostActivityLog } from '../../components/boards/PostActivityLog';
 import { ScrapButton } from '../../components/discovery/ScrapButton';
 import { RelatedPosts } from '../../components/discovery/RelatedPosts';
-import hljs from 'highlight.js/lib/common';
 import { usePostDetail } from '../../hooks/usePostDetail';
 import { useContentImageHandler } from '../../hooks/useContentImageHandler';
 import { useAttachmentRefs, type AttachmentRefTarget } from '../../hooks/useAttachmentRefs';
@@ -86,14 +86,7 @@ const CKContentRenderer: React.FC<{
   useAttachmentRefs(containerRef, attachments, onPreviewImage, inlineAttachmentsEnabled);
 
   // 코드 블록 syntax highlight (CKEditor 출력: <pre><code class="language-xxx">)
-  useEffect(() => {
-    if (!containerRef.current) return;
-    containerRef.current.querySelectorAll<HTMLElement>('pre code').forEach(block => {
-      if (!block.dataset.highlighted) {
-        hljs.highlightElement(block);
-      }
-    });
-  }, [content]);
+  useCodeHighlight(containerRef);
 
   // 정화 이후에 멘션을 강조한다.
   // 기억해 두는 이유: 이 값이 매번 새로 만들어지면 본문 전체를 다시 정화하고,

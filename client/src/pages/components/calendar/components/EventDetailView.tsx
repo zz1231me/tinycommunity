@@ -1,12 +1,12 @@
 // client/src/pages/components/calendar/components/EventDetailView.tsx
 import { DEFAULT_EVENT_COLOR } from '../../../../constants/colors';
-import React, { useRef, useEffect } from 'react';
+import { useCodeHighlight } from '../../../../hooks/useCodeHighlight';
+import React, { useRef } from 'react';
 import { CalendarEvent } from '../types';
 import { categoryColors } from '../constants';
 import { formatDateRange } from '../utils';
 import { sanitizeHTML } from '../../../../utils/htmlSanitizer';
 import { formatDateTime } from '../../../../utils/date';
-import hljs from 'highlight.js/lib/common';
 import 'highlight.js/styles/atom-one-dark.min.css';
 import '../../../../styles/CKContentView.css';
 
@@ -45,11 +45,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
 }) => {
   const bodyRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    bodyRef.current?.querySelectorAll<HTMLElement>('pre code').forEach(block => {
-      if (!block.dataset.highlighted) hljs.highlightElement(block);
-    });
-  }, [event.body]);
+  useCodeHighlight(bodyRef);
 
   const categoryInfo = categoryColors[event.category as keyof typeof categoryColors];
   const categoryLabel = categoryInfo?.label || '기타';

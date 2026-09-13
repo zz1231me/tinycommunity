@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { useCodeHighlight } from '../../hooks/useCodeHighlight';
 import { Link } from 'react-router-dom';
 import { WikiPage, WikiTreePage } from '../../types/wiki.types';
 import { sanitizeHTML } from '../../utils/htmlSanitizer';
@@ -8,7 +9,6 @@ import ImageViewer from '../../components/ImageViewer';
 import { WikiHistory } from '../../components/wiki/WikiHistory';
 import '../../styles/CKContentView.css';
 import '../../styles/ContentImageStyles.css';
-import hljs from 'highlight.js/lib/common';
 import 'highlight.js/styles/atom-one-dark.min.css';
 
 interface WikiDetailProps {
@@ -40,12 +40,7 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
     setShowHistory(false);
   }, [page.slug]);
 
-  useEffect(() => {
-    if (!contentRef.current) return;
-    contentRef.current.querySelectorAll<HTMLElement>('pre code').forEach(block => {
-      if (!block.dataset.highlighted) hljs.highlightElement(block);
-    });
-  }, [page.content]);
+  useCodeHighlight(contentRef);
 
   // Build breadcrumb (visited set prevents infinite loop on circular parentId)
   // 현재 페이지(본문 있음)와 트리 노드(본문 없음)가 섞이므로 트리 타입으로 모은다.
