@@ -50,17 +50,20 @@ import rateLimitAdminRoutes from './rateLimitAdmin.routes';
 import tagRoutes from './tag.routes';
 import {
   getAttendanceRecords,
+  getAttendanceToday,
   getAttendanceSummary,
   getAttendanceSettings,
   createAttendanceChecklistItem,
   updateAttendanceChecklistItem,
   deleteAttendanceChecklistItem,
+  reorderAttendanceChecklist,
   updateAttendancePolicy,
 } from '../controllers/attendance.controller';
 import {
   attendanceChecklistCreateSchema,
   attendanceChecklistUpdateSchema,
   attendancePolicySchema,
+  attendanceReorderSchema,
 } from '../validators/schemas';
 import {
   getIpRules,
@@ -136,12 +139,18 @@ router.delete('/events/:id', deleteEventAsAdmin as RequestHandler);
 // 기능 스위치를 꺼도 지난 기록은 남아 있어야 하므로 여기에는 requireFeature 를 걸지 않는다.
 // ⚠️ 정적 라우트를 :id 라우트보다 먼저 정의
 router.get('/attendance/records', getAttendanceRecords as RequestHandler);
+router.get('/attendance/today', getAttendanceToday as RequestHandler);
 router.get('/attendance/summary', getAttendanceSummary as RequestHandler);
 router.get('/attendance/settings', getAttendanceSettings as RequestHandler);
 router.post(
   '/attendance/checklist',
   validateBody(attendanceChecklistCreateSchema),
   createAttendanceChecklistItem as RequestHandler
+);
+router.put(
+  '/attendance/checklist/reorder',
+  validateBody(attendanceReorderSchema),
+  reorderAttendanceChecklist as RequestHandler
 );
 router.put(
   '/attendance/checklist/:id',

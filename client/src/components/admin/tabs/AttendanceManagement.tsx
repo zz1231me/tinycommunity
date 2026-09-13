@@ -1,18 +1,20 @@
 // client/src/components/admin/tabs/AttendanceManagement.tsx
-// 출퇴근 — 기록 조회, 인원별 집계, 출근 확인 항목·판정 기준 관리.
+// 출퇴근 — 오늘 현황, 기간별 기록, 인원별 집계, 확인 항목·설정.
 //
 // 기록에 남은 확인 내용은 그날 찍힌 문구 그대로다. 항목을 나중에 고쳐도
 // 지난 기록의 문구는 바뀌지 않는다.
 
 import { Fragment, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2 } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { AdminSection } from '../common/AdminSection';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import { ListState } from '../../common/ListState';
 import { ToggleSwitch } from '../../common/ToggleSwitch';
 import { Pagination } from '../../boards/Pagination';
+import { TodayBoardView } from '../attendance/TodayBoardView';
+import { ChecklistEditor } from '../attendance/ChecklistEditor';
 import { adminKeys } from '../../../api/queryKeys';
 import { fetchAdminUsers } from '../../../api/admin';
 import {
@@ -21,27 +23,41 @@ import {
   fetchAttendanceRecords,
   fetchAttendanceSettings,
   fetchAttendanceSummary,
+  fetchAttendanceToday,
+  reorderChecklist,
   updateAttendancePolicy,
   updateChecklistItem,
 } from '../../../api/attendance';
 import { getApiErrorMessage } from '../../../api/utils';
 import { toast } from '../../../utils/toast';
 import {
-  checkInLabel,
-  checkOutLabel,
   formatClock,
   formatMinutes,
   todayString,
+  weekdayOf,
+  weekdayTone,
 } from '../../../utils/attendance';
 import type { ChecklistItem } from '../../../types/attendance.types';
 
-type View = 'records' | 'summary' | 'settings';
+type View = 'today' | 'records' | 'summary' | 'settings';
 
 const VIEWS: Array<{ id: View; label: string }> = [
+  { id: 'today', label: '오늘' },
   { id: 'records', label: '기록' },
   { id: 'summary', label: '인원별' },
-  { id: 'settings', label: '확인 항목·기준' },
+  { id: 'settings', label: '확인 항목·설정' },
 ];
+
+const PAGE_SIZE = 30;
+
+type SummarySort = 'worked' | 'name';
+
+// 서버(attendance.service)의 검증 범위와 같아야 한다
+const STANDARD_MIN = 30;
+const STANDARD_MAX = 1440;
+
+/** 오늘 현황은 근무 중인 사람의 시간이 흐르므로 짧게 다시 읽는다 */
+const TODAY_REFRESH_MS = 60_000;
 
 function monthStart(): string {
   return `${todayString().slice(0, 7)}-01`;
@@ -60,18 +76,28 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const AttendanceManagement = () => {
   const queryClient = useQueryClient();
-  const [view, setView] = useState<View>('records');
+  const [view, setView] = useState<View>('today');
   const [from, setFrom] = useState(monthStart);
   const [to, setTo] = useState(todayString);
   const [userId, setUserId] = useState('');
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<ChecklistItem | null>(null);
+  const [summarySort, setSummarySort] = useState<SummarySort>('worked');
 
   const range = useMemo(() => ({ from, to }), [from, to]);
 
   const { data: users = [] } = useQuery({
     queryKey: adminKeys.users.all,
     queryFn: fetchAdminUsers,
+    enabled: view === 'records',
+  });
+
+  const board = useQuery({
+    queryKey: adminKeys.attendance.today,
+    queryFn: fetchAttendanceToday,
+    enabled: view === 'today',
+    refetchInterval: TODAY_REFRESH_MS,
   });
 
   const records = useQuery({
@@ -95,34 +121,39 @@ const AttendanceManagement = () => {
   const invalidateSettings = () =>
     queryClient.invalidateQueries({ queryKey: adminKeys.attendance.settings });
 
+  const onMutationError = (fallback: string) => (err: unknown) =>
+    toast.error(getApiErrorMessage(err, fallback));
+
   const addItem = useMutation({
     mutationFn: createChecklistItem,
     onSuccess: () => {
-      setNewLabel('');
-      setNewDescription('');
       invalidateSettings();
       toast.success('확인 항목이 추가되었습니다.');
     },
-    onError: err => toast.error(getApiErrorMessage(err, '항목을 추가하지 못했습니다.')),
+    onError: onMutationError('항목을 추가하지 못했습니다.'),
   });
 
   const patchItem = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<ChecklistItem> }) =>
       updateChecklistItem(id, data),
-    onSuccess: () => invalidateSettings(),
-    onError: err => toast.error(getApiErrorMessage(err, '항목을 수정하지 못했습니다.')),
+    // 실패해도 서버 값으로 되돌려야 화면과 저장된 값이 갈라지지 않는다
+    onSettled: () => invalidateSettings(),
+    onError: onMutationError('항목을 수정하지 못했습니다.'),
+  });
+
+  const reorder = useMutation({
+    mutationFn: reorderChecklist,
+    onSettled: () => invalidateSettings(),
+    onError: onMutationError('순서를 바꾸지 못했습니다.'),
   });
 
   const removeItem = useMutation({
     mutationFn: deleteChecklistItem,
-    onSuccess: () => {
+    onSuccess: () => toast.success('확인 항목이 삭제되었습니다.'),
+    onError: onMutationError('항목을 삭제하지 못했습니다.'),
+    onSettled: () => {
       setConfirmDelete(null);
       invalidateSettings();
-      toast.success('확인 항목이 삭제되었습니다.');
-    },
-    onError: err => {
-      setConfirmDelete(null);
-      toast.error(getApiErrorMessage(err, '항목을 삭제하지 못했습니다.'));
     },
   });
 
@@ -130,17 +161,25 @@ const AttendanceManagement = () => {
     mutationFn: updateAttendancePolicy,
     onSuccess: () => {
       invalidateSettings();
-      toast.success('기준이 저장되었습니다.');
+      toast.success('설정이 저장되었습니다.');
     },
-    onError: err => toast.error(getApiErrorMessage(err, '기준을 저장하지 못했습니다.')),
+    onError: onMutationError('설정을 저장하지 못했습니다.'),
   });
 
-  const [newLabel, setNewLabel] = useState('');
-  const [newDescription, setNewDescription] = useState('');
-  const [newRequired, setNewRequired] = useState(true);
-  const [confirmDelete, setConfirmDelete] = useState<ChecklistItem | null>(null);
-
   const policy = settings.data?.policy;
+  // 총 근무가 가장 긴 사람을 눈금으로 삼아 막대를 그린다
+  const summaryPeak = Math.max(1, ...(summary.data ?? []).map(r => r.totalMinutes));
+
+  // 기본은 많이 일한 순. 이름순으로 두면 한 명도 안 찍은 사람들 사이에
+  // 실제로 근무한 사람이 묻힌다.
+  const summaryRows = useMemo(() => {
+    const rows = [...(summary.data ?? [])];
+    if (summarySort === 'name') return rows.sort((a, b) => a.userName.localeCompare(b.userName));
+    return rows.sort(
+      (a, b) =>
+        b.days - a.days || b.totalMinutes - a.totalMinutes || a.userName.localeCompare(b.userName)
+    );
+  }, [summary.data, summarySort]);
 
   return (
     <div className="space-y-6">
@@ -150,6 +189,7 @@ const AttendanceManagement = () => {
             key={v.id}
             type="button"
             onClick={() => setView(v.id)}
+            aria-pressed={view === v.id}
             className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
               view === v.id
                 ? 'bg-primary-600 font-medium text-white'
@@ -161,7 +201,19 @@ const AttendanceManagement = () => {
         ))}
       </div>
 
-      {view !== 'settings' && (
+      {view === 'today' && (
+        <AdminSection title={`오늘 현황 (${board.data?.workDate ?? todayString()})`}>
+          {board.isLoading ? (
+            <LoadingSpinner message="오늘 현황 불러오는 중..." />
+          ) : board.isError ? (
+            <ListState>현황을 불러오지 못했습니다.</ListState>
+          ) : board.data ? (
+            <TodayBoardView board={board.data} />
+          ) : null}
+        </AdminSection>
+      )}
+
+      {(view === 'records' || view === 'summary') && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field label="시작일">
             <input
@@ -210,10 +262,7 @@ const AttendanceManagement = () => {
       )}
 
       {view === 'records' && (
-        <AdminSection
-          title="출퇴근 기록"
-          description="기간과 사람으로 걸러 봅니다. 행을 누르면 그날 확인한 내용이 펼쳐집니다."
-        >
+        <AdminSection title="출퇴근 기록">
           {records.isLoading ? (
             <LoadingSpinner message="기록 불러오는 중..." />
           ) : records.isError ? (
@@ -232,86 +281,106 @@ const AttendanceManagement = () => {
                       <th className="px-3 py-2 text-left font-medium">퇴근</th>
                       <th className="px-3 py-2 text-left font-medium">근무</th>
                       <th className="px-3 py-2 text-left font-medium">확인</th>
+                      <th className="w-10 px-3 py-2" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {records.data?.records.map(row => (
-                      <Fragment key={row.id}>
-                        <tr
-                          onClick={() => setExpanded(expanded === row.id ? null : row.id)}
-                          className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60"
-                        >
-                          <td className="whitespace-nowrap px-3 py-2 tabular-nums text-slate-700 dark:text-slate-300">
-                            {row.workDate}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-2 text-slate-800 dark:text-slate-200">
-                            {row.userName ?? row.userId}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-2 tabular-nums">
-                            {formatClock(row.checkInAt)}
-                            {row.checkInStatus === 'late' && (
-                              <span className="ml-1.5 text-xs text-amber-600">
-                                {checkInLabel.late}
+                    {records.data?.records.map(row => {
+                      const open = expanded === row.id;
+                      const missed = row.checklist.filter(c => !c.checked).length;
+                      return (
+                        <Fragment key={row.id}>
+                          <tr className={open ? 'bg-slate-50 dark:bg-slate-800/40' : undefined}>
+                            <td className="whitespace-nowrap px-3 py-2 tabular-nums text-slate-700 dark:text-slate-300">
+                              {row.workDate}
+                              <span className={`ml-1.5 text-xs ${weekdayTone(row.workDate)}`}>
+                                ({weekdayOf(row.workDate)})
                               </span>
-                            )}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-2 tabular-nums">
-                            {row.checkOutAt ? formatClock(row.checkOutAt) : '—'}
-                            {row.checkOutStatus === 'early' && (
-                              <span className="ml-1.5 text-xs text-amber-600">
-                                {checkOutLabel.early}
-                              </span>
-                            )}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-2 text-slate-600 dark:text-slate-400">
-                            {row.workMinutes === null ? '—' : formatMinutes(row.workMinutes)}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-2 text-slate-600 dark:text-slate-400">
-                            {row.checklist.filter(c => c.checked).length}/{row.checklist.length}
-                          </td>
-                        </tr>
-                        {expanded === row.id && (
-                          <tr className="bg-slate-50 dark:bg-slate-800/40">
-                            <td colSpan={6} className="px-3 py-3">
-                              {row.checklist.length === 0 ? (
-                                <p className="text-xs text-slate-500">확인 항목이 없었습니다.</p>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-2 text-slate-800 dark:text-slate-200">
+                              {row.userName ?? row.userId}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-2 tabular-nums">
+                              {formatClock(row.checkInAt)}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-2 tabular-nums">
+                              {row.checkOutAt ? (
+                                formatClock(row.checkOutAt)
                               ) : (
-                                <ul className="space-y-1">
-                                  {row.checklist.map(answer => (
-                                    <li
-                                      key={answer.itemId}
-                                      className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300"
-                                    >
-                                      <span
-                                        aria-hidden="true"
-                                        className={
-                                          answer.checked ? 'text-emerald-600' : 'text-rose-500'
-                                        }
-                                      >
-                                        {answer.checked ? '☑' : '☐'}
-                                      </span>
-                                      <span className="min-w-0">
-                                        {answer.label}
-                                        {answer.required && (
-                                          <span className="ml-1.5 text-xs text-slate-400">
-                                            필수
-                                          </span>
-                                        )}
-                                      </span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                              {row.note && (
-                                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                                  남긴 말: {row.note}
-                                </p>
+                                <span className="text-emerald-600 dark:text-emerald-400">
+                                  근무 중
+                                </span>
                               )}
                             </td>
+                            <td className="whitespace-nowrap px-3 py-2 text-slate-600 dark:text-slate-400">
+                              {row.workMinutes === null ? '—' : formatMinutes(row.workMinutes)}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-2 text-slate-600 dark:text-slate-400">
+                              {row.checklist.length === 0 ? (
+                                '—'
+                              ) : (
+                                <span className={missed > 0 ? 'text-amber-600' : undefined}>
+                                  {row.checklist.length - missed}/{row.checklist.length}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2">
+                              <button
+                                type="button"
+                                onClick={() => setExpanded(open ? null : row.id)}
+                                aria-expanded={open}
+                                aria-label={`${row.workDate} ${row.userName ?? row.userId} 확인 내용`}
+                                className="rounded p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                              >
+                                <ChevronDown
+                                  className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`}
+                                />
+                              </button>
+                            </td>
                           </tr>
-                        )}
-                      </Fragment>
-                    ))}
+                          {open && (
+                            <tr className="bg-slate-50 dark:bg-slate-800/40">
+                              <td colSpan={7} className="px-3 pb-3">
+                                {row.checklist.length === 0 ? (
+                                  <p className="text-xs text-slate-500">확인 항목이 없었습니다.</p>
+                                ) : (
+                                  <ul className="space-y-1">
+                                    {row.checklist.map(answer => (
+                                      <li
+                                        key={answer.itemId}
+                                        className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300"
+                                      >
+                                        <span
+                                          aria-hidden="true"
+                                          className={
+                                            answer.checked ? 'text-emerald-600' : 'text-rose-500'
+                                          }
+                                        >
+                                          {answer.checked ? '☑' : '☐'}
+                                        </span>
+                                        <span className="min-w-0">
+                                          {answer.label}
+                                          {answer.required && (
+                                            <span className="ml-1.5 text-xs text-slate-400">
+                                              필수
+                                            </span>
+                                          )}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                                {row.note && (
+                                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                                    남긴 말: {row.note}
+                                  </p>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -323,7 +392,7 @@ const AttendanceManagement = () => {
                       currentPage: records.data?.page ?? 1,
                       totalPages: records.data?.totalPages ?? 1,
                       totalCount: records.data?.total ?? 0,
-                      limit: 30,
+                      limit: PAGE_SIZE,
                       hasNextPage: (records.data?.page ?? 1) < (records.data?.totalPages ?? 1),
                       hasPrevPage: (records.data?.page ?? 1) > 1,
                     }}
@@ -340,7 +409,30 @@ const AttendanceManagement = () => {
       {view === 'summary' && (
         <AdminSection
           title="인원별 집계"
-          description="기간 안에 한 번도 찍지 않은 사람도 0일로 나옵니다."
+          actions={
+            <div className="flex gap-1">
+              {(
+                [
+                  { id: 'worked', label: '근무 많은 순' },
+                  { id: 'name', label: '이름순' },
+                ] as Array<{ id: SummarySort; label: string }>
+              ).map(option => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setSummarySort(option.id)}
+                  aria-pressed={summarySort === option.id}
+                  className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
+                    summarySort === option.id
+                      ? 'bg-slate-800 font-medium text-white dark:bg-slate-200 dark:text-slate-900'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          }
         >
           {summary.isLoading ? (
             <LoadingSpinner message="집계 불러오는 중..." />
@@ -353,30 +445,40 @@ const AttendanceManagement = () => {
                   <tr>
                     <th className="px-3 py-2 text-left font-medium">이름</th>
                     <th className="px-3 py-2 text-left font-medium">근무일</th>
-                    <th className="px-3 py-2 text-left font-medium">지각</th>
-                    <th className="px-3 py-2 text-left font-medium">조기 퇴근</th>
                     <th className="px-3 py-2 text-left font-medium">총 근무</th>
+                    <th className="px-3 py-2 text-left font-medium">하루 평균</th>
+                    <th className="px-3 py-2 text-left font-medium">퇴근 안 찍음</th>
                     <th className="px-3 py-2 text-left font-medium">마지막 출근</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {summary.data?.map(row => (
-                    <tr key={row.userId}>
+                  {summaryRows.map(row => (
+                    <tr key={row.userId} className={row.days === 0 ? 'text-slate-400' : undefined}>
                       <td className="whitespace-nowrap px-3 py-2 text-slate-800 dark:text-slate-200">
                         {row.userName}
                         <span className="ml-1.5 text-xs text-slate-400">{row.userId}</span>
                       </td>
                       <td className="px-3 py-2 tabular-nums">{row.days}일</td>
+                      <td className="min-w-[140px] px-3 py-2">
+                        <span className="tabular-nums text-slate-700 dark:text-slate-300">
+                          {formatMinutes(row.totalMinutes)}
+                        </span>
+                        <span className="mt-1 block h-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                          <span
+                            className="block h-full rounded-full bg-primary-500/70"
+                            style={{ width: `${Math.round((row.totalMinutes / summaryPeak) * 100)}%` }}
+                          />
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 tabular-nums text-slate-600 dark:text-slate-400">
+                        {formatMinutes(row.averageMinutes)}
+                      </td>
                       <td className="px-3 py-2 tabular-nums">
-                        {row.lateDays > 0 ? (
-                          <span className="text-amber-600">{row.lateDays}일</span>
+                        {row.openDays > 0 ? (
+                          <span className="text-amber-600">{row.openDays}일</span>
                         ) : (
                           '0일'
                         )}
-                      </td>
-                      <td className="px-3 py-2 tabular-nums">{row.earlyLeaveDays}일</td>
-                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
-                        {formatMinutes(row.totalMinutes)}
                       </td>
                       <td className="px-3 py-2 tabular-nums text-slate-600 dark:text-slate-400">
                         {row.lastWorkDate ?? '—'}
@@ -392,173 +494,79 @@ const AttendanceManagement = () => {
 
       {view === 'settings' && (
         <>
-          <AdminSection
-            title="출근 확인 항목"
-            description="출근을 누르면 이 항목들이 뜹니다. 필수 항목을 체크하지 않으면 출근이 기록되지 않습니다."
-          >
+          <AdminSection title="출근 확인 항목">
             {settings.isLoading ? (
               <LoadingSpinner message="설정 불러오는 중..." />
             ) : (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  {(settings.data?.checklist.length ?? 0) === 0 ? (
-                    <ListState>등록된 확인 항목이 없습니다.</ListState>
-                  ) : (
-                    settings.data?.checklist.map(item => (
-                      <div
-                        key={item.id}
-                        className="flex flex-wrap items-center gap-3 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800"
-                      >
-                        <input
-                          defaultValue={item.label}
-                          onBlur={e => {
-                            const label = e.target.value.trim();
-                            if (label && label !== item.label) {
-                              patchItem.mutate({ id: item.id, data: { label } });
-                            } else {
-                              e.target.value = item.label;
-                            }
-                          }}
-                          className="input input-sm min-w-0 flex-1"
-                          aria-label="항목 내용"
-                        />
-                        <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                          <input
-                            type="checkbox"
-                            checked={item.required}
-                            onChange={e =>
-                              patchItem.mutate({
-                                id: item.id,
-                                data: { required: e.target.checked },
-                              })
-                            }
-                          />
-                          필수
-                        </label>
-                        <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                          <input
-                            type="checkbox"
-                            checked={item.isActive}
-                            onChange={e =>
-                              patchItem.mutate({
-                                id: item.id,
-                                data: { isActive: e.target.checked },
-                              })
-                            }
-                          />
-                          사용
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDelete(item)}
-                          aria-label={`${item.label} 삭제`}
-                          className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div className="rounded-xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Field label="항목 내용">
-                      <input
-                        value={newLabel}
-                        onChange={e => setNewLabel(e.target.value)}
-                        maxLength={200}
-                        placeholder="예) 보안 수칙을 확인했습니다."
-                        className="input input-sm w-full"
-                      />
-                    </Field>
-                    <Field label="설명 (선택)">
-                      <input
-                        value={newDescription}
-                        onChange={e => setNewDescription(e.target.value)}
-                        maxLength={500}
-                        placeholder="항목 아래에 작게 표시됩니다."
-                        className="input input-sm w-full"
-                      />
-                    </Field>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                      <input
-                        type="checkbox"
-                        checked={newRequired}
-                        onChange={e => setNewRequired(e.target.checked)}
-                      />
-                      체크해야 출근할 수 있는 필수 항목
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        addItem.mutate({
-                          label: newLabel,
-                          description: newDescription,
-                          required: newRequired,
-                        })
-                      }
-                      disabled={!newLabel.trim() || addItem.isPending}
-                      className="btn-primary inline-flex items-center gap-1.5 disabled:opacity-40"
-                    >
-                      <Plus className="h-4 w-4" />
-                      추가
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <ChecklistEditor
+                items={settings.data?.checklist ?? []}
+                adding={addItem.isPending}
+                reordering={reorder.isPending}
+                onAdd={data => addItem.mutate(data)}
+                onPatch={(id, data) => patchItem.mutate({ id, data })}
+                onReorder={ids => reorder.mutate(ids)}
+                onDelete={item => setConfirmDelete(item)}
+              />
             )}
           </AdminSection>
 
           {policy && (
-            <AdminSection
-              title="판정 기준"
-              description="출근 시각이 기준+유예를 넘으면 지각, 퇴근이 기준보다 이르면 조기 퇴근으로 남습니다."
-            >
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="출근 기준 시각">
-                  <input
-                    type="time"
-                    defaultValue={policy.workStartTime}
-                    onBlur={e => savePolicy.mutate({ workStartTime: e.target.value })}
-                    className="input input-sm w-full"
-                  />
-                </Field>
-                <Field label="퇴근 기준 시각">
-                  <input
-                    type="time"
-                    defaultValue={policy.workEndTime}
-                    onBlur={e => savePolicy.mutate({ workEndTime: e.target.value })}
-                    className="input input-sm w-full"
-                  />
-                </Field>
-                <Field label="지각 유예 (분)">
-                  <input
-                    type="number"
-                    min={0}
-                    max={240}
-                    defaultValue={policy.graceMinutes}
-                    onBlur={e => savePolicy.mutate({ graceMinutes: Number(e.target.value) })}
-                    className="input input-sm w-full"
-                  />
-                </Field>
-              </div>
-              <div className="mt-4 flex items-start justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                    필수 항목을 모두 체크해야 출근 기록
-                  </p>
-                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                    끄면 체크하지 않아도 출근이 되고, 체크하지 않은 사실이 기록에 남습니다.
-                  </p>
+            <AdminSection title="근무 설정">
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-end gap-3 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                      하루 기준 근무 시간
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                      오늘 얼마나 채웠는지를 이 값에 견주어 보여 줍니다. 판정에는 쓰이지 않습니다.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={STANDARD_MIN}
+                      max={STANDARD_MAX}
+                      step={30}
+                      // 저장된 값이 바뀌면 다시 그린다. 실패했을 때 입력칸에
+                      // 저장되지 않은 숫자가 남아 있으면 저장된 줄 알게 된다.
+                      key={policy.standardWorkMinutes}
+                      defaultValue={policy.standardWorkMinutes}
+                      onBlur={e => {
+                        const next = Number(e.target.value);
+                        if (!Number.isInteger(next) || next < STANDARD_MIN || next > STANDARD_MAX) {
+                          e.target.value = String(policy.standardWorkMinutes);
+                          toast.error(`기준 근무 시간은 ${STANDARD_MIN}~${STANDARD_MAX}분 사이여야 합니다.`);
+                          return;
+                        }
+                        if (next !== policy.standardWorkMinutes) {
+                          savePolicy.mutate({ standardWorkMinutes: next });
+                        }
+                      }}
+                      aria-label="하루 기준 근무 시간(분)"
+                      className="input input-sm w-24 text-right"
+                    />
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      분 = {formatMinutes(policy.standardWorkMinutes)}
+                    </span>
+                  </div>
                 </div>
-                <ToggleSwitch
-                  checked={policy.requireChecklist}
-                  onChange={value => savePolicy.mutate({ requireChecklist: value })}
-                  label="필수 항목을 모두 체크해야 출근 기록"
-                />
+
+                <div className="flex items-start justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                      필수 항목을 모두 체크해야 출근 기록
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                      끄면 체크하지 않아도 출근이 되고, 체크하지 않은 사실이 기록에 남습니다.
+                    </p>
+                  </div>
+                  <ToggleSwitch
+                    checked={policy.requireChecklist}
+                    onChange={value => savePolicy.mutate({ requireChecklist: value })}
+                    label="필수 항목을 모두 체크해야 출근 기록"
+                  />
+                </div>
               </div>
             </AdminSection>
           )}

@@ -8,6 +8,7 @@ import type {
   AttendanceStatus,
   AttendanceSummaryRow,
   ChecklistItem,
+  TodayBoard,
 } from '../types/attendance.types';
 
 // ── 본인 ──────────────────────────────────────────────────────────────────
@@ -46,6 +47,9 @@ export const fetchAttendanceRecords = async (
   return unwrap(await api.get(`/admin/attendance/records?${params.toString()}`));
 };
 
+export const fetchAttendanceToday = async (): Promise<TodayBoard> =>
+  unwrap(await api.get('/admin/attendance/today'));
+
 export const fetchAttendanceSummary = async (query: {
   from?: string;
   to?: string;
@@ -71,6 +75,9 @@ export const updateChecklistItem = async (
   id: number,
   data: Partial<Pick<ChecklistItem, 'label' | 'description' | 'required' | 'isActive' | 'order'>>
 ): Promise<ChecklistItem> => unwrap(await api.put(`/admin/attendance/checklist/${id}`, data));
+
+export const reorderChecklist = async (ids: number[]): Promise<ChecklistItem[]> =>
+  unwrap(await api.put('/admin/attendance/checklist/reorder', { ids }));
 
 export const deleteChecklistItem = async (id: number): Promise<void> => {
   await api.delete(`/admin/attendance/checklist/${id}`);

@@ -160,6 +160,7 @@ export const adminKeys = {
   },
   attendance: {
     all: ['admin', 'attendance'] as const,
+    today: ['admin', 'attendance', 'today'] as const,
     records: (params: Record<string, unknown>) =>
       ['admin', 'attendance', 'records', params] as const,
     summary: (params: Record<string, unknown>) =>

@@ -1,8 +1,5 @@
 // client/src/types/attendance.types.ts
 
-export type CheckInStatus = 'normal' | 'late';
-export type CheckOutStatus = 'normal' | 'early';
-
 /** 출근 시점에 찍어 둔 확인 내용. 항목이 나중에 바뀌어도 이 값은 그대로다. */
 export interface ChecklistAnswer {
   itemId: number;
@@ -18,9 +15,7 @@ export interface AttendanceRecord {
   userName?: string;
   workDate: string;
   checkInAt: string;
-  checkInStatus: CheckInStatus;
   checkOutAt: string | null;
-  checkOutStatus: CheckOutStatus | null;
   workMinutes: number | null;
   note: string;
   checklist: ChecklistAnswer[];
@@ -36,9 +31,8 @@ export interface ChecklistItem {
 }
 
 export interface AttendancePolicy {
-  workStartTime: string;
-  workEndTime: string;
-  graceMinutes: number;
+  /** 하루 기준 근무 시간(분) */
+  standardWorkMinutes: number;
   requireChecklist: boolean;
 }
 
@@ -49,24 +43,43 @@ export interface AttendanceStatus {
   policy: AttendancePolicy;
 }
 
-export interface AttendanceSummaryRow {
+export interface AttendanceSummary {
+  days: number;
+  totalMinutes: number;
+  /** 퇴근까지 찍은 날의 평균 */
+  averageMinutes: number;
+  /** 퇴근을 찍지 않은 날 수 */
+  openDays: number;
+  lastWorkDate: string | null;
+}
+
+export interface AttendanceSummaryRow extends AttendanceSummary {
   userId: string;
   userName: string;
-  days: number;
-  lateDays: number;
-  earlyLeaveDays: number;
-  totalMinutes: number;
-  lastWorkDate: string | null;
 }
 
 export interface AttendanceHistory {
   month: string;
   records: AttendanceRecord[];
-  summary: {
-    days: number;
-    lateDays: number;
-    earlyLeaveDays: number;
-    totalMinutes: number;
-    lastWorkDate: string | null;
-  };
+  summary: AttendanceSummary;
+  policy: AttendancePolicy;
+}
+
+export type TodayState = 'working' | 'done' | 'absent';
+
+export interface TodayRow {
+  userId: string;
+  userName: string;
+  state: TodayState;
+  checkInAt: string | null;
+  checkOutAt: string | null;
+  /** 퇴근 전이면 지금까지 흐른 시간 */
+  minutes: number | null;
+  checkedCount: number;
+  checklistCount: number;
+}
+
+export interface TodayBoard {
+  workDate: string;
+  rows: TodayRow[];
 }

@@ -8,9 +8,6 @@ import {
 } from 'sequelize';
 import { sequelize } from '../config/sequelize';
 
-export type CheckInStatus = 'normal' | 'late';
-export type CheckOutStatus = 'normal' | 'early';
-
 /** 출근 시점에 찍어 둔 확인 항목. 항목이 나중에 바뀌어도 그날 확인한 내용은 그대로 남는다. */
 export interface ChecklistSnapshotEntry {
   itemId: number;
@@ -28,9 +25,7 @@ class AttendanceRecordModel extends Model<
   /** 근무일 (YYYY-MM-DD, 서버 기준). 사람마다 하루 한 건이다. */
   declare public workDate: string;
   declare public checkInAt: Date;
-  declare public checkInStatus: CheckInStatus;
   declare public checkOutAt: CreationOptional<Date | null>;
-  declare public checkOutStatus: CreationOptional<CheckOutStatus | null>;
   /** 퇴근을 찍은 뒤 계산한 재실 시간(분) */
   declare public workMinutes: CreationOptional<number | null>;
   declare public note: CreationOptional<string>;
@@ -52,13 +47,7 @@ AttendanceRecordModel.init(
     },
     workDate: { type: DataTypes.STRING(10), allowNull: false },
     checkInAt: { type: DataTypes.DATE, allowNull: false },
-    checkInStatus: {
-      type: DataTypes.ENUM('normal', 'late'),
-      allowNull: false,
-      defaultValue: 'normal',
-    },
     checkOutAt: { type: DataTypes.DATE, allowNull: true },
-    checkOutStatus: { type: DataTypes.ENUM('normal', 'early'), allowNull: true },
     workMinutes: { type: DataTypes.INTEGER, allowNull: true },
     note: { type: DataTypes.STRING(500), allowNull: false, defaultValue: '' },
     checklist: { type: DataTypes.TEXT, allowNull: false, defaultValue: '[]' },

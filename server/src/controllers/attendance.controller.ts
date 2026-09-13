@@ -120,9 +120,7 @@ export const getAttendanceSettings = async (_req: AuthRequest, res: Response): P
     sendSuccess(res, {
       checklist,
       policy: {
-        workStartTime: policy.workStartTime,
-        workEndTime: policy.workEndTime,
-        graceMinutes: policy.graceMinutes,
+        standardWorkMinutes: policy.standardWorkMinutes,
         requireChecklist: policy.requireChecklist,
       },
     });
@@ -174,17 +172,28 @@ export const deleteAttendanceChecklistItem = async (
 };
 
 export const updateAttendancePolicy = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { workStartTime, workEndTime, graceMinutes, requireChecklist } = req.body;
-  await run(res, '출퇴근 기준 저장', {}, async () => {
+  const { standardWorkMinutes, requireChecklist } = req.body;
+  await run(res, '출퇴근 설정 저장', {}, async () => {
     sendSuccess(
       res,
-      await attendanceService.updatePolicy({
-        workStartTime,
-        workEndTime,
-        graceMinutes,
-        requireChecklist,
-      }),
-      '기준이 저장되었습니다.'
+      await attendanceService.updatePolicy({ standardWorkMinutes, requireChecklist }),
+      '설정이 저장되었습니다.'
     );
+  });
+};
+
+export const getAttendanceToday = async (_req: AuthRequest, res: Response): Promise<void> => {
+  await run(res, '오늘 출근 현황 조회', {}, async () => {
+    sendSuccess(res, await attendanceService.getTodayBoard());
+  });
+};
+
+export const reorderAttendanceChecklist = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const { ids } = req.body;
+  await run(res, '확인 항목 순서 저장', {}, async () => {
+    sendSuccess(res, await attendanceService.reorderChecklist(ids));
   });
 };

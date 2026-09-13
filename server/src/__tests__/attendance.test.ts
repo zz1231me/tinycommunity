@@ -61,8 +61,7 @@ beforeAll(async () => {
     cookies[id] = await loginAs(id, PASSWORD);
   }
 
-  // 지금 몇 시에 돌든 '정상 출근' 이 되도록 기준을 늦춰 둔다.
-  await setPolicy({ workStartTime: '23:59', workEndTime: '23:59', graceMinutes: 0 });
+  await setPolicy({ requireChecklist: true, standardWorkMinutes: 480 });
   requiredItem = await addItem('보안 수칙을 확인했습니다.', true);
   optionalItem = await addItem('건강 상태에 이상이 없습니다.', false);
 });
@@ -97,7 +96,7 @@ describe('오늘 상태', () => {
     expect(res.body.data.checklist.map((i: { id: number }) => i.id)).toEqual(
       expect.arrayContaining([requiredItem.id, optionalItem.id])
     );
-    expect(res.body.data.policy.workStartTime).toBe('23:59');
+    expect(res.body.data.policy.standardWorkMinutes).toBe(480);
   });
 });
 
@@ -123,7 +122,6 @@ describe('출근', () => {
       note: '정상 출근',
     });
     expect(res.status).toBe(201);
-    expect(res.body.data.checkInStatus).toBe('normal');
     expect(res.body.data.checkOutAt).toBeNull();
     expect(res.body.data.note).toBe('정상 출근');
     expect(res.body.data.checklist).toEqual(
@@ -151,14 +149,12 @@ describe('출근', () => {
     expect(results.filter(r => r.status === 409)).toHaveLength(1);
   });
 
-  it('기준 시각을 넘기면 지각으로 남는다', async () => {
-    await setPolicy({ workStartTime: '00:00', graceMinutes: 0 });
+  it('세 번째 직원도 따로 기록된다', async () => {
     const res = await checkIn(cookies.attworker3, {
       responses: [{ itemId: requiredItem.id, checked: true }],
     });
     expect(res.status).toBe(201);
-    expect(res.body.data.checkInStatus).toBe('late');
-    await setPolicy({ workStartTime: '23:59' });
+    expect(res.body.data.userId).toBe('attworker3');
   });
 });
 
@@ -173,8 +169,6 @@ describe('퇴근', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.checkOutAt).not.toBeNull();
     expect(res.body.data.workMinutes).toBeGreaterThanOrEqual(0);
-    // 기준 퇴근 시각(23:59) 전이므로 조기 퇴근이다
-    expect(res.body.data.checkOutStatus).toBe('early');
   });
 
   it('두 번 찍히지 않는다', async () => {
@@ -256,19 +250,71 @@ describe('관리자 조회', () => {
       .get('/api/admin/attendance/summary')
       .set('Cookie', adminCookie);
     expect(res.status).toBe(200);
-    const rows = res.body.data as Array<{ userId: string; days: number; lateDays: number }>;
+    const rows = res.body.data as Array<{ userId: string; days: number; openDays: number }>;
     expect(rows.find(r => r.userId === 'attworker4')?.days).toBe(0);
-    expect(rows.find(r => r.userId === 'attworker3')?.lateDays).toBe(1);
+    expect(rows.find(r => r.userId === 'attworker3')?.days).toBe(1);
+  });
+});
+
+describe('오늘 현황', () => {
+  it('근무 중·퇴근·미출근을 구분해서 명단 전체를 준다', async () => {
+    const res = await request(app).get('/api/admin/attendance/today').set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    const rows = res.body.data.rows as Array<{
+      userId: string;
+      state: string;
+      minutes: number | null;
+    }>;
+    const byId = new Map(rows.map(r => [r.userId, r]));
+    expect(byId.get('attworker1')?.state).toBe('done');
+    expect(byId.get('attworker2')?.state).toBe('working');
+    expect(byId.get('attworker4')?.state).toBe('absent');
+    // 근무 중인 사람도 지금까지 흐른 시간이 보여야 한다
+    expect(byId.get('attworker2')?.minutes).toBeGreaterThanOrEqual(0);
+    expect(byId.get('attworker4')?.minutes).toBeNull();
+  });
+});
+
+describe('확인 항목 순서', () => {
+  it('보낸 순서대로 다시 매긴다', async () => {
+    const before = await request(app)
+      .get('/api/admin/attendance/settings')
+      .set('Cookie', adminCookie);
+    const ids = (before.body.data.checklist as Array<{ id: number }>).map(i => i.id);
+
+    const res = await request(app)
+      .put('/api/admin/attendance/checklist/reorder')
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({ ids: [...ids].reverse() });
+    expect(res.status).toBe(200);
+    expect((res.body.data as Array<{ id: number }>).map(i => i.id)).toEqual([...ids].reverse());
+
+    // 원래대로 돌려놓는다
+    await request(app)
+      .put('/api/admin/attendance/checklist/reorder')
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({ ids });
+  });
+
+  it('빠진 항목이 있으면 거절한다 — 조용히 순서가 뒤엉키면 안 된다', async () => {
+    const res = await request(app)
+      .put('/api/admin/attendance/checklist/reorder')
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({ ids: [requiredItem.id] });
+    expect(res.status).toBe(400);
   });
 });
 
 describe('기준 설정', () => {
-  it('시각 형식이 어긋나면 거절한다', async () => {
+  it('기준 근무 시간이 범위를 벗어나면 거절한다', async () => {
     const res = await request(app)
       .put('/api/admin/attendance/policy')
       .set(CSRF_HEADER)
       .set('Cookie', adminCookie)
-      .send({ workStartTime: '9시' });
+      .send({ standardWorkMinutes: 5000 });
     expect(res.status).toBe(400);
   });
 

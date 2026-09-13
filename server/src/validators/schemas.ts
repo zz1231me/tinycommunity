@@ -108,8 +108,6 @@ export const updateTagSchema = createTagSchema.partial();
 
 // ─── 출퇴근 ───────────────────────────────────────────────
 
-const HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/;
-
 export const attendanceCheckInSchema = z.object({
   responses: z
     .array(z.object({ itemId: z.number().int(), checked: z.boolean() }))
@@ -134,8 +132,10 @@ export const attendanceChecklistUpdateSchema = z.object({
 });
 
 export const attendancePolicySchema = z.object({
-  workStartTime: z.string().regex(HHMM, '시각은 HH:MM 형식이어야 합니다.').optional(),
-  workEndTime: z.string().regex(HHMM, '시각은 HH:MM 형식이어야 합니다.').optional(),
-  graceMinutes: z.number().int().min(0).max(240).optional(),
+  standardWorkMinutes: z.number().int().min(30).max(1440).optional(),
   requireChecklist: z.boolean().optional(),
+});
+
+export const attendanceReorderSchema = z.object({
+  ids: z.array(z.number().int()).min(1, '순서를 지정할 항목이 없습니다.').max(100),
 });
