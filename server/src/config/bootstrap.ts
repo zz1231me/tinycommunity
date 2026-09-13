@@ -417,6 +417,27 @@ export async function initializeDefaultData() {
       logger.info(`✅ 이벤트 권한 ${permCount}개 존재`);
     }
 
+    // 5. 출퇴근 기준·확인 항목 초기화
+    //    기준 행이 없을 때만 만든다. 관리자가 항목을 모두 지웠다고 해서 다시 살아나면 안 된다.
+    logger.info('🔄 출퇴근 기준 확인 중...');
+    const { AttendancePolicy } = await import('../models/AttendancePolicy');
+    const { AttendanceChecklistItem } = await import('../models/AttendanceChecklistItem');
+    const policyExists = await AttendancePolicy.count();
+
+    if (policyExists === 0) {
+      logger.info('📝 기본 출퇴근 기준 생성 중...');
+      await AttendancePolicy.create({});
+      const defaultItems = [
+        { label: '보안 수칙을 확인했습니다.', required: true, order: 1 },
+        { label: '오늘 처리할 업무를 확인했습니다.', required: true, order: 2 },
+        { label: '건강 상태에 이상이 없습니다.', required: false, order: 3 },
+      ];
+      for (const item of defaultItems) await AttendanceChecklistItem.create(item);
+      logger.info(`  ✅ 출근 확인 항목 ${defaultItems.length}개 생성`);
+    } else {
+      logger.info('✅ 출퇴근 기준 존재');
+    }
+
     logger.info('✅ 초기 데이터 확인/생성 완료');
   } catch (error) {
     logger.error('❌ 초기 데이터 생성 실패:', error);

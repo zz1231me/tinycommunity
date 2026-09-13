@@ -89,6 +89,13 @@ export const discoveryKeys = {
   },
 } as const;
 
+/** 출퇴근 — 내 오늘 상태와 월별 기록 */
+export const attendanceKeys = {
+  all: ['attendance'] as const,
+  me: ['attendance', 'me'] as const,
+  history: (month: string) => ['attendance', 'history', month] as const,
+} as const;
+
 export const adminKeys = {
   stats: {
     all: ['admin', 'stats'] as const,
@@ -150,6 +157,14 @@ export const adminKeys = {
   },
   features: {
     all: ['admin', 'features'] as const,
+  },
+  attendance: {
+    all: ['admin', 'attendance'] as const,
+    records: (params: Record<string, unknown>) =>
+      ['admin', 'attendance', 'records', params] as const,
+    summary: (params: Record<string, unknown>) =>
+      ['admin', 'attendance', 'summary', params] as const,
+    settings: ['admin', 'attendance', 'settings'] as const,
   },
   logs: {
     // 로그 4종(보안/감사/로그인/에러)은 필터 조건이 키에 들어간다.

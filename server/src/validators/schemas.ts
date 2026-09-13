@@ -105,3 +105,37 @@ export const createTagSchema = z.object({
 });
 
 export const updateTagSchema = createTagSchema.partial();
+
+// ─── 출퇴근 ───────────────────────────────────────────────
+
+const HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+export const attendanceCheckInSchema = z.object({
+  responses: z
+    .array(z.object({ itemId: z.number().int(), checked: z.boolean() }))
+    .max(100, '확인 항목이 너무 많습니다.')
+    .optional()
+    .default([]),
+  note: z.string().max(500, '메모는 500자를 초과할 수 없습니다.').optional(),
+});
+
+export const attendanceChecklistCreateSchema = z.object({
+  label: z.string().trim().min(1, '항목 내용을 입력해주세요.').max(200),
+  description: z.string().max(500).optional(),
+  required: z.boolean().optional(),
+});
+
+export const attendanceChecklistUpdateSchema = z.object({
+  label: z.string().trim().min(1, '항목 내용을 입력해주세요.').max(200).optional(),
+  description: z.string().max(500).optional(),
+  required: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+  order: z.number().int().min(0).optional(),
+});
+
+export const attendancePolicySchema = z.object({
+  workStartTime: z.string().regex(HHMM, '시각은 HH:MM 형식이어야 합니다.').optional(),
+  workEndTime: z.string().regex(HHMM, '시각은 HH:MM 형식이어야 합니다.').optional(),
+  graceMinutes: z.number().int().min(0).max(240).optional(),
+  requireChecklist: z.boolean().optional(),
+});

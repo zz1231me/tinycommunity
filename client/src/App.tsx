@@ -50,6 +50,7 @@ const MyTasks = lazy(() => import('./pages/MyTasks'));
 const Drafts = lazy(() => import('./pages/Drafts'));
 const UserProfile = lazy(() => import('./pages/UserProfile'));
 const Messages = lazy(() => import('./pages/Messages'));
+const AttendancePage = lazy(() => import('./pages/attendance/AttendancePage'));
 
 function App() {
   const { setSettings } = useSiteSettings();
@@ -263,6 +264,14 @@ function App() {
                   element={
                     <FeatureRoute feature="tools.memo" name="메모">
                       <MemoBoard />
+                    </FeatureRoute>
+                  }
+                />
+                <Route
+                  path="attendance"
+                  element={
+                    <FeatureRoute feature="tools.attendance" name="출퇴근 기록">
+                      <AttendancePage />
                     </FeatureRoute>
                   }
                 />

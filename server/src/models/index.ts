@@ -45,6 +45,9 @@ import { PasswordResetRequest } from './PasswordResetRequest';
 import { CustomPage } from './CustomPage';
 import { Announcement } from './Announcement';
 import { TempShare } from './TempShare';
+import { AttendanceRecord } from './AttendanceRecord';
+import { AttendanceChecklistItem } from './AttendanceChecklistItem';
+import { AttendancePolicy } from './AttendancePolicy';
 
 // User 관련 관계
 
@@ -375,6 +378,15 @@ BoardManager.belongsTo(User, { foreignKey: 'userId', as: 'user', constraints: fa
 User.hasMany(Memo, { foreignKey: 'UserId', as: 'memos', onDelete: 'CASCADE', hooks: true });
 Memo.belongsTo(User, { foreignKey: 'UserId', as: 'user' });
 
+// 출퇴근 기록 — 사용자를 지우면 기록도 함께 지운다
+User.hasMany(AttendanceRecord, {
+  foreignKey: 'UserId',
+  as: 'attendanceRecords',
+  onDelete: 'CASCADE',
+  hooks: true,
+});
+AttendanceRecord.belongsTo(User, { foreignKey: 'UserId', as: 'user' });
+
 // 포인트 관련 관계
 User.hasOne(UserPoint, { foreignKey: 'UserId', as: 'point', onDelete: 'CASCADE', hooks: true });
 UserPoint.belongsTo(User, { foreignKey: 'UserId', as: 'user' });
@@ -521,6 +533,9 @@ export {
   CustomPage,
   Announcement,
   TempShare,
+  AttendanceRecord,
+  AttendanceChecklistItem,
+  AttendancePolicy,
 };
 
 // 데이터베이스 동기화 헬퍼

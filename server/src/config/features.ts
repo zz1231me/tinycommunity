@@ -194,6 +194,13 @@ export const FEATURES = {
     group: 'tools',
     defaultEnabled: false,
   },
+  'tools.attendance': {
+    label: '출퇴근 기록',
+    description:
+      '직원이 직접 출근·퇴근을 찍고, 출근할 때 확인 항목에 답합니다. 기록은 관리자 패널에서 봅니다.',
+    group: 'tools',
+    defaultEnabled: true,
+  },
   'tools.tempShare': {
     label: '임시 파일 공유',
     description: '기한이 지나면 사라지는 링크로 파일을 건네줍니다.',

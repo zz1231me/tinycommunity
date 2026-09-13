@@ -64,6 +64,7 @@ import boardManagerRoutes from './routes/boardManager.routes';
 import customPageRoutes from './routes/customPage.routes';
 import announcementRoutes from './routes/announcement.routes';
 import tempShareRoutes from './routes/tempShare.routes';
+import attendanceRoutes from './routes/attendance.routes';
 import { cleanupExpiredTempShares } from './controllers/tempShare.controller';
 
 // 데이터베이스 설정
@@ -385,6 +386,7 @@ app.use('/api/board-managers', boardManagerRoutes);
 app.use('/api/custom-pages', customPageRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/temp-share', requireFeature('tools.tempShare'), tempShareRoutes);
+app.use('/api/attendance', requireFeature('tools.attendance'), attendanceRoutes);
 
 const imageStaticOptions = {
   maxAge: env.NODE_ENV === 'production' ? '1y' : 0,

@@ -38,7 +38,7 @@ import { authenticate } from '../middlewares/auth.middleware';
 import { isAdmin } from '../middlewares/isAdmin';
 import { ipWhitelistMiddleware } from '../middlewares/ipWhitelistMiddleware';
 import { adminLimiter } from '../middlewares/rate-limit.middleware';
-import { validateUuidParam } from '../middlewares/validate.middleware';
+import { validateUuidParam, validateBody } from '../middlewares/validate.middleware';
 import { getSecurityLogs, deleteSecurityLogs } from '../controllers/securityLog.controller';
 import { getErrorLogs, deleteErrorLogs } from '../controllers/errorLog.controller';
 import { getLoginHistory, getGlobalLoginHistory } from '../controllers/loginHistory.controller';
@@ -48,6 +48,20 @@ import { getAdminStats } from '../controllers/stats.controller';
 import { getFeatureCatalog, updateFeatures } from '../controllers/featureFlag.controller';
 import rateLimitAdminRoutes from './rateLimitAdmin.routes';
 import tagRoutes from './tag.routes';
+import {
+  getAttendanceRecords,
+  getAttendanceSummary,
+  getAttendanceSettings,
+  createAttendanceChecklistItem,
+  updateAttendanceChecklistItem,
+  deleteAttendanceChecklistItem,
+  updateAttendancePolicy,
+} from '../controllers/attendance.controller';
+import {
+  attendanceChecklistCreateSchema,
+  attendanceChecklistUpdateSchema,
+  attendancePolicySchema,
+} from '../validators/schemas';
 import {
   getIpRules,
   getStats as getIpStats,
@@ -117,6 +131,29 @@ router.put('/events/permissions', setEventPermissions as RequestHandler);
 router.get('/events', getAllEvents as RequestHandler);
 router.put('/events/:id', updateEventAsAdmin as RequestHandler);
 router.delete('/events/:id', deleteEventAsAdmin as RequestHandler);
+
+// ===== 출퇴근 관리 API =====
+// 기능 스위치를 꺼도 지난 기록은 남아 있어야 하므로 여기에는 requireFeature 를 걸지 않는다.
+// ⚠️ 정적 라우트를 :id 라우트보다 먼저 정의
+router.get('/attendance/records', getAttendanceRecords as RequestHandler);
+router.get('/attendance/summary', getAttendanceSummary as RequestHandler);
+router.get('/attendance/settings', getAttendanceSettings as RequestHandler);
+router.post(
+  '/attendance/checklist',
+  validateBody(attendanceChecklistCreateSchema),
+  createAttendanceChecklistItem as RequestHandler
+);
+router.put(
+  '/attendance/checklist/:id',
+  validateBody(attendanceChecklistUpdateSchema),
+  updateAttendanceChecklistItem as RequestHandler
+);
+router.delete('/attendance/checklist/:id', deleteAttendanceChecklistItem as RequestHandler);
+router.put(
+  '/attendance/policy',
+  validateBody(attendancePolicySchema),
+  updateAttendancePolicy as RequestHandler
+);
 
 // ===== 위키 권한 관리 API =====
 router.get('/wiki/permissions', getWikiPermissions as RequestHandler);
