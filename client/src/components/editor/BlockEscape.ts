@@ -1,18 +1,20 @@
-// client/src/components/editor/CodeBlockEscape.ts
-// 코드 블록에서 빠져나오는 길을 만든다.
+// client/src/components/editor/BlockEscape.ts
+// 글의 마지막 블록에서 빠져나오는 길을 만든다.
 //
-// 코드 블록 안에서는 Enter 가 줄바꿈으로 쓰인다. CKEditor 는 Enter 를 세 번
-// 연달아 누르면 블록을 벗어나게 해 두었지만, 그것을 아는 사람은 거의 없다.
-// 게다가 코드 블록이 글의 마지막이면 다음 세 가지가 모두 막힌다:
-//   - 아래 방향키: 갈 블록이 없어 아무 일도 없다
-//   - 아래 빈 곳 클릭: 커서가 코드 블록 안으로 들어간다(그것도 맨 앞으로)
-//   - 마우스로 뒤쪽 클릭: 마찬가지
-// 그래서 코드 블록을 한 번 만들면 글을 이어 쓸 수 없다.
+// CKEditor 는 본문 아래 빈 곳을 누르면 "가장 가까운 블록" 으로 커서를 보낸다.
+// 그래서 마지막 블록이 무엇이냐에 따라 두 가지 문제가 생긴다.
 //
-// 여기서는 사람이 실제로 하는 두 가지 동작을 받아 준다.
-//   1) 블록 끝에서 아래(오른쪽) 방향키 → 뒤에 문단을 만들고 커서를 옮긴다
-//      블록 처음에서 위(왼쪽) 방향키   → 앞에 문단을 만든다
-//   2) 마지막 블록 아래 빈 곳 클릭     → 뒤에 문단을 만들고 커서를 옮긴다
+//  1. 갇힌다 — 코드 블록은 Enter 가 줄바꿈으로 쓰여 안에서 나올 수 없고(세 번 연달아
+//     누르면 나오지만 아는 사람이 없다), 인용구도 아래를 누르면 안쪽 문단으로 들어간다.
+//     마지막이 그 블록이면 글을 이어 쓸 방법이 없다.
+//
+//  2. 지워진다 — 표·이미지·구분선 같은 위젯은 아래를 눌렀을 때 '선택' 된다.
+//     그 상태에서 한 글자만 입력하면 위젯이 통째로 대체된다.
+//     표 아래 빈 곳을 누르고 글을 쓰려 한 사람은 표를 잃는다.
+//
+// 사람이 실제로 하는 동작을 그대로 받아 준다.
+//   - 마지막 블록 아래 빈 곳 클릭 → 뒤에 문단을 만들고 커서를 옮긴다
+//   - 코드 블록 끝에서 아래(처음에서 위) 방향키 → 그쪽에 문단을 만든다
 //
 // 나갈 곳이 이미 있으면 아무것도 하지 않는다 — 평소 이동은 브라우저에 맡긴다.
 // 문단은 실제로 필요할 때만 만들어지므로 저장되는 내용에 빈 문단이 쌓이지 않는다.
@@ -22,11 +24,10 @@ import { MouseObserver, Plugin, type ModelElement } from 'ckeditor5';
 /**
  * 안에서 Enter 가 소비돼 갇히는 블록.
  *
- * 표·이미지·구분선 같은 위젯은 CKEditor 의 WidgetTypeAround 가 위아래에 문단 삽입
- * 버튼을 띄워 주고, 목록·인용구는 빈 줄에서 Enter 를 한 번 더 누르면 빠져나온다.
- * 코드 블록만 그 둘 다에 해당하지 않는다.
+ * 위젯(표·이미지·구분선 등)은 여기 적지 않는다 — 스키마가 object 로 표시하므로
+ * 새 위젯이 늘어도 자동으로 함께 다뤄진다.
  */
-const TRAPPING_BLOCKS = new Set(['codeBlock']);
+const TRAPPING_BLOCKS = new Set(['codeBlock', 'blockQuote']);
 
 const KEY_UP = 38;
 const KEY_DOWN = 40;
@@ -54,9 +55,19 @@ export function isClickBelowBlock(opts: {
   return opts.button === 0 && opts.clientY > opts.blockBottom;
 }
 
-export class CodeBlockEscape extends Plugin {
+/**
+ * 이 블록이 마지막일 때, 아래를 누르면 문단을 만들어 줘야 하는가.
+ *
+ * 갇히는 블록이거나 위젯이면 그렇다. 평범한 문단·제목·목록은 그대로 둔다 —
+ * 그쪽은 아래를 눌렀을 때 끝으로 커서가 가는 것이 자연스럽고, 잃을 것도 없다.
+ */
+export function needsEscapeHatch(opts: { blockName: string; isObject: boolean }): boolean {
+  return TRAPPING_BLOCKS.has(opts.blockName) || opts.isObject;
+}
+
+export class BlockEscape extends Plugin {
   static get pluginName() {
-    return 'CodeBlockEscape' as const;
+    return 'BlockEscape' as const;
   }
 
   init(): void {
@@ -99,7 +110,8 @@ export class CodeBlockEscape extends Plugin {
         data.preventDefault();
         evt.stop();
       },
-      { priority: 'high' }
+      // 위젯 선택보다 먼저 가로채야 한다 — 선택된 뒤에는 다음 입력이 위젯을 지운다
+      { priority: 'highest' }
     );
   }
 
@@ -111,7 +123,7 @@ export class CodeBlockEscape extends Plugin {
 
     const position = selection.getFirstPosition();
     const block = position?.parent as ModelElement | undefined;
-    if (!position || !block || !TRAPPING_BLOCKS.has(block.name)) return false;
+    if (!position || !block) return false;
 
     const decided = shouldEscapeByArrow({
       blockName: block.name,
@@ -124,18 +136,21 @@ export class CodeBlockEscape extends Plugin {
     return true;
   }
 
-  /** 마지막 블록이 갇히는 블록일 때, 그 아래 빈 곳을 누르면 문단을 만든다 */
+  /** 마지막 블록 아래 빈 곳을 눌렀을 때, 그 블록이 갇히거나 지워질 수 있으면 문단을 만든다 */
   private _escapeFromClickBelow(domEvent: MouseEvent): boolean {
-    const editing = this.editor.editing;
-    const root = this.editor.model.document.getRoot();
+    const editor = this.editor;
+    const root = editor.model.document.getRoot();
     if (!root || root.childCount === 0) return false;
 
     const last = root.getChild(root.childCount - 1) as ModelElement;
-    if (!TRAPPING_BLOCKS.has(last.name)) return false;
+    if (!needsEscapeHatch({ blockName: last.name, isObject: editor.model.schema.isObject(last) })) {
+      return false;
+    }
 
-    const viewElement = editing.mapper.toViewElement(last);
+    const viewElement = editor.editing.mapper.toViewElement(last);
     if (!viewElement) return false;
-    const dom = editing.view.domConverter.mapViewToDom(viewElement) as HTMLElement | undefined;
+    const dom = editor.editing.view.domConverter.mapViewToDom(viewElement) as
+      HTMLElement | undefined;
     if (!dom) return false;
 
     // 블록보다 아래를 눌렀을 때만 — 블록 안쪽 클릭은 그대로 둔다

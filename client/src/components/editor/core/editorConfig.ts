@@ -65,7 +65,7 @@ import {
   type EditorConfig,
 } from 'ckeditor5';
 
-import { CodeBlockEscape } from '../CodeBlockEscape';
+import { BlockEscape } from '../BlockEscape';
 import 'ckeditor5/ckeditor5.css';
 import koTranslations from 'ckeditor5/translations/ko.js';
 
@@ -341,7 +341,7 @@ const POST_PLUGINS: PluginList = [
   TodoList, // 회의록·작업목록에 바로 쓰이는 체크리스트
   BlockQuote,
   CodeBlock,
-  CodeBlockEscape, // 코드 블록에서 빠져나오는 길 (방향키·아래쪽 클릭)
+  BlockEscape, // 마지막 블록에서 빠져나오는 길 (아래쪽 클릭·방향키)
   HorizontalLine,
   Link,
   AutoLink,
@@ -388,7 +388,7 @@ const COMMENT_PLUGINS: PluginList = [
   ListProperties,
   BlockQuote,
   CodeBlock,
-  CodeBlockEscape, // 코드 블록에서 빠져나오는 길 (방향키·아래쪽 클릭)
+  BlockEscape, // 마지막 블록에서 빠져나오는 길 (아래쪽 클릭·방향키)
   RemoveFormat,
   PasteFromOffice,
 ];
