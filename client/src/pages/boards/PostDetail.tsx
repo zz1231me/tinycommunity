@@ -13,7 +13,7 @@
 //  7. 활동 기록   — 업무용 게시판만 (누가 언제 무엇을 바꿨나)
 //  8. 읽음 확인   — 작성자·게시판 담당자만
 //  9. 관련 글 → 댓글
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { DEFAULT_TAG_COLOR } from '../../constants/colors';
 import {
@@ -95,12 +95,14 @@ const CKContentRenderer: React.FC<{
     });
   }, [content]);
 
+  // 정화 이후에 멘션을 강조한다.
+  // 기억해 두는 이유: 이 값이 매번 새로 만들어지면 본문 전체를 다시 정화하고,
+  // dangerouslySetInnerHTML 이 컨테이너의 자식을 통째로 갈아 끼운다.
+  const sanitizedContent = useMemo(() => highlightMentions(sanitizeHTML(content)), [content]);
+
   if (!content) {
     return <ListState>내용이 없습니다.</ListState>;
   }
-
-  // 정화 이후에 멘션을 강조한다
-  const sanitizedContent = highlightMentions(sanitizeHTML(content));
 
   return (
     <div

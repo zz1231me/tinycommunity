@@ -8,6 +8,12 @@
 //
 // 카드의 다운로드는 기존 /api/uploads/download 를 타고, 그 라우트가 게시판 권한과
 // 비밀글 접근을 다시 검사한다.
+//
+// 본문은 dangerouslySetInnerHTML 로 붙는다. 그래서 상세 화면이 다시 그려질 때마다
+// 컨테이너의 자식이 통째로 새로 만들어지고, 여기서 꾸며 둔 카드는 그대로 버려진다.
+// 마지막 재렌더 뒤에는 이 훅이 다시 돌 계기가 없어, 참조가 꾸며지지 않은 맨 글자로
+// 남는다 — 눌러도 아무 일도 일어나지 않는 상태다.
+// 그래서 컨테이너의 자식이 바뀌는지 지켜보다가 바뀌면 다시 꾸민다.
 
 import { useEffect, type RefObject } from 'react';
 import { formatFileSize, isImageFile } from '../utils/fileUtils';
@@ -43,88 +49,103 @@ export function useAttachmentRefs(
     if (!container || !enabled) return;
 
     const byName = new Map(attachments.map(a => [a.originalName, a]));
-    const cleanups: Array<() => void> = [];
+    let cleanups: Array<() => void> = [];
 
-    container
-      .querySelectorAll<HTMLElement>(
-        // 클래스·속성 이름은 에디터 플러그인이 정한 것을 그대로 쓴다.
-        // 여기에 문자열을 다시 적어 두면, 저장 마크업을 바꿨을 때 읽기 화면만 조용히
-        // 참조를 못 알아보는 상태가 된다.
-        `span.${ATTACHMENT_REF_CLASS}[${ATTACHMENT_REF_ATTR}]:not([${DONE_ATTR}])`
-      )
-      .forEach(el => {
-        const name = el.getAttribute(ATTACHMENT_REF_ATTR) ?? '';
-        const target = byName.get(name);
-        el.setAttribute(DONE_ATTR, 'true');
+    const decorate = () => {
+      // 이전 회차에 걸어 둔 리스너는 그 노드와 함께 사라졌다 — 목록만 비운다
+      cleanups = [];
+      container
+        .querySelectorAll<HTMLElement>(
+          // 클래스·속성 이름은 에디터 플러그인이 정한 것을 그대로 쓴다.
+          // 여기에 문자열을 다시 적어 두면, 저장 마크업을 바꿨을 때 읽기 화면만 조용히
+          // 참조를 못 알아보는 상태가 된다.
+          `span.${ATTACHMENT_REF_CLASS}[${ATTACHMENT_REF_ATTR}]:not([${DONE_ATTR}])`
+        )
+        .forEach(el => {
+          const name = el.getAttribute(ATTACHMENT_REF_ATTR) ?? '';
+          const target = byName.get(name);
+          el.setAttribute(DONE_ATTR, 'true');
 
-        // 첨부가 지워졌는데 본문 참조만 남은 경우 — 조용히 사라지면 증적이 있었다는
-        // 사실 자체가 지워지므로, 무엇이 없어졌는지 남겨 둔다.
-        if (!target) {
-          el.classList.add('attachment-ref--missing');
-          el.textContent = `삭제된 첨부: ${name}`;
-          el.setAttribute('title', '이 첨부는 더 이상 게시글에 없습니다.');
-          return;
-        }
-
-        const image = isImageFile(target.originalName);
-        el.classList.add('attachment-ref--ready');
-        el.textContent = '';
-        el.setAttribute('role', 'button');
-        el.setAttribute('tabindex', '0');
-        el.setAttribute('title', image ? `${name} 크게 보기` : `${name} 다운로드`);
-        el.setAttribute('aria-label', el.getAttribute('title') as string);
-
-        const icon = document.createElement('span');
-        icon.className = 'attachment-ref__icon';
-        icon.textContent = image ? '🖼️' : '📎';
-
-        const label = document.createElement('span');
-        label.className = 'attachment-ref__name';
-        label.textContent = name;
-
-        el.append(icon, label);
-
-        if (target.size) {
-          const size = document.createElement('span');
-          size.className = 'attachment-ref__size';
-          size.textContent = formatFileSize(target.size);
-          el.append(size);
-        }
-
-        const activate = async () => {
-          if (image && onPreviewImage) {
-            onPreviewImage(target.url ?? `/api/uploads/download/${target.storedName}`, name);
+          // 첨부가 지워졌는데 본문 참조만 남은 경우 — 조용히 사라지면 증적이 있었다는
+          // 사실 자체가 지워지므로, 무엇이 없어졌는지 남겨 둔다.
+          if (!target) {
+            el.classList.add('attachment-ref--missing');
+            el.textContent = `삭제된 첨부: ${name}`;
+            el.setAttribute('title', '이 첨부는 더 이상 게시글에 없습니다.');
             return;
           }
-          try {
-            await downloadFile({
-              storedName: target.storedName,
-              originalName: target.originalName,
-              url: target.url,
-            });
-          } catch (err) {
-            toast.error(err instanceof Error ? err.message : '파일 다운로드에 실패했습니다.');
+
+          const image = isImageFile(target.originalName);
+          el.classList.add('attachment-ref--ready');
+          el.textContent = '';
+          el.setAttribute('role', 'button');
+          el.setAttribute('tabindex', '0');
+          el.setAttribute('title', image ? `${name} 크게 보기` : `${name} 다운로드`);
+          el.setAttribute('aria-label', el.getAttribute('title') as string);
+
+          const icon = document.createElement('span');
+          icon.className = 'attachment-ref__icon';
+          icon.textContent = image ? '🖼️' : '📎';
+
+          const label = document.createElement('span');
+          label.className = 'attachment-ref__name';
+          label.textContent = name;
+
+          el.append(icon, label);
+
+          if (target.size) {
+            const size = document.createElement('span');
+            size.className = 'attachment-ref__size';
+            size.textContent = formatFileSize(target.size);
+            el.append(size);
           }
-        };
 
-        const onClick = (e: Event) => {
-          e.preventDefault();
-          void activate();
-        };
-        const onKeyDown = (e: KeyboardEvent) => {
-          if (e.key !== 'Enter' && e.key !== ' ') return;
-          e.preventDefault();
-          void activate();
-        };
+          const activate = async () => {
+            if (image && onPreviewImage) {
+              onPreviewImage(target.url ?? `/api/uploads/download/${target.storedName}`, name);
+              return;
+            }
+            try {
+              await downloadFile({
+                storedName: target.storedName,
+                originalName: target.originalName,
+                url: target.url,
+              });
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : '파일 다운로드에 실패했습니다.');
+            }
+          };
 
-        el.addEventListener('click', onClick);
-        el.addEventListener('keydown', onKeyDown);
-        cleanups.push(() => {
-          el.removeEventListener('click', onClick);
-          el.removeEventListener('keydown', onKeyDown);
+          const onClick = (e: Event) => {
+            e.preventDefault();
+            void activate();
+          };
+          const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            void activate();
+          };
+
+          el.addEventListener('click', onClick);
+          el.addEventListener('keydown', onKeyDown);
+          cleanups.push(() => {
+            el.removeEventListener('click', onClick);
+            el.removeEventListener('keydown', onKeyDown);
+          });
         });
-      });
+    };
 
-    return () => cleanups.forEach(fn => fn());
+    decorate();
+
+    // 본문이 다시 그려지면(자식이 통째로 교체되면) 다시 꾸민다.
+    // 카드 안쪽(아이콘·이름)은 참조 span 의 자식이라 subtree 를 보지 않는 이 감시에
+    // 걸리지 않는다 — 스스로를 다시 부르는 일이 없다.
+    const observer = new MutationObserver(() => decorate());
+    observer.observe(container, { childList: true });
+
+    return () => {
+      observer.disconnect();
+      cleanups.forEach(fn => fn());
+    };
   }, [containerRef, attachments, onPreviewImage, enabled]);
 }

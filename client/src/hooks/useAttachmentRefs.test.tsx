@@ -3,7 +3,7 @@
 // 그 사실이 남는지를 고정한다. 이 둘이 무너지면 "증적" 이라는 목적 자체가 깨진다.
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useRef } from 'react';
 import { useAttachmentRefs, type AttachmentRefTarget } from './useAttachmentRefs';
 
@@ -51,6 +51,26 @@ describe('첨부가 있는 참조', () => {
     expect(mockDownload).toHaveBeenCalledWith(
       expect.objectContaining({ storedName: 'stored-1', originalName: '결과.xlsx' })
     );
+  });
+
+  it('본문이 다시 그려져도 다시 꾸민다 — 눌러도 아무 일 없는 상태가 되면 안 된다', () => {
+    // 상세 화면은 dangerouslySetInnerHTML 로 본문을 붙인다. 다시 그려지면 여기서
+    // 꾸며 둔 카드가 통째로 버려지는데, 그 뒤에 훅이 다시 돌 계기가 없으면
+    // 참조가 맨 글자로 남아 눌러도 아무 일도 일어나지 않는다.
+    const { getByTestId } = render(<Harness html={ref('결과.xlsx')} />);
+    const body = getByTestId('body');
+    expect(body.querySelector('span.attachment-ref')?.getAttribute('data-ref-ready')).toBe('true');
+
+    // React 가 본문을 새로 붙이는 것과 같은 일을 손으로 일으킨다
+    body.innerHTML = ref('결과.xlsx');
+    expect(body.querySelector('span.attachment-ref')?.getAttribute('data-ref-ready')).toBeNull();
+
+    // 자식 교체를 지켜보다 다시 꾸며야 한다
+    return waitFor(() => {
+      const el = body.querySelector('span.attachment-ref');
+      expect(el?.getAttribute('data-ref-ready')).toBe('true');
+      expect(el?.getAttribute('role')).toBe('button');
+    });
   });
 
   it('Enter 로도 열 수 있다', () => {
