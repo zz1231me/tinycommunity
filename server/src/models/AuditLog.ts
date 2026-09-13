@@ -29,10 +29,19 @@ export type AuditAction =
   | 'delete_error_log'
   | 'create_ip_rule'
   | 'update_ip_rule'
-  | 'delete_ip_rule';
+  | 'delete_ip_rule'
+  | 'update_attendance_settings';
 
 export type AuditTargetType =
-  'user' | 'board' | 'role' | 'event' | 'setting' | 'security_log' | 'error_log' | 'ip_rule';
+  | 'user'
+  | 'board'
+  | 'role'
+  | 'event'
+  | 'setting'
+  | 'security_log'
+  | 'error_log'
+  | 'ip_rule'
+  | 'attendance';
 
 export interface AuditLogAttributes {
   id: string;
@@ -108,7 +117,8 @@ AuditLog.init(
         'delete_error_log',
         'create_ip_rule',
         'update_ip_rule',
-        'delete_ip_rule'
+        'delete_ip_rule',
+        'update_attendance_settings'
       ),
       allowNull: false,
     },
@@ -121,7 +131,8 @@ AuditLog.init(
         'setting',
         'security_log',
         'error_log',
-        'ip_rule'
+        'ip_rule',
+        'attendance'
       ),
       allowNull: false,
     },

@@ -13,6 +13,8 @@ interface Props {
   workDate: string;
   record: AttendanceRecord | null;
   standardWorkMinutes: number;
+  /** 자정을 넘겨 남은 어제 기록이 있으면 오늘 출근 전이라도 퇴근을 누를 수 있다 */
+  canCheckOut: boolean;
   checkingOut: boolean;
   onCheckIn: () => void;
   onCheckOut: () => void;
@@ -35,6 +37,7 @@ export function TodayHero({
   workDate,
   record,
   standardWorkMinutes,
+  canCheckOut,
   checkingOut,
   onCheckIn,
   onCheckOut,
@@ -110,7 +113,7 @@ export function TodayHero({
           <button
             type="button"
             onClick={onCheckOut}
-            disabled={!working || checkingOut}
+            disabled={!canCheckOut || checkingOut}
             className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <LogOut className="h-4 w-4" />

@@ -39,6 +39,8 @@ export interface AttendancePolicy {
 export interface AttendanceStatus {
   workDate: string;
   record: AttendanceRecord | null;
+  /** 자정을 넘겨 아직 안 닫힌 어제 기록. 퇴근을 누르면 이것이 닫힌다. */
+  openPrevious: AttendanceRecord | null;
   checklist: ChecklistItem[];
   policy: AttendancePolicy;
 }

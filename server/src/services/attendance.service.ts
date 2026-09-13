@@ -8,6 +8,7 @@
 // 지각·조기 퇴근 같은 판정은 하지 않는다. 남기는 것은 찍은 시각과 그 사이의 시간뿐이다.
 
 import { Op, UniqueConstraintError } from 'sequelize';
+import { sequelize } from '../config/sequelize';
 import { AttendanceRecord, type ChecklistSnapshotEntry } from '../models/AttendanceRecord';
 import { AttendanceChecklistItem } from '../models/AttendanceChecklistItem';
 import { AttendancePolicy } from '../models/AttendancePolicy';
@@ -22,6 +23,13 @@ const MAX_LABEL = 200;
 const MAX_DESCRIPTION = 500;
 /** 명단에 올릴 사용자 수 상한 */
 const USER_LIMIT = 500;
+/**
+ * 한 번에 훑을 수 있는 기간 상한.
+ *
+ * 집계는 기간 안의 기록을 모두 읽어 메모리에서 묶는다. 기간을 안 주면 표 전체를
+ * 읽게 되므로, 기본값을 이번 달로 두고 넘치는 요청은 거절한다.
+ */
+const MAX_RANGE_DAYS = 366;
 
 export interface PolicyView {
   standardWorkMinutes: number;
@@ -124,11 +132,18 @@ function isDay(value: string): boolean {
 }
 
 export class AttendanceService extends BaseService {
-  /** 설정은 한 행만 둔다. 없으면 기본값으로 만든다. */
+  /**
+   * 설정은 한 행만 둔다. 없으면 기본값으로 만든다.
+   *
+   * id 를 못 박아 findOrCreate 로 만든다. 조회 후 생성으로 두면 동시에 들어온
+   * 두 요청이 각각 행을 만들어, 어느 쪽이 읽히는지 알 수 없는 상태가 된다.
+   */
   async getPolicy(): Promise<AttendancePolicy> {
-    const existing = await AttendancePolicy.findOne({ order: [['id', 'ASC']] });
-    if (existing) return existing;
-    return AttendancePolicy.create({});
+    const [policy] = await AttendancePolicy.findOrCreate({
+      where: { id: 1 },
+      defaults: { id: 1 },
+    });
+    return policy;
   }
 
   async getActiveChecklist(): Promise<AttendanceChecklistItem[]> {
@@ -145,6 +160,8 @@ export class AttendanceService extends BaseService {
   async getMyStatus(userId: string): Promise<{
     workDate: string;
     record: RecordView | null;
+    /** 자정을 넘겨 아직 안 닫힌 어제 기록. 퇴근을 누르면 이것이 닫힌다. */
+    openPrevious: RecordView | null;
     checklist: ChecklistItemView[];
     policy: PolicyView;
   }> {
@@ -154,9 +171,15 @@ export class AttendanceService extends BaseService {
       this.getActiveChecklist(),
       this.getPolicy(),
     ]);
+
+    // 오늘 것이 있으면 퇴근은 그것을 닫는다 — 어제 것을 함께 띄우면 어느 쪽이
+    // 닫히는지 알 수 없다. checkOut 이 고르는 기준과 같게 맞춘다.
+    const openPrevious = record ? null : await findOpenPreviousDay(userId, workDate);
+
     return {
       workDate,
       record: record ? toRecordView(record) : null,
+      openPrevious: openPrevious ? toRecordView(openPrevious) : null,
       checklist: items.map(toItemView),
       policy: toPolicyView(policy),
     };
@@ -207,8 +230,14 @@ export class AttendanceService extends BaseService {
 
   async checkOut(userId: string): Promise<RecordView> {
     const workDate = today();
-    const record = await AttendanceRecord.findOne({ where: { UserId: userId, workDate } });
-    if (!record) throw new AppError(400, '오늘 출근 기록이 없습니다. 출근을 먼저 눌러주세요.');
+    // 밤 늦게까지 일하면 출근과 퇴근이 서로 다른 날이 된다. 오늘 찍은 것이 없으면
+    // 어제 찍고 아직 안 닫힌 건을 닫는다 — 그러지 않으면 자정을 넘긴 순간
+    // 퇴근 버튼이 "출근 기록이 없습니다" 로 막힌다.
+    const record =
+      (await AttendanceRecord.findOne({ where: { UserId: userId, workDate } })) ??
+      (await findOpenPreviousDay(userId, workDate));
+
+    if (!record) throw new AppError(400, '출근 기록이 없습니다. 출근을 먼저 눌러주세요.');
     if (record.checkOutAt) throw new AppError(409, '오늘 퇴근은 이미 기록되어 있습니다.');
 
     const now = new Date();
@@ -347,9 +376,7 @@ export class AttendanceService extends BaseService {
    * 명단에서 빠지면 "안 찍은 사람" 을 찾을 수 없다.
    */
   async listSummary(params: { from?: string; to?: string }): Promise<UserSummary[]> {
-    const where: Record<string, unknown> = {};
-    const range = this.dayRangeFilter(params.from, params.to);
-    if (range) where.workDate = range;
+    const { from, to } = this.boundedRange(params.from, params.to);
 
     const [users, records] = await Promise.all([
       User.findAll({
@@ -358,7 +385,11 @@ export class AttendanceService extends BaseService {
         order: [['name', 'ASC']],
         limit: USER_LIMIT,
       }),
-      AttendanceRecord.findAll({ where }),
+      // 집계에 쓰는 칸만 읽는다. 확인 항목 스냅샷까지 끌어오면 기간이 길수록 무겁다.
+      AttendanceRecord.findAll({
+        where: { workDate: { [Op.between]: [from, to] } },
+        attributes: ['UserId', 'workDate', 'workMinutes'],
+      }),
     ]);
 
     const grouped = new Map<string, AttendanceRecord[]>();
@@ -374,6 +405,16 @@ export class AttendanceService extends BaseService {
       userName: u.name,
       ...summarize(grouped.get(u.id) ?? []),
     }));
+  }
+
+  /** 감사 로그에 바뀌기 전 값을 남기기 위한 단건 조회 */
+  async getChecklistItem(id: number): Promise<ChecklistItemView | null> {
+    const item = await AttendanceChecklistItem.findByPk(id);
+    return item ? toItemView(item) : null;
+  }
+
+  async getPolicyView(): Promise<PolicyView> {
+    return toPolicyView(await this.getPolicy());
   }
 
   async listChecklist(): Promise<ChecklistItemView[]> {
@@ -440,8 +481,13 @@ export class AttendanceService extends BaseService {
     if (ids.length !== known.size || ids.some(id => !known.has(id))) {
       throw new AppError(400, '순서 목록이 확인 항목과 맞지 않습니다.');
     }
-    await Promise.all(
-      ids.map((id, index) => AttendanceChecklistItem.update({ order: index + 1 }, { where: { id } }))
+    // 중간에 실패하면 순서가 반쯤 바뀐 채로 남는다
+    await sequelize.transaction(async t =>
+      Promise.all(
+        ids.map((id, index) =>
+          AttendanceChecklistItem.update({ order: index + 1 }, { where: { id }, transaction: t })
+        )
+      )
     );
     return this.listChecklist();
   }
@@ -467,6 +513,25 @@ export class AttendanceService extends BaseService {
     return toPolicyView(policy);
   }
 
+  /**
+   * 집계용 기간. 형식이 어긋나거나 빠진 값은 이번 달로 채운다.
+   * 기간을 안 주면 표 전체를 읽게 되므로 상한을 둔다.
+   */
+  private boundedRange(from?: string, to?: string): { from: string; to: string } {
+    const day = today();
+    const start = from && isDay(from) ? from : `${day.slice(0, 7)}-01`;
+    const end = to && isDay(to) ? to : day;
+    if (start > end) throw new AppError(400, '시작일이 종료일보다 뒤입니다.');
+
+    const span = Math.round(
+      (new Date(`${end}T00:00:00`).getTime() - new Date(`${start}T00:00:00`).getTime()) / 86_400_000
+    );
+    if (span + 1 > MAX_RANGE_DAYS) {
+      throw new AppError(400, `조회 기간은 최대 ${MAX_RANGE_DAYS}일까지입니다.`);
+    }
+    return { from: start, to: end };
+  }
+
   /** from/to 를 workDate 조건으로. 형식이 어긋난 값은 없는 것으로 본다. */
   private dayRangeFilter(from?: string, to?: string): Record<symbol, unknown> | null {
     const start = from && isDay(from) ? from : null;
@@ -476,6 +541,27 @@ export class AttendanceService extends BaseService {
     if (end) return { [Op.lte]: end };
     return null;
   }
+}
+
+/** 하루 앞뒤로 옮긴 날짜 (YYYY-MM-DD) */
+function shiftDay(day: string, delta: number): string {
+  const d = new Date(`${day}T00:00:00`);
+  d.setDate(d.getDate() + delta);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * 어제 찍고 아직 퇴근을 안 찍은 기록.
+ *
+ * 하루 전까지만 본다. 사흘 전 것까지 닫아 주면 잊고 있던 기록이 엉뚱한 시각으로
+ * 마감되어, 며칠치 근무 시간이 한 건에 뭉친다.
+ */
+async function findOpenPreviousDay(userId: string, workDate: string) {
+  return AttendanceRecord.findOne({
+    where: { UserId: userId, workDate: shiftDay(workDate, -1), checkOutAt: null },
+  });
 }
 
 /** 기록 묶음을 요약한다. 평균은 퇴근까지 찍힌 날만 센다 — 근무 중인 날을 섞으면 평균이 내려간다. */

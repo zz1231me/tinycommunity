@@ -180,6 +180,30 @@ describe('껐을 때 API 가 실제로 막힌다', () => {
     expect((await request(app).get('/api/memos').set('Cookie', userCookie)).status).toBe(403);
   });
 
+  it('출퇴근을 끄면 출근·퇴근 기록이 막힌다', async () => {
+    await setFeature('tools.attendance', false);
+    expect((await request(app).get('/api/attendance/me').set('Cookie', userCookie)).status).toBe(
+      403
+    );
+    expect(
+      (
+        await request(app)
+          .post('/api/attendance/check-in')
+          .set(CSRF_HEADER)
+          .set('Cookie', userCookie)
+          .send({})
+      ).status
+    ).toBe(403);
+  });
+
+  it('출퇴근을 꺼도 관리자는 지난 기록을 볼 수 있다', async () => {
+    // 기능을 껐다고 이미 쌓인 근태 기록까지 못 보게 하면 정산이 막힌다.
+    await setFeature('tools.attendance', false);
+    expect(
+      (await request(app).get('/api/admin/attendance/records').set('Cookie', adminCookie)).status
+    ).toBe(200);
+  });
+
   it('태그를 끄면 태그 클라우드도 함께 막힌다 (의존성)', async () => {
     await setFeature('post.tags', false);
     expect((await request(app).get('/api/tags/cloud').set('Cookie', userCookie)).status).toBe(403);

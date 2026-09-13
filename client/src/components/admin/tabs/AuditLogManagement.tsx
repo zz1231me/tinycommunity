@@ -37,6 +37,7 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   create_ip_rule: 'IP 규칙 생성',
   update_ip_rule: 'IP 규칙 수정',
   delete_ip_rule: 'IP 규칙 삭제',
+  update_attendance_settings: '출퇴근 설정',
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -68,6 +69,7 @@ const ACTION_COLORS: Record<string, string> = {
   create_ip_rule: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
   update_ip_rule: 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300',
   delete_ip_rule: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  update_attendance_settings: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300',
 };
 
 const COLUMNS: LogColumn[] = [
@@ -160,6 +162,7 @@ export const AuditLogManagement = () => {
               <option value="role">역할</option>
               <option value="event">이벤트</option>
               <option value="setting">설정</option>
+              <option value="attendance">출퇴근</option>
             </select>
           </LogFilterField>
           <LogFilterField label="시작일">

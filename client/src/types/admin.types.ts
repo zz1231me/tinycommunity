@@ -134,7 +134,8 @@ export type AuditAction =
   | 'delete_error_log'
   | 'create_ip_rule'
   | 'update_ip_rule'
-  | 'delete_ip_rule';
+  | 'delete_ip_rule'
+  | 'update_attendance_settings';
 
 export interface AuditLogRecord {
   id: string;

@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { PageContainer } from '../../components/common/PageContainer';
 import { PageHeader } from '../../components/common/PageHeader';
 import { ListError, ListLoading, ListState } from '../../components/common/ListState';
@@ -79,14 +79,17 @@ export default function AttendancePage() {
 
   const checkOutMutation = useMutation({
     mutationFn: requestCheckOut,
-    onSuccess: record => {
+    onSuccess: closed => {
       refresh();
-      toast.success(`퇴근 기록 완료 — 오늘 ${formatMinutes(record.workMinutes)} 근무`);
+      toast.success(
+        `퇴근 기록 완료 — ${formatDay(closed.workDate)} ${formatMinutes(closed.workMinutes)} 근무`
+      );
     },
     onError: err => toast.error(getApiErrorMessage(err, '퇴근을 기록하지 못했습니다.')),
   });
 
   const record = status.data?.record ?? null;
+  const openPrevious = status.data?.openPrevious ?? null;
   const standard = status.data?.policy.standardWorkMinutes ?? 480;
   const summary = history.data?.summary;
   // 오늘은 아직 근무 중이라 퇴근이 없는 것이 정상이다 — 빠뜨린 날에서 뺀다
@@ -107,10 +110,21 @@ export default function AttendancePage() {
         <ListError what="출퇴근 현황" />
       ) : (
         <>
+          {openPrevious && (
+            <div className="mb-3 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm dark:border-amber-500/30 dark:bg-amber-500/10">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500" />
+              <p className="min-w-0 text-amber-800 dark:text-amber-300">
+                <span className="tabular-nums">{formatDay(openPrevious.workDate)}</span> 출근이 퇴근
+                없이 남아 있습니다. 퇴근을 누르면 그 기록이 지금 시각으로 마감됩니다.
+              </p>
+            </div>
+          )}
+
           <TodayHero
             workDate={serverToday}
             record={record}
             standardWorkMinutes={standard}
+            canCheckOut={Boolean((record && !record.checkOutAt) || openPrevious)}
             checkingOut={checkOutMutation.isPending}
             onCheckIn={() => setDialogOpen(true)}
             onCheckOut={() => checkOutMutation.mutate()}

@@ -3,6 +3,7 @@ import { AuthRequest } from '../types/auth-request';
 import { sendSuccess, sendError, sendValidationError, sendUnauthorized } from '../utils/response';
 import { logError } from '../utils/logger';
 import { attendanceService } from '../services/attendance.service';
+import { auditLogService } from '../services/auditLog.service';
 import { AppError } from '../middlewares/error.middleware';
 
 /** 컨트롤러마다 같은 모양으로 반복되던 오류 처리 */
@@ -28,6 +29,32 @@ function requireUser(req: AuthRequest, res: Response): string | null {
     return null;
   }
   return userId;
+}
+
+/**
+ * 출근 확인 항목·근무 설정 변경을 남긴다.
+ *
+ * 이 기능은 "무엇을 확인하고 출근했는가" 를 근거로 남기는 것이 목적이다.
+ * 그 확인 항목을 누가 언제 바꿨는지가 없으면 지난 기록의 뜻이 흐려진다.
+ */
+function recordSettingChange(
+  req: AuthRequest,
+  targetName: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  values: { before?: any; after?: any }
+): void {
+  void auditLogService
+    .createAuditLog({
+      adminId: req.user?.id ?? 'unknown',
+      adminName: req.user?.name ?? 'unknown',
+      action: 'update_attendance_settings',
+      targetType: 'attendance',
+      targetName,
+      beforeValue: values.before,
+      afterValue: values.after,
+      ipAddress: req.ip ?? null,
+    })
+    .catch(err => logError('감사 로그 기록 실패 (출퇴근 설정)', err));
 }
 
 function parseId(value: string, res: Response): number | null {
@@ -134,6 +161,7 @@ export const createAttendanceChecklistItem = async (
   const { label, description, required } = req.body;
   await run(res, '확인 항목 추가', {}, async () => {
     const item = await attendanceService.createChecklistItem({ label, description, required });
+    recordSettingChange(req, `확인 항목 추가: ${item.label}`, { after: item });
     sendSuccess(res, item, '확인 항목이 추가되었습니다.', 201);
   });
 };
@@ -146,16 +174,16 @@ export const updateAttendanceChecklistItem = async (
   if (id === null) return;
   const { label, description, required, isActive, order } = req.body;
   await run(res, '확인 항목 수정', { itemId: id }, async () => {
-    sendSuccess(
-      res,
-      await attendanceService.updateChecklistItem(id, {
-        label,
-        description,
-        required,
-        isActive,
-        order,
-      })
-    );
+    const before = await attendanceService.getChecklistItem(id);
+    const item = await attendanceService.updateChecklistItem(id, {
+      label,
+      description,
+      required,
+      isActive,
+      order,
+    });
+    recordSettingChange(req, `확인 항목 수정: ${item.label}`, { before, after: item });
+    sendSuccess(res, item);
   });
 };
 
@@ -166,7 +194,9 @@ export const deleteAttendanceChecklistItem = async (
   const id = parseId(req.params.id, res);
   if (id === null) return;
   await run(res, '확인 항목 삭제', { itemId: id }, async () => {
+    const before = await attendanceService.getChecklistItem(id);
     await attendanceService.deleteChecklistItem(id);
+    recordSettingChange(req, `확인 항목 삭제: ${before?.label ?? id}`, { before });
     sendSuccess(res, null, '확인 항목이 삭제되었습니다.');
   });
 };
@@ -174,11 +204,10 @@ export const deleteAttendanceChecklistItem = async (
 export const updateAttendancePolicy = async (req: AuthRequest, res: Response): Promise<void> => {
   const { standardWorkMinutes, requireChecklist } = req.body;
   await run(res, '출퇴근 설정 저장', {}, async () => {
-    sendSuccess(
-      res,
-      await attendanceService.updatePolicy({ standardWorkMinutes, requireChecklist }),
-      '설정이 저장되었습니다.'
-    );
+    const before = await attendanceService.getPolicyView();
+    const after = await attendanceService.updatePolicy({ standardWorkMinutes, requireChecklist });
+    recordSettingChange(req, '근무 설정', { before, after });
+    sendSuccess(res, after, '설정이 저장되었습니다.');
   });
 };
 
@@ -194,6 +223,8 @@ export const reorderAttendanceChecklist = async (
 ): Promise<void> => {
   const { ids } = req.body;
   await run(res, '확인 항목 순서 저장', {}, async () => {
-    sendSuccess(res, await attendanceService.reorderChecklist(ids));
+    const items = await attendanceService.reorderChecklist(ids);
+    recordSettingChange(req, '확인 항목 순서', { after: items.map(i => i.label) });
+    sendSuccess(res, items);
   });
 };

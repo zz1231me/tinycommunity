@@ -54,6 +54,7 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   create_ip_rule: 'IP 규칙 생성',
   update_ip_rule: 'IP 규칙 수정',
   delete_ip_rule: 'IP 규칙 삭제',
+  update_attendance_settings: '출퇴근 설정',
 };
 
 const LOGIN_STATUS_BADGE: Record<string, string> = {

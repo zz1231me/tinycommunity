@@ -296,6 +296,10 @@ export async function widenGrowingEnums(): Promise<void> {
     '드라큘라 등 새 테마를 저장할 수 없습니다.',
     'system'
   );
+  // 감사 종류는 기능이 늘 때마다 함께 늘어난다. ENUM 으로 두면 새 종류가
+  // 조용히 기록되지 않는다(감사 로그 기록은 실패해도 요청을 막지 않는다).
+  await widenEnumColumn('audit_logs', 'action', 40, '새 종류의 관리자 작업이 남지 않습니다.');
+  await widenEnumColumn('audit_logs', 'targetType', 20, '새 대상 종류가 남지 않습니다.');
 }
 
 /**

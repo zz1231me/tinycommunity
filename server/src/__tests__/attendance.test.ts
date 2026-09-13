@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { app, seedTestData, loginAs, relaxRateLimits, CSRF_HEADER } from './helpers';
 import { User } from '../models/User';
+import { AttendanceRecord } from '../models/AttendanceRecord';
 
 // 출퇴근 기록.
 //
@@ -11,7 +12,7 @@ let adminCookie: string;
 const cookies: Record<string, string> = {};
 
 const PASSWORD = 'TestUser123!';
-const WORKERS = ['attworker1', 'attworker2', 'attworker3', 'attworker4'];
+const WORKERS = ['attworker1', 'attworker2', 'attworker3', 'attworker4', 'attnight'];
 
 async function setPolicy(patch: Record<string, unknown>) {
   const res = await request(app)
@@ -253,6 +254,91 @@ describe('관리자 조회', () => {
     const rows = res.body.data as Array<{ userId: string; days: number; openDays: number }>;
     expect(rows.find(r => r.userId === 'attworker4')?.days).toBe(0);
     expect(rows.find(r => r.userId === 'attworker3')?.days).toBe(1);
+  });
+});
+
+describe('자정을 넘긴 퇴근', () => {
+  // 밤 늦게 일하면 출근과 퇴근이 서로 다른 날이 된다. 어제 찍은 것을 못 닫으면
+  // 자정을 넘긴 순간 퇴근 버튼이 막히고, 그날 근무 시간이 영영 안 잡힌다.
+  const yesterday = () => {
+    const d = new Date(Date.now() - 86_400_000);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  it('오늘 상태에 어제 안 닫힌 기록이 함께 온다', async () => {
+    await AttendanceRecord.create({
+      UserId: 'attnight',
+      workDate: yesterday(),
+      checkInAt: new Date(Date.now() - 3 * 3600_000),
+      checklist: '[]',
+    });
+
+    const res = await request(app).get('/api/attendance/me').set('Cookie', cookies.attnight);
+    expect(res.status).toBe(200);
+    expect(res.body.data.record).toBeNull();
+    expect(res.body.data.openPrevious?.workDate).toBe(yesterday());
+  });
+
+  it('어제 찍은 출근을 오늘 퇴근으로 닫는다', async () => {
+    const res = await checkOut(cookies.attnight);
+    expect(res.status).toBe(200);
+    expect(res.body.data.workDate).toBe(yesterday());
+    expect(res.body.data.workMinutes).toBeGreaterThan(100);
+  });
+
+  it('다 닫히고 나면 다시 퇴근할 수 없다', async () => {
+    expect((await checkOut(cookies.attnight)).status).toBe(400);
+  });
+});
+
+describe('설정 변경 기록', () => {
+  it('확인 항목을 고치면 누가 무엇을 바꿨는지 감사 로그에 남는다', async () => {
+    // 이 기능은 "무엇을 확인하고 출근했는가" 를 근거로 남긴다.
+    // 그 항목을 몰래 바꿀 수 있으면 지난 기록의 뜻이 흐려진다.
+    const created = await addItem('감사 로그 확인용 항목', false);
+
+    const logs = await request(app)
+      .get('/api/admin/audit-logs?action=update_attendance_settings')
+      .set('Cookie', adminCookie);
+    expect(logs.status).toBe(200);
+    const rows = (logs.body.data.logs ?? logs.body.data) as Array<{
+      adminId: string;
+      targetType: string;
+      targetName: string;
+    }>;
+    const hit = rows.find(r => r.targetName?.includes(created.label));
+    expect(hit).toBeDefined();
+    expect(hit?.adminId).toBe('admin');
+    expect(hit?.targetType).toBe('attendance');
+
+    await request(app)
+      .delete(`/api/admin/attendance/checklist/${created.id}`)
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie);
+  });
+});
+
+describe('조회 기간', () => {
+  it('1년을 넘는 집계 요청은 거절한다 — 표 전체를 읽게 된다', async () => {
+    const res = await request(app)
+      .get('/api/admin/attendance/summary?from=2000-01-01&to=2026-12-31')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(400);
+  });
+
+  it('기간을 안 주면 이번 달로 본다', async () => {
+    const res = await request(app)
+      .get('/api/admin/attendance/summary')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+  });
+
+  it('시작일이 종료일보다 뒤면 거절한다', async () => {
+    const res = await request(app)
+      .get('/api/admin/attendance/summary?from=2026-05-01&to=2026-04-01')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(400);
   });
 });
 
