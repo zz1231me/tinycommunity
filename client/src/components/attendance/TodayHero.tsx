@@ -7,12 +7,15 @@
 import { useEffect, useState } from 'react';
 import { LogIn, LogOut } from 'lucide-react';
 import type { AttendanceRecord } from '../../types/attendance.types';
-import { formatClock, formatMinutes, minutesBetween } from '../../utils/attendance';
+import { formatClock, formatDay, formatMinutes, minutesBetween } from '../../utils/attendance';
 
 interface Props {
   workDate: string;
+  /** 지금 살아 있는 기록 — 오늘 것이거나, 자정을 넘겨 이어지는 어제 것 */
   record: AttendanceRecord | null;
   standardWorkMinutes: number;
+  /** 오늘 몫을 아직 안 찍었는가. 어제 것이 안 닫혔어도 오늘 출근은 따로 찍을 수 있다. */
+  canCheckIn: boolean;
   /** 자정을 넘겨 남은 어제 기록이 있으면 오늘 출근 전이라도 퇴근을 누를 수 있다 */
   canCheckOut: boolean;
   checkingOut: boolean;
@@ -37,6 +40,7 @@ export function TodayHero({
   workDate,
   record,
   standardWorkMinutes,
+  canCheckIn,
   canCheckOut,
   checkingOut,
   onCheckIn,
@@ -67,6 +71,8 @@ export function TodayHero({
   }[state];
 
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  // 어제 찍고 이어 일하는 중이면 시각만으로는 언제부터인지 알 수 없다
+  const carried = record && record.workDate !== workDate ? record.workDate : null;
 
   return (
     <section className="card overflow-hidden">
@@ -86,7 +92,9 @@ export function TodayHero({
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             {record ? (
               <>
-                출근 <span className="tabular-nums">{formatClock(record.checkInAt)}</span>
+                출근{' '}
+                {carried && <span className="tabular-nums text-amber-600">{formatDay(carried)}</span>}{' '}
+                <span className="tabular-nums">{formatClock(record.checkInAt)}</span>
                 {record.checkOutAt && (
                   <>
                     {' · '}퇴근{' '}
@@ -104,7 +112,7 @@ export function TodayHero({
           <button
             type="button"
             onClick={onCheckIn}
-            disabled={Boolean(record)}
+            disabled={!canCheckIn}
             className="btn-primary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <LogIn className="h-4 w-4" />

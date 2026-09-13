@@ -334,6 +334,21 @@ describe('조회 기간', () => {
     expect(Array.isArray(res.body.data)).toBe(true);
   });
 
+  it('숫자 모양이지만 없는 날짜로 상한을 넘길 수 없다', async () => {
+    // 0000-00-00 같은 값은 Date 로 바꾸면 NaN 이라 기간 길이 검사가 그냥 넘어갔다.
+    const res = await request(app)
+      .get('/api/admin/attendance/summary?from=0000-00-00&to=9999-99-99')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(400);
+  });
+
+  it('기록 조회도 날짜가 아닌 값을 거절한다 — 조용히 전체를 돌려주지 않는다', async () => {
+    const res = await request(app)
+      .get('/api/admin/attendance/records?from=2026-02-30')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(400);
+  });
+
   it('시작일이 종료일보다 뒤면 거절한다', async () => {
     const res = await request(app)
       .get('/api/admin/attendance/summary?from=2026-05-01&to=2026-04-01')
@@ -355,9 +370,43 @@ describe('오늘 현황', () => {
     expect(byId.get('attworker1')?.state).toBe('done');
     expect(byId.get('attworker2')?.state).toBe('working');
     expect(byId.get('attworker4')?.state).toBe('absent');
+    expect(byId.get('attworker1')?.workDate).toBe(res.body.data.workDate);
     // 근무 중인 사람도 지금까지 흐른 시간이 보여야 한다
     expect(byId.get('attworker2')?.minutes).toBeGreaterThanOrEqual(0);
     expect(byId.get('attworker4')?.minutes).toBeNull();
+  });
+});
+
+describe('밤을 넘겨 일하는 사람', () => {
+  // 어제 찍고 아직 안 닫힌 사람은 지금 자리에 있는 것이다.
+  // 오늘 안 찍었다고 '미출근' 으로 두면 오늘 현황이 사실과 달라진다.
+  const yesterday = () => {
+    const d = new Date(Date.now() - 86_400_000);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  it('오늘 현황에 근무 중으로, 어제 날짜와 함께 나온다', async () => {
+    await AttendanceRecord.create({
+      UserId: 'attworker4',
+      workDate: yesterday(),
+      checkInAt: new Date(Date.now() - 4 * 3600_000),
+      checklist: '[]',
+    });
+
+    const res = await request(app).get('/api/admin/attendance/today').set('Cookie', adminCookie);
+    const row = (res.body.data.rows as Array<{ userId: string; state: string; workDate: string; minutes: number }>)
+      .find(r => r.userId === 'attworker4');
+    expect(row?.state).toBe('working');
+    expect(row?.workDate).toBe(yesterday());
+    expect(row?.minutes).toBeGreaterThan(200);
+  });
+
+  it('오늘도 찍었으면 오늘 것이 보인다 — 퇴근이 닫는 대상과 같아야 한다', async () => {
+    const res = await request(app).get('/api/admin/attendance/today').set('Cookie', adminCookie);
+    const row = (res.body.data.rows as Array<{ userId: string; workDate: string }>).find(
+      r => r.userId === 'attworker1'
+    );
+    expect(row?.workDate).toBe(res.body.data.workDate);
   });
 });
 
@@ -382,6 +431,16 @@ describe('확인 항목 순서', () => {
       .set(CSRF_HEADER)
       .set('Cookie', adminCookie)
       .send({ ids });
+  });
+
+  it('같은 항목을 두 번 넣으면 거절한다 — 개수만 맞고 빠진 항목이 생긴다', async () => {
+    const res = await request(app)
+      .put('/api/admin/attendance/checklist/reorder')
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      // 개수는 항목 수와 같지만 optionalItem 이 빠져 옛 순서로 남는다
+      .send({ ids: [requiredItem.id, requiredItem.id] });
+    expect(res.status).toBe(400);
   });
 
   it('빠진 항목이 있으면 거절한다 — 조용히 순서가 뒤엉키면 안 된다', async () => {

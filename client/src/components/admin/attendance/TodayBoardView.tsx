@@ -5,7 +5,7 @@
 
 import { useMemo, useState } from 'react';
 import type { TodayBoard, TodayState } from '../../../types/attendance.types';
-import { formatClock, formatMinutes } from '../../../utils/attendance';
+import { formatClock, formatDay, formatMinutes } from '../../../utils/attendance';
 
 const STATE_META: Record<TodayState, { label: string; dot: string; chip: string }> = {
   working: {
@@ -121,6 +121,12 @@ export function TodayBoardView({ board }: { board: TodayBoard }) {
                 ) : (
                   <>
                     <span className="hidden text-xs tabular-nums text-slate-500 sm:inline dark:text-slate-400">
+                      {/* 어제 찍고 이어 일하는 중이면 언제부터인지가 시각만으로는 안 보인다 */}
+                      {row.workDate && row.workDate !== board.workDate && (
+                        <span className="mr-1 text-amber-600 dark:text-amber-400">
+                          {formatDay(row.workDate)}
+                        </span>
+                      )}
                       {formatClock(row.checkInAt)}
                       {' → '}
                       {row.checkOutAt ? formatClock(row.checkOutAt) : '—'}

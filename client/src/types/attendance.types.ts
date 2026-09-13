@@ -73,6 +73,8 @@ export interface TodayRow {
   userId: string;
   userName: string;
   state: TodayState;
+  /** 이 줄이 가리키는 기록의 근무일. 오늘이 아니면 자정을 넘겨 이어 일하는 중이다. */
+  workDate: string | null;
   checkInAt: string | null;
   checkOutAt: string | null;
   /** 퇴근 전이면 지금까지 흐른 시간 */

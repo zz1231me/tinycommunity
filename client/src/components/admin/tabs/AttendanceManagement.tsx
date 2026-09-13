@@ -206,7 +206,7 @@ const AttendanceManagement = () => {
           {board.isLoading ? (
             <LoadingSpinner message="오늘 현황 불러오는 중..." />
           ) : board.isError ? (
-            <ListState>현황을 불러오지 못했습니다.</ListState>
+            <ListState>{getApiErrorMessage(board.error, '현황을 불러오지 못했습니다.')}</ListState>
           ) : board.data ? (
             <TodayBoardView board={board.data} />
           ) : null}
@@ -221,7 +221,8 @@ const AttendanceManagement = () => {
               value={from}
               max={to}
               onChange={e => {
-                setFrom(e.target.value);
+                // 비우면 화면은 빈칸인데 서버는 이번 달을 돌려준다 — 어긋나지 않게 되돌린다
+                setFrom(e.target.value || monthStart());
                 setPage(1);
               }}
               className="input input-sm w-full"
@@ -233,7 +234,7 @@ const AttendanceManagement = () => {
               value={to}
               min={from}
               onChange={e => {
-                setTo(e.target.value);
+                setTo(e.target.value || todayString());
                 setPage(1);
               }}
               className="input input-sm w-full"
@@ -266,7 +267,7 @@ const AttendanceManagement = () => {
           {records.isLoading ? (
             <LoadingSpinner message="기록 불러오는 중..." />
           ) : records.isError ? (
-            <ListState>기록을 불러오지 못했습니다.</ListState>
+            <ListState>{getApiErrorMessage(records.error, '기록을 불러오지 못했습니다.')}</ListState>
           ) : (records.data?.records.length ?? 0) === 0 ? (
             <ListState size="roomy">이 기간에는 기록이 없습니다.</ListState>
           ) : (
@@ -306,10 +307,13 @@ const AttendanceManagement = () => {
                             <td className="whitespace-nowrap px-3 py-2 tabular-nums">
                               {row.checkOutAt ? (
                                 formatClock(row.checkOutAt)
-                              ) : (
+                              ) : row.workDate === todayString() ? (
                                 <span className="text-emerald-600 dark:text-emerald-400">
                                   근무 중
                                 </span>
+                              ) : (
+                                // 지난 날짜인데 퇴근이 없으면 지금 일하는 중이 아니다
+                                <span className="text-amber-600 dark:text-amber-400">퇴근 없음</span>
                               )}
                             </td>
                             <td className="whitespace-nowrap px-3 py-2 text-slate-600 dark:text-slate-400">
@@ -437,7 +441,7 @@ const AttendanceManagement = () => {
           {summary.isLoading ? (
             <LoadingSpinner message="집계 불러오는 중..." />
           ) : summary.isError ? (
-            <ListState>집계를 불러오지 못했습니다.</ListState>
+            <ListState>{getApiErrorMessage(summary.error, '집계를 불러오지 못했습니다.')}</ListState>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

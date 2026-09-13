@@ -73,6 +73,8 @@ export interface TodayRow {
   userId: string;
   userName: string;
   state: 'working' | 'done' | 'absent';
+  /** 이 줄이 가리키는 기록의 근무일. 오늘이 아니면 자정을 넘겨 이어 일하는 중이다. */
+  workDate: string | null;
   checkInAt: string | null;
   checkOutAt: string | null;
   /** 퇴근 전이면 지금까지 흐른 시간 */
@@ -126,9 +128,31 @@ function toPolicyView(policy: AttendancePolicy): PolicyView {
   };
 }
 
-/** YYYY-MM-DD 인지 — 잘못된 값이 그대로 쿼리에 들어가면 조용히 빈 결과가 된다 */
+/**
+ * 실제로 있는 YYYY-MM-DD 인지.
+ *
+ * 모양만 보면 0000-00-00 이나 2026-02-30 이 통과한다. 그런 값은 Date 로 바꾸면
+ * NaN 이 되고, 기간 길이 계산도 NaN 이 되어 "366일 이하" 검사가 그냥 넘어간다.
+ * (from=0000-00-00&to=9999-99-99 로 표 전체를 읽을 수 있었다.)
+ */
 function isDay(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [y, m, d] = value.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
+}
+
+/** 날짜가 아니면 거절 */
+function requireDay(value: string, label: string): string {
+  if (!isDay(value)) throw new AppError(400, `${label}이 올바른 날짜가 아닙니다.`);
+  return value;
+}
+
+/** 값을 안 줬으면 기본값, 줬는데 날짜가 아니면 거절 — 조용히 다른 기간을 보여 주지 않는다 */
+function dayOrDefault(value: string | undefined, fallback: string, label: string): string {
+  if (value === undefined || value === '') return fallback;
+  if (!isDay(value)) throw new AppError(400, `${label}이 올바른 날짜가 아닙니다.`);
+  return value;
 }
 
 export class AttendanceService extends BaseService {
@@ -326,6 +350,7 @@ export class AttendanceService extends BaseService {
    */
   async getTodayBoard(): Promise<{ workDate: string; rows: TodayRow[] }> {
     const workDate = today();
+    const yesterday = shiftDay(workDate, -1);
     const now = new Date();
     const [users, records] = await Promise.all([
       User.findAll({
@@ -334,10 +359,18 @@ export class AttendanceService extends BaseService {
         order: [['name', 'ASC']],
         limit: USER_LIMIT,
       }),
-      AttendanceRecord.findAll({ where: { workDate } }),
+      // 어제 것도 함께 읽는다. 밤을 넘겨 일하는 사람을 오늘 안 찍었다고 보면
+      // 지금 자리에 있는 사람이 '미출근' 으로 뜬다.
+      AttendanceRecord.findAll({ where: { workDate: { [Op.in]: [workDate, yesterday] } } }),
     ]);
 
-    const byUser = new Map(records.map(r => [r.UserId, r]));
+    // 오늘 것이 있으면 그것이 우선 — 퇴근이 닫는 대상과 같게 맞춘다.
+    // 오늘 것이 없을 때만 어제 안 닫힌 건을 쓴다.
+    const todays = new Map(records.filter(r => r.workDate === workDate).map(r => [r.UserId, r]));
+    const carried = new Map(
+      records.filter(r => r.workDate === yesterday && !r.checkOutAt).map(r => [r.UserId, r])
+    );
+    const byUser = new Map([...carried, ...todays]);
     const rows = users.map<TodayRow>(u => {
       const record = byUser.get(u.id);
       if (!record) {
@@ -345,6 +378,7 @@ export class AttendanceService extends BaseService {
           userId: u.id,
           userName: u.name,
           state: 'absent',
+          workDate: null,
           checkInAt: null,
           checkOutAt: null,
           minutes: null,
@@ -357,6 +391,7 @@ export class AttendanceService extends BaseService {
         userId: u.id,
         userName: u.name,
         state: record.checkOutAt ? 'done' : 'working',
+        workDate: record.workDate,
         checkInAt: record.checkInAt.toISOString(),
         checkOutAt: record.checkOutAt ? record.checkOutAt.toISOString() : null,
         // 퇴근 전이면 지금까지 흐른 시간을 보여 준다
@@ -478,7 +513,10 @@ export class AttendanceService extends BaseService {
   async reorderChecklist(ids: number[]): Promise<ChecklistItemView[]> {
     const items = await AttendanceChecklistItem.findAll();
     const known = new Set(items.map(i => i.id));
-    if (ids.length !== known.size || ids.some(id => !known.has(id))) {
+    // 같은 id 가 두 번 들어오면 개수만 맞고 빠진 항목이 생긴다 —
+    // 그 항목은 옛 순서를 그대로 들고 남아 순서가 겹친다.
+    const unique = new Set(ids);
+    if (unique.size !== ids.length || unique.size !== known.size || ids.some(id => !known.has(id))) {
       throw new AppError(400, '순서 목록이 확인 항목과 맞지 않습니다.');
     }
     // 중간에 실패하면 순서가 반쯤 바뀐 채로 남는다
@@ -519,8 +557,8 @@ export class AttendanceService extends BaseService {
    */
   private boundedRange(from?: string, to?: string): { from: string; to: string } {
     const day = today();
-    const start = from && isDay(from) ? from : `${day.slice(0, 7)}-01`;
-    const end = to && isDay(to) ? to : day;
+    const start = dayOrDefault(from, `${day.slice(0, 7)}-01`, '시작일');
+    const end = dayOrDefault(to, day, '종료일');
     if (start > end) throw new AppError(400, '시작일이 종료일보다 뒤입니다.');
 
     const span = Math.round(
@@ -532,10 +570,11 @@ export class AttendanceService extends BaseService {
     return { from: start, to: end };
   }
 
-  /** from/to 를 workDate 조건으로. 형식이 어긋난 값은 없는 것으로 본다. */
+  /** from/to 를 workDate 조건으로. 날짜가 아닌 값을 줬으면 거절한다(조용히 전체를 돌려주지 않는다). */
   private dayRangeFilter(from?: string, to?: string): Record<symbol, unknown> | null {
-    const start = from && isDay(from) ? from : null;
-    const end = to && isDay(to) ? to : null;
+    const start = from === undefined || from === '' ? null : requireDay(from, '시작일');
+    const end = to === undefined || to === '' ? null : requireDay(to, '종료일');
+    if (start && end && start > end) throw new AppError(400, '시작일이 종료일보다 뒤입니다.');
     if (start && end) return { [Op.between]: [start, end] };
     if (start) return { [Op.gte]: start };
     if (end) return { [Op.lte]: end };

@@ -90,10 +90,14 @@ export default function AttendancePage() {
 
   const record = status.data?.record ?? null;
   const openPrevious = status.data?.openPrevious ?? null;
+  // 자정을 넘겨 이어지는 기록이 있으면 그것이 지금 살아 있는 기록이다.
+  // 그러지 않으면 밤을 새운 사람 화면에만 '출근 전' 이라고 뜬다(관리자 화면은 근무 중).
+  const live = record ?? openPrevious;
+  const liveWorkDate = openPrevious?.workDate ?? serverToday;
   const standard = status.data?.policy.standardWorkMinutes ?? 480;
   const summary = history.data?.summary;
   // 오늘은 아직 근무 중이라 퇴근이 없는 것이 정상이다 — 빠뜨린 날에서 뺀다
-  const todayOpen = Boolean(record && !record.checkOutAt && month === serverToday.slice(0, 7));
+  const todayOpen = Boolean(live && !live.checkOutAt && month === live.workDate.slice(0, 7));
   const unclosedDays = Math.max(0, (summary?.openDays ?? 0) - (todayOpen ? 1 : 0));
 
   return (
@@ -122,19 +126,22 @@ export default function AttendancePage() {
 
           <TodayHero
             workDate={serverToday}
-            record={record}
+            record={live}
             standardWorkMinutes={standard}
-            canCheckOut={Boolean((record && !record.checkOutAt) || openPrevious)}
+            // 어제 퇴근을 깜빡했다고 오늘 출근까지 막으면, 먼저 퇴근을 눌러
+            // 어제가 지금 시각으로 마감되면서 없던 밤샘 근무가 만들어진다.
+            canCheckIn={!record}
+            canCheckOut={Boolean(live && !live.checkOutAt)}
             checkingOut={checkOutMutation.isPending}
             onCheckIn={() => setDialogOpen(true)}
             onCheckOut={() => checkOutMutation.mutate()}
           />
 
-          {record && record.checklist.length > 0 && (
+          {live && live.checklist.length > 0 && (
             <section className="card mt-4 p-5">
-              <h2 className="card-title mb-3">오늘 출근할 때 확인한 내용</h2>
+              <h2 className="card-title mb-3">출근할 때 확인한 내용</h2>
               <ul className="space-y-1.5">
-                {record.checklist.map(answer => (
+                {live.checklist.map(answer => (
                   <li
                     key={answer.itemId}
                     className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300"
@@ -149,9 +156,9 @@ export default function AttendancePage() {
                   </li>
                 ))}
               </ul>
-              {record.note && (
+              {live.note && (
                 <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                  남긴 말: {record.note}
+                  남긴 말: {live.note}
                 </p>
               )}
             </section>
@@ -215,6 +222,7 @@ export default function AttendancePage() {
                   month={month}
                   records={history.data?.records ?? []}
                   standardWorkMinutes={standard}
+                  liveWorkDate={liveWorkDate}
                 />
 
                 <div className="overflow-x-auto border-t border-slate-100 dark:border-slate-800">
@@ -248,8 +256,11 @@ export default function AttendancePage() {
                           <td className="whitespace-nowrap px-4 py-2 tabular-nums">
                             {row.checkOutAt ? (
                               formatClock(row.checkOutAt)
-                            ) : (
+                            ) : row.workDate === liveWorkDate ? (
                               <span className="text-emerald-600 dark:text-emerald-400">근무 중</span>
+                            ) : (
+                              // 이어지지도 않는 지난 날의 열린 기록은 그냥 안 찍은 것이다
+                              <span className="text-amber-600 dark:text-amber-400">안 찍음</span>
                             )}
                           </td>
                           <td className="whitespace-nowrap px-4 py-2 text-slate-600 dark:text-slate-400">
