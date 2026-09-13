@@ -1,5 +1,5 @@
 // client/src/pages/boards/PostEditor.tsx
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useCodeHighlight } from '../../hooks/useCodeHighlight';
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
@@ -77,6 +77,9 @@ const PostEditor = ({ mode }: Props) => {
   // 분할 보기 상태
   const [splitView, setSplitView] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
+  // 객체까지 기억해 둔다 — React 는 dangerouslySetInnerHTML 을 객체 참조로 비교해서,
+  // 매번 새 리터럴을 만들면 내용이 같아도 미리보기를 통째로 다시 붙인다.
+  const previewBodyHtml = useMemo(() => ({ __html: previewHtml }), [previewHtml]);
   const previewRef = useRef<HTMLDivElement>(null);
 
   // 분할 보기 미리보기 코드 블록 syntax highlight
@@ -625,7 +628,7 @@ const PostEditor = ({ mode }: Props) => {
                   <div
                     ref={previewRef}
                     className="ck-content-view"
-                    dangerouslySetInnerHTML={{ __html: previewHtml }}
+                    dangerouslySetInnerHTML={previewBodyHtml}
                   />
                 </div>
               </Panel>

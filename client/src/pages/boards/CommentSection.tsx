@@ -122,13 +122,16 @@ const CommentContent = React.memo<{ content: string }>(({ content }) => {
   const ref = useRef<HTMLDivElement>(null);
   // 정화 이후에 멘션을 강조한다(정화 전에 넣으면 삽입한 span 이 제거될 수 있다)
   const sanitized = highlightMentions(sanitizeCommentHTML(content));
+  // 객체까지 기억해 둔다 — React 는 dangerouslySetInnerHTML 을 객체 참조로 비교해서,
+  // 매번 새 리터럴을 만들면 내용이 같아도 본문을 통째로 다시 붙인다.
+  const bodyHtml = useMemo(() => ({ __html: sanitized }), [sanitized]);
   useCodeHighlight(ref);
   // content is sanitized via DOMPurify (sanitizeCommentHTML) before rendering
   return (
     <div
       ref={ref}
       className="ck-content-view text-sm bg-slate-50 dark:bg-slate-700/40 rounded-xl px-4 py-3"
-      dangerouslySetInnerHTML={{ __html: sanitized }} // sanitized via DOMPurify — safe
+      dangerouslySetInnerHTML={bodyHtml}
     />
   );
 });

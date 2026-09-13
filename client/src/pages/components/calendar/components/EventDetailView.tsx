@@ -1,7 +1,7 @@
 // client/src/pages/components/calendar/components/EventDetailView.tsx
 import { DEFAULT_EVENT_COLOR } from '../../../../constants/colors';
 import { useCodeHighlight } from '../../../../hooks/useCodeHighlight';
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { CalendarEvent } from '../types';
 import { categoryColors } from '../constants';
 import { formatDateRange } from '../utils';
@@ -45,6 +45,10 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
 }) => {
   const bodyRef = useRef<HTMLDivElement>(null);
 
+  // 정화 결과와 그것을 담은 객체를 모두 기억해 둔다 — React 는
+  // dangerouslySetInnerHTML 을 객체 참조로 비교해서, 매번 새로 만들면 내용이 같아도
+  // 본문을 통째로 다시 붙이고 코드 색 같은 나중 손질이 버려진다.
+  const bodyHtml = useMemo(() => ({ __html: sanitizeHTML(event.body ?? '') }), [event.body]);
   useCodeHighlight(bodyRef);
 
   const categoryInfo = categoryColors[event.category as keyof typeof categoryColors];
@@ -152,10 +156,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
             className="overflow-x-auto rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-800/40"
           >
             {isHtmlContent(event.body) ? (
-              <div
-                className="ck-content-view text-sm"
-                dangerouslySetInnerHTML={{ __html: sanitizeHTML(event.body) }}
-              />
+              <div className="ck-content-view text-sm" dangerouslySetInnerHTML={bodyHtml} />
             ) : (
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800 dark:text-slate-200">
                 {event.body}

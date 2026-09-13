@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { useCodeHighlight } from '../../hooks/useCodeHighlight';
 import { Link } from 'react-router-dom';
 import { WikiPage, WikiTreePage } from '../../types/wiki.types';
@@ -272,11 +272,8 @@ function WikiContentRenderer({
   contentRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const sanitized = sanitizeHTML(content);
-  return (
-    <div
-      ref={contentRef}
-      className="ck-content-view"
-      dangerouslySetInnerHTML={{ __html: sanitized }}
-    />
-  );
+  // 객체까지 기억해 둔다 — React 는 dangerouslySetInnerHTML 을 객체 참조로 비교해서,
+  // 매번 새 리터럴을 만들면 내용이 같아도 본문을 통째로 다시 붙인다.
+  const bodyHtml = useMemo(() => ({ __html: sanitized }), [sanitized]);
+  return <div ref={contentRef} className="ck-content-view" dangerouslySetInnerHTML={bodyHtml} />;
 }

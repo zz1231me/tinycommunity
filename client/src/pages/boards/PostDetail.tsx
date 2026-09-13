@@ -92,17 +92,17 @@ const CKContentRenderer: React.FC<{
   // 기억해 두는 이유: 이 값이 매번 새로 만들어지면 본문 전체를 다시 정화하고,
   // dangerouslySetInnerHTML 이 컨테이너의 자식을 통째로 갈아 끼운다.
   const sanitizedContent = useMemo(() => highlightMentions(sanitizeHTML(content)), [content]);
+  // 객체까지 기억해 둔다. React 는 dangerouslySetInnerHTML 을 '객체 참조' 로 비교해서,
+  // 여기서 매번 새 리터럴을 만들면 내용이 한 글자도 안 바뀌었는데도 본문을 통째로
+  // 다시 붙인다 — 그때 코드 색·증적 카드처럼 나중에 손본 것들이 함께 버려진다.
+  const contentHtml = useMemo(() => ({ __html: sanitizedContent }), [sanitizedContent]);
 
   if (!content) {
     return <ListState>내용이 없습니다.</ListState>;
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="ck-content-view"
-      dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-    />
+    <div ref={containerRef} className="ck-content-view" dangerouslySetInnerHTML={contentHtml} />
   );
 };
 
