@@ -1,8 +1,8 @@
 // client/src/components/admin/tabs/AttendanceManagement.tsx
 // 출퇴근 — 오늘 현황, 기간별 기록, 인원별 집계, 확인 항목·설정.
 //
-// 기록에 남은 확인 내용은 그날 찍힌 문구 그대로다. 항목을 나중에 고쳐도
-// 지난 기록의 문구는 바뀌지 않는다.
+// 기록에 남은 확인 내용은 그날 찍힌 문구 그대로다. 항목을 고쳐도 지난 기록은
+// 바뀌지 않는다.
 
 import { Fragment, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -170,8 +170,7 @@ const AttendanceManagement = () => {
   // 총 근무가 가장 긴 사람을 눈금으로 삼아 막대를 그린다
   const summaryPeak = Math.max(1, ...(summary.data ?? []).map(r => r.totalMinutes));
 
-  // 기본은 많이 일한 순. 이름순으로 두면 한 명도 안 찍은 사람들 사이에
-  // 실제로 근무한 사람이 묻힌다.
+  // 기본은 많이 일한 순. 이름순이면 근무한 사람이 0일인 사람들 사이에 묻힌다.
   const summaryRows = useMemo(() => {
     const rows = [...(summary.data ?? [])];
     if (summarySort === 'name') return rows.sort((a, b) => a.userName.localeCompare(b.userName));
@@ -313,7 +312,7 @@ const AttendanceManagement = () => {
                                 </span>
                               ) : (
                                 // 지난 날짜인데 퇴근이 없으면 지금 일하는 중이 아니다
-                                <span className="text-amber-600 dark:text-amber-400">퇴근 없음</span>
+                                <span className="text-amber-600 dark:text-amber-400">퇴근 안 찍음</span>
                               )}
                             </td>
                             <td className="whitespace-nowrap px-3 py-2 text-slate-600 dark:text-slate-400">
@@ -523,7 +522,7 @@ const AttendanceManagement = () => {
                       하루 기준 근무 시간
                     </p>
                     <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                      오늘 얼마나 채웠는지를 이 값에 견주어 보여 줍니다. 판정에는 쓰이지 않습니다.
+                      진행률 표시에만 씁니다. 지각·초과 근무 판정은 하지 않습니다.
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -562,7 +561,7 @@ const AttendanceManagement = () => {
                       필수 항목을 모두 체크해야 출근 기록
                     </p>
                     <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                      끄면 체크하지 않아도 출근이 되고, 체크하지 않은 사실이 기록에 남습니다.
+                      끄면 체크 없이도 출근됩니다. 체크하지 않은 항목은 기록에 남습니다.
                     </p>
                   </div>
                   <ToggleSwitch
@@ -580,7 +579,7 @@ const AttendanceManagement = () => {
       <ConfirmationModal
         open={confirmDelete !== null}
         title="확인 항목 삭제"
-        message={`'${confirmDelete?.label ?? ''}' 항목을 삭제합니다. 이미 찍힌 기록의 내용은 그대로 남습니다.`}
+        message={`'${confirmDelete?.label ?? ''}' 항목을 삭제합니다. 이미 기록된 내용은 남습니다.`}
         confirmLabel="삭제"
         onConfirm={() => confirmDelete && removeItem.mutate(confirmDelete.id)}
         onCancel={() => setConfirmDelete(null)}

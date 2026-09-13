@@ -1,7 +1,7 @@
 // client/src/components/admin/attendance/TodayBoardView.tsx
 // 오늘 누가 나왔는지 한 화면에.
 //
-// 안 찍은 사람이 보여야 쓸모가 있으므로 명단 전체를 놓고 상태별로 나눈다.
+// 안 찍은 사람이 보여야 하므로 명단 전체를 놓고 상태별로 나눈다.
 
 import { useMemo, useState } from 'react';
 import type { TodayBoard, TodayState } from '../../../types/attendance.types';
@@ -25,7 +25,7 @@ const STATE_META: Record<TodayState, { label: string; dot: string; chip: string 
   },
 };
 
-/** 나온 사람이 위로 — 미출근이 명단 앞을 채우면 오늘 상황이 안 읽힌다 */
+/** 나온 사람을 위로 — 미출근이 앞을 채우면 오늘 상황이 안 보인다 */
 const STATE_ORDER: Record<TodayState, number> = { working: 0, done: 1, absent: 2 };
 
 const FILTERS: Array<{ id: TodayState | 'all'; label: string }> = [
@@ -121,7 +121,7 @@ export function TodayBoardView({ board }: { board: TodayBoard }) {
                 ) : (
                   <>
                     <span className="hidden text-xs tabular-nums text-slate-500 sm:inline dark:text-slate-400">
-                      {/* 어제 찍고 이어 일하는 중이면 언제부터인지가 시각만으로는 안 보인다 */}
+                      {/* 어제부터 이어지는 근무는 시각만으로 구분되지 않는다 */}
                       {row.workDate && row.workDate !== board.workDate && (
                         <span className="mr-1 text-amber-600 dark:text-amber-400">
                           {formatDay(row.workDate)}

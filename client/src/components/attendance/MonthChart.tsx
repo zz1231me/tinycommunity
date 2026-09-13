@@ -1,7 +1,7 @@
 // client/src/components/attendance/MonthChart.tsx
 // 그 달의 일별 근무 시간 막대.
 //
-// 표만 있으면 "요즘 어땠는지" 를 읽어 내려면 숫자를 하나씩 봐야 한다.
+// 표만으로는 한 달 흐름이 한눈에 들어오지 않는다.
 
 import { daysInMonth, formatMinutes } from '../../utils/attendance';
 import type { AttendanceRecord } from '../../types/attendance.types';

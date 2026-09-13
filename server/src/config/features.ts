@@ -196,8 +196,7 @@ export const FEATURES = {
   },
   'tools.attendance': {
     label: '출퇴근 기록',
-    description:
-      '직원이 직접 출근·퇴근을 찍고, 출근할 때 확인 항목에 답합니다. 기록은 관리자 패널에서 봅니다.',
+    description: '직원이 출근·퇴근을 직접 기록하고, 관리자는 인원별 기록을 봅니다.',
     group: 'tools',
     defaultEnabled: true,
   },

@@ -1,8 +1,8 @@
 // client/src/components/admin/attendance/ChecklistEditor.tsx
 // 출근 확인 항목 편집.
 //
-// 입력칸은 서버 값과 이어 둔다. 저장이 실패하면 화면의 글자가 되돌아와야
-// "저장된 줄 알았는데 아니었다" 가 생기지 않는다.
+// 입력칸은 서버 값과 맞춰 둔다. 저장이 실패하면 화면도 원래 값으로 돌아와야
+// 저장된 것으로 오해하지 않는다.
 
 import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
@@ -112,7 +112,7 @@ function ChecklistRow({ item, first, last, moveLocked, onPatch, onMove, onDelete
             onChange={e => onPatch({ isActive: e.target.checked })}
           />
           사용
-          {!item.isActive && <span className="text-slate-400">— 새 출근에는 안 뜹니다</span>}
+          {!item.isActive && <span className="text-slate-400">— 새 출근에 표시 안 됨</span>}
         </label>
       </div>
     </div>
@@ -162,7 +162,7 @@ export function ChecklistEditor({
     <div className="space-y-4">
       {items.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-          확인 항목이 없습니다. 항목이 없으면 출근 버튼을 눌렀을 때 바로 기록됩니다.
+          확인 항목이 없습니다. 출근을 누르면 바로 기록됩니다.
         </p>
       ) : (
         <div className="space-y-2">

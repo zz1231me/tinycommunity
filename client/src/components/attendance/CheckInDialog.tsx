@@ -1,7 +1,7 @@
 // client/src/components/attendance/CheckInDialog.tsx
 // 출근을 찍기 전에 확인 항목에 답하는 대화상자.
 //
-// 필수 항목이 남아 있으면 버튼을 막되, 무엇이 남았는지도 함께 적는다.
+// 필수 항목이 남으면 버튼을 막고, 몇 개 남았는지 함께 적는다.
 // 버튼만 비활성으로 두면 왜 안 눌리는지 알 수 없다.
 
 import { useMemo, useState } from 'react';
@@ -107,14 +107,14 @@ export function CheckInDialog({
 
         <label className="mt-4 block">
           <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
-            남길 말 (선택)
+            메모 (선택)
           </span>
           <textarea
             value={note}
             onChange={e => setNote(e.target.value)}
             maxLength={500}
             rows={2}
-            placeholder="늦은 사유나 전달 사항이 있으면 적어 주세요."
+            placeholder="전달 사항이 있으면 적습니다."
             className="input w-full resize-none"
           />
         </label>
@@ -122,9 +122,7 @@ export function CheckInDialog({
 
       <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-3 dark:border-slate-700">
         <p className="min-w-0 text-xs text-slate-500 dark:text-slate-400">
-          {blocked
-            ? `아직 확인하지 않은 항목이 ${pending.length}개 있습니다.`
-            : '확인한 내용은 기록에 그대로 남습니다.'}
+          {blocked ? `확인하지 않은 항목 ${pending.length}개` : ''}
         </p>
         <div className="flex flex-shrink-0 gap-2">
           <button type="button" onClick={onClose} className="btn-secondary">

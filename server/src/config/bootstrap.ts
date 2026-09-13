@@ -296,8 +296,8 @@ export async function widenGrowingEnums(): Promise<void> {
     '드라큘라 등 새 테마를 저장할 수 없습니다.',
     'system'
   );
-  // 감사 종류는 기능이 늘 때마다 함께 늘어난다. ENUM 으로 두면 새 종류가
-  // 조용히 기록되지 않는다(감사 로그 기록은 실패해도 요청을 막지 않는다).
+  // 감사 종류는 기능이 늘 때마다 늘어난다. ENUM 으로 두면 새 종류가 조용히
+  // 누락된다 (감사 로그 기록은 실패해도 요청을 막지 않는다).
   await widenEnumColumn('audit_logs', 'action', 40, '새 종류의 관리자 작업이 남지 않습니다.');
   await widenEnumColumn('audit_logs', 'targetType', 20, '새 대상 종류가 남지 않습니다.');
 }
@@ -421,15 +421,15 @@ export async function initializeDefaultData() {
       logger.info(`✅ 이벤트 권한 ${permCount}개 존재`);
     }
 
-    // 5. 출퇴근 기준·확인 항목 초기화
-    //    기준 행이 없을 때만 만든다. 관리자가 항목을 모두 지웠다고 해서 다시 살아나면 안 된다.
-    logger.info('🔄 출퇴근 기준 확인 중...');
+    // 5. 출퇴근 설정·확인 항목 초기화
+    //    설정 행이 없을 때만 만든다. 관리자가 항목을 모두 지웠는데 다시 생기면 안 된다.
+    logger.info('🔄 출퇴근 설정 확인 중...');
     const { AttendancePolicy } = await import('../models/AttendancePolicy');
     const { AttendanceChecklistItem } = await import('../models/AttendanceChecklistItem');
     const policyExists = await AttendancePolicy.count();
 
     if (policyExists === 0) {
-      logger.info('📝 기본 출퇴근 기준 생성 중...');
+      logger.info('📝 기본 출퇴근 설정 생성 중...');
       await AttendancePolicy.create({});
       const defaultItems = [
         { label: '보안 수칙을 확인했습니다.', required: true, order: 1 },
@@ -439,7 +439,7 @@ export async function initializeDefaultData() {
       for (const item of defaultItems) await AttendanceChecklistItem.create(item);
       logger.info(`  ✅ 출근 확인 항목 ${defaultItems.length}개 생성`);
     } else {
-      logger.info('✅ 출퇴근 기준 존재');
+      logger.info('✅ 출퇴근 설정 존재');
     }
 
     logger.info('✅ 초기 데이터 확인/생성 완료');

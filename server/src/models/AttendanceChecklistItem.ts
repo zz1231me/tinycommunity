@@ -18,7 +18,7 @@ class AttendanceChecklistItemModel extends Model<
   /** 체크하지 않으면 출근이 안 되는 항목인지 */
   declare public required: CreationOptional<boolean>;
   declare public order: CreationOptional<number>;
-  /** 끄면 새 출근에는 안 뜨지만, 이미 찍힌 기록에는 남아 있다 */
+  /** 끄면 새 출근에는 안 나오지만, 이미 찍힌 기록에는 남는다 */
   declare public isActive: CreationOptional<boolean>;
   declare public readonly createdAt: CreationOptional<Date>;
   declare public readonly updatedAt: CreationOptional<Date>;

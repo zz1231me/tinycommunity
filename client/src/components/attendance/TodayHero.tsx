@@ -1,8 +1,8 @@
 // client/src/components/attendance/TodayHero.tsx
 // 오늘 카드 — 지금 상태와 큰 숫자 하나.
 //
-// 화면 전체를 1초마다 다시 그리면 아래 표까지 함께 흔들린다.
-// 흐르는 시간은 여기서만 세고, 부모는 다시 그리지 않는다.
+// 경과 시간은 이 안에서만 센다. 부모에서 세면 시간이 바뀔 때마다 아래 표까지
+// 함께 다시 그려진다.
 
 import { useEffect, useState } from 'react';
 import { LogIn, LogOut } from 'lucide-react';
@@ -103,7 +103,7 @@ export function TodayHero({
                 )}
               </>
             ) : (
-              '출근을 누르면 확인 항목이 뜹니다.'
+              '출근 기록 없음'
             )}
           </p>
         </div>

@@ -104,7 +104,7 @@ export default function AttendancePage() {
     <PageContainer>
       <PageHeader
         title="출근 확인"
-        description="출근과 퇴근을 직접 기록합니다. 기록은 관리자만 함께 볼 수 있습니다."
+        description="출퇴근을 기록합니다. 전체 기록은 관리자만 봅니다."
         icon={<Clock className="h-6 w-6 text-primary-600 dark:text-primary-400" />}
       />
 
@@ -119,7 +119,7 @@ export default function AttendancePage() {
               <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500" />
               <p className="min-w-0 text-amber-800 dark:text-amber-300">
                 <span className="tabular-nums">{formatDay(openPrevious.workDate)}</span> 출근이 퇴근
-                없이 남아 있습니다. 퇴근을 누르면 그 기록이 지금 시각으로 마감됩니다.
+                없이 남아 있습니다. 퇴근을 누르면 지금 시각으로 마감됩니다.
               </p>
             </div>
           )}
@@ -128,8 +128,8 @@ export default function AttendancePage() {
             workDate={serverToday}
             record={live}
             standardWorkMinutes={standard}
-            // 어제 퇴근을 깜빡했다고 오늘 출근까지 막으면, 먼저 퇴근을 눌러
-            // 어제가 지금 시각으로 마감되면서 없던 밤샘 근무가 만들어진다.
+            // 어제 퇴근을 안 찍었어도 오늘 출근은 따로 찍는다. 막으면 어제 것을
+            // 먼저 마감해야 하고, 그 시각이 오늘이라 없던 밤샘 근무가 생긴다.
             canCheckIn={!record}
             canCheckOut={Boolean(live && !live.checkOutAt)}
             checkingOut={checkOutMutation.isPending}
@@ -210,7 +210,7 @@ export default function AttendancePage() {
               <Stat
                 label="퇴근 안 찍은 날"
                 value={`${unclosedDays}일`}
-                hint={unclosedDays > 0 ? '그날은 근무 시간이 안 잡힙니다' : undefined}
+                hint={unclosedDays > 0 ? '근무 시간 미집계' : undefined}
               />
             </div>
 
@@ -260,7 +260,7 @@ export default function AttendancePage() {
                               <span className="text-emerald-600 dark:text-emerald-400">근무 중</span>
                             ) : (
                               // 이어지지도 않는 지난 날의 열린 기록은 그냥 안 찍은 것이다
-                              <span className="text-amber-600 dark:text-amber-400">안 찍음</span>
+                              <span className="text-amber-600 dark:text-amber-400">퇴근 안 찍음</span>
                             )}
                           </td>
                           <td className="whitespace-nowrap px-4 py-2 text-slate-600 dark:text-slate-400">

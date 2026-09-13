@@ -21,7 +21,7 @@ router.use(apiLimiter);
  * /api/attendance/me:
  *   get:
  *     summary: 오늘 내 출퇴근 상태
- *     description: 오늘 기록과 함께 확인 항목·판정 기준을 돌려준다.
+ *     description: 오늘 기록과 함께 확인 항목·근무 설정을 돌려준다.
  *     tags: [Attendance]
  *     security: [{ cookieAuth: [] }]
  *     responses:
@@ -55,7 +55,7 @@ router.get(
  * /api/attendance/check-in:
  *   post:
  *     summary: 출근 기록
- *     description: 필수 확인 항목을 모두 체크해야 기록된다. 하루 한 번만 된다.
+ *     description: 필수 확인 항목을 모두 체크해야 기록된다. 하루 한 건만 남는다.
  *     tags: [Attendance]
  *     security: [{ cookieAuth: [] }]
  *     requestBody:

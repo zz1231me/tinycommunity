@@ -8,7 +8,7 @@ import {
 } from 'sequelize';
 import { sequelize } from '../config/sequelize';
 
-/** 출근 시점에 찍어 둔 확인 항목. 항목이 나중에 바뀌어도 그날 확인한 내용은 그대로 남는다. */
+/** 출근 시점의 확인 항목 답. 항목이 바뀌어도 그날 기록은 그대로 남는다. */
 export interface ChecklistSnapshotEntry {
   itemId: number;
   label: string;
@@ -60,7 +60,7 @@ AttendanceRecordModel.init(
     modelName: 'AttendanceRecord',
     timestamps: true,
     indexes: [
-      // 하루 두 번 출근이 찍히는 것을 DB 에서 막는다. 동시 요청은 앱 검사만으로는 못 막는다.
+      // 하루 두 번 출근을 DB 에서 막는다. 동시 요청은 앱 검사만으로 못 막는다.
       { unique: true, fields: ['UserId', 'workDate'], name: 'attendance_user_date' },
       { fields: ['workDate'] },
     ],

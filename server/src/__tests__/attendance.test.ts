@@ -5,8 +5,8 @@ import { AttendanceRecord } from '../models/AttendanceRecord';
 
 // 출퇴근 기록.
 //
-// 지켜야 하는 것: 하루 한 건, 필수 확인 항목을 건너뛴 출근은 없음,
-// 그리고 출근할 때 찍은 확인 내용이 나중에 항목을 고쳐도 그대로 남는 것.
+// 지켜야 하는 것: 하루 한 건, 필수 항목을 건너뛴 출근은 없음, 출근할 때 찍은
+// 확인 내용은 항목을 고쳐도 그대로.
 
 let adminCookie: string;
 const cookies: Record<string, string> = {};
@@ -258,8 +258,8 @@ describe('관리자 조회', () => {
 });
 
 describe('자정을 넘긴 퇴근', () => {
-  // 밤 늦게 일하면 출근과 퇴근이 서로 다른 날이 된다. 어제 찍은 것을 못 닫으면
-  // 자정을 넘긴 순간 퇴근 버튼이 막히고, 그날 근무 시간이 영영 안 잡힌다.
+  // 출근과 퇴근이 서로 다른 날이 되는 경우. 어제 것을 못 닫으면 퇴근 버튼이
+  // 막히고 그날 근무 시간이 안 잡힌다.
   const yesterday = () => {
     const d = new Date(Date.now() - 86_400_000);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -293,8 +293,7 @@ describe('자정을 넘긴 퇴근', () => {
 
 describe('설정 변경 기록', () => {
   it('확인 항목을 고치면 누가 무엇을 바꿨는지 감사 로그에 남는다', async () => {
-    // 이 기능은 "무엇을 확인하고 출근했는가" 를 근거로 남긴다.
-    // 그 항목을 몰래 바꿀 수 있으면 지난 기록의 뜻이 흐려진다.
+    // 확인 항목이 곧 기록의 근거라, 바꾼 흔적이 없으면 지난 기록을 믿을 수 없다.
     const created = await addItem('감사 로그 확인용 항목', false);
 
     const logs = await request(app)
@@ -335,7 +334,7 @@ describe('조회 기간', () => {
   });
 
   it('숫자 모양이지만 없는 날짜로 상한을 넘길 수 없다', async () => {
-    // 0000-00-00 같은 값은 Date 로 바꾸면 NaN 이라 기간 길이 검사가 그냥 넘어갔다.
+    // 0000-00-00 은 Date 로 바꾸면 NaN 이라 기간 길이 검사가 넘어갔다.
     const res = await request(app)
       .get('/api/admin/attendance/summary?from=0000-00-00&to=9999-99-99')
       .set('Cookie', adminCookie);
@@ -378,8 +377,7 @@ describe('오늘 현황', () => {
 });
 
 describe('밤을 넘겨 일하는 사람', () => {
-  // 어제 찍고 아직 안 닫힌 사람은 지금 자리에 있는 것이다.
-  // 오늘 안 찍었다고 '미출근' 으로 두면 오늘 현황이 사실과 달라진다.
+  // 어제 찍고 안 닫힌 사람은 지금 근무 중이다. '미출근' 으로 두면 현황이 틀린다.
   const yesterday = () => {
     const d = new Date(Date.now() - 86_400_000);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

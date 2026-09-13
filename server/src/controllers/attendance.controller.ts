@@ -32,10 +32,9 @@ function requireUser(req: AuthRequest, res: Response): string | null {
 }
 
 /**
- * 출근 확인 항목·근무 설정 변경을 남긴다.
+ * 확인 항목·근무 설정 변경을 감사 로그에 남긴다.
  *
- * 이 기능은 "무엇을 확인하고 출근했는가" 를 근거로 남기는 것이 목적이다.
- * 그 확인 항목을 누가 언제 바꿨는지가 없으면 지난 기록의 뜻이 흐려진다.
+ * 확인 항목이 곧 기록의 근거라, 누가 언제 바꿨는지가 없으면 지난 기록을 믿을 수 없다.
  */
 function recordSettingChange(
   req: AuthRequest,

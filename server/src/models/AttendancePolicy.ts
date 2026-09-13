@@ -10,8 +10,8 @@ import { sequelize } from '../config/sequelize';
 /**
  * 출퇴근 설정. 한 행만 쓴다(id=1).
  *
- * 사이트 설정에 컬럼을 더 붙이지 않고 따로 둔 이유는, 이 값들이 출퇴근 기능과만
- * 관계가 있어서다. 기능을 걷어내면 이 표만 지우면 된다.
+ * 사이트 설정에 붙이지 않고 따로 둔다. 출퇴근에서만 쓰는 값이라 기능을 걷어낼 때
+ * 이 표만 지우면 된다.
  */
 class AttendancePolicyModel extends Model<
   InferAttributes<AttendancePolicyModel>,

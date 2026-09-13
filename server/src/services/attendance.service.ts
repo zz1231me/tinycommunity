@@ -1,11 +1,10 @@
 // server/src/services/attendance.service.ts
 // 출퇴근 기록.
 //
-// 한 사람이 하루에 한 건이다. 출근을 찍을 때 그 시점의 확인 항목을 함께 저장한다.
-// 항목은 나중에 관리자가 고칠 수 있으므로, 항목 표를 참조만 해 두면 지난 기록이
-// "무엇을 확인하고 출근했는지" 를 잃는다. 그래서 답과 문구를 함께 박아 둔다.
+// 한 사람이 하루에 한 건이다. 출근할 때 확인 항목의 답을 문구째로 함께 저장한다 —
+// 항목 표를 참조만 해 두면 관리자가 항목을 고쳤을 때 지난 기록의 뜻이 바뀐다.
 //
-// 지각·조기 퇴근 같은 판정은 하지 않는다. 남기는 것은 찍은 시각과 그 사이의 시간뿐이다.
+// 지각·조기 퇴근 판정은 하지 않는다. 남기는 것은 찍은 시각과 그 사이의 시간이다.
 
 import { Op, UniqueConstraintError } from 'sequelize';
 import { sequelize } from '../config/sequelize';
@@ -24,10 +23,10 @@ const MAX_DESCRIPTION = 500;
 /** 명단에 올릴 사용자 수 상한 */
 const USER_LIMIT = 500;
 /**
- * 한 번에 훑을 수 있는 기간 상한.
+ * 집계 기간 상한.
  *
- * 집계는 기간 안의 기록을 모두 읽어 메모리에서 묶는다. 기간을 안 주면 표 전체를
- * 읽게 되므로, 기본값을 이번 달로 두고 넘치는 요청은 거절한다.
+ * 집계는 기간 안의 기록을 모두 읽어 묶는다. 기간이 없으면 표 전체를 읽으므로
+ * 기본값을 이번 달로 두고 넘치는 요청은 거절한다.
  */
 const MAX_RANGE_DAYS = 366;
 
@@ -131,9 +130,8 @@ function toPolicyView(policy: AttendancePolicy): PolicyView {
 /**
  * 실제로 있는 YYYY-MM-DD 인지.
  *
- * 모양만 보면 0000-00-00 이나 2026-02-30 이 통과한다. 그런 값은 Date 로 바꾸면
- * NaN 이 되고, 기간 길이 계산도 NaN 이 되어 "366일 이하" 검사가 그냥 넘어간다.
- * (from=0000-00-00&to=9999-99-99 로 표 전체를 읽을 수 있었다.)
+ * 모양만 검사하면 0000-00-00 이나 2026-02-30 이 통과한다. 그런 값은 Date 로 바꾸면
+ * NaN 이라 기간 길이 검사가 통째로 넘어간다.
  */
 function isDay(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -148,7 +146,7 @@ function requireDay(value: string, label: string): string {
   return value;
 }
 
-/** 값을 안 줬으면 기본값, 줬는데 날짜가 아니면 거절 — 조용히 다른 기간을 보여 주지 않는다 */
+/** 값이 없으면 기본값, 있는데 날짜가 아니면 거절 (다른 기간을 조용히 보여 주지 않는다) */
 function dayOrDefault(value: string | undefined, fallback: string, label: string): string {
   if (value === undefined || value === '') return fallback;
   if (!isDay(value)) throw new AppError(400, `${label}이 올바른 날짜가 아닙니다.`);
@@ -196,8 +194,8 @@ export class AttendanceService extends BaseService {
       this.getPolicy(),
     ]);
 
-    // 오늘 것이 있으면 퇴근은 그것을 닫는다 — 어제 것을 함께 띄우면 어느 쪽이
-    // 닫히는지 알 수 없다. checkOut 이 고르는 기준과 같게 맞춘다.
+    // checkOut 이 닫는 대상과 같은 기준으로 고른다. 오늘 것이 있으면 그것이 우선이라
+    // 어제 것은 내보내지 않는다 — 어느 쪽이 닫히는지 알 수 없어진다.
     const openPrevious = record ? null : await findOpenPreviousDay(userId, workDate);
 
     return {
@@ -254,9 +252,8 @@ export class AttendanceService extends BaseService {
 
   async checkOut(userId: string): Promise<RecordView> {
     const workDate = today();
-    // 밤 늦게까지 일하면 출근과 퇴근이 서로 다른 날이 된다. 오늘 찍은 것이 없으면
-    // 어제 찍고 아직 안 닫힌 건을 닫는다 — 그러지 않으면 자정을 넘긴 순간
-    // 퇴근 버튼이 "출근 기록이 없습니다" 로 막힌다.
+    // 자정을 넘겨 퇴근하면 출근과 퇴근이 서로 다른 날이 된다. 오늘 것이 없으면
+    // 어제 찍고 안 닫힌 건을 닫는다.
     const record =
       (await AttendanceRecord.findOne({ where: { UserId: userId, workDate } })) ??
       (await findOpenPreviousDay(userId, workDate));
@@ -359,13 +356,11 @@ export class AttendanceService extends BaseService {
         order: [['name', 'ASC']],
         limit: USER_LIMIT,
       }),
-      // 어제 것도 함께 읽는다. 밤을 넘겨 일하는 사람을 오늘 안 찍었다고 보면
-      // 지금 자리에 있는 사람이 '미출근' 으로 뜬다.
+      // 어제 것도 함께 읽는다. 자정을 넘겨 일하는 사람이 '미출근' 으로 잡힌다.
       AttendanceRecord.findAll({ where: { workDate: { [Op.in]: [workDate, yesterday] } } }),
     ]);
 
-    // 오늘 것이 있으면 그것이 우선 — 퇴근이 닫는 대상과 같게 맞춘다.
-    // 오늘 것이 없을 때만 어제 안 닫힌 건을 쓴다.
+    // 오늘 것이 우선이고, 없을 때만 어제 안 닫힌 건을 쓴다 (퇴근이 닫는 대상과 같다).
     const todays = new Map(records.filter(r => r.workDate === workDate).map(r => [r.UserId, r]));
     const carried = new Map(
       records.filter(r => r.workDate === yesterday && !r.checkOutAt).map(r => [r.UserId, r])
@@ -513,8 +508,7 @@ export class AttendanceService extends BaseService {
   async reorderChecklist(ids: number[]): Promise<ChecklistItemView[]> {
     const items = await AttendanceChecklistItem.findAll();
     const known = new Set(items.map(i => i.id));
-    // 같은 id 가 두 번 들어오면 개수만 맞고 빠진 항목이 생긴다 —
-    // 그 항목은 옛 순서를 그대로 들고 남아 순서가 겹친다.
+    // 같은 id 가 두 번 들어오면 개수만 맞고 빠진 항목이 생겨 순서가 겹친다.
     const unique = new Set(ids);
     if (unique.size !== ids.length || unique.size !== known.size || ids.some(id => !known.has(id))) {
       throw new AppError(400, '순서 목록이 확인 항목과 맞지 않습니다.');
@@ -594,8 +588,7 @@ function shiftDay(day: string, delta: number): string {
 /**
  * 어제 찍고 아직 퇴근을 안 찍은 기록.
  *
- * 하루 전까지만 본다. 사흘 전 것까지 닫아 주면 잊고 있던 기록이 엉뚱한 시각으로
- * 마감되어, 며칠치 근무 시간이 한 건에 뭉친다.
+ * 하루 전까지만 본다. 더 거슬러 올라가면 잊고 있던 기록이 엉뚱한 시각으로 마감된다.
  */
 async function findOpenPreviousDay(userId: string, workDate: string) {
   return AttendanceRecord.findOne({
@@ -603,7 +596,7 @@ async function findOpenPreviousDay(userId: string, workDate: string) {
   });
 }
 
-/** 기록 묶음을 요약한다. 평균은 퇴근까지 찍힌 날만 센다 — 근무 중인 날을 섞으면 평균이 내려간다. */
+/** 기록 묶음 요약. 평균은 퇴근까지 찍힌 날만 센다 (근무 중인 날을 섞으면 평균이 내려간다). */
 function summarize(records: AttendanceRecord[]): Omit<UserSummary, 'userId' | 'userName'> {
   const closed = records.filter(r => r.workMinutes !== null);
   const totalMinutes = closed.reduce((sum, r) => sum + (r.workMinutes ?? 0), 0);
