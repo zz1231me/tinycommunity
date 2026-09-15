@@ -175,7 +175,9 @@ describe('선택 반영', () => {
     render(<MentionAutocomplete editor={editor} />);
 
     typeInto(root, '@a');
-    await screen.findByRole('listbox');
+    // 목록이 뜬 것만으로는 부족하다. 결과가 도착하면 활성 항목이 0 으로 돌아가므로,
+    // 두 번째 항목까지 그려진 뒤에 눌러야 한다 (안 그러면 가끔 첫 항목이 들어간다).
+    await screen.findByText('바비');
     fireEvent.keyDown(document, { key: 'ArrowDown' });
     fireEvent.keyDown(document, { key: 'Enter' });
 

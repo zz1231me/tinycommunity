@@ -4,6 +4,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../store/auth';
 import { fetchPostById, deletePost, verifySecretPost, toggleLike } from '../api/posts';
 import { formatRelativeDate } from '../utils/date';
+import { toast } from '../utils/toast';
+import { getApiErrorMessage } from '../api/utils';
 import { getBoardTitle } from '../constants/boardTitles';
 import { decryptContent } from '../utils/crypto';
 import type { Assignee, WorkStatus } from '../api/tasks';
@@ -269,21 +271,33 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
   );
 
   // 좋아요 토글
+  //
+  // 누르는 즉시 반영한다(스크랩 버튼과 같은 방식). 왕복을 기다리면 네트워크가
+  // 느린 만큼 하트가 늦게 움직여, 안 눌린 줄 알고 한 번 더 누르게 된다.
   const handleToggleLike = useCallback(async () => {
     if (!boardType || !id || likeLoading) return;
+
+    const previous = { liked, likeCount };
+    setLiked(!previous.liked);
+    setLikeCount(Math.max(0, previous.likeCount + (previous.liked ? -1 : 1)));
     setLikeLoading(true);
+
     try {
       const result = await toggleLike(boardType, id);
       // 언마운트/다른 게시글 이동 후 응답이 도착해 잘못된 상태를 덮어쓰지 않도록 가드
       if (!mountedRef.current) return;
+      // 서버 값이 최종이다 — 다른 탭에서 이미 눌렀을 수 있다
       setLiked(result.liked);
       setLikeCount(result.likeCount);
     } catch (err) {
-      if (import.meta.env.DEV) console.error('좋아요 처리 실패:', err);
+      if (!mountedRef.current) return;
+      setLiked(previous.liked);
+      setLikeCount(previous.likeCount);
+      toast.error(getApiErrorMessage(err, '좋아요 처리에 실패했습니다.'));
     } finally {
       if (mountedRef.current) setLikeLoading(false);
     }
-  }, [boardType, id, likeLoading]);
+  }, [boardType, id, likeLoading, liked, likeCount]);
 
   const handleBack = useCallback(() => {
     // 목록에서 넘어온 경우 원래 목록 위치(페이지·검색·태그)로 복귀, 아니면 게시판 첫 페이지
