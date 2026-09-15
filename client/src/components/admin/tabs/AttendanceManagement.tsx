@@ -6,7 +6,7 @@
 
 import { Fragment, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, ChevronLeft } from 'lucide-react';
 import { AdminSection } from '../common/AdminSection';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { ConfirmationModal } from '../common/ConfirmationModal';
@@ -47,18 +47,26 @@ interface AttendanceSettings {
   policy: AttendancePolicy;
 }
 
-type View = 'today' | 'records' | 'summary' | 'settings';
+type View = 'today' | 'period' | 'settings';
 
 const VIEWS: Array<{ id: View; label: string }> = [
   { id: 'today', label: '오늘' },
-  { id: 'records', label: '기록' },
-  { id: 'summary', label: '인원별' },
+  { id: 'period', label: '기간별' },
   { id: 'settings', label: '확인 항목·설정' },
 ];
 
-const PAGE_SIZE = 30;
+/** 인원별 표에서 고를 수 있는 정렬 기준 */
+type SortKey = 'name' | 'days' | 'total' | 'average' | 'open' | 'last';
+const SORTS: Array<{ key: SortKey; label: string; numeric: boolean }> = [
+  { key: 'name', label: '이름', numeric: false },
+  { key: 'days', label: '근무일', numeric: true },
+  { key: 'total', label: '총 근무', numeric: true },
+  { key: 'average', label: '하루 평균', numeric: true },
+  { key: 'open', label: '퇴근 안 찍음', numeric: true },
+  { key: 'last', label: '마지막 출근', numeric: false },
+];
 
-type SummarySort = 'worked' | 'name';
+const PAGE_SIZE = 30;
 
 // 서버(attendance.service)의 검증 범위와 같아야 한다
 const STANDARD_MIN = 30;
@@ -127,14 +135,23 @@ const AttendanceManagement = () => {
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ChecklistItem | null>(null);
-  const [summarySort, setSummarySort] = useState<SummarySort>('worked');
+  // 표 정렬 — 기본은 많이 일한 순. 이름순이면 근무한 사람이 0일인 사람들 사이에 묻힌다.
+  const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'total', desc: true });
+
+  const toggleSort = (key: SortKey) =>
+    setSort(prev =>
+      prev.key === key
+        ? { key, desc: !prev.desc }
+        : // 숫자 칸은 큰 값부터, 글자 칸은 가나다순부터가 자연스럽다
+          { key, desc: SORTS.find(c => c.key === key)?.numeric ?? false }
+    );
 
   const range = useMemo(() => ({ from, to }), [from, to]);
 
   const { data: users = [] } = useQuery({
     queryKey: adminKeys.users.all,
     queryFn: fetchAdminUsers,
-    enabled: view === 'records',
+    enabled: view === 'period',
   });
 
   const board = useQuery({
@@ -147,7 +164,8 @@ const AttendanceManagement = () => {
   const records = useQuery({
     queryKey: adminKeys.attendance.records({ ...range, userId, page }),
     queryFn: () => fetchAttendanceRecords({ ...range, userId: userId || undefined, page }),
-    enabled: view === 'records',
+    // 사람을 고르기 전에는 인원별 요약만 보여준다 — 전체 기록을 한 줄씩 늘어놓아도 읽히지 않는다
+    enabled: view === 'period' && !!userId,
     // 페이지·기간을 바꿀 때 표가 비었다가 다시 차면 화면이 튄다 — 새 값이 올 때까지 둔다
     placeholderData: prev => prev,
   });
@@ -155,7 +173,7 @@ const AttendanceManagement = () => {
   const summary = useQuery({
     queryKey: adminKeys.attendance.summary(range),
     queryFn: () => fetchAttendanceSummary(range),
-    enabled: view === 'summary',
+    enabled: view === 'period',
     placeholderData: prev => prev,
   });
 
@@ -281,12 +299,32 @@ const AttendanceManagement = () => {
 
   const summaryRows = useMemo(() => {
     const rows = [...(summary.data ?? [])];
-    if (summarySort === 'name') return rows.sort((a, b) => a.userName.localeCompare(b.userName));
-    return rows.sort(
-      (a, b) =>
-        b.days - a.days || b.totalMinutes - a.totalMinutes || a.userName.localeCompare(b.userName)
-    );
-  }, [summary.data, summarySort]);
+    const dir = sort.desc ? -1 : 1;
+    const value = (r: (typeof rows)[number]) => {
+      switch (sort.key) {
+        case 'days':
+          return r.days;
+        case 'total':
+          return r.totalMinutes;
+        case 'average':
+          return r.averageMinutes;
+        case 'open':
+          return r.openDays;
+        case 'last':
+          return r.lastWorkDate ?? '';
+        default:
+          return r.userName;
+      }
+    };
+    return rows.sort((a, b) => {
+      const va = value(a);
+      const vb = value(b);
+      if (typeof va === 'number' && typeof vb === 'number') {
+        return (va - vb) * dir || a.userName.localeCompare(b.userName);
+      }
+      return String(va).localeCompare(String(vb)) * dir;
+    });
+  }, [summary.data, sort]);
 
   return (
     <div className="space-y-6">
@@ -295,7 +333,13 @@ const AttendanceManagement = () => {
           <button
             key={v.id}
             type="button"
-            onClick={() => setView(v.id)}
+            onClick={() => {
+              // 탭을 옮겼다 오면 전체 목록부터 — 지난번에 보던 사람이 남아 있으면
+              // 왜 한 사람만 나오는지 알 수 없다
+              setView(v.id);
+              setUserId('');
+              setPage(1);
+            }}
             aria-pressed={view === v.id}
             className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
               view === v.id
@@ -320,7 +364,7 @@ const AttendanceManagement = () => {
         </AdminSection>
       )}
 
-      {(view === 'records' || view === 'summary') && (
+      {view === 'period' && (
         <div className="flex flex-wrap items-center gap-1.5">
           {RANGE_PRESETS.map(preset => {
             const { from: pFrom, to: pTo } = preset.range();
@@ -351,7 +395,7 @@ const AttendanceManagement = () => {
         </div>
       )}
 
-      {(view === 'records' || view === 'summary') && (
+      {view === 'period' && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field label="시작일">
             <input
@@ -378,30 +422,26 @@ const AttendanceManagement = () => {
               className="input input-sm w-full"
             />
           </Field>
-          {view === 'records' && (
-            <Field label="사용자">
-              <select
-                value={userId}
-                onChange={e => {
-                  setUserId(e.target.value);
-                  setPage(1);
-                }}
-                className="input input-sm w-full"
-              >
-                <option value="">전체 인원</option>
-                {users.map(u => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} ({u.id})
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
         </div>
       )}
 
-      {view === 'records' && (
-        <AdminSection title={`출퇴근 기록${records.data ? ` · ${records.data.total}건` : ''}`}>
+      {view === 'period' && userId && (
+        <AdminSection
+          title={`${users.find(u => u.id === userId)?.name ?? userId} · ${records.data?.total ?? 0}건`}
+          actions={
+            <button
+              type="button"
+              onClick={() => {
+                setUserId('');
+                setPage(1);
+              }}
+              className="btn-secondary inline-flex items-center gap-1.5"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              전체 보기
+            </button>
+          }
+        >
           {records.isLoading ? (
             <LoadingSpinner message="기록 불러오는 중..." />
           ) : records.isError ? (
@@ -553,34 +593,8 @@ const AttendanceManagement = () => {
         </AdminSection>
       )}
 
-      {view === 'summary' && (
-        <AdminSection
-          title="인원별 집계"
-          actions={
-            <div className="flex gap-1">
-              {(
-                [
-                  { id: 'worked', label: '근무 많은 순' },
-                  { id: 'name', label: '이름순' },
-                ] as Array<{ id: SummarySort; label: string }>
-              ).map(option => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => setSummarySort(option.id)}
-                  aria-pressed={summarySort === option.id}
-                  className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
-                    summarySort === option.id
-                      ? 'bg-slate-800 font-medium text-white dark:bg-slate-200 dark:text-slate-900'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          }
-        >
+      {view === 'period' && !userId && (
+        <AdminSection title="인원별 집계">
           {summary.isLoading ? (
             <LoadingSpinner message="집계 불러오는 중..." />
           ) : summary.isError ? (
@@ -610,12 +624,26 @@ const AttendanceManagement = () => {
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
                     <tr>
-                      <th className="px-3 py-2 text-left font-medium">이름</th>
-                      <th className="px-3 py-2 text-left font-medium">근무일</th>
-                      <th className="px-3 py-2 text-left font-medium">총 근무</th>
-                      <th className="px-3 py-2 text-left font-medium">하루 평균</th>
-                      <th className="px-3 py-2 text-left font-medium">퇴근 안 찍음</th>
-                      <th className="px-3 py-2 text-left font-medium">마지막 출근</th>
+                      {SORTS.map(col => (
+                        <th key={col.key} className="px-3 py-2 text-left font-medium">
+                          <button
+                            type="button"
+                            onClick={() => toggleSort(col.key)}
+                            aria-label={`${col.label} 기준으로 정렬`}
+                            className={`inline-flex items-center gap-0.5 hover:text-slate-700 dark:hover:text-slate-200 ${
+                              sort.key === col.key ? 'text-slate-800 dark:text-slate-100' : ''
+                            }`}
+                          >
+                            {col.label}
+                            {sort.key === col.key && (
+                              <ArrowUpDown className="h-3 w-3" aria-hidden="true" />
+                            )}
+                            {sort.key === col.key && (
+                              <span className="sr-only">{sort.desc ? '내림차순' : '오름차순'}</span>
+                            )}
+                          </button>
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -630,7 +658,6 @@ const AttendanceManagement = () => {
                             onClick={() => {
                               setUserId(row.userId);
                               setPage(1);
-                              setView('records');
                             }}
                             className="text-left text-slate-800 hover:text-primary-600 hover:underline dark:text-slate-200 dark:hover:text-primary-400"
                           >

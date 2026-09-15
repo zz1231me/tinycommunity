@@ -4,7 +4,7 @@
 // 안 찍은 사람이 보여야 하므로 명단 전체를 놓고 상태별로 나눈다.
 
 import { useMemo, useState } from 'react';
-import type { TodayBoard, TodayState } from '../../../types/attendance.types';
+import type { TodayBoard, TodayRow, TodayState } from '../../../types/attendance.types';
 import { formatClock, formatDay, formatMinutes } from '../../../utils/attendance';
 
 const STATE_META: Record<TodayState, { label: string; dot: string; chip: string }> = {
@@ -49,8 +49,17 @@ function Card({ label, value, tone }: { label: string; value: number; tone: stri
   );
 }
 
+type TodaySort = 'state' | 'name' | 'minutes';
+
+const SORT_LABELS: Array<{ key: TodaySort; label: string }> = [
+  { key: 'state', label: '상태순' },
+  { key: 'minutes', label: '근무 시간순' },
+  { key: 'name', label: '이름순' },
+];
+
 export function TodayBoardView({ board }: { board: TodayBoard }) {
   const [filter, setFilter] = useState<TodayState | 'all'>('all');
+  const [sort, setSort] = useState<TodaySort>('state');
 
   const counts = useMemo(
     () => ({
@@ -61,16 +70,16 @@ export function TodayBoardView({ board }: { board: TodayBoard }) {
     [board.rows]
   );
 
-  const rows = useMemo(
-    () =>
-      board.rows
-        .filter(r => filter === 'all' || r.state === filter)
-        .sort(
-          (a, b) =>
-            STATE_ORDER[a.state] - STATE_ORDER[b.state] || a.userName.localeCompare(b.userName)
-        ),
-    [board.rows, filter]
-  );
+  const rows = useMemo(() => {
+    const list = board.rows.filter(r => filter === 'all' || r.state === filter);
+    const byName = (a: TodayRow, b: TodayRow) => a.userName.localeCompare(b.userName);
+    if (sort === 'name') return [...list].sort(byName);
+    if (sort === 'minutes') {
+      // 오래 일한 사람부터. 안 찍은 사람은 뒤로 — 0분과 섞이면 순서가 뒤엉킨다.
+      return [...list].sort((a, b) => (b.minutes ?? -1) - (a.minutes ?? -1) || byName(a, b));
+    }
+    return [...list].sort((a, b) => STATE_ORDER[a.state] - STATE_ORDER[b.state] || byName(a, b));
+  }, [board.rows, filter, sort]);
 
   return (
     <div className="space-y-4">
@@ -80,7 +89,7 @@ export function TodayBoardView({ board }: { board: TodayBoard }) {
         <Card label="미출근" value={counts.absent} tone={STATE_META.absent.dot} />
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         {FILTERS.map(f => (
           <button
             key={f.id}
@@ -96,6 +105,24 @@ export function TodayBoardView({ board }: { board: TodayBoard }) {
             {f.label}
           </button>
         ))}
+
+        <span className="ml-auto flex items-center gap-1">
+          {SORT_LABELS.map(option => (
+            <button
+              key={option.key}
+              type="button"
+              onClick={() => setSort(option.key)}
+              aria-pressed={sort === option.key}
+              className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
+                sort === option.key
+                  ? 'bg-slate-800 font-medium text-white dark:bg-slate-200 dark:text-slate-900'
+                  : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </span>
       </div>
 
       {rows.length === 0 ? (

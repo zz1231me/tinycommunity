@@ -19,7 +19,11 @@ function scaleMax(rows: AttendanceSummaryRow[], standard: number): number {
 }
 
 export function SummaryChart({ rows, standardWorkMinutes }: Props) {
-  const worked = rows.filter(r => r.days > 0);
+  // 막대는 긴 것부터 — 표의 정렬을 따라가면 길이가 들쭉날쭉해 순위로 안 읽힌다
+  const worked = rows
+    .filter(r => r.days > 0)
+    .slice()
+    .sort((a, b) => b.averageMinutes - a.averageMinutes);
   if (worked.length === 0) return null;
 
   const max = scaleMax(worked, standardWorkMinutes);
