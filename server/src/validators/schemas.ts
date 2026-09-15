@@ -134,6 +134,7 @@ export const attendanceChecklistUpdateSchema = z.object({
 export const attendancePolicySchema = z.object({
   standardWorkMinutes: z.number().int().min(30).max(1440).optional(),
   requireChecklist: z.boolean().optional(),
+  noticeText: z.string().max(300, '안내 문구는 300자를 넘을 수 없습니다.').optional(),
 });
 
 export const attendanceReorderSchema = z.object({

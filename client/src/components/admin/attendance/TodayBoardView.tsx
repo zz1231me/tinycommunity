@@ -57,7 +57,14 @@ const SORT_LABELS: Array<{ key: TodaySort; label: string }> = [
   { key: 'name', label: '이름순' },
 ];
 
-export function TodayBoardView({ board }: { board: TodayBoard }) {
+export function TodayBoardView({
+  board,
+  onSelectUser,
+}: {
+  board: TodayBoard;
+  /** 이름을 누르면 그 사람의 기간별 기록으로 들어간다 */
+  onSelectUser: (userId: string) => void;
+}) {
   const [filter, setFilter] = useState<TodayState | 'all'>('all');
   const [sort, setSort] = useState<TodaySort>('state');
 
@@ -139,10 +146,15 @@ export function TodayBoardView({ board }: { board: TodayBoard }) {
                   className={`h-2 w-2 flex-shrink-0 rounded-full ${meta.dot}`}
                   aria-hidden="true"
                 />
-                <span className="min-w-0 flex-1 truncate text-sm text-slate-800 dark:text-slate-200">
+                <button
+                  type="button"
+                  onClick={() => onSelectUser(row.userId)}
+                  title={`${row.userName}님의 기록 보기`}
+                  className="min-w-0 flex-1 truncate text-left text-sm text-slate-800 hover:text-primary-600 hover:underline dark:text-slate-200 dark:hover:text-primary-400"
+                >
                   {row.userName}
                   <span className="ml-1.5 text-xs text-slate-400">{row.userId}</span>
-                </span>
+                </button>
 
                 {row.state === 'absent' ? (
                   <span className={`rounded-full px-2 py-0.5 text-xs ${meta.chip}`}>

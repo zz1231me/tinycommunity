@@ -460,6 +460,18 @@ describe('기준 설정', () => {
     expect(res.status).toBe(400);
   });
 
+  it('안내 문구를 고치면 오늘 상태에 그대로 실려 온다', async () => {
+    await setPolicy({ noticeText: '9시까지 출근해 주세요.' });
+    const res = await request(app).get('/api/attendance/me').set('Cookie', cookies.attworker1);
+    expect(res.body.data.policy.noticeText).toBe('9시까지 출근해 주세요.');
+  });
+
+  it('안내 문구를 비우면 기본 문구로 돌아간다 — 머리글이 비어 보이면 안 된다', async () => {
+    await setPolicy({ noticeText: '   ' });
+    const res = await request(app).get('/api/attendance/me').set('Cookie', cookies.attworker1);
+    expect(res.body.data.policy.noticeText).toContain('출퇴근을 기록합니다');
+  });
+
   it('필수 확인을 끄면 체크 없이도 출근된다', async () => {
     await setPolicy({ requireChecklist: false });
     const res = await checkIn(cookies.attworker4, {});

@@ -22,6 +22,8 @@ class AttendancePolicyModel extends Model<
   declare public standardWorkMinutes: CreationOptional<number>;
   /** 필수 항목을 다 확인해야 출근이 되는지 */
   declare public requireChecklist: CreationOptional<boolean>;
+  /** 출근 확인 화면 머리글에 적는 안내. 팀마다 부르는 말과 규칙이 달라 고칠 수 있게 둔다. */
+  declare public noticeText: CreationOptional<string>;
   declare public readonly createdAt: CreationOptional<Date>;
   declare public readonly updatedAt: CreationOptional<Date>;
 }
@@ -31,6 +33,11 @@ AttendancePolicyModel.init(
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     standardWorkMinutes: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 480 },
     requireChecklist: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+    noticeText: {
+      type: DataTypes.STRING(300),
+      allowNull: false,
+      defaultValue: '출퇴근을 기록합니다. 전체 기록은 관리자만 봅니다.',
+    },
     createdAt: { type: DataTypes.DATE, allowNull: false },
     updatedAt: { type: DataTypes.DATE, allowNull: false },
   },

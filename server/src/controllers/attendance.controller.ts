@@ -148,6 +148,7 @@ export const getAttendanceSettings = async (_req: AuthRequest, res: Response): P
       policy: {
         standardWorkMinutes: policy.standardWorkMinutes,
         requireChecklist: policy.requireChecklist,
+        noticeText: policy.noticeText,
       },
     });
   });
@@ -201,10 +202,14 @@ export const deleteAttendanceChecklistItem = async (
 };
 
 export const updateAttendancePolicy = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { standardWorkMinutes, requireChecklist } = req.body;
+  const { standardWorkMinutes, requireChecklist, noticeText } = req.body;
   await run(res, '출퇴근 설정 저장', {}, async () => {
     const before = await attendanceService.getPolicyView();
-    const after = await attendanceService.updatePolicy({ standardWorkMinutes, requireChecklist });
+    const after = await attendanceService.updatePolicy({
+      standardWorkMinutes,
+      requireChecklist,
+      noticeText,
+    });
     recordSettingChange(req, '근무 설정', { before, after });
     sendSuccess(res, after, '설정이 저장되었습니다.');
   });

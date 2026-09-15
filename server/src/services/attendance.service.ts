@@ -33,6 +33,7 @@ const MAX_RANGE_DAYS = 366;
 export interface PolicyView {
   standardWorkMinutes: number;
   requireChecklist: boolean;
+  noticeText: string;
 }
 
 export interface ChecklistItemView {
@@ -124,6 +125,7 @@ function toPolicyView(policy: AttendancePolicy): PolicyView {
   return {
     standardWorkMinutes: policy.standardWorkMinutes,
     requireChecklist: policy.requireChecklist,
+    noticeText: policy.noticeText,
   };
 }
 
@@ -540,6 +542,11 @@ export class AttendanceService extends BaseService {
       policy.standardWorkMinutes = minutes;
     }
     if (data.requireChecklist !== undefined) policy.requireChecklist = data.requireChecklist;
+    if (data.noticeText !== undefined) {
+      // 빈 안내는 머리글이 비어 보이므로 기본 문구로 되돌린다
+      const text = data.noticeText.trim().slice(0, 300);
+      policy.noticeText = text || '출퇴근을 기록합니다. 전체 기록은 관리자만 봅니다.';
+    }
 
     await policy.save();
     return toPolicyView(policy);

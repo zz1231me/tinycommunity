@@ -34,6 +34,8 @@ export interface AttendancePolicy {
   /** 하루 기준 근무 시간(분) */
   standardWorkMinutes: number;
   requireChecklist: boolean;
+  /** 출근 확인 화면 머리글 안내 — 관리자가 고친다 */
+  noticeText: string;
 }
 
 export interface AttendanceStatus {

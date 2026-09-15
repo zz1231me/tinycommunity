@@ -292,7 +292,10 @@ export class AuthService extends BaseService {
     );
 
     const refreshToken = jwt.sign(
-      { id: user.id, tokenType: 'refresh', tv: user.tokenVersion ?? 0 },
+      // jti 로 매번 다른 토큰을 만든다. 없으면 payload 와 iat(초 단위)가 같아져
+      // 같은 사람이 같은 초에 두 번 로그인하면 토큰이 글자까지 똑같아진다 —
+      // 세션 표에서 한 줄로 덮여 기기 두 대가 한 자격증명을 나눠 쓰게 된다.
+      { id: user.id, tokenType: 'refresh', tv: user.tokenVersion ?? 0, jti: crypto.randomUUID() },
       process.env.JWT_REFRESH_SECRET!,
       { expiresIn: `${jwtRefreshTokenDays}d`, algorithm: 'HS256' }
     );
@@ -399,7 +402,9 @@ export class AuthService extends BaseService {
       );
 
       const newRefreshToken = jwt.sign(
-        { id: user.id, tokenType: 'refresh', tv: user.tokenVersion ?? 0 },
+        // 갱신 때도 마찬가지 — 두 기기가 같은 초에 갱신하면 같은 토큰이 나와
+        // sessionToken 유니크 제약에 걸리고 한쪽 세션이 갱신되지 않는다.
+        { id: user.id, tokenType: 'refresh', tv: user.tokenVersion ?? 0, jti: crypto.randomUUID() },
         process.env.JWT_REFRESH_SECRET!,
         { expiresIn: `${refreshDays}d`, algorithm: 'HS256' }
       );

@@ -106,7 +106,7 @@ export default function AttendancePage() {
     <PageContainer>
       <PageHeader
         title="출근 확인"
-        description="출퇴근을 기록합니다. 전체 기록은 관리자만 봅니다."
+        description={status.data?.policy.noticeText ?? ''}
         icon={<Clock className="h-6 w-6 text-primary-600 dark:text-primary-400" />}
       />
 

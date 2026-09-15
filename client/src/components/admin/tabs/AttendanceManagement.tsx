@@ -297,6 +297,12 @@ const AttendanceManagement = () => {
     };
   }, [summary.data]);
 
+  /** 드릴다운에서 보여줄 그 사람의 기간 요약 — 표만 늘어놓으면 규모가 안 잡힌다 */
+  const personSummary = useMemo(
+    () => (summary.data ?? []).find(r => r.userId === userId) ?? null,
+    [summary.data, userId]
+  );
+
   const summaryRows = useMemo(() => {
     const rows = [...(summary.data ?? [])];
     const dir = sort.desc ? -1 : 1;
@@ -359,7 +365,16 @@ const AttendanceManagement = () => {
           ) : board.isError ? (
             <ListState>{getApiErrorMessage(board.error, '현황을 불러오지 못했습니다.')}</ListState>
           ) : board.data ? (
-            <TodayBoardView board={board.data} />
+            <TodayBoardView
+              board={board.data}
+              onSelectUser={id => {
+                // 오늘 화면에서 사람을 누르면 그대로 그 사람 기록으로 — 탭을 옮겨
+                // 다시 찾게 하지 않는다
+                setUserId(id);
+                setPage(1);
+                setView('period');
+              }}
+            />
           ) : null}
         </AdminSection>
       )}
@@ -452,13 +467,37 @@ const AttendanceManagement = () => {
             <ListState size="roomy">이 기간에는 기록이 없습니다.</ListState>
           ) : (
             <>
+              {personSummary && (
+                <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  <PeriodStat label="근무일" value={`${personSummary.days}일`} />
+                  <PeriodStat label="총 근무" value={formatMinutes(personSummary.totalMinutes)} />
+                  <PeriodStat
+                    label="하루 평균"
+                    value={formatMinutes(personSummary.averageMinutes)}
+                    hint={`기준 ${formatMinutes(standard)}`}
+                  />
+                  <PeriodStat
+                    label="기준 대비"
+                    value={
+                      personSummary.averageMinutes > 0
+                        ? `${Math.round((personSummary.averageMinutes / Math.max(1, standard)) * 100)}%`
+                        : '—'
+                    }
+                  />
+                  <PeriodStat
+                    label="퇴근 안 찍음"
+                    value={`${personSummary.openDays}일`}
+                    hint={personSummary.openDays > 0 ? '그날은 시간이 안 잡힙니다' : undefined}
+                  />
+                </div>
+              )}
+
               <DailyChart records={records.data?.records ?? []} />
               <div className="overflow-x-auto" aria-live="polite" aria-busy={records.isFetching}>
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
                     <tr>
                       <th className="px-3 py-2 text-left font-medium">날짜</th>
-                      <th className="px-3 py-2 text-left font-medium">이름</th>
                       <th className="px-3 py-2 text-left font-medium">출근</th>
                       <th className="px-3 py-2 text-left font-medium">퇴근</th>
                       <th className="px-3 py-2 text-left font-medium">근무</th>
@@ -478,9 +517,6 @@ const AttendanceManagement = () => {
                               <span className={`ml-1.5 text-xs ${weekdayTone(row.workDate)}`}>
                                 ({weekdayOf(row.workDate)})
                               </span>
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-2 text-slate-800 dark:text-slate-200">
-                              {row.userName ?? row.userId}
                             </td>
                             <td className="whitespace-nowrap px-3 py-2 tabular-nums">
                               {formatClock(row.checkInAt)}
@@ -527,7 +563,7 @@ const AttendanceManagement = () => {
                           </tr>
                           {open && (
                             <tr className="bg-slate-50 dark:bg-slate-800/40">
-                              <td colSpan={7} className="px-3 pb-3">
+                              <td colSpan={6} className="px-3 pb-3">
                                 {row.checklist.length === 0 ? (
                                   <p className="text-xs text-slate-500">확인 항목이 없었습니다.</p>
                                 ) : (
@@ -761,6 +797,26 @@ const AttendanceManagement = () => {
                       분 = {formatMinutes(policy.standardWorkMinutes)}
                     </span>
                   </div>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800">
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                    출근 확인 화면 안내 문구
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    직원이 보는 화면 머리글에 그대로 나옵니다. 비우면 기본 문구로 돌아갑니다.
+                  </p>
+                  <input
+                    key={policy.noticeText}
+                    defaultValue={policy.noticeText}
+                    maxLength={300}
+                    onBlur={e => {
+                      const next = e.target.value.trim();
+                      if (next !== policy.noticeText) savePolicy.mutate({ noticeText: next });
+                    }}
+                    aria-label="출근 확인 화면 안내 문구"
+                    className="input input-sm mt-2 w-full"
+                  />
                 </div>
 
                 <div className="flex items-start justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800">
