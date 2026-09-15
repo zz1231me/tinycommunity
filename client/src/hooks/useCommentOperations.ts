@@ -113,16 +113,21 @@ export function useCommentOperations({
 
       try {
         await axios.post(`/comments/${boardType}/${postId}`, { content: commentHtml });
-        await onRefresh();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         setComments(prev => prev.filter(c => c.id !== tempId));
         setNewComment(commentHtml);
         writeEditorRef.current?.setData(commentHtml);
         setSubmitError(err.response?.data?.message || err.message || '댓글 작성에 실패했습니다.');
+        return;
       } finally {
         setSubmitting(false);
       }
+
+      // 여기부터는 서버에 이미 달렸다. 목록 갱신이 실패했다고 실패로 알리면
+      // 사용자가 다시 올려 같은 댓글이 두 번 달린다. 화면은 낙관적으로 넣어 둔
+      // 댓글을 그대로 두고, 다음 갱신 때 서버 값으로 맞춘다.
+      await onRefresh().catch(() => {});
     },
     [newComment, boardType, submitting, postId, currentUser, currentUserId, onRefresh, MAX_CHARS]
   );
@@ -139,13 +144,16 @@ export function useCommentOperations({
         await axios.post(`/comments/${boardType}/${postId}`, { content: replyContent, parentId });
         setReplyingToId(null);
         setReplyContent('');
-        await onRefresh();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         setReplyError(err.response?.data?.message || err.message || '답글 작성에 실패했습니다.');
+        return;
       } finally {
         setReplySubmitting(false);
       }
+
+      // 이미 달린 답글이다 — 갱신 실패를 작성 실패로 알리지 않는다
+      await onRefresh().catch(() => {});
     },
     [replyContent, boardType, replySubmitting, postId, onRefresh, MAX_CHARS]
   );
@@ -191,13 +199,16 @@ export function useCommentOperations({
         setEditingCommentId(null);
         setEditContent('');
         setEditError('');
-        await onRefresh();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         setEditError(err.response?.data?.message || err.message || '댓글 수정에 실패했습니다.');
+        return;
       } finally {
         setEditSaving(false);
       }
+
+      // 이미 고쳐졌다 — 갱신 실패를 수정 실패로 알리지 않는다
+      await onRefresh().catch(() => {});
     },
     [editContent, boardType, editSaving, onRefresh, MAX_CHARS]
   );
@@ -210,13 +221,16 @@ export function useCommentOperations({
       try {
         await axios.delete(`/comments/${boardType}/${commentId}`);
         setDeleteConfirmId(null);
-        await onRefresh();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         setDeleteError(err.response?.data?.message || err.message || '댓글 삭제에 실패했습니다.');
+        return;
       } finally {
         setDeletingId(null);
       }
+
+      // 이미 지워졌다 — 갱신 실패를 삭제 실패로 알리면 다시 누르고 404 를 본다
+      await onRefresh().catch(() => {});
     },
     [boardType, deletingId, onRefresh]
   );

@@ -228,15 +228,19 @@ const CalendarPage: React.FC = () => {
           backgroundColor: originalEvent.backgroundColor,
           borderColor: originalEvent.borderColor,
         });
-        await loadEvents();
-        void loadRail();
       } catch (error) {
         toast.error(
           `일정 수정에 실패했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`
         );
         revert();
-        await loadEvents();
+        await loadEvents().catch(() => {});
+        return;
       }
+
+      // 저장은 끝났다. 목록 갱신이 실패했다고 되돌리면, 서버에는 옮겨졌는데
+      // 화면만 원래 자리로 튄다.
+      await loadEvents().catch(() => {});
+      void loadRail();
     },
     [canEditEvent, loadEvents, loadRail]
   );

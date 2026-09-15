@@ -132,12 +132,14 @@ const WikiPageRoute = () => {
     try {
       if (isCreating) {
         const page = await createWikiPage(data);
-        await fetchPages();
+        // 문서는 이미 만들어졌다. 목록 갱신이 실패했다고 저장 실패로 알리면
+        // 사용자가 다시 저장해 같은 문서가 두 개 생긴다.
+        await fetchPages().catch(() => {});
         navigate(`/dashboard/wiki/${page.slug}`);
       } else if (currentPage) {
         const page = await updateWikiPage(currentPage.slug, data);
         setCurrentPage(page);
-        await fetchPages();
+        await fetchPages().catch(() => {});
         if (page.slug !== currentPage.slug) {
           navigate(`/dashboard/wiki/${page.slug}`, { replace: true });
         }
@@ -197,7 +199,8 @@ const WikiPageRoute = () => {
     try {
       await deleteWikiPage(currentPage.slug);
       setShowDeleteConfirm(false);
-      await fetchPages();
+      // 이미 지워졌다 — 갱신 실패를 삭제 실패로 알리면 다시 눌러 404 를 본다
+      await fetchPages().catch(() => {});
       navigate('/dashboard/wiki', { replace: true });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '삭제에 실패했습니다.';
@@ -223,7 +226,7 @@ const WikiPageRoute = () => {
         content: restoreContent,
       });
       setCurrentPage(page);
-      await fetchPages();
+      await fetchPages().catch(() => {});
       setRestoreContent(null);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '복원에 실패했습니다.';
