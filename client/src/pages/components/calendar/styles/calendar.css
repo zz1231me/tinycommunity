@@ -135,7 +135,7 @@
 }
 
 .calendar-wrapper .fc-col-header-cell.fc-day-sun {
-  color: #ef4444 !important;
+  color: #dc2626 !important; /* red-600 — red-500 은 흰 바탕에서 3.8:1 로 모자랐다 */
 }
 .calendar-wrapper .fc-col-header-cell.fc-day-sat {
   color: #2563eb !important; /* 토요일=파랑(한국 캘린더 관례) */
@@ -171,7 +171,7 @@
 
 /* 주말 날짜 */
 .calendar-wrapper .fc-daygrid-day.fc-day-sun .fc-daygrid-day-number {
-  color: #ef4444 !important;
+  color: #dc2626 !important; /* red-600 — red-500 은 흰 바탕에서 3.8:1 로 모자랐다 */
 }
 .calendar-wrapper .fc-daygrid-day.fc-day-sat .fc-daygrid-day-number {
   color: #2563eb !important; /* 토요일=파랑(한국 캘린더 관례) */
@@ -259,7 +259,7 @@
 .calendar-wrapper .fc-day-today .fc-daygrid-day-number,
 .calendar-wrapper .today-highlight .fc-daygrid-day-number {
   /* 깔끔한 채움 원형 배지 — drop shadow 제거(무거운 옛날 느낌 탈피) */
-  background: var(--color-secondary-600) !important; /* teal 액센트 */
+  background: var(--color-secondary-700) !important; /* 흰 글자 대비 — 600 은 3.7:1 로 모자랐다 */
   color: #ffffff !important;
   font-weight: 700 !important;
   border-radius: 9999px !important;
@@ -281,7 +281,7 @@
 /* 오늘이 일요일 */
 .calendar-wrapper .fc-day-today.fc-day-sun .fc-daygrid-day-number,
 .calendar-wrapper .today-highlight.fc-day-sun .fc-daygrid-day-number {
-  background: #ef4444 !important;
+  background: #dc2626 !important; /* 흰 글자 대비 — red-500 은 3.8:1 */
   color: #ffffff !important;
 }
 

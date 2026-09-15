@@ -15,6 +15,8 @@ import { ToggleSwitch } from '../../common/ToggleSwitch';
 import { Pagination } from '../../boards/Pagination';
 import { TodayBoardView } from '../attendance/TodayBoardView';
 import { ChecklistEditor } from '../attendance/ChecklistEditor';
+import { SummaryChart } from '../attendance/SummaryChart';
+import { DailyChart } from '../attendance/DailyChart';
 import { adminKeys } from '../../../api/queryKeys';
 import { fetchAdminUsers } from '../../../api/admin';
 import {
@@ -73,24 +75,37 @@ function monthStart(): string {
  * 자주 쓰는 기간. 날짜 두 칸을 직접 고르는 것보다 이쪽이 대부분의 경우다.
  * 눌렀을 때 시작일·종료일 칸도 함께 바뀌므로 지금 보는 기간이 그대로 보인다.
  */
-const RANGE_PRESETS: Array<{ id: string; label: string; range: () => { from: string; to: string } }> =
-  [
-    { id: 'today', label: '오늘', range: () => ({ from: todayString(), to: todayString() }) },
-    {
-      id: 'yesterday',
-      label: '어제',
-      range: () => {
-        const day = shiftDay(todayString(), -1);
-        return { from: day, to: day };
-      },
+const RANGE_PRESETS: Array<{
+  id: string;
+  label: string;
+  range: () => { from: string; to: string };
+}> = [
+  { id: 'today', label: '오늘', range: () => ({ from: todayString(), to: todayString() }) },
+  {
+    id: 'yesterday',
+    label: '어제',
+    range: () => {
+      const day = shiftDay(todayString(), -1);
+      return { from: day, to: day };
     },
-    {
-      id: 'week',
-      label: '최근 7일',
-      range: () => ({ from: shiftDay(todayString(), -6), to: todayString() }),
-    },
-    { id: 'month', label: '이번 달', range: () => ({ from: monthStart(), to: todayString() }) },
-  ];
+  },
+  {
+    id: 'week',
+    label: '최근 7일',
+    range: () => ({ from: shiftDay(todayString(), -6), to: todayString() }),
+  },
+  { id: 'month', label: '이번 달', range: () => ({ from: monthStart(), to: todayString() }) },
+];
+
+function PeriodStat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded-lg bg-slate-50 px-3 py-2.5 dark:bg-slate-800/60">
+      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{value}</p>
+      {hint && <p className="mt-0.5 text-2xs text-slate-400">{hint}</p>}
+    </div>
+  );
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -144,10 +159,11 @@ const AttendanceManagement = () => {
     placeholderData: prev => prev,
   });
 
+  // 기준 근무 시간은 그래프의 눈금이라 설정 화면이 아닐 때도 필요하다
   const settings = useQuery({
     queryKey: adminKeys.attendance.settings,
     queryFn: fetchAttendanceSettings,
-    enabled: view === 'settings',
+    staleTime: 5 * 60_000,
   });
 
   const invalidateSettings = () =>
@@ -245,6 +261,24 @@ const AttendanceManagement = () => {
   const summaryPeak = Math.max(1, ...(summary.data ?? []).map(r => r.totalMinutes));
 
   // 기본은 많이 일한 순. 이름순이면 근무한 사람이 0일인 사람들 사이에 묻힌다.
+  const standard = settings.data?.policy.standardWorkMinutes ?? 480;
+
+  /** 기간 전체를 한 줄로 — 표를 읽기 전에 규모부터 잡힌다 */
+  const periodTotals = useMemo(() => {
+    const rows = summary.data ?? [];
+    const worked = rows.filter(r => r.days > 0);
+    const totalMinutes = rows.reduce((sum, r) => sum + r.totalMinutes, 0);
+    const totalDays = rows.reduce((sum, r) => sum + r.days, 0);
+    const closedDays = totalDays - rows.reduce((sum, r) => sum + r.openDays, 0);
+    return {
+      people: worked.length,
+      absent: rows.length - worked.length,
+      totalMinutes,
+      averageMinutes: closedDays > 0 ? Math.round(totalMinutes / closedDays) : 0,
+      totalDays,
+    };
+  }, [summary.data]);
+
   const summaryRows = useMemo(() => {
     const rows = [...(summary.data ?? [])];
     if (summarySort === 'name') return rows.sort((a, b) => a.userName.localeCompare(b.userName));
@@ -367,17 +401,18 @@ const AttendanceManagement = () => {
       )}
 
       {view === 'records' && (
-        <AdminSection
-          title={`출퇴근 기록${records.data ? ` · ${records.data.total}건` : ''}`}
-        >
+        <AdminSection title={`출퇴근 기록${records.data ? ` · ${records.data.total}건` : ''}`}>
           {records.isLoading ? (
             <LoadingSpinner message="기록 불러오는 중..." />
           ) : records.isError ? (
-            <ListState>{getApiErrorMessage(records.error, '기록을 불러오지 못했습니다.')}</ListState>
+            <ListState>
+              {getApiErrorMessage(records.error, '기록을 불러오지 못했습니다.')}
+            </ListState>
           ) : (records.data?.records.length ?? 0) === 0 ? (
             <ListState size="roomy">이 기간에는 기록이 없습니다.</ListState>
           ) : (
             <>
+              <DailyChart records={records.data?.records ?? []} />
               <div className="overflow-x-auto" aria-live="polite" aria-busy={records.isFetching}>
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
@@ -419,7 +454,9 @@ const AttendanceManagement = () => {
                                 </span>
                               ) : (
                                 // 지난 날짜인데 퇴근이 없으면 지금 일하는 중이 아니다
-                                <span className="text-amber-600 dark:text-amber-400">퇴근 안 찍음</span>
+                                <span className="text-amber-600 dark:text-amber-400">
+                                  퇴근 안 찍음
+                                </span>
                               )}
                             </td>
                             <td className="whitespace-nowrap px-3 py-2 text-slate-600 dark:text-slate-400">
@@ -547,67 +584,93 @@ const AttendanceManagement = () => {
           {summary.isLoading ? (
             <LoadingSpinner message="집계 불러오는 중..." />
           ) : summary.isError ? (
-            <ListState>{getApiErrorMessage(summary.error, '집계를 불러오지 못했습니다.')}</ListState>
+            <ListState>
+              {getApiErrorMessage(summary.error, '집계를 불러오지 못했습니다.')}
+            </ListState>
           ) : (
-            <div className="overflow-x-auto" aria-live="polite" aria-busy={summary.isFetching}>
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium">이름</th>
-                    <th className="px-3 py-2 text-left font-medium">근무일</th>
-                    <th className="px-3 py-2 text-left font-medium">총 근무</th>
-                    <th className="px-3 py-2 text-left font-medium">하루 평균</th>
-                    <th className="px-3 py-2 text-left font-medium">퇴근 안 찍음</th>
-                    <th className="px-3 py-2 text-left font-medium">마지막 출근</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {summaryRows.map(row => (
-                    <tr key={row.userId} className={row.days === 0 ? 'text-slate-400' : undefined}>
-                      <td className="whitespace-nowrap px-3 py-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setUserId(row.userId);
-                            setPage(1);
-                            setView('records');
-                          }}
-                          className="text-left text-slate-800 hover:text-primary-600 hover:underline dark:text-slate-200 dark:hover:text-primary-400"
-                        >
-                          {row.userName}
-                          <span className="ml-1.5 text-xs text-slate-400">{row.userId}</span>
-                        </button>
-                      </td>
-                      <td className="px-3 py-2 tabular-nums">{row.days}일</td>
-                      <td className="min-w-[140px] px-3 py-2">
-                        <span className="tabular-nums text-slate-700 dark:text-slate-300">
-                          {formatMinutes(row.totalMinutes)}
-                        </span>
-                        <span className="mt-1 block h-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                          <span
-                            className="block h-full rounded-full bg-primary-500/70"
-                            style={{ width: `${Math.round((row.totalMinutes / summaryPeak) * 100)}%` }}
-                          />
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 tabular-nums text-slate-600 dark:text-slate-400">
-                        {formatMinutes(row.averageMinutes)}
-                      </td>
-                      <td className="px-3 py-2 tabular-nums">
-                        {row.openDays > 0 ? (
-                          <span className="text-amber-600">{row.openDays}일</span>
-                        ) : (
-                          '0일'
-                        )}
-                      </td>
-                      <td className="px-3 py-2 tabular-nums text-slate-600 dark:text-slate-400">
-                        {row.lastWorkDate ?? '—'}
-                      </td>
+            <>
+              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <PeriodStat
+                  label="근무한 인원"
+                  value={`${periodTotals.people}명`}
+                  hint={periodTotals.absent > 0 ? `기록 없음 ${periodTotals.absent}명` : undefined}
+                />
+                <PeriodStat label="근무일 합계" value={`${periodTotals.totalDays}일`} />
+                <PeriodStat label="총 근무" value={formatMinutes(periodTotals.totalMinutes)} />
+                <PeriodStat
+                  label="하루 평균"
+                  value={formatMinutes(periodTotals.averageMinutes)}
+                  hint={`기준 ${formatMinutes(standard)}`}
+                />
+              </div>
+
+              <SummaryChart rows={summaryRows} standardWorkMinutes={standard} />
+
+              <div className="overflow-x-auto" aria-live="polite" aria-busy={summary.isFetching}>
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">이름</th>
+                      <th className="px-3 py-2 text-left font-medium">근무일</th>
+                      <th className="px-3 py-2 text-left font-medium">총 근무</th>
+                      <th className="px-3 py-2 text-left font-medium">하루 평균</th>
+                      <th className="px-3 py-2 text-left font-medium">퇴근 안 찍음</th>
+                      <th className="px-3 py-2 text-left font-medium">마지막 출근</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {summaryRows.map(row => (
+                      <tr
+                        key={row.userId}
+                        className={row.days === 0 ? 'text-slate-400' : undefined}
+                      >
+                        <td className="whitespace-nowrap px-3 py-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUserId(row.userId);
+                              setPage(1);
+                              setView('records');
+                            }}
+                            className="text-left text-slate-800 hover:text-primary-600 hover:underline dark:text-slate-200 dark:hover:text-primary-400"
+                          >
+                            {row.userName}
+                            <span className="ml-1.5 text-xs text-slate-400">{row.userId}</span>
+                          </button>
+                        </td>
+                        <td className="px-3 py-2 tabular-nums">{row.days}일</td>
+                        <td className="min-w-[140px] px-3 py-2">
+                          <span className="tabular-nums text-slate-700 dark:text-slate-300">
+                            {formatMinutes(row.totalMinutes)}
+                          </span>
+                          <span className="mt-1 block h-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                            <span
+                              className="block h-full rounded-full bg-primary-500/70"
+                              style={{
+                                width: `${Math.round((row.totalMinutes / summaryPeak) * 100)}%`,
+                              }}
+                            />
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 tabular-nums text-slate-600 dark:text-slate-400">
+                          {formatMinutes(row.averageMinutes)}
+                        </td>
+                        <td className="px-3 py-2 tabular-nums">
+                          {row.openDays > 0 ? (
+                            <span className="text-amber-600">{row.openDays}일</span>
+                          ) : (
+                            '0일'
+                          )}
+                        </td>
+                        <td className="px-3 py-2 tabular-nums text-slate-600 dark:text-slate-400">
+                          {row.lastWorkDate ?? '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </AdminSection>
       )}
@@ -655,7 +718,9 @@ const AttendanceManagement = () => {
                         const next = Number(e.target.value);
                         if (!Number.isInteger(next) || next < STANDARD_MIN || next > STANDARD_MAX) {
                           e.target.value = String(policy.standardWorkMinutes);
-                          toast.error(`기준 근무 시간은 ${STANDARD_MIN}~${STANDARD_MAX}분 사이여야 합니다.`);
+                          toast.error(
+                            `기준 근무 시간은 ${STANDARD_MIN}~${STANDARD_MAX}분 사이여야 합니다.`
+                          );
                           return;
                         }
                         if (next !== policy.standardWorkMinutes) {

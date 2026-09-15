@@ -120,7 +120,9 @@ const CalendarHeaderBase: React.FC<CalendarHeaderProps> = ({
                 className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150
                   ${
                     currentView === opt.key
-                      ? 'bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 shadow-sm font-semibold'
+                      ? // 어두운 화면에서 400 은 올라온 칩 배경(slate-700) 위에서 대비가 모자란다
+                        // (드라큘라 3.8:1). 한 단계 밝은 300 을 쓴다.
+                        'bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-300 shadow-sm font-semibold'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                   }`}
               >

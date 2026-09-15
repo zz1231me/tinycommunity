@@ -77,4 +77,22 @@
   --color-yellow-400: #f1fa8c; /* Dracula Yellow */
   --color-cyan-400: #8be9fd; /* Dracula Cyan */
   --color-sky-400: #8be9fd;
+
+  /* ── 의미 토큰(design-system.css) 도 함께 갈아 끼운다 ──
+   * .dark 가 여기에 회색 표면(#1e293b·#0f172a)을 넣어 두는데, 드라큘라는 slate 계단만
+   * 바꾸므로 이 토큰을 쓰는 화면(전체 검색 팔레트)만 다른 어두움으로 남는다.
+   * 값은 위 계단과 같은 색을 가리킨다. */
+  --surface-page: #21222c; /* slate-900 자리 */
+  --surface-card: #282a36; /* slate-800 자리 — Dracula Background */
+  --surface-subtle: #1e1f29;
+  --surface-overlay: rgba(13, 13, 18, 0.7);
+
+  --border-default: rgba(248, 248, 242, 0.1);
+  --border-subtle: rgba(248, 248, 242, 0.06);
+  --border-strong: rgba(248, 248, 242, 0.18);
+
+  --text-primary: #f8f8f2; /* Dracula Foreground */
+  --text-secondary: #cfd2e3;
+  --text-tertiary: #9aa3cc;
+  --text-disabled: #8a94c0;
 }

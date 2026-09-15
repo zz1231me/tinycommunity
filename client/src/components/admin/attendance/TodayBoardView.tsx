@@ -108,7 +108,10 @@ export function TodayBoardView({ board }: { board: TodayBoard }) {
             const meta = STATE_META[row.state];
             return (
               <li key={row.userId} className="flex items-center gap-3 py-2.5">
-                <span className={`h-2 w-2 flex-shrink-0 rounded-full ${meta.dot}`} aria-hidden="true" />
+                <span
+                  className={`h-2 w-2 flex-shrink-0 rounded-full ${meta.dot}`}
+                  aria-hidden="true"
+                />
                 <span className="min-w-0 flex-1 truncate text-sm text-slate-800 dark:text-slate-200">
                   {row.userName}
                   <span className="ml-1.5 text-xs text-slate-400">{row.userId}</span>
