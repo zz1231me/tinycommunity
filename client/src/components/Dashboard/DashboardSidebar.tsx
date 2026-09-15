@@ -4,7 +4,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Calendar,
   Compass,
-  Pencil,
   BookOpen,
   Bookmark,
   FileEdit,
@@ -72,7 +71,6 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
   const popularEnabled = useFeature('discovery.popular');
   const tagCloudEnabled = useFeature('discovery.tagCloud');
   const showExplore = popularEnabled || tagCloudEnabled;
-  const showMemo = useFeature('tools.memo');
   const showWiki = useFeature('tools.wiki');
   const showScraps = useFeature('post.scrap');
   const showDrafts = useFeature('post.drafts');
@@ -190,14 +188,6 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
           <div>
             <SectionLabel>도구</SectionLabel>
             <div className="space-y-0.5">
-              {showMemo && (
-                <SidebarNav
-                  label="메모"
-                  to="memos"
-                  closeSidebar={onClose}
-                  icon={<Pencil className="w-4.5 h-4.5" />}
-                />
-              )}
               {showWiki && (
                 <SidebarNav
                   label="위키"

@@ -1,7 +1,16 @@
 // client/src/components/Dashboard/UserDropdown.tsx
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, User, Settings, LogOut, Share2, Folder, Clock } from 'lucide-react';
+import {
+  ChevronDown,
+  User,
+  Settings,
+  LogOut,
+  Share2,
+  Folder,
+  Clock,
+  Pencil,
+} from 'lucide-react';
 import { TempShareModal } from './TempShareModal';
 import { useAccessibleBoards } from '../../hooks/useAccessibleBoards';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -21,6 +30,7 @@ export function UserDropdown() {
   // 개인 공간(개인 폴더) — 드롭다운에서 바로 진입. 보통 사용자당 1개.
   const { personalBoards } = useAccessibleBoards();
   const showAttendance = useFeature('tools.attendance');
+  const showMemo = useFeature('tools.memo');
 
   // 통합 overlay store — NotificationBell/GlobalSearch와 자동 배타.
   // setIsOpen은 안정 ref 유지 (getState로 호출 시점 최신값 사용)
@@ -178,6 +188,23 @@ export function UserDropdown() {
                 <Share2 className="w-4 h-4 flex-shrink-0 text-slate-400" />
                 <span>파일공유</span>
               </button>
+
+              {showMemo && (
+                <button
+                  onClick={() => {
+                    navigate('/dashboard/memos');
+                    setIsOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg
+                           text-sm text-slate-600 dark:text-slate-400
+                           hover:bg-slate-50 dark:hover:bg-slate-800
+                           hover:text-slate-900 dark:hover:text-slate-200
+                           transition-colors duration-150"
+                >
+                  <Pencil className="w-4 h-4 flex-shrink-0 text-slate-400" />
+                  <span>메모</span>
+                </button>
+              )}
 
               {showAttendance && (
                 <button
