@@ -5,6 +5,7 @@ import { Response } from 'express';
 import path from 'path';
 import fs from 'fs/promises';
 import AdmZip from 'adm-zip';
+import { UniqueConstraintError } from 'sequelize';
 import { FlatRequest as Request, type AuthRequest } from '../types/auth-request';
 import { CustomPage } from '../models/CustomPage';
 import { sendSuccess, sendError, sendValidationError } from '../utils/response';
@@ -272,6 +273,27 @@ function validatePayload(
   return { slug, title, html, externalUrl };
 }
 
+type PageMode = 'html' | 'bundle' | 'url';
+
+function readMode(raw: unknown): PageMode | null {
+  return raw === 'html' || raw === 'bundle' || raw === 'url' ? raw : null;
+}
+
+/** order 는 화면에서 문자열로 올 수 있다 — Number.isFinite 는 문자열을 그대로 거른다 */
+function readOrder(raw: unknown): number | null {
+  if (raw === undefined || raw === null || raw === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** 번들을 쓰지 않게 된 페이지의 파일을 지운다. 남겨 두면 참조도 없이 용량만 차지한다. */
+async function dropBundle(page: CustomPage): Promise<void> {
+  if (!page.bundlePath) return;
+  await fs.rm(bundleDir(page.id), { recursive: true, force: true }).catch(() => {});
+  page.bundlePath = null;
+  page.entryFile = 'index.html';
+}
+
 // 관리자 — 생성
 export const createPage = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -290,11 +312,16 @@ export const createPage = async (req: Request, res: Response): Promise<void> => 
       html: payload.html,
       externalUrl: payload.externalUrl,
       isPublished: req.body.isPublished === true,
-      order: Number.isFinite(req.body.order) ? Number(req.body.order) : 0,
+      order: readOrder(req.body.order) ?? 0,
       createdBy: authReq.user?.id ?? 'admin',
     });
     sendSuccess(res, page, '페이지를 만들었습니다.');
   } catch (err) {
+    // 같은 slug 를 동시에 만들면 위 중복 검사를 둘 다 통과한다 — 막는 것은 유니크 인덱스다
+    if (err instanceof UniqueConstraintError) {
+      sendValidationError(res, 'slug', '이미 사용 중인 주소(slug)입니다.');
+      return;
+    }
     logError('커스텀 페이지 생성 오류', err);
     sendError(res, 500, '서버 오류가 발생했습니다.');
   }
@@ -321,10 +348,39 @@ export const updatePage = async (req: Request, res: Response): Promise<void> => 
     }
     page.slug = payload.slug;
     page.title = payload.title;
-    page.html = payload.html;
-    page.externalUrl = payload.externalUrl;
+
+    // 페이지는 셋 중 하나로만 그려진다(HTML·번들·외부 URL). 어느 것인지 명시해서
+    // 받고 나머지 칸을 비운다 — 예전에는 비우지 않아, 종류를 바꿔도 옛 값이 남아
+    // 화면에서 무엇이 보일지 값들의 우선순위로 결정됐다.
+    const mode = readMode(req.body.mode);
+    if (mode === 'url') {
+      if (!payload.externalUrl) {
+        sendValidationError(res, 'externalUrl', '임베드할 URL을 입력해주세요.');
+        return;
+      }
+      page.externalUrl = payload.externalUrl;
+      page.html = '';
+      await dropBundle(page);
+    } else if (mode === 'html') {
+      page.externalUrl = null;
+      page.html = payload.html;
+      await dropBundle(page);
+    } else if (mode === 'bundle') {
+      if (!page.bundlePath) {
+        sendValidationError(res, 'bundle', '먼저 ZIP 파일을 올려주세요.');
+        return;
+      }
+      page.externalUrl = null;
+      page.html = '';
+    } else {
+      // mode 를 안 보낸 예전 방식 — 하던 대로 값만 바꾼다
+      page.html = payload.html;
+      page.externalUrl = payload.externalUrl;
+    }
+
     if (typeof req.body.isPublished === 'boolean') page.isPublished = req.body.isPublished;
-    if (Number.isFinite(req.body.order)) page.order = Number(req.body.order);
+    const order = readOrder(req.body.order);
+    if (order !== null) page.order = order;
     // 번들 페이지의 진입 파일 변경 — 실제 번들 안에 존재하는 .html만 허용(경로 순회 차단)
     if (page.bundlePath && typeof req.body.entryFile === 'string') {
       const candidate = req.body.entryFile.trim().replace(/\\/g, '/');
@@ -343,6 +399,10 @@ export const updatePage = async (req: Request, res: Response): Promise<void> => 
     await page.save();
     sendSuccess(res, page, '페이지를 수정했습니다.');
   } catch (err) {
+    if (err instanceof UniqueConstraintError) {
+      sendValidationError(res, 'slug', '이미 사용 중인 주소(slug)입니다.');
+      return;
+    }
     logError('커스텀 페이지 수정 오류', err);
     sendError(res, 500, '서버 오류가 발생했습니다.');
   }

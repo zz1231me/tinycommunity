@@ -65,11 +65,16 @@ export const CustomPageManagement = () => {
 
   const load = () => queryClient.invalidateQueries({ queryKey: adminKeys.customPages.all });
 
-  const resetBundle = () => {
+  /** 올려 둔 번들 관련 상태만 비운다 (편집 중인 slug 는 건드리지 않는다) */
+  const resetBundleFiles = () => {
     setZipFile(null);
     setUploadPct(0);
     setBundleEntry('');
     setBundleHtmlFiles([]);
+  };
+
+  const resetBundle = () => {
+    resetBundleFiles();
     setEditingSlug('');
   };
 
@@ -89,8 +94,9 @@ export const CustomPageManagement = () => {
       externalUrl: p.externalUrl ?? '',
     });
     setEditingId(p.id);
-    setEditingSlug(p.slug);
+    // resetBundle 이 editingSlug 도 비우므로 먼저 부른다 — 뒤에 두면 미리보기 링크가 사라진다
     resetBundle();
+    setEditingSlug(p.slug);
     // 타입 판정: 외부 URL > 번들 > HTML
     if (p.externalUrl) {
       setMode('url');
@@ -109,6 +115,20 @@ export const CustomPageManagement = () => {
       setMode('html');
     }
   };
+  /**
+   * 방식 바꾸기. 번들에서 벗어나면 올려 둔 파일이 저장 시 지워지므로 미리 알린다.
+   * (예전에는 아예 못 바꿔서, 종류를 바꾸려면 지우고 같은 주소로 다시 만들어야 했다)
+   */
+  const switchMode = (next: Mode) => {
+    if (next === mode) return;
+    const leavingBundle = mode === 'bundle' && bundleHtmlFiles.length > 0;
+    if (leavingBundle && !window.confirm('올려 둔 폴더 파일이 저장할 때 삭제됩니다. 바꿀까요?')) {
+      return;
+    }
+    if (next !== 'bundle') resetBundleFiles();
+    setMode(next);
+  };
+
   const cancel = () => {
     setEditingId(null);
     setForm(EMPTY);
@@ -117,8 +137,8 @@ export const CustomPageManagement = () => {
 
   const save = async () => {
     if (saving) return;
-    // 신규 번들 페이지는 ZIP이 반드시 필요
-    if (mode === 'bundle' && editingId === 'new' && !zipFile) {
+    // 번들 페이지는 올려 둔 파일이 있거나 새로 고른 ZIP 이 있어야 한다
+    if (mode === 'bundle' && !zipFile && bundleHtmlFiles.length === 0) {
       toast.error('업로드할 ZIP 파일을 선택해주세요.');
       return;
     }
@@ -133,24 +153,23 @@ export const CustomPageManagement = () => {
       return;
     }
     setSaving(true);
-    // 신규 번들 페이지의 후속 단계(업로드 등)가 실패하면 방금 만든 빈 페이지를 롤백한다.
+    // 신규 번들 페이지는 '생성 → 업로드 → 저장' 세 단계다. 중간에 끊기면 내용 없는
+    // 페이지가 남으므로, 그때만 방금 만든 것을 지운다.
     let createdNewId: string | null = null;
     try {
       if (mode === 'url') {
-        // URL 페이지: html/번들 없이 externalUrl만. (html은 비워서 저장)
-        const payload = { ...form, html: '', externalUrl: form.externalUrl?.trim() || '' };
+        const payload = { ...form, mode, html: '', externalUrl: form.externalUrl?.trim() || '' };
         if (editingId === 'new') await createCustomPage(payload);
         else if (editingId) await updateCustomPage(editingId, payload);
       } else if (mode === 'html') {
-        // HTML 페이지: externalUrl은 비워 저장(이전에 URL이었다면 해제)
-        const payload = { ...form, externalUrl: '' };
+        const payload = { ...form, mode, externalUrl: '' };
         if (editingId === 'new') await createCustomPage(payload);
         else if (editingId) await updateCustomPage(editingId, payload);
       } else {
-        // 번들 모드: (신규면) 페이지 먼저 생성 → ZIP 업로드 → 필드/진입파일 저장
+        // 번들 모드: (신규면) 페이지 먼저 생성 → ZIP 업로드 → 진입 파일까지 저장
         let id = editingId;
         if (id === 'new') {
-          const created = await createCustomPage({ ...form, html: '' });
+          const created = await createCustomPage({ ...form, html: '', externalUrl: '' });
           id = created.id;
           createdNewId = created.id;
         }
@@ -165,22 +184,26 @@ export const CustomPageManagement = () => {
         if (id) {
           await updateCustomPage(id, {
             ...form,
+            mode,
             html: '',
+            externalUrl: '',
             entryFile: entryToSave || undefined,
           });
         }
       }
-      toast.success('저장했습니다.');
-      cancel();
-      await load();
     } catch (err) {
-      // 방금 만든 신규 페이지가 있으면 정리(빈 페이지가 남지 않도록)
       if (createdNewId) await deleteCustomPage(createdNewId).catch(() => {});
       toast.error(getApiErrorMessage(err, '저장에 실패했습니다.'));
+      return;
     } finally {
       setSaving(false);
       setUploadPct(0);
     }
+
+    // 저장은 끝났다. 목록 갱신이 실패했다고 되돌리면 방금 만든 페이지가 지워진다.
+    toast.success('저장했습니다.');
+    cancel();
+    await load();
   };
 
   const doDelete = async () => {
@@ -211,43 +234,40 @@ export const CustomPageManagement = () => {
         }
       >
         <div className="space-y-4">
-          {/* 방식 선택 (신규만 전환 가능 — 기존 페이지는 방식 고정) */}
-          <div className="flex gap-2">
+          {/* 방식 선택 — 만든 뒤에도 바꿀 수 있다. 서버가 바뀐 방식에 맞춰 나머지를 비운다. */}
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => isNew && setMode('html')}
-              disabled={!isNew && mode !== 'html'}
+              onClick={() => switchMode('html')}
               className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
                 mode === 'html'
                   ? 'border-secondary-500 bg-secondary-50 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-300'
                   : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'
-              } ${!isNew && mode !== 'html' ? 'cursor-not-allowed opacity-40' : ''}`}
+              }`}
             >
               <Code className="h-4 w-4" />
               HTML 직접 입력
             </button>
             <button
               type="button"
-              onClick={() => isNew && setMode('bundle')}
-              disabled={!isNew && mode !== 'bundle'}
+              onClick={() => switchMode('bundle')}
               className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
                 mode === 'bundle'
                   ? 'border-secondary-500 bg-secondary-50 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-300'
                   : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'
-              } ${!isNew && mode !== 'bundle' ? 'cursor-not-allowed opacity-40' : ''}`}
+              }`}
             >
               <FolderArchive className="h-4 w-4" />
               폴더(ZIP) 업로드
             </button>
             <button
               type="button"
-              onClick={() => isNew && setMode('url')}
-              disabled={!isNew && mode !== 'url'}
+              onClick={() => switchMode('url')}
               className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
                 mode === 'url'
                   ? 'border-secondary-500 bg-secondary-50 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-300'
                   : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'
-              } ${!isNew && mode !== 'url' ? 'cursor-not-allowed opacity-40' : ''}`}
+              }`}
             >
               <Globe className="h-4 w-4" />
               외부 URL

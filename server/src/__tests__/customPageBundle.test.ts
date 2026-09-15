@@ -298,3 +298,65 @@ describe('권한', () => {
     expect([401, 403]).toContain(res.status);
   });
 });
+
+// 페이지는 HTML·번들·외부 URL 중 하나로만 그려진다. 예전에는 종류를 바꿔도 옛 값이
+// 남아, 무엇이 보일지 값들의 우선순위로 정해졌다(그래서 화면에서 전환을 막아 뒀다).
+describe('페이지 종류 바꾸기', () => {
+  const update = (id: string, body: Record<string, unknown>) =>
+    request(app)
+      .put(`/api/custom-pages/${id}`)
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({ slug: `mode-${id.slice(0, 8)}`, title: '종류 변경', html: '', ...body });
+
+  it('번들 → 외부 URL 로 바꾸면 올려 둔 파일이 지워진다', async () => {
+    const id = await newPage('mode-to-url');
+    await uploadBundle(id, zipWith([['index.html', '<p>x</p>']]));
+    expect(await filesOnDisk(id)).toContain('index.html');
+
+    const res = await update(id, {
+      slug: 'mode-to-url',
+      mode: 'url',
+      externalUrl: 'https://example.com',
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.data.bundlePath).toBeNull();
+    // normalizeExternalUrl 이 URL 을 정규화한다
+    expect(res.body.data.externalUrl).toBe('https://example.com/');
+    // 참조가 사라진 파일이 용량만 차지하면 안 된다
+    expect(await filesOnDisk(id)).toEqual([]);
+  });
+
+  it('외부 URL → HTML 로 바꾸면 URL 이 지워진다', async () => {
+    const id = await newPage('mode-to-html');
+    await update(id, { slug: 'mode-to-html', mode: 'url', externalUrl: 'https://example.com' });
+
+    const res = await update(id, {
+      slug: 'mode-to-html',
+      mode: 'html',
+      html: '<p>본문</p>',
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.data.externalUrl).toBeNull();
+    expect(res.body.data.html).toBe('<p>본문</p>');
+  });
+
+  it('올린 파일 없이 번들로 바꾸려 하면 거절한다', async () => {
+    const id = await newPage('mode-no-bundle');
+    const res = await update(id, { slug: 'mode-no-bundle', mode: 'bundle' });
+    expect(res.status).toBe(400);
+  });
+
+  it('URL 없이 외부 URL 로 바꾸려 하면 거절한다', async () => {
+    const id = await newPage('mode-no-url');
+    const res = await update(id, { slug: 'mode-no-url', mode: 'url', externalUrl: '' });
+    expect(res.status).toBe(400);
+  });
+
+  it('정렬 순서를 문자열로 보내도 저장된다 — 화면에서 그렇게 온다', async () => {
+    const id = await newPage('mode-order');
+    const res = await update(id, { slug: 'mode-order', mode: 'html', order: '7' });
+    expect(res.status).toBe(200);
+    expect(res.body.data.order).toBe(7);
+  });
+});

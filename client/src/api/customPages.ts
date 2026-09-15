@@ -23,6 +23,9 @@ export interface CustomPage extends CustomPageSummary {
   externalUrl?: string | null;
 }
 
+/** 페이지가 무엇으로 그려지는지. 서버가 이 값에 맞춰 나머지 칸을 비운다. */
+export type CustomPageMode = 'html' | 'bundle' | 'url';
+
 export interface CustomPageInput {
   slug: string;
   title: string;
@@ -31,6 +34,8 @@ export interface CustomPageInput {
   order: number;
   entryFile?: string; // 번들 진입 파일 변경(선택)
   externalUrl?: string | null; // 외부 URL 임베드(선택). 빈 문자열/null이면 URL 페이지 아님
+  /** 없으면 서버가 지금까지처럼 값으로 추측한다 */
+  mode?: CustomPageMode;
 }
 
 export interface BundleUploadResult {
