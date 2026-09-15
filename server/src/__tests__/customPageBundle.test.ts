@@ -359,4 +359,19 @@ describe('페이지 종류 바꾸기', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.order).toBe(7);
   });
+
+  it('범위를 벗어난 정렬 순서는 거절한다', async () => {
+    // 음수는 모든 페이지 앞으로 끼어들고, 큰 값은 정수 컬럼을 넘친다
+    const id = await newPage('mode-order-range');
+    for (const order of [-1, 1e20, 1.5]) {
+      const res = await update(id, { slug: 'mode-order-range', mode: 'html', order });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it('종류를 오타로 보내면 거절한다 — 조용히 다른 동작을 하면 안 된다', async () => {
+    const id = await newPage('mode-typo');
+    const res = await update(id, { slug: 'mode-typo', mode: 'htmll' });
+    expect(res.status).toBe(400);
+  });
 });

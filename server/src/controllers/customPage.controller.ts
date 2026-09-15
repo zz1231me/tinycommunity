@@ -274,15 +274,30 @@ function validatePayload(
 
 type PageMode = 'html' | 'bundle' | 'url';
 
-function readMode(raw: unknown): PageMode | null {
-  return raw === 'html' || raw === 'bundle' || raw === 'url' ? raw : null;
+/** 사이드바 정렬값의 범위. 벗어난 값은 정렬을 망가뜨리거나 컬럼을 넘친다. */
+const ORDER_MIN = 0;
+const ORDER_MAX = 9999;
+
+/**
+ * 종류. 안 보내면 null(예전 방식대로 값으로 추측).
+ * 보냈는데 셋 중 하나가 아니면 오타다 — 조용히 다른 동작을 하면 안 되므로 거절한다.
+ */
+function readMode(res: Response, raw: unknown): { ok: true; mode: PageMode | null } | { ok: false } {
+  if (raw === undefined || raw === null) return { ok: true, mode: null };
+  if (raw === 'html' || raw === 'bundle' || raw === 'url') return { ok: true, mode: raw };
+  sendValidationError(res, 'mode', '페이지 종류는 html·bundle·url 중 하나여야 합니다.');
+  return { ok: false };
 }
 
 /** order 는 화면에서 문자열로 올 수 있다 — Number.isFinite 는 문자열을 그대로 거른다 */
-function readOrder(raw: unknown): number | null {
-  if (raw === undefined || raw === null || raw === '') return null;
+function readOrder(res: Response, raw: unknown): { ok: true; order: number | null } | { ok: false } {
+  if (raw === undefined || raw === null || raw === '') return { ok: true, order: null };
   const n = Number(raw);
-  return Number.isFinite(n) ? n : null;
+  if (!Number.isInteger(n) || n < ORDER_MIN || n > ORDER_MAX) {
+    sendValidationError(res, 'order', `정렬 순서는 ${ORDER_MIN}~${ORDER_MAX} 사이의 정수여야 합니다.`);
+    return { ok: false };
+  }
+  return { ok: true, order: n };
 }
 
 /**
@@ -303,6 +318,9 @@ export const createPage = async (req: Request, res: Response): Promise<void> => 
     const payload = validatePayload(res, req.body);
     if (!payload) return;
 
+    const createOrder = readOrder(res, req.body.order);
+    if (!createOrder.ok) return;
+
     const exists = await CustomPage.findOne({ where: { slug: payload.slug } });
     if (exists) {
       sendValidationError(res, 'slug', '이미 사용 중인 주소(slug)입니다.');
@@ -314,7 +332,7 @@ export const createPage = async (req: Request, res: Response): Promise<void> => 
       html: payload.html,
       externalUrl: payload.externalUrl,
       isPublished: req.body.isPublished === true,
-      order: readOrder(req.body.order) ?? 0,
+      order: createOrder.order ?? 0,
       createdBy: authReq.user?.id ?? 'admin',
     });
     sendSuccess(res, page, '페이지를 만들었습니다.');
@@ -354,7 +372,9 @@ export const updatePage = async (req: Request, res: Response): Promise<void> => 
     // 페이지는 셋 중 하나로만 그려진다(HTML·번들·외부 URL). 어느 것인지 명시해서
     // 받고 나머지 칸을 비운다 — 예전에는 비우지 않아, 종류를 바꿔도 옛 값이 남아
     // 화면에서 무엇이 보일지 값들의 우선순위로 결정됐다.
-    const mode = readMode(req.body.mode);
+    const parsedMode = readMode(res, req.body.mode);
+    if (!parsedMode.ok) return;
+    const mode = parsedMode.mode;
     let bundleDropped = false;
     if (mode === 'url') {
       if (!payload.externalUrl) {
@@ -382,8 +402,9 @@ export const updatePage = async (req: Request, res: Response): Promise<void> => 
     }
 
     if (typeof req.body.isPublished === 'boolean') page.isPublished = req.body.isPublished;
-    const order = readOrder(req.body.order);
-    if (order !== null) page.order = order;
+    const parsedOrder = readOrder(res, req.body.order);
+    if (!parsedOrder.ok) return;
+    if (parsedOrder.order !== null) page.order = parsedOrder.order;
     // 번들 페이지의 진입 파일 변경 — 실제 번들 안에 존재하는 .html만 허용(경로 순회 차단)
     if (page.bundlePath && typeof req.body.entryFile === 'string') {
       const candidate = req.body.entryFile.trim().replace(/\\/g, '/');
