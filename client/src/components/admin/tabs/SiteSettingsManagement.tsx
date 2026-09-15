@@ -394,7 +394,9 @@ export const SiteSettingsManagement = () => {
               type="text"
               value={settings.siteName}
               onChange={e => set('siteName', e.target.value)}
-              placeholder="TinyCommunity"
+              // 빈 칸일 때 보이는 힌트는 지금 쓰이는 이름이어야 한다.
+              // 제품 이름을 박아 두면 사이트 이름을 바꿔 둔 곳에서 딴 이름이 비친다.
+              placeholder={storeSettings.siteName}
               required
               className="input max-w-sm"
             />
@@ -405,7 +407,7 @@ export const SiteSettingsManagement = () => {
               type="text"
               value={settings.siteTitle}
               onChange={e => set('siteTitle', e.target.value)}
-              placeholder="TinyCommunity"
+              placeholder={storeSettings.siteTitle}
               required
               className="input max-w-sm"
             />
