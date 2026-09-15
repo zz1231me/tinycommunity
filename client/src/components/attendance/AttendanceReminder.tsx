@@ -14,6 +14,7 @@ import { ModalShell } from '../common/ModalShell';
 import { attendanceKeys } from '../../api/queryKeys';
 import { fetchMyAttendance } from '../../api/attendance';
 import { useFeature } from '../../store/features';
+import { useAuth } from '../../store/auth';
 import { formatClock, formatMinutes, minutesBetween } from '../../utils/attendance';
 import { shouldNotify } from './reminderRule';
 
@@ -59,7 +60,9 @@ function useBlinkingTitle(active: boolean, message: string): void {
 }
 
 export function AttendanceReminder() {
-  const enabled = useFeature('tools.attendance');
+  const loggedIn = useAuth(s => s.isAuthenticated);
+  // 로그인 화면에서까지 물어볼 이유가 없다
+  const enabled = useFeature('tools.attendance') && loggedIn;
   const [open, setOpen] = useState(false);
   const [tick, setTick] = useState(0);
   // 같은 날 두 번 띄우지 않는다. localStorage 를 못 쓰는 경우를 위해 메모리에도 남긴다.

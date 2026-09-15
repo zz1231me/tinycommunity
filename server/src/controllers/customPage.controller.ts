@@ -286,12 +286,15 @@ function readOrder(raw: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** 번들을 쓰지 않게 된 페이지의 파일을 지운다. 남겨 두면 참조도 없이 용량만 차지한다. */
-async function dropBundle(page: CustomPage): Promise<void> {
-  if (!page.bundlePath) return;
-  await fs.rm(bundleDir(page.id), { recursive: true, force: true }).catch(() => {});
+/**
+ * 번들을 쓰지 않게 된 표시. 파일은 여기서 지우지 않고 저장이 끝난 뒤에 지운다 —
+ * 먼저 지웠다가 저장이 실패하면, 행은 번들을 가리키는데 파일이 없는 상태가 된다.
+ */
+function markBundleDropped(page: CustomPage): boolean {
+  if (!page.bundlePath) return false;
   page.bundlePath = null;
   page.entryFile = 'index.html';
+  return true;
 }
 
 // 관리자 — 생성
@@ -353,6 +356,7 @@ export const updatePage = async (req: Request, res: Response): Promise<void> => 
     // 받고 나머지 칸을 비운다 — 예전에는 비우지 않아, 종류를 바꿔도 옛 값이 남아
     // 화면에서 무엇이 보일지 값들의 우선순위로 결정됐다.
     const mode = readMode(req.body.mode);
+    let bundleDropped = false;
     if (mode === 'url') {
       if (!payload.externalUrl) {
         sendValidationError(res, 'externalUrl', '임베드할 URL을 입력해주세요.');
@@ -360,11 +364,11 @@ export const updatePage = async (req: Request, res: Response): Promise<void> => 
       }
       page.externalUrl = payload.externalUrl;
       page.html = '';
-      await dropBundle(page);
+      bundleDropped = markBundleDropped(page);
     } else if (mode === 'html') {
       page.externalUrl = null;
       page.html = payload.html;
-      await dropBundle(page);
+      bundleDropped = markBundleDropped(page);
     } else if (mode === 'bundle') {
       if (!page.bundlePath) {
         sendValidationError(res, 'bundle', '먼저 ZIP 파일을 올려주세요.');
@@ -397,6 +401,10 @@ export const updatePage = async (req: Request, res: Response): Promise<void> => 
     }
     page.createdBy = authReq.user?.id ?? page.createdBy;
     await page.save();
+    // 저장이 끝난 뒤에 지운다 — 남은 파일은 아무도 참조하지 않는다
+    if (bundleDropped) {
+      await fs.rm(bundleDir(page.id), { recursive: true, force: true }).catch(() => {});
+    }
     sendSuccess(res, page, '페이지를 수정했습니다.');
   } catch (err) {
     if (err instanceof UniqueConstraintError) {
