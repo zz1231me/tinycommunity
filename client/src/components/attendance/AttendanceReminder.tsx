@@ -8,11 +8,13 @@
 // 계산할 수 있으므로, 남은 시간만 주기적으로 세어 본다.
 
 import { useEffect, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { AlarmClock } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlarmClock, LogOut } from 'lucide-react';
 import { ModalShell } from '../common/ModalShell';
 import { attendanceKeys } from '../../api/queryKeys';
-import { fetchMyAttendance } from '../../api/attendance';
+import { checkOut as requestCheckOut, fetchMyAttendance } from '../../api/attendance';
+import { getApiErrorMessage } from '../../api/utils';
+import { toast } from '../../utils/toast';
 import { useFeature } from '../../store/features';
 import { useAuth } from '../../store/auth';
 import { formatClock, formatMinutes, minutesBetween } from '../../utils/attendance';
@@ -60,6 +62,7 @@ function useBlinkingTitle(active: boolean, message: string): void {
 }
 
 export function AttendanceReminder() {
+  const queryClient = useQueryClient();
   const loggedIn = useAuth(s => s.isAuthenticated);
   // 로그인 화면에서까지 물어볼 이유가 없다
   const enabled = useFeature('tools.attendance') && loggedIn;
@@ -109,6 +112,18 @@ export function AttendanceReminder() {
     if (!working) setOpen(false);
   }, [working]);
 
+  // 여기서 바로 찍을 수 있게 한다 — 알림을 보고 다시 출근 확인 화면까지 들어가야 하면
+  // 그냥 안 찍고 넘어가게 된다.
+  const checkOutNow = useMutation({
+    mutationFn: requestCheckOut,
+    onSuccess: closed => {
+      setOpen(false);
+      queryClient.invalidateQueries({ queryKey: attendanceKeys.all });
+      toast.success(`퇴근 기록 완료 — 오늘 ${formatMinutes(closed.workMinutes)} 근무`);
+    },
+    onError: err => toast.error(getApiErrorMessage(err, '퇴근을 기록하지 못했습니다.')),
+  });
+
   useBlinkingTitle(open, '⏰ 퇴근 시간이 다 됐습니다');
 
   if (!open || !record) return null;
@@ -127,11 +142,28 @@ export function AttendanceReminder() {
           {formatMinutes(worked)}
         </p>
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          기준 {formatMinutes(standard)}. 퇴근은 출근 확인 화면에서 직접 찍습니다.
+          기준 {formatMinutes(standard)}
         </p>
-        <button type="button" onClick={() => setOpen(false)} className="btn-primary mt-4 w-full">
-          확인
-        </button>
+
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            disabled={checkOutNow.isPending}
+            className="btn-secondary flex-1"
+          >
+            나중에
+          </button>
+          <button
+            type="button"
+            onClick={() => checkOutNow.mutate()}
+            disabled={checkOutNow.isPending}
+            className="btn-primary inline-flex flex-1 items-center justify-center gap-1.5 disabled:opacity-50"
+          >
+            <LogOut className="h-4 w-4" />
+            {checkOutNow.isPending ? '기록 중...' : '퇴근하기'}
+          </button>
+        </div>
       </div>
     </ModalShell>
   );
