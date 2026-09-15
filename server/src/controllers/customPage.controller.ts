@@ -94,7 +94,6 @@ const WIN_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i;
 function isUnsafeBundlePath(rel: string): boolean {
   for (const seg of rel.split('/')) {
     if (!seg || seg === '.' || seg === '..') return true;
-    // eslint-disable-next-line no-control-regex
     if (/[<>:"|?*\x00-\x1f]/.test(seg)) return true; // Windows 금지 문자 + 제어문자
     if (/[ .]$/.test(seg)) return true; // 끝 공백/점 (Windows에서 무시되어 우회 가능)
     if (WIN_RESERVED.test(seg)) return true; // CON, PRN, COM1 등

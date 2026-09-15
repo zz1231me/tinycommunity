@@ -598,6 +598,9 @@ if (env.NODE_ENV === 'development') {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
+/** 종료할 때 새 연결을 막고 처리 중인 요청을 기다리기 위해 들고 있는다 */
+let httpServer: import('http').Server | null = null;
+
 const startServer = async () => {
   try {
     logger.info('🔄 API 서버 초기화 시작...');
@@ -667,7 +670,7 @@ const startServer = async () => {
     void cleanupExpiredTempShares();
     setInterval(() => void cleanupExpiredTempShares(), 2 * 60 * 1000);
 
-    app.listen(PORT, '0.0.0.0', () => {
+    httpServer = app.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 API 서버 시작: http://0.0.0.0:${PORT}`);
       logger.info(`   📍 로컬 접속: http://127.0.0.1:${PORT}`);
       logger.info(`   📍 로컬 접속: http://localhost:${PORT}`);
@@ -715,10 +718,39 @@ const startServer = async () => {
   }
 };
 
+/**
+ * 종료할 때 처리 중인 요청을 마저 끝낸다.
+ *
+ * 예전에는 곧바로 process.exit 를 불러, 재시작할 때마다 그 순간 오가던 요청이
+ * 그대로 끊겼다(글 저장 중이면 저장이 안 된 채로). 새 연결만 막고 하던 일을
+ * 기다리되, 오래 매달린 연결 때문에 배포가 멈추지 않도록 시간 제한을 둔다.
+ */
+const SHUTDOWN_GRACE_MS = 10_000;
+
+async function shutdown(signal: string): Promise<void> {
+  logger.info(`⚠️ ${signal} 수신, 서버 종료 중...`);
+  closeAllSseConnections(); // 열린 SSE 스트림을 닫아야 종료가 매달리지 않는다
+
+  if (httpServer) {
+    await Promise.race([
+      new Promise<void>(resolve => httpServer?.close(() => resolve())),
+      new Promise<void>(resolve => setTimeout(resolve, SHUTDOWN_GRACE_MS)),
+    ]);
+  }
+
+  await closeDatabaseConnection();
+  process.exit(0);
+}
+
 process.on('unhandledRejection', (reason, _promise) => {
   logger.error('❌ Unhandled Rejection:', reason);
   console.error(reason instanceof Error ? (reason.stack ?? reason.message) : reason);
-  process.exit(1);
+  // 개발·테스트에서는 즉시 죽여 눈에 띄게 한다 — 놓친 .catch 를 그때 잡아야 한다.
+  //
+  // 운영에서는 살려 둔다. 여기 걸리는 것은 대개 응답과 무관하게 던져 둔 일(알림 발송,
+  // 로그 기록)이다. 그것 하나 실패했다고 쓰고 있는 모든 사람의 서버를 내리는 쪽이
+  // 더 나쁘다. 상태가 깨졌을 가능성이 있는 uncaughtException 은 그대로 종료한다.
+  if (env.NODE_ENV !== 'production') process.exit(1);
 });
 
 process.on('uncaughtException', error => {
@@ -728,21 +760,11 @@ process.on('uncaughtException', error => {
 });
 
 process.on('SIGTERM', () => {
-  void (async () => {
-    logger.info('⚠️ SIGTERM 수신, 서버 종료 중...');
-    closeAllSseConnections(); // 열린 SSE 스트림을 닫아야 종료가 매달리지 않는다
-    await closeDatabaseConnection();
-    process.exit(0);
-  })();
+  void shutdown('SIGTERM');
 });
 
 process.on('SIGINT', () => {
-  void (async () => {
-    logger.info('⚠️ SIGINT 수신, 서버 종료 중...');
-    closeAllSseConnections();
-    await closeDatabaseConnection();
-    process.exit(0);
-  })();
+  void shutdown('SIGINT');
 });
 
 // 테스트 환경에서는 서버를 시작하지 않음
