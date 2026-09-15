@@ -37,7 +37,12 @@ import {
   weekdayOf,
   weekdayTone,
 } from '../../../utils/attendance';
-import type { ChecklistItem } from '../../../types/attendance.types';
+import type { AttendancePolicy, ChecklistItem } from '../../../types/attendance.types';
+
+interface AttendanceSettings {
+  checklist: ChecklistItem[];
+  policy: AttendancePolicy;
+}
 
 type View = 'today' | 'records' | 'summary' | 'settings';
 
@@ -104,12 +109,15 @@ const AttendanceManagement = () => {
     queryKey: adminKeys.attendance.records({ ...range, userId, page }),
     queryFn: () => fetchAttendanceRecords({ ...range, userId: userId || undefined, page }),
     enabled: view === 'records',
+    // 페이지·기간을 바꿀 때 표가 비었다가 다시 차면 화면이 튄다 — 새 값이 올 때까지 둔다
+    placeholderData: prev => prev,
   });
 
   const summary = useQuery({
     queryKey: adminKeys.attendance.summary(range),
     queryFn: () => fetchAttendanceSummary(range),
     enabled: view === 'summary',
+    placeholderData: prev => prev,
   });
 
   const settings = useQuery({
@@ -120,6 +128,27 @@ const AttendanceManagement = () => {
 
   const invalidateSettings = () =>
     queryClient.invalidateQueries({ queryKey: adminKeys.attendance.settings });
+
+  /**
+   * 화면을 먼저 바꾸고 요청을 보낸다.
+   *
+   * 체크 한 번에 서버 왕복과 재조회를 기다리면, 네트워크가 느린 만큼 체크박스가
+   * 늦게 움직인다. 실패하면 이전 값으로 되돌리고, onSettled 의 재조회가 최종 확인이다.
+   */
+  const applyOptimistic = async (update: (current: AttendanceSettings) => AttendanceSettings) => {
+    await queryClient.cancelQueries({ queryKey: adminKeys.attendance.settings });
+    const previous = queryClient.getQueryData<AttendanceSettings>(adminKeys.attendance.settings);
+    if (previous) {
+      queryClient.setQueryData<AttendanceSettings>(adminKeys.attendance.settings, update(previous));
+    }
+    return { previous };
+  };
+
+  const rollback = (context?: { previous?: AttendanceSettings }) => {
+    if (context?.previous) {
+      queryClient.setQueryData(adminKeys.attendance.settings, context.previous);
+    }
+  };
 
   const onMutationError = (fallback: string) => (err: unknown) =>
     toast.error(getApiErrorMessage(err, fallback));
@@ -136,15 +165,33 @@ const AttendanceManagement = () => {
   const patchItem = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<ChecklistItem> }) =>
       updateChecklistItem(id, data),
+    onMutate: ({ id, data }) =>
+      applyOptimistic(current => ({
+        ...current,
+        checklist: current.checklist.map(item => (item.id === id ? { ...item, ...data } : item)),
+      })),
+    onError: (err, _vars, context) => {
+      rollback(context);
+      onMutationError('항목을 수정하지 못했습니다.')(err);
+    },
     // 실패해도 서버 값으로 되돌려야 화면과 저장된 값이 갈라지지 않는다
     onSettled: () => invalidateSettings(),
-    onError: onMutationError('항목을 수정하지 못했습니다.'),
   });
 
   const reorder = useMutation({
     mutationFn: reorderChecklist,
+    onMutate: ids =>
+      applyOptimistic(current => {
+        const byId = new Map(current.checklist.map(item => [item.id, item]));
+        const next = ids.map(id => byId.get(id)).filter((item): item is ChecklistItem => !!item);
+        // 목록과 안 맞는 순서는 서버가 거절한다 — 화면을 섣불리 바꾸지 않는다
+        return next.length === current.checklist.length ? { ...current, checklist: next } : current;
+      }),
+    onError: (err, _vars, context) => {
+      rollback(context);
+      onMutationError('순서를 바꾸지 못했습니다.')(err);
+    },
     onSettled: () => invalidateSettings(),
-    onError: onMutationError('순서를 바꾸지 못했습니다.'),
   });
 
   const removeItem = useMutation({
@@ -159,11 +206,14 @@ const AttendanceManagement = () => {
 
   const savePolicy = useMutation({
     mutationFn: updateAttendancePolicy,
-    onSuccess: () => {
-      invalidateSettings();
-      toast.success('설정이 저장되었습니다.');
+    onMutate: data =>
+      applyOptimistic(current => ({ ...current, policy: { ...current.policy, ...data } })),
+    onSuccess: () => toast.success('설정이 저장되었습니다.'),
+    onError: (err, _vars, context) => {
+      rollback(context);
+      onMutationError('설정을 저장하지 못했습니다.')(err);
     },
-    onError: onMutationError('설정을 저장하지 못했습니다.'),
+    onSettled: () => invalidateSettings(),
   });
 
   const policy = settings.data?.policy;
@@ -271,7 +321,7 @@ const AttendanceManagement = () => {
             <ListState size="roomy">이 기간에는 기록이 없습니다.</ListState>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" aria-live="polite" aria-busy={records.isFetching}>
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
                     <tr>
@@ -442,7 +492,7 @@ const AttendanceManagement = () => {
           ) : summary.isError ? (
             <ListState>{getApiErrorMessage(summary.error, '집계를 불러오지 못했습니다.')}</ListState>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" aria-live="polite" aria-busy={summary.isFetching}>
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
                   <tr>
@@ -504,7 +554,6 @@ const AttendanceManagement = () => {
               <ChecklistEditor
                 items={settings.data?.checklist ?? []}
                 adding={addItem.isPending}
-                reordering={reorder.isPending}
                 onAdd={data => addItem.mutate(data)}
                 onPatch={(id, data) => patchItem.mutate({ id, data })}
                 onReorder={ids => reorder.mutate(ids)}

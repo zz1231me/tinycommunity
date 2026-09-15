@@ -12,13 +12,12 @@ interface RowProps {
   item: ChecklistItem;
   first: boolean;
   last: boolean;
-  moveLocked: boolean;
   onPatch: (data: Partial<ChecklistItem>) => void;
   onMove: (delta: number) => void;
   onDelete: () => void;
 }
 
-function ChecklistRow({ item, first, last, moveLocked, onPatch, onMove, onDelete }: RowProps) {
+function ChecklistRow({ item, first, last, onPatch, onMove, onDelete }: RowProps) {
   const [label, setLabel] = useState(item.label);
   const [description, setDescription] = useState(item.description);
 
@@ -49,7 +48,7 @@ function ChecklistRow({ item, first, last, moveLocked, onPatch, onMove, onDelete
           <button
             type="button"
             onClick={() => onMove(-1)}
-            disabled={first || moveLocked}
+            disabled={first}
             aria-label="위로"
             className="rounded p-0.5 text-slate-400 hover:bg-slate-100 disabled:opacity-25 dark:hover:bg-slate-700"
           >
@@ -58,7 +57,7 @@ function ChecklistRow({ item, first, last, moveLocked, onPatch, onMove, onDelete
           <button
             type="button"
             onClick={() => onMove(1)}
-            disabled={last || moveLocked}
+            disabled={last}
             aria-label="아래로"
             className="rounded p-0.5 text-slate-400 hover:bg-slate-100 disabled:opacity-25 dark:hover:bg-slate-700"
           >
@@ -122,23 +121,13 @@ function ChecklistRow({ item, first, last, moveLocked, onPatch, onMove, onDelete
 interface Props {
   items: ChecklistItem[];
   adding: boolean;
-  /** 순서 저장이 도는 동안은 화살표를 잠근다 */
-  reordering: boolean;
   onAdd: (data: { label: string; description: string; required: boolean }) => void;
   onPatch: (id: number, data: Partial<ChecklistItem>) => void;
   onReorder: (ids: number[]) => void;
   onDelete: (item: ChecklistItem) => void;
 }
 
-export function ChecklistEditor({
-  items,
-  adding,
-  reordering,
-  onAdd,
-  onPatch,
-  onReorder,
-  onDelete,
-}: Props) {
+export function ChecklistEditor({ items, adding, onAdd, onPatch, onReorder, onDelete }: Props) {
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
   const [required, setRequired] = useState(true);
@@ -172,7 +161,6 @@ export function ChecklistEditor({
               item={item}
               first={index === 0}
               last={index === items.length - 1}
-              moveLocked={reordering}
               onPatch={data => onPatch(item.id, data)}
               onMove={delta => move(index, delta)}
               onDelete={() => onDelete(item)}

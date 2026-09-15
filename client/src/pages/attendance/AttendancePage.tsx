@@ -62,6 +62,8 @@ export default function AttendancePage() {
   const history = useQuery({
     queryKey: attendanceKeys.history(month),
     queryFn: () => fetchMyAttendanceHistory(month),
+    // 달을 넘길 때 표·그래프가 사라졌다 다시 그려지면 화면이 튄다
+    placeholderData: prev => prev,
   });
 
   // 출근·퇴근을 찍으면 오늘 상태와 이번 달 기록이 함께 바뀐다
@@ -166,7 +168,7 @@ export default function AttendancePage() {
         </>
       )}
 
-      <section className="card mt-4 overflow-hidden">
+      <section className="card mt-4 overflow-hidden" aria-live="polite" aria-busy={history.isFetching}>
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
           <h2 className="card-title">내 기록</h2>
           <div className="flex items-center gap-1">
