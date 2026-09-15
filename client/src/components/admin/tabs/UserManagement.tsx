@@ -183,6 +183,16 @@ export const UserManagement = () => {
     setResetTarget({ id, name });
   };
 
+  // ESC 로 닫기 — 이 앱의 다른 대화상자는 모두 되는데 여기만 안 됐다
+  useEffect(() => {
+    if (!resetTarget) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setResetTarget(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [resetTarget]);
+
   const handleResetPassword = async () => {
     if (!resetTarget || resetting) return;
     if (!/^\d{6}$/.test(resetCode)) {

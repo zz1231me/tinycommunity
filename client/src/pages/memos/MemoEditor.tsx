@@ -32,6 +32,16 @@ export const MemoEditor: React.FC<MemoEditorProps> = ({
     setColor(memo?.color || 'yellow');
   }, [memo]);
 
+  // ESC 로 닫기 — 이 앱의 다른 대화상자는 모두 되는데 여기만 안 됐다.
+  // 바깥을 눌러 닫는 것과 같은 동작(취소)이다.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({ title, content, color });
