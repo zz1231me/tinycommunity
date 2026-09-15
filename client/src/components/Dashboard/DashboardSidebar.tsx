@@ -1,5 +1,5 @@
 // client/src/components/Dashboard/DashboardSidebar.tsx
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Calendar,
@@ -18,6 +18,8 @@ import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
 import { SidebarNav } from './SidebarNav';
 import { BoardIcon } from './BoardIcon';
+import { useSiteSettings } from '../../store/siteSettings';
+import { wikiInsertIndex } from '../../utils/sidebarOrder';
 import { useAccessibleBoards } from '../../hooks/useAccessibleBoards';
 import { useBookmarks } from '../../hooks/useBookmarks';
 import { useAuth } from '../../store/auth';
@@ -72,6 +74,30 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
   const tagCloudEnabled = useFeature('discovery.tagCloud');
   const showExplore = popularEnabled || tagCloudEnabled;
   const showWiki = useFeature('tools.wiki');
+  const wikiOrder = useSiteSettings(st => st.settings.wikiOrder);
+
+  // 게시판 목록에 위키를 끼워 넣는다. 자리 규칙은 utils/sidebarOrder 에 적어 두었다.
+  const navEntries = useMemo(() => {
+    const entries = regularBoards.map(board => ({
+      key: board.id,
+      label: board.name,
+      to: `posts/${board.id}`,
+      icon: <BoardIcon boardId={board.id} />,
+    }));
+    if (!showWiki) return entries;
+
+    const at = wikiInsertIndex(
+      regularBoards.map(b => b.order ?? 0),
+      wikiOrder
+    );
+    entries.splice(at, 0, {
+      key: '__wiki__',
+      label: '위키',
+      to: 'wiki',
+      icon: <BookOpen className="w-4.5 h-4.5" />,
+    });
+    return entries;
+  }, [regularBoards, showWiki, wikiOrder]);
   const showScraps = useFeature('post.scrap');
   const showDrafts = useFeature('post.drafts');
   const showTasks = useFeature('post.tasks');
@@ -144,20 +170,20 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
             </div>
           </div>
 
-          {/* 게시판 */}
-          {(boardsLoading || regularBoards.length > 0) && (
+          {/* 게시판 — 위키도 여기에 끼워 관리자가 정한 순서대로 늘어놓는다 */}
+          {(boardsLoading || navEntries.length > 0) && (
             <div>
               <SectionLabel>게시판</SectionLabel>
               <div className="space-y-0.5">
                 {boardsLoading ? (
                   <Spinner />
                 ) : (
-                  regularBoards.map(board => (
+                  navEntries.map(entry => (
                     <SidebarNav
-                      key={board.id}
-                      label={board.name}
-                      to={`posts/${board.id}`}
-                      icon={<BoardIcon boardId={board.id} />}
+                      key={entry.key}
+                      label={entry.label}
+                      to={entry.to}
+                      icon={entry.icon}
                       closeSidebar={onClose}
                     />
                   ))
@@ -167,7 +193,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
           )}
 
           {/* 접근 가능 게시판 없음 */}
-          {!boardsLoading && regularBoards.length === 0 && (
+          {!boardsLoading && navEntries.length === 0 && (
             <div>
               <SectionLabel>게시판</SectionLabel>
               <p
@@ -188,14 +214,6 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
           <div>
             <SectionLabel>도구</SectionLabel>
             <div className="space-y-0.5">
-              {showWiki && (
-                <SidebarNav
-                  label="위키"
-                  to="wiki"
-                  closeSidebar={onClose}
-                  icon={<BookOpen className="w-4.5 h-4.5" />}
-                />
-              )}
               {showScraps && (
                 <SidebarNav
                   label="스크랩"

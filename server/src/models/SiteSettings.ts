@@ -69,6 +69,8 @@ export interface SiteSettingsInstance extends Model<
   attendanceBonus: CreationOptional<number>;
   // ── 신규 (관리자 조정 가능) ────────────────────────────────────────────────
   memoMaxPerUser: CreationOptional<number>;
+  /** 사이드바에서 위키가 게시판 목록 몇 번째에 오는지 */
+  wikiOrder: CreationOptional<number>;
   commentContentMaxLength: CreationOptional<number>;
   eventBodyMaxLength: CreationOptional<number>;
   eventLocationMaxLength: CreationOptional<number>;
@@ -139,6 +141,7 @@ export class SiteSettings
   declare public lotteryDrawCost: CreationOptional<number>;
   declare public attendanceBonus: CreationOptional<number>;
   declare public memoMaxPerUser: CreationOptional<number>;
+  declare public wikiOrder: CreationOptional<number>;
   declare public commentContentMaxLength: CreationOptional<number>;
   declare public eventBodyMaxLength: CreationOptional<number>;
   declare public eventLocationMaxLength: CreationOptional<number>;
@@ -495,6 +498,13 @@ SiteSettings.init(
       allowNull: false,
       defaultValue: 200,
       field: 'memo_max_per_user',
+    },
+    // 기본값은 크게 둔다 — 기존 설치에서 위키가 게시판 목록 끝에 남아 지금과 같은 자리가 된다
+    wikiOrder: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 9999,
+      field: 'wiki_order',
     },
     commentContentMaxLength: {
       type: DataTypes.INTEGER,

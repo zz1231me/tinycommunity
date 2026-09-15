@@ -189,6 +189,7 @@ function toPayload(s: SiteSettings) {
     autoSaveIntervalSeconds: s.autoSaveIntervalSeconds ?? DEFAULTS.autoSaveIntervalSeconds,
     draftExpiryMinutes: s.draftExpiryMinutes ?? DEFAULTS.draftExpiryMinutes,
     memoMaxPerUser: s.memoMaxPerUser ?? DEFAULTS.memoMaxPerUser,
+    wikiOrder: s.wikiOrder ?? DEFAULTS.wikiOrder,
     commentContentMaxLength: s.commentContentMaxLength ?? DEFAULTS.commentContentMaxLength,
     eventBodyMaxLength: s.eventBodyMaxLength ?? DEFAULTS.eventBodyMaxLength,
     eventLocationMaxLength: s.eventLocationMaxLength ?? DEFAULTS.eventLocationMaxLength,
@@ -305,6 +306,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       autoSaveIntervalSeconds,
       draftExpiryMinutes,
       memoMaxPerUser,
+      wikiOrder,
       commentContentMaxLength,
       eventBodyMaxLength,
       eventLocationMaxLength,
@@ -371,6 +373,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       [draftExpiryMinutes, 'draftExpiryMinutes', 10, 1440],
       // 신규 (관리자 조정 가능 항목 — 사용자 메모 한도/댓글·이벤트 길이)
       [memoMaxPerUser, 'memoMaxPerUser', 10, 2000],
+      [wikiOrder, 'wikiOrder', 0, 9999],
       [commentContentMaxLength, 'commentContentMaxLength', 100, 10000],
       [eventBodyMaxLength, 'eventBodyMaxLength', 100, 100000],
       [eventLocationMaxLength, 'eventLocationMaxLength', 10, 2000],
@@ -600,6 +603,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       draftExpiryMinutes:
         draftExpiryMinutes !== undefined ? draftExpiryMinutes : settings.draftExpiryMinutes,
       memoMaxPerUser: memoMaxPerUser !== undefined ? memoMaxPerUser : settings.memoMaxPerUser,
+      wikiOrder: wikiOrder !== undefined ? wikiOrder : settings.wikiOrder,
       commentContentMaxLength:
         commentContentMaxLength !== undefined
           ? commentContentMaxLength

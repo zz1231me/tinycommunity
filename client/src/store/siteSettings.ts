@@ -48,6 +48,8 @@ export interface SiteSettings {
   draftExpiryMinutes: number;
   // ── 신규: 관리자 조정 가능 ────────────────────────────────────────────────
   memoMaxPerUser: number;
+  /** 사이드바에서 위키가 게시판 목록 몇 번째에 오는지 */
+  wikiOrder: number;
   commentContentMaxLength: number;
   eventBodyMaxLength: number;
   eventLocationMaxLength: number;
@@ -148,6 +150,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   draftExpiryMinutes: 60,
   // 신규: 관리자 조정 가능 기본값
   memoMaxPerUser: 200,
+  wikiOrder: 9999,
   commentContentMaxLength: 1000,
   eventBodyMaxLength: 10000,
   eventLocationMaxLength: 500,

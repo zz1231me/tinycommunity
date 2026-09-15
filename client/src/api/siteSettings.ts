@@ -71,6 +71,8 @@ export interface SiteSettings {
   draftExpiryMinutes: number;
   /** 사용자당 최대 메모 개수 */
   memoMaxPerUser: number;
+  /** 사이드바에서 위키가 게시판 목록 몇 번째에 오는지 */
+  wikiOrder: number;
   /** 댓글 본문 최대 글자수 */
   commentContentMaxLength: number;
   /** 이벤트 본문 최대 글자수 */

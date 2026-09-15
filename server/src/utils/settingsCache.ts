@@ -169,6 +169,7 @@ export const SETTINGS_DEFAULTS = {
   draftExpiryMinutes: 60,
   // ── 신규 ────────────────────────────────────────────────────────────────
   memoMaxPerUser: 200,
+  wikiOrder: 9999,
   commentContentMaxLength: 1000,
   eventBodyMaxLength: 10000,
   eventLocationMaxLength: 500,
@@ -232,6 +233,7 @@ export async function loadSettingsCache(): Promise<void> {
         draftExpiryMinutes: settings.draftExpiryMinutes ?? DEFAULTS.draftExpiryMinutes,
         // ── 신규 ────────────────────────────────────────────────────────
         memoMaxPerUser: settings.memoMaxPerUser ?? DEFAULTS.memoMaxPerUser,
+        wikiOrder: settings.wikiOrder ?? DEFAULTS.wikiOrder,
         commentContentMaxLength:
           settings.commentContentMaxLength ?? DEFAULTS.commentContentMaxLength,
         eventBodyMaxLength: settings.eventBodyMaxLength ?? DEFAULTS.eventBodyMaxLength,

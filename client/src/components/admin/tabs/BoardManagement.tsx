@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -24,6 +24,10 @@ import { AdminSection } from '../common/AdminSection';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import { AdminFormField, adminInputCls } from '../common/AdminFormField';
 import { toast } from '../../../utils/toast';
+import { useFeature } from '../../../store/features';
+import { useSiteSettings } from '../../../store/siteSettings';
+import { updateSiteSettings } from '../../../api/siteSettings';
+import { wikiInsertIndex } from '../../../utils/sidebarOrder';
 import { ListState } from '../../common/ListState';
 
 interface BoardRowProps {
@@ -38,6 +42,56 @@ interface BoardRowProps {
   onSaveEdit: (boardId: string) => void;
   onToggleActive: (board: Board) => void;
   onDelete: (boardId: string) => void;
+}
+
+/** 정렬 목록에서 위키 행을 가리키는 id — 게시판 id 와 겹치지 않게 */
+const WIKI_ROW_ID = '__wiki__';
+
+/**
+ * 위키 행. 사이드바에서 게시판과 한 목록에 늘어서므로 여기서 함께 끌어 옮긴다.
+ * 게시판이 아니라 이름·설명·상태를 고칠 것이 없어 자리만 차지한다.
+ */
+function SortableWikiRow({ dragDisabled, order }: { dragDisabled: boolean; order: number }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: WIKI_ROW_ID,
+    disabled: dragDisabled,
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`bg-secondary-50/40 dark:bg-secondary-900/10 ${isDragging ? 'opacity-50' : ''}`}
+    >
+      <td className="admin-td w-8">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          disabled={dragDisabled}
+          title={dragDisabled ? '편집 완료 후 순서 변경 가능' : '드래그하여 순서 변경'}
+          className="text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400 cursor-grab active:cursor-grabbing disabled:opacity-40 disabled:cursor-not-allowed touch-none"
+          aria-label="순서 변경 핸들"
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
+      </td>
+      <td className="admin-td font-mono text-slate-400">wiki</td>
+      <td className="admin-td font-medium">위키</td>
+      <td className="admin-td text-slate-500 dark:text-slate-400">
+        게시판이 아니라 도구입니다. 사이드바에서 보일 자리만 정합니다.
+      </td>
+      <td className="admin-td text-center text-slate-600 dark:text-slate-400">{order}</td>
+      <td className="admin-td text-center text-slate-400">—</td>
+      <td className="admin-td text-center text-slate-400">—</td>
+      <td className="admin-td text-right text-slate-400">—</td>
+    </tr>
+  );
 }
 
 // 드래그로 순서를 바꿀 수 있는 게시판 행. 편집 중(=dragDisabled)에는 드래그를 막아
@@ -272,16 +326,43 @@ export const BoardManagement = () => {
     }
   };
 
+  // 위키도 사이드바에서 같은 목록에 늘어서므로 여기서 함께 순서를 정한다
+  const wikiEnabled = useFeature('tools.wiki');
+  const wikiOrderSetting = useSiteSettings(st => st.settings.wikiOrder);
+  const applySettings = useSiteSettings(st => st.updateSettings);
+
+  const saveWikiOrder = async (order: number) => {
+    const saved = await updateSiteSettings({ wikiOrder: order });
+    applySettings(saved);
+  };
+
+  // 정렬 목록 = 게시판 + 위키. 사이드바와 같은 규칙으로 자리를 잡는다.
+  const rowIds = useMemo<string[]>(() => {
+    const ids = boards.map(b => b.id);
+    if (!wikiEnabled) return ids;
+    const at = wikiInsertIndex(
+      boards.map(b => b.order ?? 0),
+      wikiOrderSetting
+    );
+    return [...ids.slice(0, at), WIKI_ROW_ID, ...ids.slice(at)];
+  }, [boards, wikiEnabled, wikiOrderSetting]);
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = boards.findIndex(b => b.id === active.id);
-    const newIndex = boards.findIndex(b => b.id === over.id);
+    const oldIndex = rowIds.indexOf(String(active.id));
+    const newIndex = rowIds.indexOf(String(over.id));
     if (oldIndex === -1 || newIndex === -1) return;
-    const orderedIds = arrayMove(boards, oldIndex, newIndex).map(b => b.id);
+
+    const next = arrayMove(rowIds, oldIndex, newIndex);
+    const orderedIds = next.filter(id => id !== WIKI_ROW_ID);
+    const wikiAt = next.indexOf(WIKI_ROW_ID);
+
     try {
       await reorderBoards(orderedIds);
-      toast.success('게시판 순서가 저장되었습니다.');
+      // 게시판 order 는 방금 0,1,2… 로 다시 매겨졌으므로 자리 번호가 곧 order 값이다
+      if (wikiAt !== -1) await saveWikiOrder(wikiAt);
+      toast.success('순서가 저장되었습니다.');
     } catch {
       toast.error('순서 저장에 실패했습니다.');
     }
@@ -394,27 +475,37 @@ export const BoardManagement = () => {
                   </tr>
                 </tbody>
               ) : (
-                <SortableContext
-                  items={boards.map(b => b.id)}
-                  strategy={verticalListSortingStrategy}
-                >
+                <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                    {boards.map(board => (
-                      <SortableBoardRow
-                        key={board.id}
-                        board={board}
-                        editing={editingBoard === board.id}
-                        dragDisabled={editingBoard !== null}
-                        editBoardData={editBoardData}
-                        togglingBoardId={togglingBoardId}
-                        onEditData={setEditBoardData}
-                        onStartEdit={startEdit}
-                        onCancelEdit={cancelEdit}
-                        onSaveEdit={saveEdit}
-                        onToggleActive={handleToggleActive}
-                        onDelete={setConfirmDeleteId}
-                      />
-                    ))}
+                    {rowIds.map((rowId, index) => {
+                      if (rowId === WIKI_ROW_ID) {
+                        return (
+                          <SortableWikiRow
+                            key={rowId}
+                            dragDisabled={editingBoard !== null}
+                            order={index}
+                          />
+                        );
+                      }
+                      const board = boards.find(b => b.id === rowId);
+                      if (!board) return null;
+                      return (
+                        <SortableBoardRow
+                          key={board.id}
+                          board={board}
+                          editing={editingBoard === board.id}
+                          dragDisabled={editingBoard !== null}
+                          editBoardData={editBoardData}
+                          togglingBoardId={togglingBoardId}
+                          onEditData={setEditBoardData}
+                          onStartEdit={startEdit}
+                          onCancelEdit={cancelEdit}
+                          onSaveEdit={saveEdit}
+                          onToggleActive={handleToggleActive}
+                          onDelete={setConfirmDeleteId}
+                        />
+                      );
+                    })}
                   </tbody>
                 </SortableContext>
               )}
