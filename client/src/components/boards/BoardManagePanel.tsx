@@ -322,6 +322,7 @@ export function BoardManagePanel({
                   value={newTag.name}
                   onChange={e => setNewTag(p => ({ ...p, name: e.target.value }))}
                   onKeyDown={e => {
+                    if (e.nativeEvent.isComposing) return;
                     if (e.key === 'Enter') handleCreateTag();
                   }}
                   placeholder="새 태그 이름"

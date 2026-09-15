@@ -98,6 +98,7 @@ export const EventForm: React.FC<EventFormProps> = ({
       onKeyDown={e => {
         // 단일 라인 input(제목/장소/날짜)에서 Enter로 일정이 조기 생성·수정되는 것 방지
         // (메모 textarea의 줄바꿈과 명시적 제출 버튼은 그대로 동작)
+        if (e.nativeEvent.isComposing) return;
         if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
           e.preventDefault();
         }

@@ -211,6 +211,8 @@ export function GlobalSearch() {
         return;
       }
       const list = filteredResultsRef.current;
+      // 한글 조합을 끝내는 Enter 로 결과가 열리지 않게 한다
+      if (event.isComposing) return;
       if (event.key === 'ArrowDown') {
         event.preventDefault();
         setActiveIndex(prev => (list.length === 0 ? -1 : Math.min(list.length - 1, prev + 1)));

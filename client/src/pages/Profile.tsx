@@ -368,6 +368,7 @@ export default function Profile() {
                             value={nameInput}
                             onChange={e => setNameInput(e.target.value)}
                             onKeyDown={e => {
+                              if (e.nativeEvent.isComposing) return;
                               if (e.key === 'Enter') handleNameSave();
                               if (e.key === 'Escape') handleNameCancel();
                             }}

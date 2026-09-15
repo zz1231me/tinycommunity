@@ -297,6 +297,7 @@ export const EventManagement = () => {
                           value={editTitle}
                           onChange={e => setEditTitle(e.target.value)}
                           onKeyDown={e => {
+                            if (e.nativeEvent.isComposing) return;
                             if (e.key === 'Enter') handleSaveEdit(event.id);
                             if (e.key === 'Escape') setEditingId(null);
                           }}

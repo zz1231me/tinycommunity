@@ -178,7 +178,7 @@ export function ChecklistEditor({ items, adding, onAdd, onPatch, onReorder, onDe
             <input
               value={label}
               onChange={e => setLabel(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && submit()}
+              onKeyDown={e => !e.nativeEvent.isComposing && e.key === 'Enter' && submit()}
               maxLength={200}
               placeholder="예) 보안 수칙을 확인했습니다."
               className="input input-sm w-full"
@@ -191,7 +191,7 @@ export function ChecklistEditor({ items, adding, onAdd, onPatch, onReorder, onDe
             <input
               value={description}
               onChange={e => setDescription(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && submit()}
+              onKeyDown={e => !e.nativeEvent.isComposing && e.key === 'Enter' && submit()}
               maxLength={500}
               placeholder="항목 아래에 작게 표시됩니다."
               className="input input-sm w-full"

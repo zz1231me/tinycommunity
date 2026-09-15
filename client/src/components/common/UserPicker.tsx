@@ -72,6 +72,8 @@ export function UserPicker({
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (results.length === 0) return;
+    // 한글 조합을 끝내는 Enter 로 사람이 골라지지 않게 한다
+    if (e.nativeEvent.isComposing) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setActiveIndex(i => (i + 1) % results.length);

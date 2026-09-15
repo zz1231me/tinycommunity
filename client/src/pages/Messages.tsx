@@ -35,6 +35,7 @@ import {
 } from '../api/messages';
 import { formatFullDateTime, formatRelativeDate } from '../utils/date';
 import { toast } from '../utils/toast';
+import { useSubmitLock } from '../hooks/useSubmitLock';
 
 function ConversationRow({
   conversation,
@@ -141,6 +142,8 @@ function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: 
     bottomRef.current?.scrollIntoView({ block: 'end' });
   }, [newestId]);
 
+  const runOnce = useSubmitLock();
+
   const send = useMutation({
     mutationFn: (content: string) => sendMessage(partner!.id, content),
     onSuccess: sent => {
@@ -183,6 +186,12 @@ function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: 
 
   const tooLong = draft.length > MESSAGE_MAX_LENGTH;
   const canSend = draft.trim().length > 0 && !tooLong && !send.isPending && partner.active;
+
+  // 더블클릭으로 두 통 가는 것을 막는다 — isPending 은 리렌더 뒤에야 켜진다
+  const submit = () => {
+    if (!canSend) return;
+    runOnce(() => send.mutateAsync(draft.trim()).catch(() => {}));
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -253,7 +262,7 @@ function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: 
           <form
             onSubmit={e => {
               e.preventDefault();
-              if (canSend) send.mutate(draft.trim());
+              submit();
             }}
             className="flex items-end gap-2"
           >
@@ -262,9 +271,14 @@ function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: 
               onChange={e => setDraft(e.target.value)}
               onKeyDown={e => {
                 // Enter 로 보내고 Shift+Enter 로 줄바꿈 — 대화창의 관례
+                //
+                // 한글을 치는 중이면 Enter 는 '조합을 끝내는' 키다. 그것까지 전송으로
+                // 받으면 조합을 끝내는 Enter 와 진짜 Enter 가 잇달아 들어와 같은 메시지가
+                // 두 통 간다(실제로 10ms 간격으로 쌍둥이 메시지가 쌓여 있었다).
+                if (e.nativeEvent.isComposing) return;
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  if (canSend) send.mutate(draft.trim());
+                  submit();
                 }
               }}
               rows={2}

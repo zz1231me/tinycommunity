@@ -16,6 +16,7 @@ import { toast } from '../../utils/toast';
 import { ComposeDialog } from './ComposeDialog';
 import { ModalShell } from '../common/ModalShell';
 import { ListState } from '../common/ListState';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
 
 export function NewConversationButton() {
   const [picking, setPicking] = useState(false);
@@ -32,6 +33,8 @@ export function NewConversationButton() {
     queryFn: ({ signal }) => searchUsers(debounced, signal),
     enabled: picking,
   });
+
+  const runOnce = useSubmitLock();
 
   const send = useMutation({
     mutationFn: () => sendMessage(recipient!.id, draft.trim()),
@@ -108,7 +111,7 @@ export function NewConversationButton() {
           recipientName={recipient.name}
           value={draft}
           onChange={setDraft}
-          onSubmit={() => send.mutate()}
+          onSubmit={() => runOnce(() => send.mutateAsync().catch(() => {}))}
           onClose={close}
           submitting={send.isPending}
         />

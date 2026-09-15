@@ -167,6 +167,9 @@ export default function MentionAutocomplete({ editor }: Props) {
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
+      // 한글을 치는 중이면 Enter 는 조합을 끝내는 키다 — 그걸로 고르면 한 글자 덜 들어간
+      // 상태에서 선택되고, 이어 들어오는 진짜 Enter 가 한 번 더 동작한다.
+      if (e.isComposing) return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setActiveIndex(i => (i + 1) % items.length);

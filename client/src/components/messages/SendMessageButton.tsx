@@ -14,6 +14,7 @@ import { getApiErrorMessage } from '../../api/utils';
 import { useFeature } from '../../store/features';
 import { toast } from '../../utils/toast';
 import { ComposeDialog } from './ComposeDialog';
+import { useSubmitLock } from '../../hooks/useSubmitLock';
 
 interface Props {
   recipientId: string;
@@ -26,6 +27,8 @@ export function SendMessageButton({ recipientId, recipientName }: Props) {
   const [draft, setDraft] = useState('');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const runOnce = useSubmitLock();
 
   const send = useMutation({
     mutationFn: () => sendMessage(recipientId, draft.trim()),
@@ -58,7 +61,7 @@ export function SendMessageButton({ recipientId, recipientName }: Props) {
           recipientName={recipientName}
           value={draft}
           onChange={setDraft}
-          onSubmit={() => send.mutate()}
+          onSubmit={() => runOnce(() => send.mutateAsync().catch(() => {}))}
           onClose={() => setOpen(false)}
           submitting={send.isPending}
         />

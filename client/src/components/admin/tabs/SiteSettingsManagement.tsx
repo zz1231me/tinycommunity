@@ -197,6 +197,7 @@ const NumberInput: React.FC<NumberInputProps> = ({
           onChange={e => setRaw(e.target.value)}
           onBlur={e => commit(e.target.value)}
           onKeyDown={e => {
+            if (e.nativeEvent.isComposing) return;
             if (e.key === 'Enter') commit((e.target as HTMLInputElement).value);
           }}
           className="input max-w-[120px]"

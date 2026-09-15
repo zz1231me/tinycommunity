@@ -61,6 +61,7 @@ export const MemoEditor: React.FC<MemoEditorProps> = ({
           onKeyDown={e => {
             // 단일 라인 input(제목)에서 Enter로 메모가 조기 저장되는 것 방지
             // (본문 textarea의 줄바꿈과 명시적 저장 버튼은 그대로 동작)
+            if (e.nativeEvent.isComposing) return;
             if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
               e.preventDefault();
             }
