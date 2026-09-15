@@ -33,6 +33,7 @@ import { toast } from '../../../utils/toast';
 import {
   formatClock,
   formatMinutes,
+  shiftDay,
   todayString,
   weekdayOf,
   weekdayTone,
@@ -67,6 +68,29 @@ const TODAY_REFRESH_MS = 60_000;
 function monthStart(): string {
   return `${todayString().slice(0, 7)}-01`;
 }
+
+/**
+ * 자주 쓰는 기간. 날짜 두 칸을 직접 고르는 것보다 이쪽이 대부분의 경우다.
+ * 눌렀을 때 시작일·종료일 칸도 함께 바뀌므로 지금 보는 기간이 그대로 보인다.
+ */
+const RANGE_PRESETS: Array<{ id: string; label: string; range: () => { from: string; to: string } }> =
+  [
+    { id: 'today', label: '오늘', range: () => ({ from: todayString(), to: todayString() }) },
+    {
+      id: 'yesterday',
+      label: '어제',
+      range: () => {
+        const day = shiftDay(todayString(), -1);
+        return { from: day, to: day };
+      },
+    },
+    {
+      id: 'week',
+      label: '최근 7일',
+      range: () => ({ from: shiftDay(todayString(), -6), to: todayString() }),
+    },
+    { id: 'month', label: '이번 달', range: () => ({ from: monthStart(), to: todayString() }) },
+  ];
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -263,6 +287,37 @@ const AttendanceManagement = () => {
       )}
 
       {(view === 'records' || view === 'summary') && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {RANGE_PRESETS.map(preset => {
+            const { from: pFrom, to: pTo } = preset.range();
+            const active = from === pFrom && to === pTo;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => {
+                  setFrom(pFrom);
+                  setTo(pTo);
+                  setPage(1);
+                }}
+                className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                  active
+                    ? 'bg-slate-800 font-medium text-white dark:bg-slate-200 dark:text-slate-900'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                }`}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+          {records.isFetching || summary.isFetching ? (
+            <span className="ml-1 text-xs text-slate-400">불러오는 중…</span>
+          ) : null}
+        </div>
+      )}
+
+      {(view === 'records' || view === 'summary') && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field label="시작일">
             <input
@@ -299,7 +354,7 @@ const AttendanceManagement = () => {
                 }}
                 className="input input-sm w-full"
               >
-                <option value="">전체</option>
+                <option value="">전체 인원</option>
                 {users.map(u => (
                   <option key={u.id} value={u.id}>
                     {u.name} ({u.id})
@@ -312,7 +367,9 @@ const AttendanceManagement = () => {
       )}
 
       {view === 'records' && (
-        <AdminSection title="출퇴근 기록">
+        <AdminSection
+          title={`출퇴근 기록${records.data ? ` · ${records.data.total}건` : ''}`}
+        >
           {records.isLoading ? (
             <LoadingSpinner message="기록 불러오는 중..." />
           ) : records.isError ? (
@@ -507,9 +564,19 @@ const AttendanceManagement = () => {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {summaryRows.map(row => (
                     <tr key={row.userId} className={row.days === 0 ? 'text-slate-400' : undefined}>
-                      <td className="whitespace-nowrap px-3 py-2 text-slate-800 dark:text-slate-200">
-                        {row.userName}
-                        <span className="ml-1.5 text-xs text-slate-400">{row.userId}</span>
+                      <td className="whitespace-nowrap px-3 py-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUserId(row.userId);
+                            setPage(1);
+                            setView('records');
+                          }}
+                          className="text-left text-slate-800 hover:text-primary-600 hover:underline dark:text-slate-200 dark:hover:text-primary-400"
+                        >
+                          {row.userName}
+                          <span className="ml-1.5 text-xs text-slate-400">{row.userId}</span>
+                        </button>
                       </td>
                       <td className="px-3 py-2 tabular-nums">{row.days}일</td>
                       <td className="min-w-[140px] px-3 py-2">

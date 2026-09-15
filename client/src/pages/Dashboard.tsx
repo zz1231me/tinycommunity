@@ -1,6 +1,7 @@
 // client/src/pages/Dashboard.tsx
 import { useEffect, Suspense } from 'react';
 import { useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
+import { AttendanceReminder } from '../components/attendance/AttendanceReminder';
 import { LoadingSpinner } from '../components/common/LoadingStates';
 import { useAuth } from '../store/auth';
 import { useSiteSettings } from '../store/siteSettings';
@@ -151,6 +152,9 @@ function Dashboard() {
           </div>
         </div>
       </header>
+
+      {/* 기준 근무 시간이 다 되면 알린다 — 어느 화면에 있든 떠야 하므로 여기 둔다 */}
+      <AttendanceReminder />
 
       {/* 바디 */}
       <div className="flex flex-1 min-h-0">

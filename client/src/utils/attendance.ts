@@ -29,6 +29,13 @@ export function todayString(now: Date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
+/** YYYY-MM-DD 를 n일 옮긴다 */
+export function shiftDay(day: string, delta: number): string {
+  const d = new Date(`${day}T00:00:00`);
+  d.setDate(d.getDate() + delta);
+  return todayString(d);
+}
+
 /** YYYY-MM 을 n개월 옮긴다 */
 export function shiftMonth(month: string, delta: number): string {
   const [y, m] = month.split('-').map(Number);
