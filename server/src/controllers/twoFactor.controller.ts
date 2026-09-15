@@ -5,6 +5,7 @@ import QRCode from 'qrcode';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
 import { Role } from '../models/Role';
+import { SiteSettings } from '../models/SiteSettings';
 import { AuthRequest } from '../types/auth-request';
 import { authService } from '../services/auth.service';
 import { securityLogService, logSecurityEvent } from '../services/securityLog.service';
@@ -56,8 +57,13 @@ export const generate2FASecret = async (req: AuthRequest, res: Response): Promis
       return;
     }
 
+    // 인증 앱 목록에 보이는 이름이다 — 사이트 이름을 박아 두면 이름을 바꿔도 그대로 남는다.
+    // (이미 등록한 사람의 표시는 바뀌지 않는다. 비밀키가 아니라 이름표일 뿐이다.)
+    const site = await SiteSettings.findOne({ attributes: ['siteName'] });
+    const issuer = (site?.siteName || 'TinyCommunity').replace(/[:\s]+/g, ' ').trim();
+
     const secret = speakeasy.generateSecret({
-      name: `TinyCommunity:${user.email || user.id}`,
+      name: `${issuer}:${user.email || user.id}`,
       length: 20,
     });
 

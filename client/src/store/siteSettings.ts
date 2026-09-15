@@ -1,5 +1,6 @@
 // client/src/store/siteSettings.ts
 import { create } from 'zustand';
+import { readCachedIdentity } from '../utils/siteIdentityCache';
 
 export interface SiteSettings {
   siteName: string;
@@ -188,7 +189,9 @@ export const DEFAULT_SETTINGS: SiteSettings = {
 
 export const useSiteSettings = create<SiteSettingsStore>(set => ({
   isLoadedFromServer: false,
-  settings: DEFAULT_SETTINGS,
+  // 마지막으로 받아온 이름을 먼저 쓴다. 안 그러면 설정을 받기 전까지(서버에 못 닿으면 계속)
+  // 코드에 박힌 기본 이름이 머리글·로그인·바닥글에 보인다.
+  settings: { ...DEFAULT_SETTINGS, ...readCachedIdentity() },
   // 서버 값으로 교체하되, 응답에 없는 키는 기본값을 유지한다.
   setSettings: settings =>
     set({ settings: { ...DEFAULT_SETTINGS, ...settings }, isLoadedFromServer: true }),

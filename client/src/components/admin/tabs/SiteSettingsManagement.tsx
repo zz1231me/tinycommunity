@@ -212,8 +212,8 @@ const NumberInput: React.FC<NumberInputProps> = ({
 // 스토어의 기본값을 그대로 쓴다. 같은 항목을 여기에 다시 적으면 설정을 추가할 때마다
 // 두 곳을 고쳐야 하고, 한쪽을 잊으면 어긋난다.
 //
-// 다른 점은 사이트 이름·타이틀뿐이다. 이 폼에서는 서버 값이 오기 전에 'TinyCommunity' 가
-// 미리 채워져 있으면 관리자가 그대로 저장해 버릴 수 있어, 빈 칸으로 두고 placeholder 를 보인다.
+// 다른 점은 사이트 이름·타이틀뿐이다. 서버 값이 오기 전에 기본 이름이 미리 채워져 있으면
+// 관리자가 그대로 저장해 버릴 수 있어, 빈 칸으로 두고 placeholder 를 보인다.
 const DEFAULT_SETTINGS: SiteSettings = { ...STORE_DEFAULTS, siteName: '', siteTitle: '' };
 
 // ─── Main component ──────────────────────────────────────────────────────────
@@ -349,7 +349,11 @@ export const SiteSettingsManagement = () => {
       if (updated.faviconUrl) applyFavicon(updated.faviconUrl);
       // 캐시도 갱신 — 안 하면 변경 직후 새로고침 시 index.html 인라인 스크립트가 옛 제목을
       // 잠깐 적용했다 교체하는 깜빡임이 남는다.
-      cacheSiteIdentity(updated.siteTitle, updated.faviconUrl);
+      cacheSiteIdentity({
+        siteName: updated.siteName,
+        siteTitle: updated.siteTitle,
+        faviconUrl: updated.faviconUrl,
+      });
       showMessage('success', '설정이 저장되었습니다.');
     } catch {
       showMessage('error', '설정 저장에 실패했습니다.');

@@ -108,7 +108,11 @@ function App() {
 
       // 다음 새로고침 때 깜빡임 없이 즉시 적용되도록 캐시 — index.html의 인라인 스크립트가
       // 첫 페인트 전에 이 값을 읽어 적용한다.
-      cacheSiteIdentity(settings.siteTitle, settings.faviconUrl);
+      cacheSiteIdentity({
+        siteName: settings.siteName,
+        siteTitle: settings.siteTitle,
+        faviconUrl: settings.faviconUrl,
+      });
 
       // 메타 설명 업데이트
       if (settings.description) {
