@@ -605,7 +605,7 @@ export const SiteSettingsManagement = () => {
               >
                 합계 {prizeTotal}%{' '}
                 {prizeTotal <= 100 &&
-                  `· 꽝 ${(100 - prizeTotal).toFixed(2).replace(/\.?0+$/, '')}%`}
+                  `· 미당첨 ${(100 - prizeTotal).toFixed(2).replace(/\.?0+$/, '')}%`}
               </span>
             </div>
             {prizeTotal > 100 && (

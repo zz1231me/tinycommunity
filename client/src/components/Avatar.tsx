@@ -1,5 +1,7 @@
 // client/src/components/Avatar.tsx - 완전 최적화 버전
 import React, { useState } from 'react';
+import { markFor } from './avatarMark';
+import { AvatarMarkSvg } from './AvatarMarkSvg';
 
 interface User {
   id: string;
@@ -26,36 +28,8 @@ const sizeClasses = {
 };
 
 const variantClasses = {
-  gradient: 'bg-gradient-to-br from-blue-500 to-purple-600 text-white',
   solid: 'bg-blue-500 text-white',
   muted: 'bg-slate-400 dark:bg-slate-600 text-slate-100', // ✅ 삭제된 계정용 음소거 스타일
-};
-
-// 색상 해시 함수 (일관된 색상 생성)
-const generateColorFromName = (name: string): string => {
-  if (!name) return variantClasses.gradient;
-
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    const char = name.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // 32비트 정수로 변환
-  }
-
-  const colors = [
-    'bg-gradient-to-br from-emerald-500 to-teal-500 text-white',
-    'bg-gradient-to-br from-blue-500 to-cyan-500 text-white',
-    'bg-gradient-to-br from-purple-500 to-pink-500 text-white',
-    'bg-gradient-to-br from-orange-500 to-red-500 text-white',
-    'bg-gradient-to-br from-green-500 to-lime-500 text-white',
-    'bg-gradient-to-br from-indigo-500 to-purple-500 text-white',
-    'bg-gradient-to-br from-pink-500 to-rose-500 text-white',
-    'bg-gradient-to-br from-yellow-500 to-orange-500 text-white',
-    'bg-gradient-to-br from-teal-500 to-green-500 text-white',
-    'bg-gradient-to-br from-cyan-500 to-blue-500 text-white',
-  ];
-
-  return colors[Math.abs(hash) % colors.length];
 };
 
 export const Avatar: React.FC<AvatarProps> = React.memo(
@@ -173,14 +147,13 @@ export const Avatar: React.FC<AvatarProps> = React.memo(
       setImageLoaded(true);
     }, []);
 
-    // Fallback: 이니셜 아바타 색상
-    const colorClass = React.useMemo(() => {
-      return variant === 'muted'
-        ? variantClasses.muted
-        : variant === 'solid'
-          ? variantClasses.solid
-          : generateColorFromName(user.name);
-    }, [variant, user.name]);
+    // Fallback(사진 없음) 바탕. gradient 는 아이디로 정해진 무늬를 그리고,
+    // muted/solid 는 기존대로 단색 클래스를 쓴다.
+    // 씨앗은 id 우선 — 동명이인이 같은 그림을 받지 않도록.
+    const mark = React.useMemo(
+      () => (variant === 'gradient' ? markFor(user.id || user.name) : null),
+      [variant, user.id, user.name]
+    );
 
     // 이미지가 있는 경우
     if (avatarUrl) {
@@ -208,8 +181,22 @@ export const Avatar: React.FC<AvatarProps> = React.memo(
       );
     }
 
+    if (mark) {
+      return (
+        <div
+          className={`${baseClasses} overflow-hidden`}
+          title={showTooltip ? user.name : undefined}
+        >
+          <AvatarMarkSvg mark={mark} initials={initials} />
+        </div>
+      );
+    }
+
     return (
-      <div className={`${baseClasses} ${colorClass}`} title={showTooltip ? user.name : undefined}>
+      <div
+        className={`${baseClasses} ${variant === 'muted' ? variantClasses.muted : variantClasses.solid}`}
+        title={showTooltip ? user.name : undefined}
+      >
         {initials}
       </div>
     );

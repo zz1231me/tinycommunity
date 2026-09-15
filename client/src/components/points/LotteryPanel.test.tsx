@@ -1,7 +1,7 @@
 // client/src/components/points/LotteryPanel.test.tsx
 //
 // 눈으로 확인하기 어려운 것들을 고정한다: 서버가 준 확률표를 그대로 보여주는지,
-// 꽝을 당첨처럼 그리지 않는지, 횟수를 다 쓰면 버튼이 막히는지,
+// 미당첨을 당첨처럼 그리지 않는지, 횟수를 다 쓰면 버튼이 막히는지,
 // 한도 초과 응답을 사용자 말로 옮기는지.
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
@@ -49,8 +49,9 @@ const drawLottery = vi.hoisted(() => vi.fn());
 vi.mock('../../api/points', () => ({ fetchPointStatus, fetchPointHistory, drawLottery }));
 
 const toastError = vi.hoisted(() => vi.fn());
+const toastSuccess = vi.hoisted(() => vi.fn());
 vi.mock('../../utils/toast', () => ({
-  toast: { success: vi.fn(), error: toastError, info: vi.fn(), warning: vi.fn() },
+  toast: { success: toastSuccess, error: toastError, info: vi.fn(), warning: vi.fn() },
 }));
 
 const status = (over: Partial<PointStatus> = {}): PointStatus => ({
@@ -96,21 +97,21 @@ describe('보여주는 값', () => {
     expect(screen.getByText('/ 10')).toBeInTheDocument();
   });
 
-  it('확률표를 그대로 보여주고, 남는 몫은 꽝으로 적는다', async () => {
+  it('확률표를 그대로 보여주고, 남는 몫은 미당첨으로 적는다', async () => {
     render(<LotteryPanel />);
     expect(await screen.findByText('1,500P')).toBeInTheDocument();
     expect(screen.getByText('3%')).toBeInTheDocument();
-    expect(screen.getByText('꽝')).toBeInTheDocument();
+    expect(screen.getByText('미당첨')).toBeInTheDocument();
     expect(screen.getByText('7%')).toBeInTheDocument();
   });
 
-  it('확률 합이 100 이면 꽝 줄을 만들지 않는다', async () => {
+  it('확률 합이 100 이면 미당첨 줄을 만들지 않는다', async () => {
     fetchPointStatus.mockResolvedValue(
       status({ prizes: [{ amount: 100, weight: 100 }], blankWeight: 0 })
     );
     render(<LotteryPanel />);
     expect(await screen.findByText('100P')).toBeInTheDocument();
-    expect(screen.queryByText('꽝')).not.toBeInTheDocument();
+    expect(screen.queryByText('미당첨')).not.toBeInTheDocument();
   });
 });
 
@@ -125,8 +126,8 @@ describe('뽑기', () => {
     expect(await screen.findByText('+700P', {}, { timeout: 4000 })).toBeInTheDocument();
   });
 
-  it('움직임을 줄인 설정이면 은박으로 덮지 않고 바로 보여준다', async () => {
-    // 긁는 동작을 할 수 없거나 원치 않는 사람이 결과를 못 보는 일이 없어야 한다.
+  it('움직임을 줄인 설정이면 덮개 없이 바로 보여준다', async () => {
+    // 덮개를 여는 동작을 할 수 없거나 원치 않는 사람이 결과를 못 보는 일이 없어야 한다.
     const original = window.matchMedia;
     window.matchMedia = vi.fn().mockImplementation((q: string) => ({
       matches: q.includes('prefers-reduced-motion'),
@@ -144,19 +145,31 @@ describe('뽑기', () => {
       fireEvent.click(await screen.findByRole('button', { name: /뽑기/ }));
       // 섞는 시간도 덮개도 없다 — 곧바로 결과가 있어야 한다
       expect(await screen.findByText('+700P')).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: '바로 확인' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: '결과 확인' })).not.toBeInTheDocument();
     } finally {
       window.matchMedia = original;
     }
   });
 
-  it('꽝을 당첨처럼 그리지 않는다', async () => {
+  it('덮개를 눌러야 결과가 열린다', async () => {
+    drawLottery.mockResolvedValue(result());
+    render(<LotteryPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /뽑기/ }));
+    const cover = await screen.findByRole('button', { name: '결과 확인' }, { timeout: 4000 });
+    expect(toastSuccess).not.toHaveBeenCalled();
+
+    fireEvent.click(cover);
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('700P 당첨!'));
+  });
+
+  it('미당첨을 당첨처럼 그리지 않는다', async () => {
     drawLottery.mockResolvedValue(result({ amount: 0, isBlank: true, balance: 1200 }));
     render(<LotteryPanel />);
 
     fireEvent.click(await screen.findByRole('button', { name: /뽑기/ }));
     // '+0P' 같은 표기가 나오면 안 된다
-    expect(await screen.findByText('꽝', { selector: 'p' }, { timeout: 4000 })).toBeInTheDocument();
+    expect(await screen.findByText('미당첨', { selector: 'p' }, { timeout: 4000 })).toBeInTheDocument();
     expect(screen.queryByText('+0P')).not.toBeInTheDocument();
   });
 
