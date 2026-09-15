@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app, seedTestData, loginAs, CSRF_HEADER, relaxRateLimits } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import User from '../models/User';
 import Board from '../models/Board';
 import BoardAccess from '../models/BoardAccess';
@@ -44,7 +44,6 @@ function readers(cookie: string, id: string, board = 'notice') {
 beforeAll(async () => {
   await seedTestData();
   // 글 작성은 시간당 20건으로 묶여 있어 이 스위트만으로도 예산을 넘긴다
-  await relaxRateLimits();
 
   // 담당자·상태는 업무용으로 켜 둔 게시판에서만 쓴다
   await Board.update({ taskEnabled: true }, { where: { id: 'notice' } });

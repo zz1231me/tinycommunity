@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app, seedTestData, loginAs, CSRF_HEADER, relaxRateLimits } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import { WikiPage } from '../models/WikiPage';
 import { WikiRevision } from '../models/WikiRevision';
 
@@ -13,7 +13,6 @@ let adminCookie: string;
 
 beforeAll(async () => {
   await seedTestData();
-  await relaxRateLimits();
   adminCookie = await loginAs('admin', 'TestAdmin123!');
 });
 

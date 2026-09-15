@@ -3,7 +3,6 @@ import asyncHandler from 'express-async-handler';
 import { authenticate } from '../middlewares/auth.middleware';
 import { requireFeature } from '../middlewares/featureGate.middleware';
 import { getUserProfile } from '../controllers/social.controller';
-import { apiLimiter } from '../middlewares/rate-limit.middleware';
 import { AuthRequest } from '../types/auth-request';
 import {
   getMyPosts,
@@ -78,7 +77,6 @@ router.get(
  */
 router.get(
   '/search',
-  apiLimiter as RequestHandler,
   asyncHandler((req, res) => searchUsers(req as AuthRequest, res))
 );
 

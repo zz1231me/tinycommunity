@@ -72,10 +72,6 @@ export interface SiteSettings {
   globalSearchLimit: number;
   passwordResetTokenHours: number;
   // ── Rate Limit ─────────────────────────────────────────────────────────────
-  rateLimitApiMax: number;
-  rateLimitAuthMax: number;
-  rateLimitUploadMax: number;
-  rateLimitDownloadMax: number;
 }
 
 interface SiteSettingsStore {
@@ -181,10 +177,6 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   globalSearchLimit: 50,
   passwordResetTokenHours: 1,
   // Rate Limit 기본값
-  rateLimitApiMax: 200,
-  rateLimitAuthMax: 10,
-  rateLimitUploadMax: 20,
-  rateLimitDownloadMax: 100,
 };
 
 export const useSiteSettings = create<SiteSettingsStore>(set => ({

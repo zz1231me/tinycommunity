@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app, seedTestData, loginAs, CSRF_HEADER, relaxRateLimits } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import User from '../models/User';
 import Board from '../models/Board';
 import BoardAccess from '../models/BoardAccess';
@@ -37,7 +37,6 @@ async function ensureUser(id: string, name: string, password: string) {
 
 beforeAll(async () => {
   await seedTestData();
-  await relaxRateLimits();
 
   await ensureUser('owneruser', '주인', 'TestOwner123!');
   await ensureUser('otheruser', '남', 'TestOther123!');
@@ -621,10 +620,6 @@ describe('공개 사이트 설정은 보안 설정을 흘리지 않는다', () =
     'jwtAccessTokenHours',
     'jwtRefreshTokenDays',
     'passwordResetTokenHours',
-    'rateLimitApiMax',
-    'rateLimitAuthMax',
-    'rateLimitUploadMax',
-    'rateLimitDownloadMax',
     'securityLogRetentionDays',
     'errorLogRetentionDays',
     'deletedPostRetentionDays',

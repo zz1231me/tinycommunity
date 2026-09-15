@@ -12,7 +12,6 @@ import {
   streamNotifications,
 } from '../controllers/notification.controller';
 import { cacheMiddleware } from '../utils/cache';
-import { apiLimiter } from '../middlewares/rate-limit.middleware';
 
 const router = Router();
 
@@ -52,7 +51,6 @@ router.get(
   asyncHandler((req, res) => streamNotifications(req as AuthRequest, res))
 );
 
-router.use(apiLimiter);
 
 router.get(
   '/',

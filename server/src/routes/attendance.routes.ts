@@ -8,13 +8,11 @@ import {
 } from '../controllers/attendance.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { AuthRequest } from '../types/auth-request';
-import { apiLimiter } from '../middlewares/rate-limit.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
 import { attendanceCheckInSchema } from '../validators/schemas';
 
 const router = Router();
 router.use(authenticate as RequestHandler);
-router.use(apiLimiter);
 
 /**
  * @swagger

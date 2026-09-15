@@ -182,7 +182,6 @@ export type TabType =
   | 'password-reset-requests'
   | 'events'
   | 'bookmarks'
-  | 'rate-limits'
   | 'site-settings'
   | 'features'
   | 'appearance'

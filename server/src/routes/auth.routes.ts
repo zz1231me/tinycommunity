@@ -19,11 +19,6 @@ import { authenticate } from '../middlewares/auth.middleware';
 import { uploadAvatar } from '../middlewares/upload/avatar'; // ✅ 직접 import
 import { getOwnSessions, terminateOwnSession } from '../controllers/userSession.controller';
 
-import {
-  authLimiter,
-  refreshLimiter,
-  passwordResetLimiter,
-} from '../middlewares/rate-limit.middleware';
 import { validateBody, validateUuidParam } from '../middlewares/validate.middleware';
 import {
   loginSchema,
@@ -58,7 +53,7 @@ const router = Router();
  *       401: { description: 아이디 또는 비밀번호 불일치 }
  *       429: { description: 로그인 시도 제한 초과 }
  */
-router.post('/login', authLimiter, validateBody(loginSchema), login);
+router.post('/login', validateBody(loginSchema), login);
 /**
  * @swagger
  * /api/auth/register:
@@ -83,17 +78,15 @@ router.post('/login', authLimiter, validateBody(loginSchema), login);
  *       400: { description: 입력값 오류 }
  *       409: { description: 이미 존재하는 아이디 }
  */
-router.post('/register', authLimiter, validateBody(registerSchema), register);
-router.post('/refresh', refreshLimiter, refreshToken);
+router.post('/register', validateBody(registerSchema), register);
+router.post('/refresh', refreshToken);
 router.post(
   '/password-reset-request',
-  passwordResetLimiter,
   validateBody(passwordResetRequestSchema),
   requestPasswordReset
 );
 router.post(
   '/password-reset-verify',
-  authLimiter,
   validateBody(passwordResetVerifySchema),
   verifyPasswordReset
 );
@@ -102,7 +95,6 @@ router.get('/me', authenticate, getCurrentUser);
 router.post(
   '/change-password',
   authenticate,
-  authLimiter,
   validateBody(changePasswordSchema),
   changePassword
 );

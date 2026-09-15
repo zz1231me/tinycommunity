@@ -57,10 +57,6 @@ export interface SiteSettingsInstance extends Model<
   avatarSizePx: CreationOptional<number>;
   avatarQuality: CreationOptional<number>;
   passwordResetTokenHours: CreationOptional<number>;
-  rateLimitApiMax: CreationOptional<number>;
-  rateLimitAuthMax: CreationOptional<number>;
-  rateLimitUploadMax: CreationOptional<number>;
-  rateLimitDownloadMax: CreationOptional<number>;
   autoSaveIntervalSeconds: CreationOptional<number>;
   draftExpiryMinutes: CreationOptional<number>;
   wikiEditRoles: CreationOptional<string>;
@@ -134,10 +130,6 @@ export class SiteSettings
   declare public avatarSizePx: CreationOptional<number>;
   declare public avatarQuality: CreationOptional<number>;
   declare public passwordResetTokenHours: CreationOptional<number>;
-  declare public rateLimitApiMax: CreationOptional<number>;
-  declare public rateLimitAuthMax: CreationOptional<number>;
-  declare public rateLimitUploadMax: CreationOptional<number>;
-  declare public rateLimitDownloadMax: CreationOptional<number>;
   declare public autoSaveIntervalSeconds: CreationOptional<number>;
   declare public draftExpiryMinutes: CreationOptional<number>;
   declare public wikiEditRoles: CreationOptional<string>;
@@ -443,30 +435,6 @@ SiteSettings.init(
       allowNull: false,
       defaultValue: 1,
       field: 'password_reset_token_hours',
-    },
-    rateLimitApiMax: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 200,
-      field: 'rate_limit_api_max',
-    },
-    rateLimitAuthMax: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 10,
-      field: 'rate_limit_auth_max',
-    },
-    rateLimitUploadMax: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 20,
-      field: 'rate_limit_upload_max',
-    },
-    rateLimitDownloadMax: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 100,
-      field: 'rate_limit_download_max',
     },
     autoSaveIntervalSeconds: {
       type: DataTypes.INTEGER,

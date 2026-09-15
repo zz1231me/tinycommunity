@@ -4,7 +4,6 @@ import { getTags, createTag, updateTag, deleteTag } from '../controllers/tag.con
 import { getTagCloud, getPostsByTag } from '../controllers/discovery.controller';
 import { requireFeature } from '../middlewares/featureGate.middleware';
 import { authenticate } from '../middlewares/auth.middleware';
-import { apiLimiter } from '../middlewares/rate-limit.middleware';
 import { AuthRequest } from '../types/auth-request';
 import { validateBody } from '../middlewares/validate.middleware';
 import { createTagSchema, updateTagSchema } from '../validators/schemas';
@@ -32,7 +31,6 @@ const router = Router();
 router.get(
   '/',
   authenticate as RequestHandler,
-  apiLimiter as RequestHandler,
   asyncHandler((req, res) => getTags(req as AuthRequest, res))
 );
 /**
@@ -55,7 +53,6 @@ router.get(
   '/cloud',
   authenticate as RequestHandler,
   requireFeature('discovery.tagCloud'),
-  apiLimiter as RequestHandler,
   asyncHandler((req, res) => getTagCloud(req as AuthRequest, res))
 );
 
@@ -77,7 +74,6 @@ router.get(
   '/:id/posts',
   authenticate as RequestHandler,
   requireFeature('discovery.tagCloud'),
-  apiLimiter as RequestHandler,
   asyncHandler((req, res) => getPostsByTag(req as AuthRequest, res))
 );
 
@@ -107,7 +103,6 @@ router.get(
 router.post(
   '/',
   authenticate as RequestHandler,
-  apiLimiter as RequestHandler,
   validateBody(createTagSchema),
   asyncHandler((req, res) => createTag(req as AuthRequest, res))
 );
@@ -127,7 +122,6 @@ router.post(
 router.put(
   '/:id',
   authenticate as RequestHandler,
-  apiLimiter as RequestHandler,
   validateBody(updateTagSchema),
   asyncHandler((req, res) => updateTag(req as AuthRequest, res))
 );
@@ -148,7 +142,6 @@ router.put(
 router.delete(
   '/:id',
   authenticate as RequestHandler,
-  apiLimiter as RequestHandler,
   asyncHandler((req, res) => deleteTag(req as AuthRequest, res))
 );
 

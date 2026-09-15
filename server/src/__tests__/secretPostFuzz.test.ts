@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app, seedTestData, loginAs, CSRF_HEADER, relaxRateLimits } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import User from '../models/User';
 import Post from '../models/Post';
 
@@ -19,7 +19,6 @@ let otherCookie: string;
 
 beforeAll(async () => {
   await seedTestData();
-  await relaxRateLimits();
   for (const [id, name] of [
     ['fuzzowner', '퍼즈주인'],
     ['fuzzother', '퍼즈타인'],

@@ -3,7 +3,6 @@ import { Router, Request, Response, NextFunction } from 'express';
 import asyncHandler from 'express-async-handler';
 import { authenticate } from '../middlewares/auth.middleware';
 import { requireRole } from '../middlewares/roleCheck.middleware';
-import { apiLimiter } from '../middlewares/rate-limit.middleware';
 import {
   getBookmarks,
   getAllBookmarks,
@@ -28,7 +27,7 @@ const wrapAuthHandler = (
 /**
  * 일반 사용자용 - 활성 북마크만 조회
  */
-router.get('/', authenticate, apiLimiter, asyncHandler(wrapAuthHandler(getBookmarks)));
+router.get('/', authenticate, asyncHandler(wrapAuthHandler(getBookmarks)));
 
 /**
  * 관리자용 - 모든 북마크 조회 (비활성 포함)

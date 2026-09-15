@@ -123,9 +123,6 @@ export const adminKeys = {
       ['admin', 'user-activity', userId, 'audit-logs', page] as const,
     sessions: (userId: string) => ['admin', 'user-activity', userId, 'sessions'] as const,
   },
-  rateLimits: {
-    all: ['admin', 'rate-limits'] as const,
-  },
   customPages: {
     all: ['admin', 'custom-pages'] as const,
   },

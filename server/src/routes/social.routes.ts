@@ -14,7 +14,6 @@ import {
   updateNotificationSettings,
 } from '../controllers/social.controller';
 import { authenticate } from '../middlewares/auth.middleware';
-import { apiLimiter } from '../middlewares/rate-limit.middleware';
 import { requireFeature } from '../middlewares/featureGate.middleware';
 import { AuthRequest } from '../types/auth-request';
 
@@ -46,7 +45,6 @@ router.get(
 );
 router.put(
   '/notification-settings',
-  apiLimiter as RequestHandler,
   asyncHandler((req, res) => updateNotificationSettings(req as AuthRequest, res))
 );
 
@@ -96,7 +94,6 @@ router.get(
 );
 router.post(
   '/subscriptions/:targetType/:targetId',
-  apiLimiter as RequestHandler,
   requireFeature('social.subscriptions'),
   asyncHandler((req, res) => toggleSubscription(req as AuthRequest, res))
 );

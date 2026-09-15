@@ -2,7 +2,7 @@ import request from 'supertest';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { app, seedTestData, loginAs, CSRF_HEADER, relaxRateLimits } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import { postService } from '../services/post.service';
 import { Post } from '../models/Post';
 import { PostRevision } from '../models/PostRevision';
@@ -32,7 +32,6 @@ function makeFile(name: string, content: string): string {
 
 beforeAll(async () => {
   await seedTestData();
-  await relaxRateLimits();
   await Board.update({ taskEnabled: true }, { where: { id: 'notice' } });
   adminCookie = await loginAs('admin', 'TestAdmin123!');
 });

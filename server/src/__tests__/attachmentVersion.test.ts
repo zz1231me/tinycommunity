@@ -2,7 +2,7 @@ import request from 'supertest';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { app, seedTestData, loginAs, CSRF_HEADER, relaxRateLimits } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import { PostAttachmentVersion } from '../models/PostAttachmentVersion';
 
 // 첨부 파일의 이전 버전.
@@ -56,7 +56,6 @@ function versions(cookie: string, postId: string) {
 
 beforeAll(async () => {
   await seedTestData();
-  await relaxRateLimits();
   adminCookie = await loginAs('admin', 'TestAdmin123!');
   userCookie = await loginAs('testuser', 'TestUser123!');
 });

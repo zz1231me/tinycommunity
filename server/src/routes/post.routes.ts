@@ -25,6 +25,7 @@ import {
 import { markAsRead } from '../controllers/postRead.controller';
 import { addPostTags, getPostTags } from '../controllers/tag.controller';
 import { authenticate } from '../middlewares/auth.middleware';
+import { secretPostLimiter } from '../middlewares/bruteForceGuard';
 import {
   checkReadAccess,
   checkWriteAccess,
@@ -33,7 +34,6 @@ import {
 import { AuthRequest } from '../types/auth-request';
 import { uploadFiles } from '../middlewares/upload/file';
 import { validateUploadedFile } from '../middlewares/upload/validator';
-import { secretPostLimiter, apiLimiter, uploadLimiter } from '../middlewares/rate-limit.middleware';
 import {
   requireFeature,
   rejectAttachmentsWhenDisabled,
@@ -57,7 +57,6 @@ const router = Router();
  */
 router.get(
   '/search/global',
-  apiLimiter as RequestHandler,
   authenticate as RequestHandler,
   requireFeature('search.global'),
   asyncHandler((req, res) => globalSearch(req as AuthRequest, res))
@@ -66,7 +65,6 @@ router.get(
 // 최신 게시물 (헤더 드롭다운). '/:boardType' catch-all보다 먼저 선언.
 router.get(
   '/recent',
-  apiLimiter as RequestHandler,
   authenticate as RequestHandler,
   asyncHandler((req, res) => getRecentPosts(req as AuthRequest, res))
 );
@@ -92,7 +90,6 @@ router.get(
  */
 router.get(
   '/popular',
-  apiLimiter as RequestHandler,
   authenticate as RequestHandler,
   requireFeature('discovery.popular'),
   asyncHandler((req, res) => getPopularPosts(req as AuthRequest, res))
@@ -111,7 +108,6 @@ router.get(
  */
 router.get(
   '/tasks/mine',
-  apiLimiter as RequestHandler,
   authenticate as RequestHandler,
   requireFeature('post.tasks'),
   asyncHandler((req, res) => getMyTasks(req as AuthRequest, res))
@@ -148,7 +144,6 @@ router.get(
  */
 router.get(
   '/scraps/mine',
-  apiLimiter as RequestHandler,
   authenticate as RequestHandler,
   requireFeature('post.scrap'),
   asyncHandler((req, res) => getMyScraps(req as AuthRequest, res))
@@ -283,7 +278,6 @@ router.post(
   '/:boardType',
   authenticate as RequestHandler,
   checkWriteAccess as RequestHandler,
-  uploadLimiter as RequestHandler,
   uploadFiles.array('files'), // 개수 상한은 multer limits.files(=maxFileCount 설정)로 동적 적용
   validateUploadedFile({ validateContent: false }) as RequestHandler, // 첨부=다운로드 전용: 내용검증 생략, chmod만
   rejectAttachmentsWhenDisabled,
@@ -301,7 +295,6 @@ router.put(
   '/:boardType/:id',
   authenticate as RequestHandler,
   checkWriteAccess as RequestHandler,
-  uploadLimiter as RequestHandler,
   uploadFiles.array('files'), // 개수 상한은 multer limits.files(=maxFileCount 설정)로 동적 적용
   validateUploadedFile({ validateContent: false }) as RequestHandler, // 첨부=다운로드 전용: 내용검증 생략, chmod만
   rejectAttachmentsWhenDisabled,
@@ -332,7 +325,6 @@ router.get(
 );
 router.post(
   '/:boardType/:id/like',
-  apiLimiter as RequestHandler,
   authenticate as RequestHandler,
   requireFeature('post.like'),
   checkReadAccess as RequestHandler,
@@ -385,7 +377,6 @@ router.get(
 );
 router.post(
   '/:boardType/:id/scrap',
-  apiLimiter as RequestHandler,
   authenticate as RequestHandler,
   requireFeature('post.scrap'),
   checkReadAccess as RequestHandler,
@@ -414,7 +405,6 @@ router.post(
  */
 router.patch(
   '/:boardType/:id/task',
-  apiLimiter as RequestHandler,
   authenticate as RequestHandler,
   requireFeature('post.tasks'),
   checkReadAccess as RequestHandler,
@@ -445,7 +435,6 @@ router.patch(
  */
 router.get(
   '/:boardType/:id/activity',
-  apiLimiter as RequestHandler,
   authenticate as RequestHandler,
   requireFeature('post.tasks'),
   checkReadAccess as RequestHandler,
@@ -454,7 +443,6 @@ router.get(
 
 router.get(
   '/:boardType/:id/readers',
-  apiLimiter as RequestHandler,
   authenticate as RequestHandler,
   requireFeature('post.readReceipts'),
   checkReadAccess as RequestHandler,

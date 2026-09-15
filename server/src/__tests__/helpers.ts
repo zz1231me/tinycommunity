@@ -6,7 +6,6 @@ import { Role } from '../models/Role';
 import { Board } from '../models/Board';
 import { BoardAccess } from '../models/BoardAccess';
 import { SiteSettings } from '../models/SiteSettings';
-import { refreshSettingsCache } from '../utils/settingsCache';
 
 /**
  * 테스트 전체가 함께 쓰는 서버.
@@ -121,28 +120,6 @@ export async function seedTestData() {
       maintenanceMode: false,
     },
   });
-}
-
-/**
- * 테스트에서 요청 수 제한이 방해가 되지 않게 한도를 올린다.
- *
- * 글 작성은 IP 당 시간당 20건으로 묶여 있고(uploadLimiter) 테스트는 한 프로세스·
- * 한 IP 에서 돌아 모든 스위트가 이 예산을 나눠 쓴다. 스위트가 늘거나 순서가 바뀌면
- * 뒤쪽 테스트가 429 로 실패한다.
- *
- * 리미터를 끄지 않고 설정값만 올린다. 리미터 자체는 그대로 돌아서 제한 동작을
- * 확인하는 테스트는 자기 한도로 검증된다.
- */
-export async function relaxRateLimits() {
-  await SiteSettings.update(
-    {
-      rateLimitApiMax: 1000,
-      rateLimitUploadMax: 1000,
-      rateLimitDownloadMax: 500,
-    },
-    { where: {} }
-  );
-  await refreshSettingsCache();
 }
 
 /** CSRF 보호 헤더 (테스트에서 공통으로 사용) */

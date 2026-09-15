@@ -15,7 +15,6 @@ import {
   deleteDraft,
 } from '../controllers/postDraft.controller';
 import { authenticate } from '../middlewares/auth.middleware';
-import { apiLimiter } from '../middlewares/rate-limit.middleware';
 import { AuthRequest } from '../types/auth-request';
 
 const router = Router();
@@ -53,13 +52,11 @@ const router = Router();
 router.get(
   '/',
   authenticate as RequestHandler,
-  apiLimiter as RequestHandler,
   asyncHandler((req, res) => listDrafts(req as AuthRequest, res))
 );
 router.post(
   '/',
   authenticate as RequestHandler,
-  apiLimiter as RequestHandler,
   asyncHandler((req, res) => createDraft(req as AuthRequest, res))
 );
 
@@ -93,19 +90,16 @@ router.post(
 router.get(
   '/:id',
   authenticate as RequestHandler,
-  apiLimiter as RequestHandler,
   asyncHandler((req, res) => getDraft(req as AuthRequest, res))
 );
 router.put(
   '/:id',
   authenticate as RequestHandler,
-  apiLimiter as RequestHandler,
   asyncHandler((req, res) => updateDraft(req as AuthRequest, res))
 );
 router.delete(
   '/:id',
   authenticate as RequestHandler,
-  apiLimiter as RequestHandler,
   asyncHandler((req, res) => deleteDraft(req as AuthRequest, res))
 );
 

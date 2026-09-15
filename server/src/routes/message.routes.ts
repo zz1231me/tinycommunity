@@ -14,7 +14,6 @@ import {
   hideConversation,
 } from '../controllers/message.controller';
 import { authenticate } from '../middlewares/auth.middleware';
-import { apiLimiter, messageLimiter } from '../middlewares/rate-limit.middleware';
 import { requireFeature } from '../middlewares/featureGate.middleware';
 import { AuthRequest } from '../types/auth-request';
 
@@ -37,7 +36,6 @@ router.use(requireFeature('social.dm'));
  */
 router.get(
   '/conversations',
-  apiLimiter as RequestHandler,
   asyncHandler((req, res) => listConversations(req as AuthRequest, res))
 );
 
@@ -82,7 +80,6 @@ router.get(
  */
 router.post(
   '/',
-  messageLimiter as RequestHandler,
   asyncHandler((req, res) => sendMessage(req as AuthRequest, res))
 );
 
@@ -111,12 +108,10 @@ router.post(
  */
 router.get(
   '/conversations/:id',
-  apiLimiter as RequestHandler,
   asyncHandler((req, res) => getConversation(req as AuthRequest, res))
 );
 router.delete(
   '/conversations/:id',
-  apiLimiter as RequestHandler,
   asyncHandler((req, res) => hideConversation(req as AuthRequest, res))
 );
 

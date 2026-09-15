@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app, seedTestData, loginAs, CSRF_HEADER, relaxRateLimits } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import { sequelize } from '../config/sequelize';
 import User from '../models/User';
 import { Notification } from '../models/Notification';
@@ -66,7 +66,6 @@ async function createPostAndSettle(title: string) {
 beforeAll(async () => {
   await seedTestData();
   // 테스트가 순서 때문에 429 로 깨지지 않게 한도를 올린다
-  await relaxRateLimits();
   adminCookie = await loginAs('admin', 'TestAdmin123!');
 });
 

@@ -27,7 +27,6 @@ import { swaggerSpec } from './config/swagger';
 // 미들웨어
 import { authenticate } from './middlewares/auth.middleware';
 import { errorHandler, notFoundHandler, AppError } from './middlewares/error.middleware';
-import { dynamicRateLimit } from './middlewares/dynamicRateLimit';
 import { maintenanceMiddleware } from './middlewares/maintenance.middleware';
 import { csrfProtection } from './middlewares/csrf.middleware';
 
@@ -358,7 +357,6 @@ app.use('/api', rejectNullBytes);
 // CSRF 보호 (X-Requested-With 헤더 검증, sameSite:lax 쿠키와 이중 방어)
 app.use('/api', csrfProtection);
 
-app.use('/api', dynamicRateLimit);
 app.use('/api', maintenanceMiddleware);
 
 app.use('/api/auth', authRoutes);
@@ -504,7 +502,6 @@ app.get('/api/health', async (_req, res) => {
       },
       features: {
         swagger: env.NODE_ENV === 'development',
-        rateLimit: true,
         cache: true,
         logger: true,
         multiDatabase: true,
@@ -656,10 +653,6 @@ const startServer = async () => {
     await addDatabaseIndexes();
     logger.info('✅ DB 인덱스 확인/생성 완료');
 
-    logger.info('🚦 Rate Limiting 매니저 초기화 시작...');
-    const { rateLimitManager } = await import('./middlewares/dynamicRateLimit');
-    await rateLimitManager.initialize();
-    logger.info('✅ Rate Limiting 매니저 초기화 완료');
 
     // 로그 자동 정리 (시작 시 1회 + 24시간 주기)
     await runLogCleanup();

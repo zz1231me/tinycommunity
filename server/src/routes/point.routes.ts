@@ -9,14 +9,12 @@ import {
 import { authenticate } from '../middlewares/auth.middleware';
 import { requireFeature } from '../middlewares/featureGate.middleware';
 import { AuthRequest } from '../types/auth-request';
-import { apiLimiter } from '../middlewares/rate-limit.middleware';
 
 const router = Router();
 
 // 스위치는 서버에서 막는다 — 화면에서 버튼만 숨기면 API 를 직접 부르는 쪽엔 제약이 없다.
 router.use(authenticate as RequestHandler);
 router.use(requireFeature('tools.lottery'));
-router.use(apiLimiter);
 
 /**
  * @swagger

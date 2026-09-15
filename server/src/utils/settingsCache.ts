@@ -165,10 +165,6 @@ export const SETTINGS_DEFAULTS = {
   avatarSizePx: 200,
   avatarQuality: 90,
   passwordResetTokenHours: 1,
-  rateLimitApiMax: 200,
-  rateLimitAuthMax: 10,
-  rateLimitUploadMax: 20,
-  rateLimitDownloadMax: 100,
   autoSaveIntervalSeconds: 30,
   draftExpiryMinutes: 60,
   // ── 신규 ────────────────────────────────────────────────────────────────
@@ -231,10 +227,6 @@ export async function loadSettingsCache(): Promise<void> {
         avatarQuality: settings.avatarQuality ?? DEFAULTS.avatarQuality,
         passwordResetTokenHours:
           settings.passwordResetTokenHours ?? DEFAULTS.passwordResetTokenHours,
-        rateLimitApiMax: settings.rateLimitApiMax ?? DEFAULTS.rateLimitApiMax,
-        rateLimitAuthMax: settings.rateLimitAuthMax ?? DEFAULTS.rateLimitAuthMax,
-        rateLimitUploadMax: settings.rateLimitUploadMax ?? DEFAULTS.rateLimitUploadMax,
-        rateLimitDownloadMax: settings.rateLimitDownloadMax ?? DEFAULTS.rateLimitDownloadMax,
         autoSaveIntervalSeconds:
           settings.autoSaveIntervalSeconds ?? DEFAULTS.autoSaveIntervalSeconds,
         draftExpiryMinutes: settings.draftExpiryMinutes ?? DEFAULTS.draftExpiryMinutes,
@@ -419,16 +411,3 @@ export function getPasswordResetTokenMs(): number {
 }
 
 /** Rate Limit 설정 */
-export function getRateLimitSettings(): {
-  apiMax: number;
-  authMax: number;
-  uploadMax: number;
-  downloadMax: number;
-} {
-  return {
-    apiMax: cachedSettings?.rateLimitApiMax ?? DEFAULTS.rateLimitApiMax,
-    authMax: cachedSettings?.rateLimitAuthMax ?? DEFAULTS.rateLimitAuthMax,
-    uploadMax: cachedSettings?.rateLimitUploadMax ?? DEFAULTS.rateLimitUploadMax,
-    downloadMax: cachedSettings?.rateLimitDownloadMax ?? DEFAULTS.rateLimitDownloadMax,
-  };
-}

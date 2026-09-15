@@ -214,10 +214,6 @@ function adminOnlyPayload(s: SiteSettings) {
     jwtAccessTokenHours: s.jwtAccessTokenHours ?? DEFAULTS.jwtAccessTokenHours,
     jwtRefreshTokenDays: s.jwtRefreshTokenDays ?? DEFAULTS.jwtRefreshTokenDays,
     passwordResetTokenHours: s.passwordResetTokenHours ?? DEFAULTS.passwordResetTokenHours,
-    rateLimitApiMax: s.rateLimitApiMax ?? DEFAULTS.rateLimitApiMax,
-    rateLimitAuthMax: s.rateLimitAuthMax ?? DEFAULTS.rateLimitAuthMax,
-    rateLimitUploadMax: s.rateLimitUploadMax ?? DEFAULTS.rateLimitUploadMax,
-    rateLimitDownloadMax: s.rateLimitDownloadMax ?? DEFAULTS.rateLimitDownloadMax,
   };
 }
 
@@ -306,10 +302,6 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       avatarSizePx,
       avatarQuality,
       passwordResetTokenHours,
-      rateLimitApiMax,
-      rateLimitAuthMax,
-      rateLimitUploadMax,
-      rateLimitDownloadMax,
       autoSaveIntervalSeconds,
       draftExpiryMinutes,
       memoMaxPerUser,
@@ -374,10 +366,6 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       // 비밀번호 재설정
       [passwordResetTokenHours, 'passwordResetTokenHours', 1, 48],
       // Rate limit
-      [rateLimitApiMax, 'rateLimitApiMax', 50, 1000],
-      [rateLimitAuthMax, 'rateLimitAuthMax', 3, 100],
-      [rateLimitUploadMax, 'rateLimitUploadMax', 5, 200],
-      [rateLimitDownloadMax, 'rateLimitDownloadMax', 10, 500],
       // 에디터
       [autoSaveIntervalSeconds, 'autoSaveIntervalSeconds', 10, 300],
       [draftExpiryMinutes, 'draftExpiryMinutes', 10, 1440],
@@ -605,13 +593,6 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
         passwordResetTokenHours !== undefined
           ? passwordResetTokenHours
           : settings.passwordResetTokenHours,
-      rateLimitApiMax: rateLimitApiMax !== undefined ? rateLimitApiMax : settings.rateLimitApiMax,
-      rateLimitAuthMax:
-        rateLimitAuthMax !== undefined ? rateLimitAuthMax : settings.rateLimitAuthMax,
-      rateLimitUploadMax:
-        rateLimitUploadMax !== undefined ? rateLimitUploadMax : settings.rateLimitUploadMax,
-      rateLimitDownloadMax:
-        rateLimitDownloadMax !== undefined ? rateLimitDownloadMax : settings.rateLimitDownloadMax,
       autoSaveIntervalSeconds:
         autoSaveIntervalSeconds !== undefined
           ? autoSaveIntervalSeconds

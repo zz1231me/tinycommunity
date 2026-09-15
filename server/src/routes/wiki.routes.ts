@@ -11,12 +11,10 @@ import {
 } from '../controllers/wiki.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { checkWikiWritePermission } from '../middlewares/wikiPermission';
-import { apiLimiter } from '../middlewares/rate-limit.middleware';
 import { AuthRequest } from '../types/auth-request';
 
 const router = Router();
 router.use(authenticate as RequestHandler);
-router.use(apiLimiter as RequestHandler);
 
 /**
  * @swagger

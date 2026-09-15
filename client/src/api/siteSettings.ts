@@ -65,14 +65,6 @@ export interface SiteSettings {
   avatarQuality: number;
   /** 비밀번호 재설정 토큰 유효시간 (시간) */
   passwordResetTokenHours: number;
-  /** 일반 API Rate Limit (15분 창) */
-  rateLimitApiMax: number;
-  /** 인증 API Rate Limit (15분 창, 프로덕션) */
-  rateLimitAuthMax: number;
-  /** 파일 업로드 Rate Limit (1시간 창) */
-  rateLimitUploadMax: number;
-  /** 파일 다운로드 Rate Limit (1시간 창) */
-  rateLimitDownloadMax: number;
   /** PostEditor 자동저장 주기 (초) */
   autoSaveIntervalSeconds: number;
   /** PostEditor 임시저장 복원 유효시간 (분) */

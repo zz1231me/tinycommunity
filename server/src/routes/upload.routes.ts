@@ -8,12 +8,6 @@ import asyncHandler from 'express-async-handler';
 import { authenticate } from '../middlewares/auth.middleware';
 import { uploadImages } from '../middlewares/upload/image'; // ✅ 직접 import
 import { validateUploadedFile } from '../middlewares/upload/validator';
-import {
-  uploadLimiter,
-  downloadLimiter,
-  apiLimiter,
-  adminLimiter,
-} from '../middlewares/rate-limit.middleware';
 import { AuthRequest } from '../types/auth-request';
 import { logError, logInfo } from '../utils/logger';
 import { sendSuccess, sendError, sendNotFound, sendForbidden } from '../utils/response';
@@ -51,7 +45,6 @@ function resolveSecureFilePath(filename: string, baseDir: string): string | null
 router.post(
   '/images',
   authenticate as RequestHandler,
-  uploadLimiter as RequestHandler,
   uploadImages.single('image'),
   validateUploadedFile() as RequestHandler, // 에디터 이미지=인라인 서빙: 내용(magic) 검증
   asyncHandler((req, res) => {
@@ -106,7 +99,6 @@ router.post(
 router.get(
   '/thumb/:filename',
   authenticate as RequestHandler,
-  downloadLimiter as RequestHandler,
   asyncHandler(async (req, res) => {
     const { filename } = req.params as Record<string, string>;
 
@@ -154,7 +146,6 @@ router.get(
 router.get(
   '/download/:filename',
   authenticate as RequestHandler,
-  downloadLimiter as RequestHandler,
   asyncHandler(async (req, res) => {
     const { filename } = req.params as Record<string, string>;
     const rawOriginalName = req.query.originalName;
@@ -246,7 +237,6 @@ router.get(
  */
 router.get(
   '/info/:filename',
-  apiLimiter,
   authenticate as RequestHandler,
   asyncHandler(async (req, res) => {
     const { filename } = req.params as Record<string, string>;
@@ -305,7 +295,6 @@ function listFilesInDir(dir: string, type: 'file' | 'image') {
  */
 router.get(
   '/admin/list',
-  adminLimiter,
   authenticate as RequestHandler,
   asyncHandler(async (req, res) => {
     const authReq = req as AuthRequest;
@@ -360,7 +349,6 @@ router.get(
  */
 router.delete(
   '/admin/:type/:filename',
-  adminLimiter,
   authenticate as RequestHandler,
   asyncHandler(async (req, res) => {
     const authReq = req as AuthRequest;

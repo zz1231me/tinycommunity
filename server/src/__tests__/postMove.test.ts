@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app, seedTestData, loginAs, CSRF_HEADER, relaxRateLimits } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import Board from '../models/Board';
 import BoardAccess from '../models/BoardAccess';
 
@@ -53,7 +53,6 @@ function move(cookie: string, board: string, id: string, target: string, title =
 beforeAll(async () => {
   await seedTestData();
   // 테스트가 순서 때문에 429 로 깨지지 않게 한도를 올린다
-  await relaxRateLimits();
 
   await makeBoard('movedest', '이동 대상');
   await grant('movedest', 'admin', true);

@@ -103,17 +103,3 @@ export const updateWikiPermissions = (roles: string[]): Promise<{ roles: string[
 
 // ─── Rate Limiting 설정 ──────────────────────────────────────────────────────
 
-export const fetchRateLimits = (signal?: AbortSignal) =>
-  api.get('/admin/rate-limits', { signal }).then(unwrap);
-
-export const toggleRateLimit = (id: number): Promise<void> =>
-  api.patch(`/admin/rate-limits/${id}/toggle`).then(() => undefined);
-
-export const deleteRateLimit = (id: number): Promise<void> =>
-  api.delete(`/admin/rate-limits/${id}`).then(() => undefined);
-
-export const refreshRateLimitCache = (): Promise<void> =>
-  api.post('/admin/rate-limits/refresh-cache').then(() => undefined);
-
-export const applyRateLimitPreset = (preset: string): Promise<void> =>
-  api.post(`/admin/rate-limits/presets/${preset}`).then(() => undefined);

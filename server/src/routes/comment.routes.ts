@@ -14,7 +14,6 @@ import {
   likeComment,
   reactToComment,
 } from '../controllers/comment.controller';
-import { apiLimiter } from '../middlewares/rate-limit.middleware';
 import { requireFeature } from '../middlewares/featureGate.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
 import { createCommentSchema, updateCommentSchema } from '../validators/schemas';
@@ -227,7 +226,6 @@ router.delete(
  */
 router.post(
   '/:boardType/:commentId/like',
-  apiLimiter as RequestHandler,
   authenticate as RequestHandler,
   checkReadAccess as RequestHandler,
   likeComment as RequestHandler
@@ -235,7 +233,6 @@ router.post(
 
 router.post(
   '/:boardType/:commentId/reactions',
-  apiLimiter as RequestHandler,
   authenticate as RequestHandler,
   requireFeature('comment.reactions'),
   checkReadAccess as RequestHandler,

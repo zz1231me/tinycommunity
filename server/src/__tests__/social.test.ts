@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app, seedTestData, loginAs, CSRF_HEADER, relaxRateLimits } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import Board from '../models/Board';
 import BoardAccess from '../models/BoardAccess';
 import { Notification } from '../models/Notification';
@@ -46,7 +46,6 @@ async function clearSocialState() {
 beforeAll(async () => {
   await seedTestData();
   // 테스트가 순서 때문에 429 로 깨지지 않게 한도를 올린다
-  await relaxRateLimits();
 
   // testuser 가 읽을 수 없는 게시판 — 구독이 권한을 우회하지 않는지 확인용
   await Board.findOrCreate({

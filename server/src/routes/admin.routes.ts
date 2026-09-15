@@ -37,7 +37,6 @@ import {
 import { authenticate } from '../middlewares/auth.middleware';
 import { isAdmin } from '../middlewares/isAdmin';
 import { ipWhitelistMiddleware } from '../middlewares/ipWhitelistMiddleware';
-import { adminLimiter } from '../middlewares/rate-limit.middleware';
 import { validateUuidParam, validateBody } from '../middlewares/validate.middleware';
 import { getSecurityLogs, deleteSecurityLogs } from '../controllers/securityLog.controller';
 import { getErrorLogs, deleteErrorLogs } from '../controllers/errorLog.controller';
@@ -46,7 +45,6 @@ import { getAuditLogs, getUserAuditLogs } from '../controllers/auditLog.controll
 import { getUserSessions, forceLogoutSession } from '../controllers/userSession.controller';
 import { getAdminStats } from '../controllers/stats.controller';
 import { getFeatureCatalog, updateFeatures } from '../controllers/featureFlag.controller';
-import rateLimitAdminRoutes from './rateLimitAdmin.routes';
 import tagRoutes from './tag.routes';
 import {
   getAttendanceRecords,
@@ -77,7 +75,6 @@ const router = Router();
 
 // 인증, 관리자 권한, IP 제한, Rate limit 체크
 router.use(
-  adminLimiter as RequestHandler,
   authenticate as RequestHandler,
   isAdmin as RequestHandler,
   ipWhitelistMiddleware as RequestHandler
@@ -196,7 +193,6 @@ router.delete(
 );
 
 // ===== Rate Limiting 관리 =====
-router.use('/rate-limits', rateLimitAdminRoutes);
 
 // ===== 태그 관리 =====
 router.use('/tags', tagRoutes);

@@ -10,7 +10,7 @@
 
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
-import { app, seedTestData, loginAs, CSRF_HEADER, relaxRateLimits } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import { getSettings } from '../utils/settingsCache';
 import User from '../models/User';
 
@@ -22,7 +22,6 @@ const PASSWORD = 'Test1234!';
 
 beforeAll(async () => {
   await seedTestData();
-  await relaxRateLimits();
   if (!(await User.findByPk(USER))) {
     await User.create({
       id: USER,

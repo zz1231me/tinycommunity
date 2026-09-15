@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app, seedTestData, loginAs, relaxRateLimits, CSRF_HEADER } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import { User } from '../models/User';
 import { AttendanceRecord } from '../models/AttendanceRecord';
 
@@ -45,7 +45,6 @@ let optionalItem: { id: number; label: string };
 
 beforeAll(async () => {
   await seedTestData();
-  await relaxRateLimits();
   adminCookie = await loginAs('admin', 'TestAdmin123!');
 
   for (const id of WORKERS) {

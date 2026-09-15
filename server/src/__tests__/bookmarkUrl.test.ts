@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app, seedTestData, loginAs, CSRF_HEADER, relaxRateLimits } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 
 // 사이드바 북마크 주소.
 //
@@ -12,7 +12,6 @@ let adminCookie: string;
 
 beforeAll(async () => {
   await seedTestData();
-  await relaxRateLimits();
   adminCookie = await loginAs('admin', 'TestAdmin123!');
 });
 

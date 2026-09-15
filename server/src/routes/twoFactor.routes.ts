@@ -3,7 +3,6 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 
 import { authenticate } from '../middlewares/auth.middleware';
-import { apiLimiter, twoFactorLimiter } from '../middlewares/rate-limit.middleware';
 import {
   generate2FASecret,
   enable2FA,
@@ -12,6 +11,7 @@ import {
   get2FAStatus,
 } from '../controllers/twoFactor.controller';
 import { sendError } from '../utils/response';
+import { twoFactorLimiter } from '../middlewares/bruteForceGuard';
 
 const router = Router();
 
@@ -30,8 +30,8 @@ export const twoFaVerifyLimiter = rateLimit({
 // 2FA 상태 조회
 router.get('/status', authenticate, get2FAStatus as any);
 
-// 2FA 비밀키 생성 (QR 코드 포함) - apiLimiter 추가 (반복 덮어쓰기 방지)
-router.post('/generate', apiLimiter, authenticate, generate2FASecret as any);
+// 2FA 비밀키 생성 (QR 코드 포함)
+router.post('/generate', authenticate, generate2FASecret as any);
 
 // 2FA 활성화 - TOTP 검증이므로 사용자별 전용 limiter(authenticate 뒤에 배치)
 router.post('/enable', authenticate, twoFactorLimiter, enable2FA as any);

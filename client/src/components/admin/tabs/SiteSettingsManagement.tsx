@@ -1030,55 +1030,6 @@ export const SiteSettingsManagement = () => {
         </SettingList>
       </AdminSection>
 
-      {/* ── 12. Rate Limit 설정 ───────────────────────────────────────────── */}
-      <AdminSection title="요청 속도 제한 (Rate Limit)">
-        <div className="space-y-3 mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs">
-          <p className="font-medium">안내</p>
-          <p>
-            과도한 요청으로부터 서버를 보호합니다. 시간 창(window)은 고정이며, 최대 요청 수만 조정
-            가능합니다.
-          </p>
-        </div>
-        <SettingList>
-          <NumberInput
-            label="일반 API (15분 창)"
-            description="일반 API 호출 최대 횟수"
-            min={50}
-            max={1000}
-            value={settings.rateLimitApiMax}
-            onChange={v => set('rateLimitApiMax', v)}
-            unit="회"
-          />
-          <NumberInput
-            label="인증 API (15분 창)"
-            description="로그인·회원가입 최대 시도 횟수 (프로덕션)"
-            min={3}
-            max={100}
-            value={settings.rateLimitAuthMax}
-            onChange={v => set('rateLimitAuthMax', v)}
-            unit="회"
-          />
-          <NumberInput
-            label="파일 업로드 (1시간 창)"
-            description="파일 업로드 최대 횟수"
-            min={5}
-            max={200}
-            value={settings.rateLimitUploadMax}
-            onChange={v => set('rateLimitUploadMax', v)}
-            unit="회"
-          />
-          <NumberInput
-            label="파일 다운로드 (1시간 창)"
-            description="파일 다운로드 최대 횟수"
-            min={10}
-            max={500}
-            value={settings.rateLimitDownloadMax}
-            onChange={v => set('rateLimitDownloadMax', v)}
-            unit="회"
-          />
-        </SettingList>
-      </AdminSection>
-
       {/* ── 13. 에디터 설정 ───────────────────────────────────────────────── */}
       <AdminSection id="editor" title="에디터 설정">
         <SettingList>

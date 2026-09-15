@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app, seedTestData, loginAs, CSRF_HEADER, relaxRateLimits } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import Board from '../models/Board';
 import { Post } from '../models/Post';
 import { PostActivity } from '../models/PostActivity';
@@ -49,7 +49,6 @@ async function activity(cookie: string, id: string, board = 'notice') {
 
 beforeAll(async () => {
   await seedTestData();
-  await relaxRateLimits();
   await Board.update({ taskEnabled: true }, { where: { id: 'notice' } });
   adminCookie = await loginAs('admin', 'TestAdmin123!');
   userCookie = await loginAs('testuser', 'TestUser123!');

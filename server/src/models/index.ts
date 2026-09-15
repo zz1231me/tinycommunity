@@ -10,7 +10,6 @@ import Event from './Event';
 import EventPermission from './EventPermission';
 import Bookmark from './Bookmark';
 import { SiteSettings } from './SiteSettings';
-import { RateLimitSettings } from './RateLimitSettings';
 import { SecurityLog } from './SecurityLog';
 import { PostLike } from './PostLike';
 import { CommentLike } from './CommentLike';
@@ -498,7 +497,6 @@ export {
   EventPermission,
   Bookmark,
   SiteSettings,
-  RateLimitSettings,
   SecurityLog,
   PostLike,
   CommentLike,

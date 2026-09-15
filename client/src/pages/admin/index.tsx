@@ -22,7 +22,6 @@ const BookmarkManagement = lazy(() => import('../../components/admin/tabs/Bookma
 const SiteSettingsManagement = lazy(
   () => import('../../components/admin/tabs/SiteSettingsManagement')
 );
-const RateLimitManagement = lazy(() => import('../../components/admin/tabs/RateLimitManagement'));
 const FeatureManagement = lazy(() => import('../../components/admin/tabs/FeatureManagement'));
 const AppearanceManagement = lazy(() => import('../../components/admin/tabs/AppearanceManagement'));
 const SecurityLogManagement = lazy(
@@ -128,7 +127,6 @@ const AdminUserPage = () => {
                   />
                   <Route path="events" element={<EventManagement />} />
                   <Route path="bookmarks" element={<BookmarkManagement />} />
-                  <Route path="rate-limits" element={<RateLimitManagement />} />
                   <Route path="site-settings" element={<SiteSettingsManagement />} />
                   <Route path="features" element={<FeatureManagement />} />
                   <Route path="appearance" element={<AppearanceManagement />} />

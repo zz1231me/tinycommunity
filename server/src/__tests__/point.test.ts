@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app, seedTestData, loginAs, CSRF_HEADER, relaxRateLimits } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import User from '../models/User';
 import { UserPoint } from '../models/UserPoint';
 import { PointLedger } from '../models/PointLedger';
@@ -22,7 +22,6 @@ const USER = 'pointuser';
 
 beforeAll(async () => {
   await seedTestData();
-  await relaxRateLimits();
   if (!(await User.findByPk(USER))) {
     await User.create({
       id: USER,

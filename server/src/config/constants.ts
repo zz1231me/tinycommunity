@@ -48,22 +48,11 @@ export const PAGINATION = {
   MAX_LIMIT: MAX_PAGE_SIZE,
 } as const;
 
-// Rate Limiting 창 및 최대 요청 수 (ms)
+// 비밀글 비밀번호 확인 횟수 — 일반적인 요청 수 제한은 걷어냈고, 비밀을
+// 직접 맞혀 보는 요청만 막는다(bruteForceGuard).
 export const RATE_LIMIT = {
-  WINDOW_MS: 15 * 60 * 1000, // 15분
-  API_MAX: 200,
-  AUTH_MAX_PROD: 10,
-  AUTH_MAX_DEV: 50,
-  ADMIN_MAX: 100,
-  UPLOAD_WINDOW_MS: 60 * 60 * 1000, // 1시간
-  UPLOAD_MAX: 20,
   SECRET_POST_WINDOW_MS: 5 * 60 * 1000, // 5분
   SECRET_POST_MAX: 5,
-  DOWNLOAD_WINDOW_MS: 60 * 60 * 1000, // 1시간
-  DOWNLOAD_MAX: 100,
-  // 메시지 — 대화하듯 여러 통 보내는 것은 막지 않되 대량 발송은 걸러낸다
-  MESSAGE_WINDOW_MS: 10 * 60 * 1000, // 10분
-  MESSAGE_MAX: 30,
 } as const;
 
 // Cache TTL (초)

@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app, seedTestData, loginAs, CSRF_HEADER, relaxRateLimits } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import Board from '../models/Board';
 import BoardAccess from '../models/BoardAccess';
 
@@ -34,7 +34,6 @@ function scrap(cookie: string, id: string, board = 'notice') {
 beforeAll(async () => {
   await seedTestData();
   // 테스트가 순서 때문에 429 로 깨지지 않게 한도를 올린다
-  await relaxRateLimits();
 
   // admin 만 읽을 수 있는 게시판 — 권한 경계를 확인하기 위한 것
   await Board.findOrCreate({

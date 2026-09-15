@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app, seedTestData, loginAs, CSRF_HEADER, relaxRateLimits } from './helpers';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import User from '../models/User';
 import { Conversation } from '../models/Conversation';
 import { Message } from '../models/Message';
@@ -48,7 +48,6 @@ async function clearMessages() {
 beforeAll(async () => {
   await seedTestData();
   // 테스트가 순서 때문에 429 로 깨지지 않게 한도를 올린다
-  await relaxRateLimits();
 
   // 세 번째 사람 — 남의 대화에 못 들어가는지 확인용
   const third = await User.findByPk('thirduser');
