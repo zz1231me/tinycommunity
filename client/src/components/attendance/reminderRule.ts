@@ -21,22 +21,25 @@ export function reminderRecord(
 
 /** 기준 시간이 이만큼 남았을 때 미리 알린다 */
 export const NOTICE_BEFORE_MIN = 10;
+/** 기준 시간이 이만큼 지나면 한 번 더 알린다 */
+export const NOTICE_LATE_AFTER_MIN = 3;
 
 /**
  * 알림의 단계.
  *  · before — 기준 시간 10분 전
- *  · due    — 기준 시간이 됐거나 지났을 때
+ *  · due    — 기준 시간이 됐을 때
+ *  · late   — 기준 시간이 3분 지났을 때
  */
-export type NoticeStage = 'before' | 'due';
+export type NoticeStage = 'before' | 'due' | 'late';
 
 /**
  * 지금 어느 단계를 알려야 하는가. 알릴 것이 없으면 null.
  *
- * 두 번 알리는 이유: 10분 전 한 번만 띄우면 그 사이에 하던 일을 마저 하다가 잊는다.
- * 기준 시간이 됐을 때 한 번 더 알린다.
+ * 세 번 알리는 이유: 10분 전 한 번만 띄우면 그 사이에 하던 일을 마저 하다가 잊고,
+ * 정각에 한 번 더 띄워도 '조금만 더' 하다가 또 지나간다.
  *
- * 남은 시간이 0 이하면 before 를 건너뛰고 due 로 간다. 그 시간에 브라우저가 닫혀 있어
- * 10분 전 알림을 놓친 사람에게 뒤늦게 '10분 전입니다' 라고 하면 틀린 말이 된다.
+ * 늘 지금 시점에 맞는 단계로 간다 — 지난 단계를 못 봤더라도 거슬러 올라가지 않는다.
+ * 그 시간에 브라우저가 닫혀 있던 사람에게 뒤늦게 '10분 전입니다' 라고 하면 틀린 말이다.
  */
 export function notifyStage(opts: {
   working: boolean;
@@ -44,13 +47,15 @@ export function notifyStage(opts: {
   workedMinutes: number;
   noticedBefore: boolean;
   noticedDue: boolean;
+  noticedLate: boolean;
 }): NoticeStage | null {
   if (!opts.working) return null;
   // 기준이 정해져 있지 않으면 알릴 기준도 없다
   if (opts.standardWorkMinutes <= 0) return null;
 
-  const remaining = opts.standardWorkMinutes - opts.workedMinutes;
-  if (remaining <= 0) return opts.noticedDue ? null : 'due';
-  if (remaining <= NOTICE_BEFORE_MIN) return opts.noticedBefore ? null : 'before';
+  const over = opts.workedMinutes - opts.standardWorkMinutes;
+  if (over >= NOTICE_LATE_AFTER_MIN) return opts.noticedLate ? null : 'late';
+  if (over >= 0) return opts.noticedDue ? null : 'due';
+  if (-over <= NOTICE_BEFORE_MIN) return opts.noticedBefore ? null : 'before';
   return null;
 }

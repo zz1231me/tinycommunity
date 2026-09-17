@@ -11,6 +11,7 @@ const base = {
   workedMinutes: 0,
   noticedBefore: false,
   noticedDue: false,
+  noticedLate: false,
 };
 
 describe('퇴근 알림 시점', () => {
@@ -30,18 +31,30 @@ describe('퇴근 알림 시점', () => {
     expect(notifyStage({ ...base, workedMinutes: 480, noticedBefore: true })).toBe('due');
   });
 
-  it('기준을 넘긴 뒤에도 정각 알림을 아직 안 봤으면 알린다', () => {
-    expect(notifyStage({ ...base, workedMinutes: 600, noticedBefore: true })).toBe('due');
+  it('정각 직후에는 아직 정각 단계다 — 3분은 지나야 다음으로 간다', () => {
+    expect(notifyStage({ ...base, workedMinutes: 482, noticedBefore: true })).toBe('due');
   });
 
-  it('10분 전 알림을 놓쳤어도 기준을 넘겼으면 정각 알림으로 간다', () => {
-    // 그 시간에 브라우저가 닫혀 있던 경우. 뒤늦게 '10분 전입니다' 라고 하면 틀린 말이다.
-    expect(notifyStage({ ...base, workedMinutes: 600 })).toBe('due');
-  });
-
-  it('두 단계를 모두 봤으면 더 알리지 않는다', () => {
+  it('3분이 지나면 한 번 더 알린다 — 정각에 보고도 "조금만 더" 하다 지나간다', () => {
     expect(
-      notifyStage({ ...base, workedMinutes: 600, noticedBefore: true, noticedDue: true })
+      notifyStage({ ...base, workedMinutes: 483, noticedBefore: true, noticedDue: true })
+    ).toBe('late');
+  });
+
+  it('정각 알림을 놓쳤어도 3분이 지났으면 늦은 단계로 간다', () => {
+    // 지난 단계로 거슬러 올라가지 않는다 — 지금 시점에 맞는 말을 해야 한다
+    expect(notifyStage({ ...base, workedMinutes: 600 })).toBe('late');
+  });
+
+  it('세 단계를 모두 봤으면 더 알리지 않는다', () => {
+    expect(
+      notifyStage({
+        ...base,
+        workedMinutes: 600,
+        noticedBefore: true,
+        noticedDue: true,
+        noticedLate: true,
+      })
     ).toBeNull();
   });
 

@@ -113,6 +113,7 @@ export function AttendanceReminder() {
       workedMinutes: worked,
       noticedBefore: seen('before'),
       noticedDue: seen('due'),
+      noticedLate: seen('late'),
     });
     if (!stage) return;
 
