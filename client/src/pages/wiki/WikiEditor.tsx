@@ -573,7 +573,7 @@ export const WikiEditor: React.FC<WikiEditorProps> = ({
             type="button"
             onClick={onCancel}
             disabled={isSaving}
-            className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors text-sm font-medium"
+            className="btn-secondary"
           >
             취소
           </button>

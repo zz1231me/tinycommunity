@@ -218,7 +218,7 @@ function SortableBoardRow({
             </button>
             <button
               onClick={onCancelEdit}
-              className="px-3 py-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+              className="btn-secondary btn-sm"
             >
               취소
             </button>

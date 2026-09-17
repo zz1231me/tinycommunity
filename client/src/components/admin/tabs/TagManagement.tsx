@@ -156,7 +156,6 @@ const TagManagement = () => {
                 <button
                   key={board.id}
                   onClick={() => handleSelectBoard(board.id)}
-                  style={{ outline: 'none', border: 'none' }}
                   className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
                     selectedBoardId === board.id
                       ? 'bg-primary-600 text-white shadow-md'
@@ -189,7 +188,6 @@ const TagManagement = () => {
                   {!isCreating && !editingTag && (
                     <button
                       onClick={startCreate}
-                      style={{ outline: 'none', border: 'none' }}
                       className="btn-primary px-3 py-1.5"
                     >
                       + 새 태그
@@ -271,7 +269,6 @@ const TagManagement = () => {
                       <button
                         type="submit"
                         disabled={isSaving}
-                        style={{ outline: 'none', border: 'none' }}
                         className="btn-primary btn-sm"
                       >
                         {isSaving ? '저장 중...' : editingTag ? '수정' : '추가'}
@@ -279,8 +276,7 @@ const TagManagement = () => {
                       <button
                         type="button"
                         onClick={cancelForm}
-                        style={{ outline: 'none', border: 'none' }}
-                        className="px-4 py-1.5 bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-sm transition-colors"
+                        className="btn-secondary btn-sm"
                       >
                         취소
                       </button>
@@ -316,14 +312,12 @@ const TagManagement = () => {
                         )}
                         <button
                           onClick={() => startEdit(tag)}
-                          style={{ outline: 'none', border: 'none' }}
                           className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 transition-colors"
                         >
                           편집
                         </button>
                         <button
                           onClick={() => setConfirmDeleteId({ id: tag.id, name: tag.name })}
-                          style={{ outline: 'none', border: 'none' }}
                           className="text-xs text-red-500 hover:text-red-600 transition-colors"
                         >
                           삭제

@@ -123,7 +123,6 @@ const BoardManagerManagement = () => {
                     setSelectedUserId('');
                     setUserSearch('');
                   }}
-                  style={{ outline: 'none', border: 'none' }}
                   className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
                     selectedBoardId === board.id
                       ? 'bg-primary-600 text-white shadow-md'
@@ -187,7 +186,6 @@ const BoardManagerManagement = () => {
                         </div>
                         <button
                           onClick={() => handleRemove(record, selectedBoard.name)}
-                          style={{ outline: 'none', border: 'none' }}
                           className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                         >
                           삭제
@@ -223,7 +221,6 @@ const BoardManagerManagement = () => {
                                 setSelectedUserId(u.id);
                                 setUserSearch(`${u.name} (${u.id})`);
                               }}
-                              style={{ outline: 'none', border: 'none' }}
                               className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                             >
                               <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
@@ -238,7 +235,6 @@ const BoardManagerManagement = () => {
                     <button
                       onClick={handleAdd}
                       disabled={!selectedUserId || isAdding}
-                      style={{ outline: 'none', border: 'none' }}
                       className="btn-primary flex-shrink-0"
                     >
                       {isAdding ? '추가 중...' : '추가'}

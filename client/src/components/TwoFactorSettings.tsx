@@ -205,11 +205,7 @@ export const TwoFactorSettings = () => {
                 setSetupPassword('');
                 setError('');
               }}
-              className="
-                flex-1 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300
-                bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600
-                rounded-lg transition-all duration-200
-              "
+              className="btn-secondary flex-1"
             >
               취소
             </button>
@@ -270,11 +266,7 @@ export const TwoFactorSettings = () => {
                 setDisablePassword('');
                 setError('');
               }}
-              className="
-                flex-1 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300
-                bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600
-                rounded-lg transition-all duration-200
-              "
+              className="btn-secondary flex-1"
             >
               취소
             </button>
@@ -338,11 +330,7 @@ export const TwoFactorSettings = () => {
                   setSetupPassword('');
                   setError('');
                 }}
-                className="
-                  flex-1 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300
-                  bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600
-                  rounded-lg transition-all duration-200
-                "
+                className="btn-secondary flex-1"
               >
                 취소
               </button>
