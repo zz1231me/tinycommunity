@@ -18,43 +18,40 @@
 // 규칙으로 되살릴 수 있으므로, 여기서 막는 것은 '되살릴 수 없게 만드는 방법' 뿐이다.
 
 import { describe, expect, it } from 'vitest';
-import { readdirSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
 
 /**
- * client/src
+ * src 아래 모든 원문.
  *
- * import.meta.url 로 구하지 않는다 — vitest 가 파일을 변환해 돌리는 동안 그 값이
- * file: 스킴이 아닐 수 있어 fileURLToPath 가 그대로 던진다(실제로 던졌다).
- * 실행 위치에서 잡되, 경로가 틀어지면 아래 '훑을 파일이 있다' 가 잡아 준다.
+ * node:fs 로 읽지 않는다 — 이 프로젝트의 타입 설정에서 node 타입이 잡히지 않아
+ * 타입 검사가 깨진다(실제로 한 번 깨뜨렸다). Vite 의 glob 은 vite/client 타입에
+ * 들어 있어 따로 의존성을 더할 필요가 없고, 경로도 실행 위치가 아니라 이 파일을
+ * 기준으로 풀려서 어디서 돌리든 같다.
  */
-const SRC = resolve(process.cwd(), 'src');
+const sources = import.meta.glob('../**/*.{ts,tsx}', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>;
 
 /** 자기 자신은 뺀다 — 아래 정규식과 위 설명이 서로 걸린다 */
-const SELF = 'noInlineFocusKill.test.ts';
-
-function sourceFiles(): string[] {
-  return readdirSync(SRC, { recursive: true, encoding: 'utf8' })
-    .filter(p => (p.endsWith('.ts') || p.endsWith('.tsx')) && !p.endsWith(SELF))
-    .map(p => join(SRC, p));
-}
+const entries = Object.entries(sources).filter(
+  ([path]) => !path.endsWith('noInlineFocusKill.test.ts')
+);
 
 /** style={{ … outline: 'none' … }} — 중괄호 안이라 줄바꿈도 함께 본다 */
 const INLINE_OUTLINE_KILL = /style=\{\{[^}]*outline:\s*['"]none['"]/;
 
 describe('인라인 스타일로 포커스 테두리를 없애지 않는다', () => {
-  const files = sourceFiles();
-
   it('훑을 파일이 실제로 있다', () => {
     // 대상이 0개여도 아래 검사는 통과한다 — 그러면 아무것도 막지 못하는 검사가 된다.
-    // 경로 규칙이 바뀌어 아무것도 못 찾게 되는 순간 여기서 먼저 걸린다.
-    expect(files.length).toBeGreaterThan(100);
+    // glob 이 어긋나 아무것도 못 찾게 되는 순간 여기서 먼저 걸린다.
+    expect(entries.length).toBeGreaterThan(100);
   });
 
   it('어느 파일에도 인라인 outline 제거가 없다', () => {
-    const offenders = files
-      .filter(f => INLINE_OUTLINE_KILL.test(readFileSync(f, 'utf8')))
-      .map(f => f.slice(SRC.length));
+    const offenders = entries
+      .filter(([, source]) => INLINE_OUTLINE_KILL.test(source))
+      .map(([path]) => path);
 
     expect(offenders).toEqual([]);
   });
