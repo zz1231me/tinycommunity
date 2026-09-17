@@ -4,8 +4,8 @@
 // ⚠️ 가장 중요한 성질부터: 이 서비스는 출퇴근 '기록' 을 건드리지 않는다.
 //
 // attendance.service 의 checkOut 은 이 표를 보지 않는다. 공격을 받는 중에 퇴근을
-// 눌러도 그 순간이 그대로 기록된다. 잠기는 것은 화면의 버튼뿐이다.
-// (테스트 '공격을 받는 중에도 퇴근은 그대로 기록된다' 가 이 성질을 붙잡고 있다.)
+// 눌러도 그 순간이 그대로 기록된다. 버튼은 잠기지도 않는다 — 도망다니고 깜빡일 뿐,
+// 끝내 누르면 눌린다. (테스트 '기록은 건드리지 않는다' 가 이 성질을 붙잡고 있다.)
 //
 // 남이 내 근무 기록의 시각을 늦출 수 있게 되는 순간, 이 기능은 장난이 아니라
 // 근태 분쟁거리가 된다. 그 선을 넘지 않는 것이 이 설계의 전부다.
@@ -18,7 +18,12 @@ import { UserPoint } from '../models/UserPoint';
 import { User } from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
 import { apply, ensureBalanceRow, lockBalance, today, withLockRetry } from './point.service';
-import { ATTACK_RULES } from '../config/attendanceAttack';
+import {
+  ATTACK_RULES,
+  attackCost,
+  isAttackKind,
+  type AttackKind,
+} from '../config/attendanceAttack';
 import { notificationService } from './notification.service';
 import { logError } from '../utils/logger';
 
@@ -29,12 +34,31 @@ function nameOf(row: AttendanceAttackModel): string {
   return joined.attacker?.name ?? row.attackerId;
 }
 
-/** 지금 이 사람에게 걸려 있는 살아 있는 공격 */
-async function liveAgainst(targetId: string): Promise<AttendanceAttackModel | null> {
+/** 지금 이 사람에게 걸려 있는 살아 있는 방해 */
+async function liveChaosAgainst(targetId: string): Promise<AttendanceAttackModel | null> {
   return AttendanceAttack.findOne({
-    where: { targetId, defendedAt: null, expiresAt: { [Op.gt]: new Date() } },
+    where: {
+      targetId,
+      kind: 'chaos',
+      defendedAt: null,
+      expiresAt: { [Op.gt]: new Date() },
+    },
     include: [withAttacker],
     order: [['id', 'DESC']],
+  });
+}
+
+/** 아직 못 본, 아직 안 사라진 쪽지 하나 */
+async function pendingPopupFor(targetId: string): Promise<AttendanceAttackModel | null> {
+  return AttendanceAttack.findOne({
+    where: {
+      targetId,
+      kind: 'popup',
+      seenAt: null,
+      expiresAt: { [Op.gt]: new Date() },
+    },
+    include: [withAttacker],
+    order: [['id', 'ASC']],
   });
 }
 
@@ -60,20 +84,12 @@ function notify(userId: string, message: string, attackId: number): void {
     .catch(err => logError('퇴근 공격 알림 생성 실패', err, { userId, attackId }));
 }
 
-function toView(row: AttendanceAttackModel) {
-  return {
-    id: row.id,
-    attackerId: row.attackerId,
-    attackerName: nameOf(row),
-    expiresAt: row.expiresAt,
-  };
-}
-
 export const attendanceAttackService = {
-  /** 출근 화면이 물어보는 것 — 지금 나에게 걸린 공격이 있는가, 나는 몇 번 더 쓸 수 있는가 */
+  /** 출근 화면이 물어보는 것 — 나에게 걸린 방해·기다리는 쪽지·내가 남은 횟수 */
   async state(userId: string) {
-    const [live, balanceRow, usedToday] = await Promise.all([
-      liveAgainst(userId),
+    const [chaos, popup, balanceRow, usedToday] = await Promise.all([
+      liveChaosAgainst(userId),
+      pendingPopupFor(userId),
       UserPoint.findByPk(userId, { attributes: ['UserId', 'balance'] }),
       AttendanceAttack.count({ where: { attackerId: userId, workDate: today() } }),
     ]);
@@ -81,20 +97,41 @@ export const attendanceAttackService = {
     return {
       rules: {
         cost: ATTACK_RULES.cost,
+        popupCost: ATTACK_RULES.popupCost,
         defendCost: ATTACK_RULES.defendCost,
         blockSeconds: ATTACK_RULES.blockSeconds,
         dailyLimit: ATTACK_RULES.dailyLimitPerAttacker,
+        messageMaxLength: ATTACK_RULES.messageMaxLength,
       },
       balance: balanceRow?.balance ?? 0,
-      /** 나에게 걸린 공격 (없으면 null) */
-      incoming: live ? toView(live) : null,
+      /** 나에게 걸린 방해 (없으면 null) */
+      incoming: chaos
+        ? {
+            id: chaos.id,
+            attackerId: chaos.attackerId,
+            attackerName: nameOf(chaos),
+            expiresAt: chaos.expiresAt,
+          }
+        : null,
+      /** 아직 못 본 쪽지 하나 (없으면 null) */
+      popup: popup
+        ? {
+            id: popup.id,
+            attackerId: popup.attackerId,
+            attackerName: nameOf(popup),
+            message: popup.message ?? '',
+          }
+        : null,
       usedToday,
       remainingToday: Math.max(0, ATTACK_RULES.dailyLimitPerAttacker - usedToday),
     };
   },
 
   /** 공격권을 사서 바로 쓴다 */
-  async attack(attackerId: string, targetId: string) {
+  async attack(attackerId: string, input: { targetId: string; kind?: string; message?: string }) {
+    const targetId = input.targetId;
+    const kind: AttackKind = isAttackKind(input.kind) ? input.kind : 'chaos';
+
     if (attackerId === targetId) {
       throw new AppError(400, '자기 자신에게는 쓸 수 없습니다.');
     }
@@ -108,11 +145,18 @@ export const attendanceAttackService = {
     if (!(await isWorking(targetId))) {
       throw new AppError(400, '지금 근무 중인 사람에게만 쓸 수 있습니다.');
     }
-    if (await liveAgainst(targetId)) {
-      throw new AppError(409, '이미 공격받고 있는 사람입니다.');
+    // 방해는 겹쳐 걸 수 없다. 쪽지는 한 번 뜨고 마는 것이라 겹침이라는 개념이 없다.
+    if (kind === 'chaos' && (await liveChaosAgainst(targetId))) {
+      throw new AppError(409, '이미 방해받고 있는 사람입니다.');
     }
 
+    const message =
+      kind === 'popup'
+        ? (input.message ?? '').trim().slice(0, ATTACK_RULES.messageMaxLength) || '퇴근하지 마세요!'
+        : null;
+
     await ensureBalanceRow(attackerId);
+    const cost = attackCost(kind);
 
     const created = await withLockRetry(() =>
       sequelize.transaction(async t => {
@@ -129,20 +173,27 @@ export const attendanceAttackService = {
         }
 
         const row = await lockBalance(attackerId, t);
-        if (row.balance < ATTACK_RULES.cost) {
+        if (row.balance < cost) {
           throw new AppError(
             400,
-            `포인트가 모자랍니다. 공격권은 ${ATTACK_RULES.cost.toLocaleString()}P 입니다 (보유 ${row.balance.toLocaleString()}P).`
+            `포인트가 모자랍니다. ${cost.toLocaleString()}P 가 필요합니다 (보유 ${row.balance.toLocaleString()}P).`
           );
         }
-        await apply(row, -ATTACK_RULES.cost, 'attack_cost', '퇴근 공격권', t);
+        await apply(row, -cost, 'attack_cost', kind === 'popup' ? '퇴근 쪽지' : '퇴근 방해', t);
+
+        const lifeMs =
+          kind === 'popup'
+            ? ATTACK_RULES.popupWindowMinutes * 60_000
+            : ATTACK_RULES.blockSeconds * 1000;
 
         return AttendanceAttack.create(
           {
             attackerId,
             targetId,
             workDate: day,
-            expiresAt: new Date(Date.now() + ATTACK_RULES.blockSeconds * 1000),
+            kind,
+            message,
+            expiresAt: new Date(Date.now() + lifeMs),
           },
           { transaction: t }
         );
@@ -150,12 +201,19 @@ export const attendanceAttackService = {
     );
 
     const attacker = await User.findByPk(attackerId, { attributes: ['id', 'name'] });
-    notify(targetId, `${attacker?.name ?? attackerId}님이 퇴근 공격권을 사용했습니다!`, created.id);
+    const who = attacker?.name ?? attackerId;
+    notify(
+      targetId,
+      kind === 'popup'
+        ? `${who}님이 쪽지를 보냈습니다: ${message}`
+        : `${who}님이 퇴근 방해를 걸었습니다!`,
+      created.id
+    );
 
-    return { id: created.id, targetId, expiresAt: created.expiresAt };
+    return { id: created.id, targetId, kind, expiresAt: created.expiresAt };
   },
 
-  /** 방어권을 사서 지금 걸린 공격을 푼다 */
+  /** 방어권을 사서 지금 걸린 방해를 푼다 */
   async defend(userId: string, attackId: number) {
     await ensureBalanceRow(userId);
 
@@ -167,6 +225,8 @@ export const attendanceAttackService = {
         });
         if (!row) throw new AppError(404, '공격을 찾을 수 없습니다.');
         if (row.targetId !== userId) throw new AppError(403, '나에게 걸린 공격이 아닙니다.');
+        // 쪽지는 이미 뜬 것이라 되돌릴 것이 없다
+        if (row.kind !== 'chaos') throw new AppError(400, '쪽지는 방어할 수 없습니다.');
         // 잠근 뒤 다시 확인한다 — 두 창에서 동시에 누르면 두 번 값을 치를 수 있다
         if (row.defendedAt) throw new AppError(409, '이미 방어했습니다.');
         if (row.expiresAt.getTime() <= Date.now()) {
@@ -192,5 +252,24 @@ export const attendanceAttackService = {
     notify(defended.attackerId, `${me?.name ?? userId}님이 방어권을 사용했습니다.`, defended.id);
 
     return { id: defended.id };
+  },
+
+  /**
+   * 쪽지를 봤다고 표시한다. 한 번 본 쪽지는 다시 뜨지 않는다.
+   *
+   * 값을 치르지 않는 동작이라 포인트 잠금이 필요 없다. 이미 본 쪽지를 또 봤다고
+   * 해도 조용히 넘어간다 — 두 창에서 닫아도 오류가 뜰 일은 아니다.
+   */
+  async markSeen(userId: string, attackId: number) {
+    const row = await AttendanceAttack.findByPk(attackId);
+    if (!row) throw new AppError(404, '쪽지를 찾을 수 없습니다.');
+    if (row.targetId !== userId) throw new AppError(403, '나에게 온 쪽지가 아닙니다.');
+    if (row.kind !== 'popup') throw new AppError(400, '쪽지가 아닙니다.');
+
+    if (!row.seenAt) {
+      row.seenAt = new Date();
+      await row.save();
+    }
+    return { id: row.id };
   },
 };

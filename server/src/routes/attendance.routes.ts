@@ -6,7 +6,12 @@ import {
   checkIn,
   checkOut,
 } from '../controllers/attendance.controller';
-import { getAttackState, useAttack, useDefend } from '../controllers/attendanceAttack.controller';
+import {
+  getAttackState,
+  useAttack,
+  useDefend,
+  markPopupSeen,
+} from '../controllers/attendanceAttack.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { requireFeature } from '../middlewares/featureGate.middleware';
 import { AuthRequest } from '../types/auth-request';
@@ -155,6 +160,22 @@ attack.post(
 attack.post(
   '/:id/defend',
   asyncHandler((req, res) => useDefend(req as AuthRequest, res))
+);
+
+/**
+ * @swagger
+ * /api/attendance/attack/{id}/seen:
+ *   post:
+ *     summary: 받은 쪽지를 봤다고 표시한다 (같은 쪽지가 다시 뜨지 않는다)
+ *     tags: [Attendance]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: 표시됨 }
+ *       403: { description: 나에게 온 쪽지가 아님 }
+ */
+attack.post(
+  '/:id/seen',
+  asyncHandler((req, res) => markPopupSeen(req as AuthRequest, res))
 );
 
 router.use('/attack', attack);

@@ -5,6 +5,7 @@
 
 import { z } from 'zod';
 import { DUEL_HANDS, DUEL_RULES } from '../config/duel';
+import { ATTACK_KINDS, ATTACK_RULES } from '../config/attendanceAttack';
 
 // ─── 인증 ─────────────────────────────────────────────────
 
@@ -149,9 +150,16 @@ export const duelAcceptSchema = z.object({
   hand: z.enum(DUEL_HANDS),
 });
 
-/** 퇴근 공격권을 쓸 대상 */
+/**
+ * 퇴근 공격권을 쓸 대상과 종류.
+ *
+ * 쪽지는 남의 화면에 그대로 뜨는 글이라 길이를 짧게 묶는다. 길게 쓰라고 연 창구가
+ * 아니고, 길이를 열어 두면 쪽지가 아니라 메시지 기능이 된다.
+ */
 export const attendanceAttackSchema = z.object({
   targetId: z.string().trim().min(1, '대상을 골라주세요.').max(50),
+  kind: z.enum(ATTACK_KINDS).optional(),
+  message: z.string().trim().max(ATTACK_RULES.messageMaxLength).optional(),
 });
 
 export const attendanceCheckInSchema = z.object({

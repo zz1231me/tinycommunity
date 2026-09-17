@@ -29,10 +29,16 @@ class AttendanceAttackModel extends Model<
   declare public targetId: ForeignKey<string>;
   /** 근무일 (YYYY-MM-DD, 서버 기준) — 하루 몇 번 썼는지를 센다 */
   declare public workDate: string;
-  /** 이 시각이 지나면 잠금이 풀린다 */
+  /** 'chaos'(버튼 방해) 또는 'popup'(한 번 뜨는 쪽지) */
+  declare public kind: CreationOptional<string>;
+  /** 쪽지 내용. chaos 에는 없다. */
+  declare public message: CreationOptional<string | null>;
+  /** 이 시각이 지나면 방해가 끝난다(chaos), 또는 쪽지가 사라진다(popup) */
   declare public expiresAt: Date;
-  /** 방어권을 써서 일찍 풀었으면 그 시각 */
+  /** 방어권을 써서 일찍 풀었으면 그 시각 (chaos 에만 있다) */
   declare public defendedAt: CreationOptional<Date | null>;
+  /** 쪽지를 받아 본 시각 — 한 번 본 쪽지는 다시 뜨지 않는다 (popup 에만 있다) */
+  declare public seenAt: CreationOptional<Date | null>;
   declare public readonly createdAt: CreationOptional<Date>;
   declare public readonly updatedAt: CreationOptional<Date>;
 }
@@ -55,8 +61,11 @@ AttendanceAttackModel.init(
       onUpdate: 'CASCADE',
     },
     workDate: { type: DataTypes.STRING(10), allowNull: false },
+    kind: { type: DataTypes.STRING(10), allowNull: false, defaultValue: 'chaos' },
+    message: { type: DataTypes.STRING(60), allowNull: true },
     expiresAt: { type: DataTypes.DATE, allowNull: false },
     defendedAt: { type: DataTypes.DATE, allowNull: true },
+    seenAt: { type: DataTypes.DATE, allowNull: true },
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE,
   },

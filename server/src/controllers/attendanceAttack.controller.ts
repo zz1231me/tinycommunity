@@ -30,10 +30,20 @@ export const getAttackState = async (req: AuthRequest, res: Response): Promise<v
 /** POST /api/attendance/attack — 공격권을 사서 바로 쓴다 */
 export const useAttack = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const result = await attendanceAttackService.attack(req.user.id, req.body.targetId);
+    const result = await attendanceAttackService.attack(req.user.id, req.body);
     sendSuccess(res, result, '공격권을 사용했습니다.');
   } catch (err) {
     fail(res, err, '공격권을 사용하지 못했습니다.', { userId: req.user.id });
+  }
+};
+
+/** POST /api/attendance/attack/:id/seen — 쪽지를 봤다고 표시한다 */
+export const markPopupSeen = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const result = await attendanceAttackService.markSeen(req.user.id, attackId(req.params.id));
+    sendSuccess(res, result);
+  } catch (err) {
+    fail(res, err, '쪽지를 닫지 못했습니다.', { userId: req.user.id, id: req.params.id });
   }
 };
 

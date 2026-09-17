@@ -32,12 +32,21 @@ export const checkOut = async (): Promise<AttendanceRecord> =>
 // 공격은 화면의 버튼만 잠근다. 기록되는 퇴근 시각은 실제로 누른 순간 그대로다 —
 // 서버의 퇴근 경로는 이 기능을 쳐다보지도 않는다.
 
+/**
+ * 공격의 종류.
+ *  · chaos — 잠깐 동안 퇴근 버튼이 도망다니고 깜빡인다
+ *  · popup — 한 번 뜨는 쪽지
+ */
+export type AttackKind = 'chaos' | 'popup';
+
 export interface AttackRules {
   cost: number;
+  popupCost: number;
   defendCost: number;
-  /** 화면에서 버튼이 잠겨 보이는 시간(초) */
+  /** 퇴근 버튼이 말을 안 듣는 시간(초) */
   blockSeconds: number;
   dailyLimit: number;
+  messageMaxLength: number;
 }
 
 export interface IncomingAttack {
@@ -47,11 +56,20 @@ export interface IncomingAttack {
   expiresAt: string;
 }
 
+export interface IncomingPopup {
+  id: number;
+  attackerId: string;
+  attackerName: string;
+  message: string;
+}
+
 export interface AttackState {
   rules: AttackRules;
   balance: number;
-  /** 지금 나에게 걸린 공격 (없으면 null) */
+  /** 지금 나에게 걸린 방해 (없으면 null) */
   incoming: IncomingAttack | null;
+  /** 아직 못 본 쪽지 하나 (없으면 null) */
+  popup: IncomingPopup | null;
   usedToday: number;
   remainingToday: number;
 }
@@ -59,13 +77,19 @@ export interface AttackState {
 export const fetchAttackState = async (): Promise<AttackState> =>
   unwrap(await api.get('/attendance/attack'));
 
-export const sendAttack = async (
-  targetId: string
-): Promise<{ id: number; targetId: string; expiresAt: string }> =>
-  unwrap(await api.post('/attendance/attack', { targetId }));
+export const sendAttack = async (body: {
+  targetId: string;
+  kind: AttackKind;
+  message?: string;
+}): Promise<{ id: number; targetId: string; kind: AttackKind; expiresAt: string }> =>
+  unwrap(await api.post('/attendance/attack', body));
 
 export const sendDefend = async (id: number): Promise<{ id: number }> =>
   unwrap(await api.post(`/attendance/attack/${id}/defend`));
+
+/** 쪽지를 봤다고 알린다 — 같은 쪽지가 다시 뜨지 않는다 */
+export const markPopupSeen = async (id: number): Promise<{ id: number }> =>
+  unwrap(await api.post(`/attendance/attack/${id}/seen`));
 
 // ── 관리자 ────────────────────────────────────────────────────────────────
 

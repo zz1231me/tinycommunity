@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { LogIn, LogOut } from 'lucide-react';
 import type { AttendanceRecord } from '../../types/attendance.types';
+import { ChaosButton } from './ChaosButton';
 import { formatClock, formatDay, formatMinutes, minutesBetween } from '../../utils/attendance';
 
 interface Props {
@@ -19,6 +20,8 @@ interface Props {
   /** 자정을 넘겨 남은 어제 기록이 있으면 오늘 출근 전이라도 퇴근을 누를 수 있다 */
   canCheckOut: boolean;
   checkingOut: boolean;
+  /** 퇴근 공격을 받는 중인가 — 퇴근 버튼이 도망다닌다(막지는 않는다) */
+  chaos?: boolean;
   onCheckIn: () => void;
   onCheckOut: () => void;
 }
@@ -43,6 +46,7 @@ export function TodayHero({
   canCheckIn,
   canCheckOut,
   checkingOut,
+  chaos = false,
   onCheckIn,
   onCheckOut,
 }: Props) {
@@ -123,15 +127,18 @@ export function TodayHero({
             <LogIn className="h-4 w-4" />
             출근
           </button>
-          <button
-            type="button"
-            onClick={onCheckOut}
-            disabled={!canCheckOut || checkingOut}
-            className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <LogOut className="h-4 w-4" />
-            퇴근
-          </button>
+          {/* 공격을 받는 중에도 버튼은 살아 있다 — 성가실 뿐 끝내 눌린다 */}
+          <ChaosButton active={chaos}>
+            <button
+              type="button"
+              onClick={onCheckOut}
+              disabled={!canCheckOut || checkingOut}
+              className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <LogOut className="h-4 w-4" />
+              퇴근
+            </button>
+          </ChaosButton>
         </div>
       </div>
 

@@ -19,10 +19,15 @@ import {
   fetchAttackState,
   fetchMyAttendance,
   fetchMyAttendanceHistory,
+  markPopupSeen,
   sendAttack,
   sendDefend,
 } from '../../api/attendance';
-import { AttackBanner, AttackLauncher } from '../../components/attendance/AttendanceAttack';
+import {
+  AttackBanner,
+  AttackLauncher,
+  PopupAlert,
+} from '../../components/attendance/AttendanceAttack';
 import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
 import { useSubmitLock } from '../../hooks/useSubmitLock';
@@ -135,9 +140,16 @@ export default function AttendancePage() {
     onError: err => toast.error(getApiErrorMessage(err, '공격권을 사용하지 못했습니다.')),
   });
 
+  const popupSeen = useMutation({
+    mutationFn: markPopupSeen,
+    // 실패해도 창은 닫는다. 못 닫는 쪽지가 화면에 남는 것이 더 나쁘다.
+    onSettled: () => refreshAttack(),
+  });
+
   const incoming = attack.data?.incoming ?? null;
+  const popup = attack.data?.popup ?? null;
   // 서버가 준 만료 시각으로 직접 판단한다 — 이미 지난 공격을 아직 받아 오지 않았을 수 있다
-  const blocked = Boolean(incoming && new Date(incoming.expiresAt).getTime() > Date.now());
+  const underAttack = Boolean(incoming && new Date(incoming.expiresAt).getTime() > Date.now());
 
   const record = status.data?.record ?? null;
   const openPrevious = status.data?.openPrevious ?? null;
@@ -175,7 +187,7 @@ export default function AttendancePage() {
             </div>
           )}
 
-          {attackEnabled && incoming && blocked && attack.data && (
+          {attackEnabled && incoming && underAttack && attack.data && (
             <AttackBanner
               incoming={incoming}
               defendCost={attack.data.rules.defendCost}
@@ -193,7 +205,10 @@ export default function AttendancePage() {
             // 어제 퇴근을 안 찍었어도 오늘 출근은 따로 찍는다. 막으면 어제 것을
             // 먼저 마감해야 하고, 그 시각이 오늘이라 없던 밤샘 근무가 생긴다.
             canCheckIn={!record}
-            canCheckOut={Boolean(live && !live.checkOutAt) && !blocked}
+            // 공격받는 중에도 퇴근은 누를 수 있다. 버튼이 도망다닐 뿐이다 —
+            // 막아 버리면 남이 내 퇴근 기록 시각을 늦출 수 있게 된다.
+            canCheckOut={Boolean(live && !live.checkOutAt)}
+            chaos={attackEnabled && underAttack}
             checkingOut={checkOutMutation.isPending}
             onCheckIn={() => setDialogOpen(true)}
             onCheckOut={() => runOnce(() => checkOutMutation.mutateAsync().catch(() => {}))}
@@ -233,8 +248,12 @@ export default function AttendancePage() {
           state={attack.data}
           myId={myId}
           sending={attackMutation.isPending}
-          onAttack={targetId => attackMutation.mutate(targetId)}
+          onAttack={payload => attackMutation.mutate(payload)}
         />
+      )}
+
+      {attackEnabled && popup && (
+        <PopupAlert popup={popup} onClose={() => popupSeen.mutate(popup.id)} />
       )}
 
       <section
