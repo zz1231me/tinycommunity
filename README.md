@@ -29,9 +29,10 @@ React + Express 기반의 풀스택 커뮤니티/게시판 플랫폼. SQLite·My
 - **위키**: 슬러그 기반 계층 페이지, 리비전·Diff, 발행/비발행
 - **커스텀 페이지**: 관리자가 만드는 독립 페이지 — HTML 직접 작성 또는 정적 사이트 ZIP 번들 업로드(샌드박스 iframe 서빙), 사이드바 노출
 - **메모·캘린더**: 사용자별 스티키 메모(색상·고정·드래그 정렬), FullCalendar 기반 일정(드래그&드롭, 역할별 권한)
-- **포인트 뽑기**: 하루 한도 내 뽑기와 접속 시 출석 포인트, 관리자 지정 확률·금액·횟수·출석량, 서버 전용 추첨, 잔액과 별개로 남는 적립 원장
-- **출퇴근**: 하루 한 번 출근·퇴근 기록, 출근 시 체크리스트, 근무 시간 집계와 개인 통계, 헤더의 출근 아이콘(아직 안 찍었으면 눈에 띄게 표시), 관리자 지정 기준 근무시간·안내 문구
-- **관리자**: 기능 스위치 25종(기능별 on/off, 의존성 자동 해소), 사용자·게시판·역할·태그·이벤트 관리, 테마(브랜드 색 계단 자동 생성), 보안/에러/감사/로그인 로그, 신고·IP 규칙·사이트 설정
+- **포인트**: 하루 한도 내 뽑기와 접속 시 출석 포인트, 상위 10명 순위와 내 자리, 포인트를 걸고 겨루는 1:1 가위바위보 대결(신청하는 순간 포인트를 맡기고, 승부와 정산을 한 트랜잭션으로 끝내며, 답이 없는 판은 자동 환불), 관리자 지정 확률·금액·횟수·출석량·판돈 범위, 서버 전용 추첨, 잔액과 별개로 남는 적립 원장
+- **출퇴근**: 하루 한 번 출근·퇴근 기록(초를 버리고 분 단위로 저장), 출근 시 체크리스트, 근무 시간 집계와 개인 통계, 헤더의 출근 아이콘(아직 안 찍었으면 눈에 띄게 표시), 출근 알림창과 퇴근 알림창(퇴근은 10분 전·정각·3분 뒤 세 번), 관리자 지정 기준 근무시간·안내 문구·출근 시각 보정(컴퓨터를 켜는 시간만큼 앞당겨 기록, 기본 0분)
+- **퇴근 공격**: 포인트로 사는 퇴근 방해(상대의 퇴근 버튼이 잠깐 도망다니고 깜빡임)와 쪽지, 받은 쪽은 방어권으로 즉시 해제. 버튼을 잠그지 않으므로 **기록되는 퇴근 시각은 언제나 실제로 누른 순간** 그대로다 — 남이 남의 근무 기록을 늦출 수 없다
+- **관리자**: 기능 스위치 27종(기능별 on/off, 의존성 자동 해소), 사용자·게시판·역할·태그·이벤트 관리, 테마(브랜드 색 계단 자동 생성), 보안/에러/감사/로그인 로그, 신고·IP 규칙·사이트 설정
 - **UI**: 라이트·다크·드라큘라 테마, 프로필 아바타, 반응형, 댓글 가상 스크롤
 
 ---
@@ -247,7 +248,11 @@ flowchart LR
 
 실시간 알림은 `GET /api/notifications/stream`(SSE)로 전달되며, 스트림이 끊기면 클라이언트가 폴링으로 자동 폴백합니다. 앱을 여러 프로세스로 띄우면 다른 프로세스가 만든 알림은 폴링 주기로만 도착합니다.
 
-엔드포인트(전체): `/api/auth` · `/api/2fa` · `/api/boards` · `/api/board-managers` · `/api/posts` · `/api/comments` · `/api/messages` · `/api/social` · `/api/events` · `/api/memos` · `/api/wiki` · `/api/tags` · `/api/notifications` · `/api/users` · `/api/bookmarks` · `/api/drafts` · `/api/reports` · `/api/points` · `/api/announcements` · `/api/custom-pages` · `/api/temp-share` · `/api/features` · `/api/site-settings` · `/api/admin` · `/api/uploads`
+엔드포인트(전체): `/api/auth` · `/api/2fa` · `/api/boards` · `/api/board-managers` · `/api/posts` · `/api/comments` · `/api/messages` · `/api/social` · `/api/events` · `/api/memos` · `/api/wiki` · `/api/tags` · `/api/notifications` · `/api/users` · `/api/bookmarks` · `/api/drafts` · `/api/reports` · `/api/points` · `/api/attendance` · `/api/announcements` · `/api/custom-pages` · `/api/temp-share` · `/api/features` · `/api/site-settings` · `/api/admin` · `/api/uploads`
+
+포인트 대결은 `/api/points/duels`, 퇴근 공격은 `/api/attendance/attack` 아래에 있습니다.
+둘 다 기능 스위치(`tools.pointDuel`, `tools.attendanceAttack`)가 꺼져 있으면 서버가 403으로 막습니다 —
+화면에서 버튼을 숨기는 것과 별개입니다.
 
 글 상세(`GET /api/posts/:boardType/:id`)는 화면이 바로 그릴 수 있도록 태그와 보는 사람의
 상태(좋아요·스크랩·관리 권한)를 함께 반환합니다. 따로 조회하면 글 하나를 여는 데 왕복이 넷이 됩니다.

@@ -1,6 +1,6 @@
 // client/src/pages/Profile.tsx - 탭 기반 재구성
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LoadingSpinner } from '../components/common/LoadingStates';
 import { PageContainer } from '../components/common/PageContainer';
@@ -85,6 +85,16 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'settings', label: '계정설정', icon: <Settings className="w-4 h-4" /> },
 ];
 
+/**
+ * 주소의 ?tab= 이 실제로 있는 탭인지.
+ *
+ * 알림 링크가 특정 탭을 가리킨다(예: 포인트 대결 알림 → ?tab=points).
+ * 아무 값이나 받아 열면 내용이 비어 있는 탭이 열리므로, 목록에 있는 것만 연다.
+ */
+function isTabId(value: string | null): value is TabId {
+  return value !== null && TABS.some(t => t.id === value);
+}
+
 // ─── 타입 정의 ──────────────────────────────────────────────────────────────
 
 interface SecurityLog {
@@ -103,7 +113,13 @@ export default function Profile() {
   const user = getUser();
   const { settings } = useSiteSettings();
 
-  const [activeTab, setActiveTab] = useState<TabId>('profile');
+  // 알림에서 넘어올 때 주소가 탭을 가리킨다(?tab=points). 이걸 읽지 않으면
+  // '대결이 신청됐습니다' 를 눌러도 기본 탭이 열려, 알림이 가리킨 곳에 닿지 못한다.
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<TabId>(() =>
+    isTabId(requestedTab) ? requestedTab : 'profile'
+  );
   const lotteryEnabled = useFeature('tools.lottery');
   // 대결은 포인트 기능 안에 있지만 따로 끌 수 있다 (서버도 requireFeature 로 막는다)
   const duelEnabled = useFeature('tools.pointDuel');
@@ -112,6 +128,19 @@ export default function Profile() {
     const key = FEATURE_TABS[t.id];
     return !key || (key === 'tools.lottery' ? lotteryEnabled : true);
   });
+
+  // 이미 이 화면에 있는데 다른 탭을 가리키는 알림을 누르면 주소만 바뀐다 — 그때도 따라간다
+  useEffect(() => {
+    if (isTabId(requestedTab)) setActiveTab(requestedTab);
+  }, [requestedTab]);
+
+  // 꺼진 기능의 탭으로 링크가 와도 열지 않는다. 보이지도 않는 탭이 열려 있으면
+  // 탭 줄에는 아무것도 선택돼 있지 않은데 내용만 떠 있는 상태가 된다.
+  // visibleTabs 는 매 렌더 새 배열이라 의존성에는 참/거짓만 넣는다.
+  const activeTabVisible = visibleTabs.some(t => t.id === activeTab);
+  useEffect(() => {
+    if (!activeTabVisible) setActiveTab('profile');
+  }, [activeTabVisible]);
 
   // 내 게시글
 
