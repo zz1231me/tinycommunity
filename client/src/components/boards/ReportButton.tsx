@@ -1,6 +1,7 @@
 // client/src/components/boards/ReportButton.tsx - 신고 버튼 + 모달
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { createReport, ReportReason, ReportTargetType, REASON_LABELS } from '../../api/reports';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface ReportButtonProps {
   targetType: ReportTargetType;
@@ -35,8 +36,8 @@ export function ReportButton({ targetType, targetId, className = '' }: ReportBut
     }
   };
 
+  const panelRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const handleClose = () => {
     setIsOpen(false);
@@ -48,29 +49,15 @@ export function ReportButton({ targetType, targetId, className = '' }: ReportBut
     }, 300);
   };
 
-  // 접근성: ESC로 닫기 + 첫 포커스를 닫기 버튼으로 + 닫힐 때 트리거로 포커스 복원
-  useEffect(() => {
-    if (!isOpen) return;
-    const trigger = triggerRef.current; // 정리 시점에 안전하게 참조하도록 캡처
-    const t = setTimeout(() => closeBtnRef.current?.focus(), 0);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        handleClose();
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => {
-      clearTimeout(t);
-      document.removeEventListener('keydown', onKey);
-      trigger?.focus();
-    };
-  }, [isOpen]);
+  // 접근성: ESC로 닫기 + 첫 포커스를 닫기 버튼으로 + 닫힐 때 트리거로 포커스 복원.
+  // 손으로 하던 것을 공용 훅으로 옮겼다 — 여기에 없던 Tab 가두기가 함께 붙는다.
+  // 복원 대상을 따로 기억하지 않는다: 훅이 '열리기 직전에 포커스가 있던 곳' 으로
+  // 되돌리는데, 이 대화상자는 트리거를 눌러야 열리므로 그 자리가 곧 트리거다.
+  useFocusTrap(panelRef, handleClose, isOpen, closeBtnRef);
 
   return (
     <>
       <button
-        ref={triggerRef}
         onClick={() => setIsOpen(true)}
         aria-label="신고하기"
         className={`flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors ${className}`}
@@ -96,7 +83,10 @@ export function ReportButton({ targetType, targetId, className = '' }: ReportBut
           aria-modal="true"
           aria-label="신고하기"
         >
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div
+            ref={panelRef}
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+          >
             {/* 헤더 */}
             <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
               <div className="flex items-center gap-2">

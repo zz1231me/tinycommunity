@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { copyText } from '../../utils/clipboard';
 import { useFeature } from '../../store/features';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -52,18 +53,21 @@ export function TempShareModal({ open, onClose }: Props) {
     reset();
   }, [onClose, reset]);
 
-  // Esc 닫기 + 열려 있는 동안 배경 스크롤 잠금
+  // 열려 있는 동안 배경 스크롤 잠금
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && handleClose();
-    document.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
-      document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
     };
-  }, [open, handleClose]);
+  }, [open]);
+
+  // Esc 로 닫고, 열려 있는 동안 포커스를 안에 가둔다.
+  // body 로 포털하지만 ref 가 가리키는 것은 실제 DOM 노드라 가두기는 그대로 동작한다.
+  // 기능이 꺼져 있으면 걸지 않는다 — 그리지도 않은 대화상자가 ESC 를 먹으면 안 된다.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, handleClose, featureEnabled && open);
 
   // 만료 카운트다운
   useEffect(() => {
@@ -118,6 +122,7 @@ export function TempShareModal({ open, onClose }: Props) {
       onClick={handleClose}
     >
       <div
+        ref={panelRef}
         className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
         onClick={e => e.stopPropagation()}
         role="dialog"

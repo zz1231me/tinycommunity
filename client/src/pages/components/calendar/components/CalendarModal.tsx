@@ -1,6 +1,7 @@
 // client/src/pages/components/calendar/components/CalendarModal.tsx
-import React, { Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect, useRef } from 'react';
 import { lazyWithRetry as lazy } from '../../../../utils/lazyWithRetry';
+import { useFocusTrap } from '../../../../hooks/useFocusTrap';
 import { ModalMode, CalendarEvent, EventFormData } from '../types';
 import { EventDetailView } from './EventDetailView';
 
@@ -76,20 +77,21 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
   onFormChange,
   onCancelEdit,
 }) => {
-  // Esc로 닫기 + 열려 있는 동안 배경 스크롤 잠금 (a11y·다른 모달과 일관)
+  // 열려 있는 동안 배경 스크롤 잠금
   useEffect(() => {
     if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
-      document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
+
+  // Esc 로 닫고, 열려 있는 동안 포커스를 안에 가둔다.
+  // 본문의 일정 편집기는 lazy 라 늦게 오지만, 머리글의 닫기 단추는 Suspense 밖이라
+  // 첫 포커스를 줄 곳이 언제나 있다.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, onClose, isOpen);
 
   if (!isOpen) return null;
 
@@ -102,6 +104,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
       onClick={onClose}
     >
       <div
+        ref={panelRef}
         className={`bg-white dark:bg-slate-900
                    rounded-2xl shadow-2xl shadow-slate-900/20 dark:shadow-slate-950/60
                    border border-slate-200 dark:border-slate-800
