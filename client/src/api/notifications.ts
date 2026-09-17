@@ -3,7 +3,19 @@ import { unwrap } from './utils';
 
 export interface Notification {
   id: number;
-  type: 'COMMENT' | 'LIKE' | 'MENTION' | 'SYSTEM';
+  // 서버 카탈로그(config/notificationKinds.ts)와 같은 값을 쓴다.
+  // 여기가 좁으면 새 종류가 와도 타입은 모르는 채로 지나간다 — 실제로 SUBSCRIPTION·
+  // ASSIGNMENT·MESSAGE 가 빠진 채였다.
+  type:
+    | 'COMMENT'
+    | 'LIKE'
+    | 'MENTION'
+    | 'SUBSCRIPTION'
+    | 'ASSIGNMENT'
+    | 'MESSAGE'
+    | 'DUEL'
+    | 'ATTACK'
+    | 'SYSTEM';
   message: string;
   link: string | null;
   relatedId: string | null;

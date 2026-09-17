@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Bell, BellRing, MessageSquare, Heart, AtSign, Swords, X } from 'lucide-react';
+import { Bell, BellRing, MessageSquare, Heart, AtSign, Swords, Shield, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { stagger, listItem, scaleIn } from '../../utils/animations';
 import { useUIOverlays } from '../../store/uiOverlays';
@@ -18,7 +18,16 @@ import {
 
 interface Notification {
   id: number;
-  type: 'COMMENT' | 'LIKE' | 'MENTION' | 'SUBSCRIPTION' | 'DUEL' | 'SYSTEM';
+  type:
+    | 'COMMENT'
+    | 'LIKE'
+    | 'MENTION'
+    | 'SUBSCRIPTION'
+    | 'ASSIGNMENT'
+    | 'MESSAGE'
+    | 'DUEL'
+    | 'ATTACK'
+    | 'SYSTEM';
   message: string;
   link?: string | null;
   isRead: boolean;
@@ -50,6 +59,11 @@ const TYPE_ICON: Record<string, { icon: React.ReactNode; bg: string; color: stri
     icon: <Swords className="w-4 h-4" />,
     bg: 'bg-violet-100 dark:bg-violet-900/30',
     color: 'text-violet-600 dark:text-violet-400',
+  },
+  ATTACK: {
+    icon: <Shield className="w-4 h-4" />,
+    bg: 'bg-rose-100 dark:bg-rose-900/30',
+    color: 'text-rose-600 dark:text-rose-400',
   },
   SYSTEM: {
     icon: <Bell className="w-4 h-4" />,
