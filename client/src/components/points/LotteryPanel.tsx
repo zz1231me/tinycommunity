@@ -12,6 +12,7 @@ import {
 import { toast } from '../../utils/toast';
 import { LoadingSpinner } from '../common/LoadingStates';
 import { ListState } from '../common/ListState';
+import { prefersReducedMotion } from '../../utils/animations';
 
 const REASON_LABEL: Record<PointEntry['reason'], string> = {
   lottery: '뽑기',
@@ -25,14 +26,6 @@ const REASON_LABEL: Record<PointEntry['reason'], string> = {
 
 /** 숫자가 섞이는 최소 시간(ms). 서버가 곧바로 답해도 이만큼은 돌아야 '뽑았다'로 읽힌다 */
 const ROLL_MS = 700;
-
-/** 움직임을 줄여 달라고 설정한 사람에게는 섞기·덮개·신호를 모두 건너뛴다 */
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
-  );
-}
 
 /** 짧은 진동 — 지원하지 않는 기기에서는 아무 일도 일어나지 않는다 */
 function buzz(pattern: number | number[]) {

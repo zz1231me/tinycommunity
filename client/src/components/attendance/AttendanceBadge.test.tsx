@@ -36,7 +36,12 @@ const status = (over: Partial<AttendanceStatus> = {}): AttendanceStatus => ({
   record: null,
   openPrevious: null,
   checklist: [],
-  policy: { standardWorkMinutes: 480, requireChecklist: false, noticeText: '' },
+  policy: {
+    standardWorkMinutes: 480,
+    requireChecklist: false,
+    noticeText: '',
+    checkInGraceMinutes: 0,
+  },
   ...over,
 });
 

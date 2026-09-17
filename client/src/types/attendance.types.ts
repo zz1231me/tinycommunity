@@ -36,6 +36,8 @@ export interface AttendancePolicy {
   requireChecklist: boolean;
   /** 출근 확인 화면 머리글 안내 — 관리자가 고친다 */
   noticeText: string;
+  /** 출근 시각을 이만큼(분) 앞당겨 기록한다. 0 이면 누른 그대로. */
+  checkInGraceMinutes: number;
 }
 
 export interface AttendanceStatus {

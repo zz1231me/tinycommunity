@@ -34,6 +34,8 @@ export interface PolicyView {
   standardWorkMinutes: number;
   requireChecklist: boolean;
   noticeText: string;
+  /** 출근 시각을 이만큼(분) 앞당겨 기록한다. 0 이면 누른 그대로. */
+  checkInGraceMinutes: number;
 }
 
 export interface ChecklistItemView {
@@ -97,6 +99,22 @@ function elapsedMinutes(from: Date, to: Date): number {
 }
 
 /**
+ * 출근 시각을 보정만큼 앞당긴다.
+ *
+ * 자리에 앉아 컴퓨터를 켜고 로그인하기까지의 시간을 인정해 주기 위한 값이다.
+ *
+ * 근무일의 자정보다 앞으로는 가지 않는다. 그 아래로 내려가면 00:00 직후에 누른 출근이
+ * 어제 날짜의 시각이 되어, 화면에는 오늘로 보이는데 저장된 시각은 어제인 기록이 된다.
+ * 근무일 자체는 누른 순간으로 정하므로(호출부) 유니크 인덱스와도 어긋나지 않는다.
+ */
+function withGrace(pressedAt: Date, graceMinutes: number, workDate: string): Date {
+  if (graceMinutes <= 0) return pressedAt;
+  const shifted = new Date(pressedAt.getTime() - graceMinutes * 60_000);
+  const midnight = new Date(`${workDate}T00:00:00`);
+  return shifted < midnight ? midnight : shifted;
+}
+
+/**
  * 초를 버려 분 단위로 맞춘다. 09:59:09 에 눌러도 09:59:00 으로 남는다.
  *
  * 화면은 분까지만 보여 주는데 저장은 초까지 하고 있었다. 같은 분에 누른 두 기록이
@@ -142,6 +160,7 @@ function toPolicyView(policy: AttendancePolicy): PolicyView {
     standardWorkMinutes: policy.standardWorkMinutes,
     requireChecklist: policy.requireChecklist,
     noticeText: policy.noticeText,
+    checkInGraceMinutes: policy.checkInGraceMinutes,
   };
 }
 
@@ -248,13 +267,17 @@ export class AttendanceService extends BaseService {
       checked: answered.get(i.id) === true,
     }));
 
-    const now = atMinute(new Date());
+    // 근무일은 '누른 순간' 으로 정한다. 보정된 시각으로 정하면 자정 직후의 출근이
+    // 어제 날짜로 넘어가, 오늘 출근이 없는 것처럼 보인다.
+    const pressedAt = new Date();
+    const workDate = today(pressedAt);
+    const checkInAt = atMinute(withGrace(pressedAt, policy.checkInGraceMinutes, workDate));
 
     try {
       const record = await AttendanceRecord.create({
         UserId: userId,
-        workDate: today(now),
-        checkInAt: now,
+        workDate,
+        checkInAt,
         note: (input.note ?? '').slice(0, MAX_NOTE),
         checklist: JSON.stringify(checklist),
       });
@@ -564,6 +587,14 @@ export class AttendanceService extends BaseService {
         throw new AppError(400, '기준 근무 시간은 30~1440분 사이의 정수여야 합니다.');
       }
       policy.standardWorkMinutes = minutes;
+    }
+    if (data.checkInGraceMinutes !== undefined) {
+      const grace = data.checkInGraceMinutes;
+      // 상한을 둔다. 한 시간을 넘겨 당기면 그건 보정이 아니라 기록을 지어내는 것이다.
+      if (!Number.isInteger(grace) || grace < 0 || grace > 60) {
+        throw new AppError(400, '출근 시각 보정은 0~60분 사이의 정수여야 합니다.');
+      }
+      policy.checkInGraceMinutes = grace;
     }
     if (data.requireChecklist !== undefined) policy.requireChecklist = data.requireChecklist;
     if (data.noticeText !== undefined) {

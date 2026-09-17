@@ -24,6 +24,14 @@ class AttendancePolicyModel extends Model<
   declare public requireChecklist: CreationOptional<boolean>;
   /** 출근 확인 화면 머리글에 적는 안내. 팀마다 부르는 말과 규칙이 달라 고칠 수 있게 둔다. */
   declare public noticeText: CreationOptional<string>;
+  /**
+   * 출근 시각을 이만큼(분) 앞당겨 기록한다. 0 이면 누른 그대로.
+   *
+   * 자리에 앉아 컴퓨터를 켜고 로그인하기까지 걸리는 시간을 인정해 주기 위한 값이다.
+   * 근무 기록을 바꾸는 값이라 기본은 0 으로 둔다 — 배포만으로 모두의 출근 시각이
+   * 조용히 당겨지면 안 된다. 쓰려면 관리자가 직접 켠다.
+   */
+  declare public checkInGraceMinutes: CreationOptional<number>;
   declare public readonly createdAt: CreationOptional<Date>;
   declare public readonly updatedAt: CreationOptional<Date>;
 }
@@ -38,6 +46,7 @@ AttendancePolicyModel.init(
       allowNull: false,
       defaultValue: '출퇴근을 기록합니다. 전체 기록은 관리자만 봅니다.',
     },
+    checkInGraceMinutes: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     createdAt: { type: DataTypes.DATE, allowNull: false },
     updatedAt: { type: DataTypes.DATE, allowNull: false },
   },

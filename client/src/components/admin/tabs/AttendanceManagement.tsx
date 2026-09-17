@@ -814,6 +814,43 @@ const AttendanceManagement = () => {
                   </div>
                 </div>
 
+                <div className="flex items-start justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                      출근 시각 보정
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                      자리에 앉아 컴퓨터를 켜는 시간을 인정해, 출근을 이만큼 앞당겨 기록합니다. 0
+                      이면 누른 그대로 남습니다. 실제 근무 기록이 바뀌는 값입니다.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      // 서버도 0~60 으로 막는다(attendance.service.updatePolicy).
+                      // 한 시간을 넘겨 당기면 보정이 아니라 기록을 지어내는 것이다.
+                      max={60}
+                      key={policy.checkInGraceMinutes}
+                      defaultValue={policy.checkInGraceMinutes}
+                      onBlur={e => {
+                        const next = Number(e.target.value);
+                        if (!Number.isInteger(next) || next < 0 || next > 60) {
+                          e.target.value = String(policy.checkInGraceMinutes);
+                          toast.error('출근 시각 보정은 0~60분 사이여야 합니다.');
+                          return;
+                        }
+                        if (next !== policy.checkInGraceMinutes) {
+                          savePolicy.mutate({ checkInGraceMinutes: next });
+                        }
+                      }}
+                      aria-label="출근 시각 보정(분)"
+                      className="input input-sm w-24 text-right"
+                    />
+                    <span className="text-xs text-slate-500 dark:text-slate-400">분 일찍</span>
+                  </div>
+                </div>
+
                 <div className="rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800">
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
                     출근 확인 화면 안내 문구

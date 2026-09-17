@@ -24,6 +24,7 @@ import { NotificationToast } from './components/common/NotificationToast';
 import { MaintenanceGate } from './components/MaintenanceGate';
 import { FeatureRoute } from './components/common/FeatureRoute';
 import { AttendanceReminder } from './components/attendance/AttendanceReminder';
+import { CheckInReminder } from './components/attendance/CheckInReminder';
 import { DashboardLanding } from './components/common/DashboardLanding';
 
 // Lazy Loading applied to all page components
@@ -144,6 +145,7 @@ function App() {
         {/* 기준 근무 시간이 다 되면 알린다. 관리자 화면은 대시보드 바깥이라
             여기 한 번 두어야 어느 화면에 있든 뜬다. */}
         <AttendanceReminder />
+        <CheckInReminder />
         {/* 점검 모드 게이트 — 점검 ON 시 비관리자에게 안내 페이지 표시(관리자는 우회) */}
         <MaintenanceGate>
           {/* 🚀 Suspense로 로딩 중 상태 처리 */}
