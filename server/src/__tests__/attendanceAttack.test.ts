@@ -322,3 +322,38 @@ describe('언제 근무 중으로 보는가', () => {
     expect((await attack(atkCookie, TGT)).status).toBe(200);
   });
 });
+
+describe('동시에 걸어도 방해는 하나만 산다', () => {
+  it('둘이 같은 순간에 걸면 하나만 통과한다', async () => {
+    // 겹침 확인이 트랜잭션 밖에 있으면 둘 다 통과해 살아 있는 방해가 둘이 된다.
+    // 그러면 받는 쪽은 하나를 풀어도 곧바로 다음 것이 떠서 방어권 값을 두 번 낸다.
+    await grant(ATK, 5000);
+    await grant(THIRD, 5000);
+    await startWorking(TGT);
+
+    const results = await Promise.all([attack(atkCookie, TGT), attack(thirdCookie, TGT)]);
+    expect(results.filter(r => r.status === 200)).toHaveLength(1);
+
+    const live = await AttendanceAttack.count({
+      where: { targetId: TGT, kind: 'chaos', defendedAt: null },
+    });
+    expect(live).toBe(1);
+  });
+
+  it('한 번 방어하면 나에게 걸린 방해가 남지 않는다', async () => {
+    await grant(ATK, 5000);
+    await grant(THIRD, 5000);
+    await grant(TGT, 5000);
+    await startWorking(TGT);
+
+    const results = await Promise.all([attack(atkCookie, TGT), attack(thirdCookie, TGT)]);
+    const made = results.find(r => r.status === 200)!;
+
+    expect((await defend(tgtCookie, made.body.data.id)).status).toBe(200);
+
+    // 값은 한 번만 치르고, 살아 있는 방해는 하나도 남지 않아야 한다
+    expect(await balanceOf(TGT)).toBe(5000 - ATTACK_DEFAULTS.defendCost);
+    const seen = await state(tgtCookie);
+    expect(seen.body.data.incoming).toBeNull();
+  });
+});

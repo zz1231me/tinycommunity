@@ -1,4 +1,5 @@
 // server/src/controllers/twoFactor.controller.ts - 2FA 인증 컨트롤러
+import crypto from 'crypto';
 import { Request, Response } from 'express';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
@@ -363,7 +364,11 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<void>
     );
 
     const refreshToken = jwt.sign(
-      { id: user.id, tokenType: 'refresh', tv: user.tokenVersion ?? 0 },
+      // jti 로 매번 다른 토큰을 만든다 (auth.service 의 로그인 경로와 같은 이유).
+      // 없으면 payload 와 iat(초 단위)가 같아져, 같은 사람이 같은 초에 두 기기에서
+      // 2FA 를 통과하면 토큰이 글자까지 똑같아진다 — 세션 표에서 한 줄로 덮여
+      // 기기 목록에 하나만 보이고, 그 하나를 끊으면 두 기기가 함께 끊긴다.
+      { id: user.id, tokenType: 'refresh', tv: user.tokenVersion ?? 0, jti: crypto.randomUUID() },
       process.env.JWT_REFRESH_SECRET!,
       { expiresIn: `${jwtRefreshTokenDays}d`, algorithm: 'HS256' }
     );
@@ -375,9 +380,16 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<void>
       sameSite: 'lax' as const,
       path: '/',
     };
+    // 쿠키 수명은 access 토큰 자체가 아니라 refresh 토큰에 맞춘다
+    // (auth.controller 의 로그인 경로와 같은 이유).
+    //
+    // 토큰 수명과 같게 두면 만료되는 순간 브라우저가 쿠키를 지워, 다음 요청이
+    // "만료된 토큰"(419) 이 아니라 "토큰 없음"(401) 으로 도착한다. 화면은 419 에서만
+    // 갱신을 시도하므로, refresh 토큰이 멀쩡한데도 로그인 화면으로 튕긴다.
+    // 2FA 를 켠 사람만 그 일을 겪고 있었다.
     res.cookie('access_token', accessToken, {
       ...cookieOptions,
-      maxAge: jwtAccessTokenHours * 60 * 60 * 1000,
+      maxAge: jwtRefreshTokenDays * 24 * 60 * 60 * 1000,
     });
     res.cookie('refresh_token', refreshToken, {
       ...cookieOptions,

@@ -247,12 +247,30 @@ router.get(
       return;
     }
 
+    const savedFilename = path.basename(resolvedFilePath);
+
+    // 첨부파일 인가 — download·thumb 와 같은 규칙을 공유한다.
+    // 이것이 빠져 있어서, 읽기 권한을 잃었거나 비밀글로 바뀐 뒤에도 파일명만 알면
+    // 존재 여부와 크기·수정시각을 계속 확인할 수 있었다(내용은 아니지만 탐지 창구다).
+    //
+    // 존재 확인보다 '먼저' 본다. 뒤에 두면 권한 없는 사람에게 404 와 403 이 갈려
+    // 그 자체가 파일이 있는지 알려 주는 신호가 된다.
+    const authReq = req as AuthRequest;
+    const access = await authorizeAttachmentAccess(
+      savedFilename,
+      authReq.user.id,
+      authReq.user.role
+    );
+    if (!access.ok) {
+      sendForbidden(res, access.message);
+      return;
+    }
+
     if (!fs.existsSync(resolvedFilePath)) {
       sendNotFound(res, '파일');
       return;
     }
 
-    const savedFilename = path.basename(resolvedFilePath);
     const stats = fs.statSync(resolvedFilePath);
 
     sendSuccess(res, {

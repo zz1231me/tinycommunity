@@ -32,6 +32,15 @@ const SENSITIVE = [
   'newpassword',
 ];
 
+/**
+ * 이름이 '정확히' 이것일 때만 가린다.
+ *
+ * 위 목록은 부분 일치라 'code' 를 넣으면 zipcode·qrcode·countryCode 까지 덮는다.
+ * 그런데 비밀번호 재설정 확인이 틀리면(400) 그 요청 바디가 그대로 기록에 남고,
+ * 거기 담긴 code 는 계정을 넘겨받는 데 쓰는 값이다. 그 한 칸만 정확히 집어 가린다.
+ */
+const SENSITIVE_EXACT = ['code'];
+
 /** 민감 필드 마스킹 + 긴 문자열 절단 (최대 2단계 중첩) */
 function sanitize(value: unknown, depth = 0): unknown {
   if (value === null || value === undefined) return value;
@@ -40,7 +49,9 @@ function sanitize(value: unknown, depth = 0): unknown {
 
   const out: Record<string, unknown> = Array.isArray(value) ? ([] as any) : {};
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-    if (SENSITIVE.some(s => k.toLowerCase().includes(s))) out[k] = '[REDACTED]';
+    const key = k.toLowerCase();
+    if (SENSITIVE.some(s => key.includes(s)) || SENSITIVE_EXACT.includes(key))
+      out[k] = '[REDACTED]';
     else out[k] = sanitize(v, depth + 1);
   }
   return out;

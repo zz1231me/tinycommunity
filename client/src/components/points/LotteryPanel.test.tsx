@@ -189,6 +189,16 @@ describe('뽑기', () => {
     expect(drawLottery).not.toHaveBeenCalled();
   });
 
+  it('처음 불러오기가 실패하면 실패했다고 말한다 — 화면을 통째로 비우지 않는다', async () => {
+    // 토스트는 곧 사라진다. 그것만 띄우고 return null 하면, 잠시 뒤에는 실패했다는
+    // 사실조차 남지 않고 '포인트 기능이 아예 없는 화면' 처럼 보인다.
+    // 같은 폴더의 PointRanking·DuelPanel 은 처음부터 이렇게 하고 있었다.
+    fetchPointStatus.mockRejectedValue(new Error('네트워크 끊김'));
+    render(<LotteryPanel />);
+
+    expect(await screen.findByText(/불러오지 못했습니다/)).toBeInTheDocument();
+  });
+
   it('서버가 거절하면 그 이유를 그대로 알린다', async () => {
     // 화면이 자체 문구로 덮으면 "왜 안 되는지" 가 사라진다
     drawLottery.mockRejectedValue({

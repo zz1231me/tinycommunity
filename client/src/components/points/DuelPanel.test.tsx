@@ -212,6 +212,38 @@ describe('신청', () => {
   });
 });
 
+describe('성공을 실패라고 말하지 않는다', () => {
+  it('신청은 됐는데 목록 갱신만 실패하면 오류를 띄우지 않는다', async () => {
+    // 동작과 갱신을 같은 try 에 묶어 두면 '신청하지 못했습니다' 가 뜬다.
+    // 사용자는 사실과 반대로 알고 다시 걸게 되는데, 판돈은 이미 빠진 뒤다.
+    fetchDuels.mockResolvedValueOnce(board());
+    createDuel.mockResolvedValue(duel());
+    fetchDuels.mockRejectedValueOnce(new Error('네트워크 끊김'));
+
+    render(<DuelPanel myId={ME} />);
+    fireEvent.click(await screen.findByRole('button', { name: '상대 고르기' }));
+    fireEvent.change(screen.getByLabelText('걸 포인트'), { target: { value: '300' } });
+    fireEvent.click(screen.getByRole('button', { name: '바위' }));
+    fireEvent.click(screen.getByRole('button', { name: /대결 신청/ }));
+
+    await waitFor(() => expect(createDuel).toHaveBeenCalled());
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it('신청 자체가 실패하면 그때는 알린다', async () => {
+    fetchDuels.mockResolvedValue(board());
+    createDuel.mockRejectedValue(new Error('포인트가 모자랍니다.'));
+
+    render(<DuelPanel myId={ME} />);
+    fireEvent.click(await screen.findByRole('button', { name: '상대 고르기' }));
+    fireEvent.change(screen.getByLabelText('걸 포인트'), { target: { value: '300' } });
+    fireEvent.click(screen.getByRole('button', { name: '바위' }));
+    fireEvent.click(screen.getByRole('button', { name: /대결 신청/ }));
+
+    await waitFor(() => expect(toastError).toHaveBeenCalled());
+  });
+});
+
 describe('실패', () => {
   it('불러오지 못하면 그렇게 말한다 — 대결이 없는 것과 다르다', async () => {
     fetchDuels.mockRejectedValue(new Error('boom'));

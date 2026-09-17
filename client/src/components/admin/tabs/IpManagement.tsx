@@ -54,6 +54,9 @@ const IpManagement: React.FC = () => {
   const rules: IpRule[] = rulesQuery.data ?? [];
   const stats: IpRuleStats | null = statsQuery.data ?? null;
   const loading = rulesQuery.isPending;
+  // 조회 실패와 '규칙이 하나도 없음' 은 전혀 다른 상태다. 이 화면에서 '없음' 은
+  // "아무나 들어올 수 있다" 로 읽히기 때문에, 실패를 없음으로 보여 주면 안 된다.
+  const failed = rulesQuery.isError;
 
   const load = () => queryClient.invalidateQueries({ queryKey: adminKeys.ipRules.all });
 
@@ -283,10 +286,17 @@ const IpManagement: React.FC = () => {
       ) : rules.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
           <Shield className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">등록된 IP 규칙이 없습니다.</p>
+          <p className="text-sm">
+            {failed
+              ? '불러오지 못했습니다. 잠시 후 다시 시도해주세요.'
+              : '등록된 IP 규칙이 없습니다.'}
+          </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        // 좁은 화면에서는 표가 상자보다 넓어진다. overflow-hidden 이면 오른쪽 끝의
+        // '관리' 칸이 잘려 나가고, 삭제를 누르면 그 자리에 뜨는 확인·취소 버튼까지
+        // 화면 밖에 남아 되돌릴 수도 없다. 다른 관리자 표들처럼 가로로 넘긴다.
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800/80">
               <tr className="text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide">

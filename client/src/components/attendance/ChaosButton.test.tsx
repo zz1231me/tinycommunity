@@ -141,6 +141,50 @@ describe('막지 않는다 — 구조로 확인한다', () => {
   });
 });
 
+describe('카드 밖으로 밀려나지 않는다', () => {
+  // 이 버튼은 카드(overflow-hidden) 의 오른쪽 끝에 붙어 있다. 오른쪽으로 밀리면
+  // 잘려 나가고, 잘린 자리는 그려지지 않을 뿐 아니라 마우스 클릭도 받지 못한다.
+  // 그러면 '성가시게' 가 '못 누르게' 로 바뀐다.
+  function offsetX(container: HTMLElement): number {
+    const mover = (container.firstElementChild as HTMLElement)?.firstElementChild as HTMLElement;
+    const found = (mover?.style.transform ?? '').match(/translate\((-?\d+)px/);
+    return found ? Number(found[1]) : 0;
+  }
+
+  it('달아날 때 오른쪽으로는 가지 않는다', () => {
+    // 예전 판은 (random-0.5)*140 이라 이 값에서 +70px 만큼 오른쪽으로 나갔다
+    forceEffect(0.999);
+    const { container } = render(
+      <ChaosButton active>
+        <Target />
+      </ChaosButton>
+    );
+    expect(offsetX(container)).toBeLessThanOrEqual(0);
+  });
+
+  it('마우스를 올려 달아날 때도 오른쪽으로는 가지 않는다', () => {
+    forceEffect(0.999);
+    const { container } = render(
+      <ChaosButton active>
+        <Target />
+      </ChaosButton>
+    );
+    const mover = (container.firstElementChild as HTMLElement)?.firstElementChild as HTMLElement;
+    fireEvent.mouseEnter(mover);
+    expect(offsetX(container)).toBeLessThanOrEqual(0);
+  });
+
+  it('왼쪽으로도 카드를 벗어날 만큼 멀리 가지는 않는다', () => {
+    forceEffect(0.999);
+    const { container } = render(
+      <ChaosButton active>
+        <Target />
+      </ChaosButton>
+    );
+    expect(offsetX(container)).toBeGreaterThan(-140);
+  });
+});
+
 describe('연출을 걸지 않아야 할 때', () => {
   it('공격이 없으면 아무것도 감싸지 않는다', () => {
     const { container } = render(

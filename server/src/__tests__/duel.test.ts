@@ -7,6 +7,7 @@ import { PointDuel } from '../models/PointDuel';
 import { FeatureFlag } from '../models/FeatureFlag';
 import { featureFlagService } from '../services/featureFlag.service';
 import { judge } from '../config/duel';
+import { Notification } from '../models/Notification';
 
 // 포인트 대결(가위바위보).
 //
@@ -389,5 +390,60 @@ describe('기능 스위치', () => {
   it('포인트 기능 자체가 꺼지면 대결도 함께 닫힌다', async () => {
     await setFlags(false, true);
     expect((await list(aCookie)).status).toBe(403);
+  });
+});
+
+describe('알림은 사람을 이름으로 부른다', () => {
+  /** 잠깐 기다린다 — 알림은 정산과 묶지 않고 뒤따라 만들어진다 */
+  async function notificationsFor(userId: string) {
+    for (let i = 0; i < 20; i++) {
+      const rows = await Notification.findAll({ where: { userId, type: 'DUEL' } });
+      if (rows.length > 0) return rows;
+      await new Promise(r => setTimeout(r, 25));
+    }
+    return Notification.findAll({ where: { userId, type: 'DUEL' } });
+  }
+
+  beforeEach(async () => {
+    await Notification.destroy({ where: {}, truncate: true });
+  });
+
+  it('신청 알림에 로그인 아이디가 아니라 이름이 들어간다', async () => {
+    // 'duelalpha님이 신청했습니다' 는 받는 사람에게 누구인지 알려 주지 못한다
+    await grant(A, 1000);
+    await create(aCookie, { opponentId: B, stake: 100, hand: 'rock' });
+
+    const rows = await notificationsFor(B);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].message).toContain(`${A}이름`);
+    expect(rows[0].message).not.toMatch(new RegExp(`(^|[^가-힣])${A}님`));
+  });
+
+  it('결과 알림에도 이름이 들어간다', async () => {
+    await grant(A, 1000);
+    await grant(B, 1000);
+    const made = await create(aCookie, { opponentId: B, stake: 100, hand: 'rock' });
+    await Notification.destroy({ where: {}, truncate: true });
+    await accept(bCookie, made.body.data.id, 'scissors');
+
+    const rows = await notificationsFor(A);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].message).toContain(`${B}이름`);
+  });
+
+  it('시간이 지나 이미 닫힌 판을 거절해도 거절 알림은 가지 않는다', async () => {
+    // 거절당한 것이 아닌데 '거절했습니다' 가 가면 있지도 않은 일을 알리게 된다
+    await grant(A, 1000);
+    const made = await create(aCookie, { opponentId: B, stake: 100, hand: 'rock' });
+    const id = made.body.data.id;
+
+    // 상대가 거절 버튼을 누르기 직전에 만료 정리가 먼저 닫아 버린 상황
+    await PointDuel.update({ expiresAt: new Date(Date.now() - 1000) }, { where: { id } });
+    await list(bCookie); // 조회하면서 만료분이 정리된다
+    await Notification.destroy({ where: {}, truncate: true });
+
+    await decline(bCookie, id);
+    const rows = await Notification.findAll({ where: { userId: A, type: 'DUEL' } });
+    expect(rows).toHaveLength(0);
   });
 });

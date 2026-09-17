@@ -16,6 +16,7 @@ import {
   updateProfile,
 } from '../controllers/auth.controller';
 import { authenticate } from '../middlewares/auth.middleware';
+import { passwordResetRequestLimiter } from '../middlewares/bruteForceGuard';
 import { uploadAvatar } from '../middlewares/upload/avatar'; // ✅ 직접 import
 import { getOwnSessions, terminateOwnSession } from '../controllers/userSession.controller';
 
@@ -80,8 +81,12 @@ router.post('/login', validateBody(loginSchema), login);
  */
 router.post('/register', validateBody(registerSchema), register);
 router.post('/refresh', refreshToken);
+// 로그인 없이 부를 수 있는데 요청 한 번이 남에게 피해를 준다 — 대기 중인 인증번호가
+// 새로 발급되고(= 남의 재설정을 계속 무효로 만들 수 있다), 관리자마다 알림이 쌓인다.
+// 리미터가 아이디로 세므로 validateBody 앞에 둔다(본문은 이미 파싱되어 있다).
 router.post(
   '/password-reset-request',
+  passwordResetRequestLimiter,
   validateBody(passwordResetRequestSchema),
   requestPasswordReset
 );
