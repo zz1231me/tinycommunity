@@ -271,3 +271,56 @@ describe('담당자 제외', () => {
     await waitFor(() => expect(mockRemoveBoardManager).toHaveBeenCalledWith('bm-1'));
   });
 });
+
+// 이 패널은 포커스 처리를 손으로 갖고 있었다 — 첫 포커스를 닫기 단추로, ESC 로 닫기.
+// 그것을 공용 훅(useFocusTrap)으로 옮기면서 없던 Tab 가두기가 함께 붙었다.
+// 옮긴 쪽이 '같은 자리에서 시작한다' 는 것을 고정한다.
+describe('포커스', () => {
+  // 담당자 구역은 관리자에게만 보인다. 여기서 볼 것은 포커스뿐이라 일반 사용자로 두고
+  // 화면을 단순하게 유지한다.
+  beforeEach(() => {
+    useAuth.getState().setUser(makeUser());
+  });
+
+  const closeBtn = () => screen.getByRole('button', { name: '닫기' });
+
+  /** show() 와 같되 onClose 를 넘겨받는다 — ESC 가 그것을 부르는지 보려면 필요하다 */
+  const showWithClose = (onClose: () => void) =>
+    render(
+      <BoardManagePanel
+        boardType="notice"
+        initialName="공지사항"
+        initialDescription=""
+        initialTaskEnabled={false}
+        onClose={onClose}
+        onBoardUpdated={vi.fn()}
+      />
+    );
+
+  it('열면 닫기 단추에서 시작한다 — 손으로 하던 것과 같은 자리', async () => {
+    show();
+    await waitFor(() => expect(document.activeElement).toBe(closeBtn()));
+  });
+
+  it('처음에서 Shift+Tab 해도 패널 안에 머문다', async () => {
+    show();
+    await waitFor(() => expect(document.activeElement).toBe(closeBtn()));
+
+    // 마지막 요소가 무엇인지는 화면 구성에 따라 달라지므로 못 박지 않는다.
+    // 가두지 않으면 훅이 아무것도 하지 않아 닫기 단추에 그대로 남는다 — 그것을 가려낸다.
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+
+    expect(document.activeElement).not.toBe(closeBtn());
+    const panel = screen.getByRole('dialog', { name: '게시판 관리' });
+    expect(panel.contains(document.activeElement)).toBe(true);
+  });
+
+  it('ESC 를 누르면 닫는다', async () => {
+    const onClose = vi.fn();
+    showWithClose(onClose);
+    await waitFor(() => expect(document.activeElement).toBe(closeBtn()));
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});

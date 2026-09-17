@@ -14,6 +14,7 @@ import api from '../../../api/axios';
 import { formatDateTime, formatRelative, formatDate } from '../../../utils/date';
 import { User } from '../../../types/admin.types';
 import { useUserManagement } from '../../../hooks/admin/useUserManagement';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import { useAuth } from '../../../store/auth';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { AdminSection } from '../common/AdminSection';
@@ -183,15 +184,12 @@ export const UserManagement = () => {
     setResetTarget({ id, name });
   };
 
-  // ESC 로 닫기 — 이 앱의 다른 대화상자는 모두 되는데 여기만 안 됐다
-  useEffect(() => {
-    if (!resetTarget) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setResetTarget(null);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [resetTarget]);
+  // ESC 로 닫고, 열려 있는 동안 포커스를 안에 가둔다.
+  // 가두지 않으면 Tab 이 뒤쪽 사용자 표로 새어, 가려진 줄의 단추를 누르게 된다.
+  // 첫 포커스는 훅 기본값(안쪽 첫 요소)에 맡긴다 — 여기서는 그것이 코드 칸이라,
+  // 원래 autoFocus 로 시작하던 자리와 같다. 그래서 autoFocus 는 뺐다(방식은 하나로).
+  const resetPanelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(resetPanelRef, () => setResetTarget(null), !!resetTarget);
 
   const handleResetPassword = async () => {
     if (!resetTarget || resetting) return;
@@ -478,7 +476,13 @@ export const UserManagement = () => {
       {/* 비밀번호 초기화 — 관리자가 6자리 숫자 임시 비밀번호 입력 */}
       {resetTarget && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center modal-scrim p-4">
-          <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 space-y-4">
+          <div
+            ref={resetPanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="비밀번호 초기화"
+            className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 space-y-4"
+          >
             <div>
               <h3 className="card-title">비밀번호 초기화</h3>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -489,7 +493,6 @@ export const UserManagement = () => {
             <input
               type="text"
               inputMode="numeric"
-              autoFocus
               maxLength={6}
               value={resetCode}
               onChange={e => {

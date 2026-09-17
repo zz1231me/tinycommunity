@@ -6,6 +6,7 @@ import { updateBoardInfo } from '../../api/boards';
 import { toast } from '../../utils/toast';
 import { DEFAULT_TAG_COLOR, TAG_COLOR_PALETTE, suggestTagColor } from '../../constants/colors';
 import { ConfirmationModal } from '../admin/common/ConfirmationModal';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useAuth } from '../../store/auth';
 import { fetchAdminUsers } from '../../api/admin';
 import { getBoardManagers, addBoardManager, removeBoardManager } from '../../api/boardManagers';
@@ -103,20 +104,16 @@ export function BoardManagePanel({
   // 요청의 응답을 스스로 버린다. 키를 한 글자 더 쳐도 같은 일이 일어난다.
   const candidatesLoadedRef = useRef(false);
 
+  const panelRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
-  // 접근성: ESC 닫기 + 첫 포커스
-  useEffect(() => {
-    const t = setTimeout(() => closeBtnRef.current?.focus(), 0);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => {
-      clearTimeout(t);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [onClose]);
+  // 접근성: ESC 닫기 + 첫 포커스(닫기 단추) + Tab 가두기.
+  // 손으로 하던 앞의 둘을 공용 훅으로 옮기고, 없던 가두기를 함께 얻는다.
+  // 부모(PostList)가 열 때만 그리므로 항상 켠다.
+  //
+  // 맨 아래 확인 대화상자 둘은 이 패널 바깥(오버레이 밑)에 그려진다. 그래서 가두기의
+  // 대상에서 빠지고, 그쪽이 뜨면 자기 단추 둘을 따로 가둔다 — 서로 싸우지 않는다.
+  useFocusTrap(panelRef, onClose, true, closeBtnRef);
 
   useEffect(() => {
     let mounted = true;
@@ -326,6 +323,7 @@ export function BoardManagePanel({
       role="presentation"
     >
       <motion.div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="게시판 관리"
