@@ -61,6 +61,12 @@ export const NOTIFICATION_KINDS = {
     defaultEnabled: true,
     configurable: true,
   },
+  ATTACK: {
+    label: '퇴근 공격',
+    description: '누가 나에게 퇴근 공격권을 쓰거나, 내 공격을 상대가 방어하면 알립니다.',
+    defaultEnabled: true,
+    configurable: true,
+  },
   SYSTEM: {
     label: '운영 공지',
     description: '점검·계정 관련 안내입니다. 끌 수 없습니다.',

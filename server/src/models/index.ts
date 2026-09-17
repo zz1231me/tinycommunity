@@ -48,6 +48,7 @@ import { TempShare } from './TempShare';
 import { AttendanceRecord } from './AttendanceRecord';
 import { AttendanceChecklistItem } from './AttendanceChecklistItem';
 import { AttendancePolicy } from './AttendancePolicy';
+import { AttendanceAttack } from './AttendanceAttack';
 
 // User 관련 관계
 
@@ -387,6 +388,10 @@ User.hasMany(AttendanceRecord, {
 });
 AttendanceRecord.belongsTo(User, { foreignKey: 'UserId', as: 'user' });
 
+// 퇴근 공격도 사람 둘을 가리킨다 — 누가 걸었는지 이름을 보여 줘야 한다
+AttendanceAttack.belongsTo(User, { foreignKey: 'attackerId', as: 'attacker' });
+AttendanceAttack.belongsTo(User, { foreignKey: 'targetId', as: 'target' });
+
 // 포인트 관련 관계
 User.hasOne(UserPoint, { foreignKey: 'UserId', as: 'point', onDelete: 'CASCADE', hooks: true });
 UserPoint.belongsTo(User, { foreignKey: 'UserId', as: 'user' });
@@ -540,6 +545,7 @@ export {
   AttendanceRecord,
   AttendanceChecklistItem,
   AttendancePolicy,
+  AttendanceAttack,
 };
 
 // 데이터베이스 동기화 헬퍼

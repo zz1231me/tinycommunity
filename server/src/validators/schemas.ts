@@ -149,6 +149,11 @@ export const duelAcceptSchema = z.object({
   hand: z.enum(DUEL_HANDS),
 });
 
+/** 퇴근 공격권을 쓸 대상 */
+export const attendanceAttackSchema = z.object({
+  targetId: z.string().trim().min(1, '대상을 골라주세요.').max(50),
+});
+
 export const attendanceCheckInSchema = z.object({
   responses: z
     .array(z.object({ itemId: z.number().int().min(1).max(2147483647), checked: z.boolean() }))

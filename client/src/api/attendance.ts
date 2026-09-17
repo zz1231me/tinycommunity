@@ -27,6 +27,46 @@ export const checkIn = async (payload: {
 export const checkOut = async (): Promise<AttendanceRecord> =>
   unwrap(await api.post('/attendance/check-out'));
 
+// ── 퇴근 공격권·방어권 ─────────────────────────────────────────────────────
+//
+// 공격은 화면의 버튼만 잠근다. 기록되는 퇴근 시각은 실제로 누른 순간 그대로다 —
+// 서버의 퇴근 경로는 이 기능을 쳐다보지도 않는다.
+
+export interface AttackRules {
+  cost: number;
+  defendCost: number;
+  /** 화면에서 버튼이 잠겨 보이는 시간(초) */
+  blockSeconds: number;
+  dailyLimit: number;
+}
+
+export interface IncomingAttack {
+  id: number;
+  attackerId: string;
+  attackerName: string;
+  expiresAt: string;
+}
+
+export interface AttackState {
+  rules: AttackRules;
+  balance: number;
+  /** 지금 나에게 걸린 공격 (없으면 null) */
+  incoming: IncomingAttack | null;
+  usedToday: number;
+  remainingToday: number;
+}
+
+export const fetchAttackState = async (): Promise<AttackState> =>
+  unwrap(await api.get('/attendance/attack'));
+
+export const sendAttack = async (
+  targetId: string
+): Promise<{ id: number; targetId: string; expiresAt: string }> =>
+  unwrap(await api.post('/attendance/attack', { targetId }));
+
+export const sendDefend = async (id: number): Promise<{ id: number }> =>
+  unwrap(await api.post(`/attendance/attack/${id}/defend`));
+
 // ── 관리자 ────────────────────────────────────────────────────────────────
 
 export interface RecordQuery {

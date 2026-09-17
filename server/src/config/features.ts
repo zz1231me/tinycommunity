@@ -209,6 +209,15 @@ export const FEATURES = {
     group: 'tools',
     defaultEnabled: true,
   },
+  'tools.attendanceAttack': {
+    label: '퇴근 공격권·방어권',
+    description:
+      '포인트로 공격권을 사서 남의 퇴근 버튼을 잠깐 잠급니다. 화면에서만 잠기고 기록되는 퇴근 시각은 실제로 누른 순간 그대로입니다. 받은 사람은 방어권을 사서 바로 풀 수 있습니다.',
+    group: 'tools',
+    defaultEnabled: false,
+    // 출퇴근 기록이 없으면 잠글 버튼이 없고, 포인트가 없으면 살 수 없다
+    requires: ['tools.attendance', 'tools.lottery'],
+  },
   'tools.tempShare': {
     label: '임시 파일 공유',
     description: '기한이 지나면 사라지는 링크로 파일을 건네줍니다.',

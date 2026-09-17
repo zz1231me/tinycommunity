@@ -16,12 +16,18 @@ import { attendanceKeys } from '../../api/queryKeys';
 import {
   checkIn as requestCheckIn,
   checkOut as requestCheckOut,
+  fetchAttackState,
   fetchMyAttendance,
   fetchMyAttendanceHistory,
+  sendAttack,
+  sendDefend,
 } from '../../api/attendance';
+import { AttackBanner, AttackLauncher } from '../../components/attendance/AttendanceAttack';
 import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
 import { useSubmitLock } from '../../hooks/useSubmitLock';
+import { useFeature } from '../../store/features';
+import { useAuth } from '../../store/auth';
 import {
   formatClock,
   formatDay,
@@ -94,6 +100,45 @@ export default function AttendancePage() {
     onError: err => toast.error(getApiErrorMessage(err, '퇴근을 기록하지 못했습니다.')),
   });
 
+  // ── 퇴근 공격 ──
+  // 잠기는 것은 아래 퇴근 버튼뿐이다. 서버의 퇴근 기록은 이 상태를 보지 않으므로,
+  // 어떤 경로로든 퇴근을 찍으면 그 순간이 그대로 기록된다.
+  const attackEnabled = useFeature('tools.attendanceAttack');
+  const { getUser } = useAuth();
+  const myId = getUser()?.id ?? '';
+
+  const attack = useQuery({
+    queryKey: attendanceKeys.attack,
+    queryFn: fetchAttackState,
+    enabled: attackEnabled,
+    // 걸린 공격은 1분이면 저절로 풀린다 — 짧은 주기로 다시 물어본다
+    refetchInterval: 20_000,
+  });
+
+  const refreshAttack = () => queryClient.invalidateQueries({ queryKey: attendanceKeys.attack });
+
+  const defendMutation = useMutation({
+    mutationFn: sendDefend,
+    onSuccess: () => {
+      refreshAttack();
+      toast.success('방어했습니다. 퇴근 버튼이 풀렸습니다.');
+    },
+    onError: err => toast.error(getApiErrorMessage(err, '방어하지 못했습니다.')),
+  });
+
+  const attackMutation = useMutation({
+    mutationFn: sendAttack,
+    onSuccess: () => {
+      refreshAttack();
+      toast.success('공격권을 사용했습니다.');
+    },
+    onError: err => toast.error(getApiErrorMessage(err, '공격권을 사용하지 못했습니다.')),
+  });
+
+  const incoming = attack.data?.incoming ?? null;
+  // 서버가 준 만료 시각으로 직접 판단한다 — 이미 지난 공격을 아직 받아 오지 않았을 수 있다
+  const blocked = Boolean(incoming && new Date(incoming.expiresAt).getTime() > Date.now());
+
   const record = status.data?.record ?? null;
   const openPrevious = status.data?.openPrevious ?? null;
   // 자정을 넘겨 이어지는 기록이 있으면 그것이 지금 살아 있는 기록이다.
@@ -130,6 +175,17 @@ export default function AttendancePage() {
             </div>
           )}
 
+          {attackEnabled && incoming && blocked && attack.data && (
+            <AttackBanner
+              incoming={incoming}
+              defendCost={attack.data.rules.defendCost}
+              balance={attack.data.balance}
+              defending={defendMutation.isPending}
+              onDefend={() => defendMutation.mutate(incoming.id)}
+              onExpire={refreshAttack}
+            />
+          )}
+
           <TodayHero
             workDate={serverToday}
             record={live}
@@ -137,7 +193,7 @@ export default function AttendancePage() {
             // 어제 퇴근을 안 찍었어도 오늘 출근은 따로 찍는다. 막으면 어제 것을
             // 먼저 마감해야 하고, 그 시각이 오늘이라 없던 밤샘 근무가 생긴다.
             canCheckIn={!record}
-            canCheckOut={Boolean(live && !live.checkOutAt)}
+            canCheckOut={Boolean(live && !live.checkOutAt) && !blocked}
             checkingOut={checkOutMutation.isPending}
             onCheckIn={() => setDialogOpen(true)}
             onCheckOut={() => runOnce(() => checkOutMutation.mutateAsync().catch(() => {}))}
@@ -170,6 +226,15 @@ export default function AttendancePage() {
             </section>
           )}
         </>
+      )}
+
+      {attackEnabled && attack.data && (
+        <AttackLauncher
+          state={attack.data}
+          myId={myId}
+          sending={attackMutation.isPending}
+          onAttack={targetId => attackMutation.mutate(targetId)}
+        />
       )}
 
       <section

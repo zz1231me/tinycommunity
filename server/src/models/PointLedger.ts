@@ -27,7 +27,15 @@ import { sequelize } from '../config/sequelize';
  * 나중에 "이 판에서 오간 게 얼마인지" 를 내역에서 되짚을 수 없다.
  */
 export type PointReason =
-  'lottery' | 'lottery_cost' | 'attendance' | 'admin' | 'duel_stake' | 'duel_win' | 'duel_refund';
+  | 'lottery'
+  | 'lottery_cost'
+  | 'attendance'
+  | 'admin'
+  | 'duel_stake'
+  | 'duel_win'
+  | 'duel_refund'
+  | 'attack_cost'
+  | 'defend_cost';
 
 class PointLedgerModel extends Model<
   InferAttributes<PointLedgerModel>,

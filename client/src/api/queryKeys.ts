@@ -94,6 +94,8 @@ export const attendanceKeys = {
   all: ['attendance'] as const,
   me: ['attendance', 'me'] as const,
   history: (month: string) => ['attendance', 'history', month] as const,
+  /** 퇴근 공격 — 지금 나에게 걸린 것이 있는지 */
+  attack: ['attendance', 'attack'] as const,
 } as const;
 
 export const adminKeys = {
