@@ -299,3 +299,26 @@ describe('기능 스위치', () => {
     expect((await checkOut(tgtCookie)).status).toBe(200);
   });
 });
+
+describe('언제 근무 중으로 보는가', () => {
+  it('며칠 전 안 닫힌 기록으로는 공격 대상이 되지 않는다', async () => {
+    // 퇴근을 한 번 깜빡하면 그 기록은 영영 닫히지 않는다 — checkOut 은 오늘 것이거나
+    // 자정을 넘긴 어제 것만 닫는다. 근무일을 묶지 않으면 그 사람은 그날 이후로
+    // 새벽이든 주말이든 24시간 내내 공격받을 수 있다.
+    await grant(ATK, 5000);
+    const stale = new Date(Date.now() - 3 * 86_400_000);
+    stale.setSeconds(0, 0);
+    await AttendanceRecord.create({ UserId: TGT, workDate: today(stale), checkInAt: stale });
+
+    const res = await attack(atkCookie, TGT);
+    expect(res.status).toBe(400);
+    // 거절당한 공격으로 포인트가 빠지면 안 된다
+    expect(await balanceOf(ATK)).toBe(5000);
+  });
+
+  it('오늘 출근했으면 공격 대상이 된다', async () => {
+    await grant(ATK, 5000);
+    await startWorking(TGT);
+    expect((await attack(atkCookie, TGT)).status).toBe(200);
+  });
+});
