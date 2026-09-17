@@ -67,7 +67,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           >
             <h3
               id="confirmation-modal-title"
-              className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-2"
+              className="card-title mb-2"
             >
               {title}
             </h3>

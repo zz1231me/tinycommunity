@@ -938,7 +938,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                 />
               </svg>
             </div>
-            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-1">
+            <h3 className="card-title mb-1">
               로그인이 필요합니다
             </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">

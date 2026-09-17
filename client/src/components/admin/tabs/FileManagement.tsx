@@ -284,7 +284,7 @@ export const FileManagement = React.memo(() => {
           >
             <h3
               id="delete-file-title"
-              className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-2"
+              className="card-title mb-2"
             >
               파일 삭제 확인
             </h3>

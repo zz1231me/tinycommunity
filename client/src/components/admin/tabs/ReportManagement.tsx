@@ -271,7 +271,7 @@ export const ReportManagement = React.memo(() => {
           >
             <h3
               id="review-report-title"
-              className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4"
+              className="card-title mb-4"
             >
               신고 처리
             </h3>
