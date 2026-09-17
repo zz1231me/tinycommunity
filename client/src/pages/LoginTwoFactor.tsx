@@ -110,11 +110,11 @@ export default function LoginTwoFactor() {
               type="submit"
               disabled={isLoading || token.length !== 6}
               className="
-                w-full py-4 px-6 text-white font-semibold rounded-xl
+                w-full py-3 px-4 text-white text-sm font-semibold rounded-lg
                 bg-primary-600 hover:bg-primary-700
-                focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
+                focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2
                 disabled:opacity-50 disabled:cursor-not-allowed
-                transition-all duration-200
+                transition-colors duration-150
               "
             >
               {isLoading ? (
@@ -130,11 +130,7 @@ export default function LoginTwoFactor() {
             <button
               type="button"
               onClick={handleCancel}
-              className="
-                w-full py-3 px-6 text-slate-700 dark:text-slate-300 font-medium rounded-xl
-                bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600
-                transition-all duration-200
-              "
+              className="btn-secondary w-full"
             >
               취소
             </button>

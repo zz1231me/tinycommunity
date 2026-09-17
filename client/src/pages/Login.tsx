@@ -269,7 +269,7 @@ function Login() {
                   required
                   autoComplete="current-password"
                   placeholder="비밀번호를 입력하세요"
-                  className="w-full px-4 py-3 pr-11 rounded-xl
+                  className="w-full px-4 py-3 pr-11 rounded-lg
                              bg-slate-50 dark:bg-slate-800
                              border border-slate-200 dark:border-slate-700
                              text-slate-900 dark:text-slate-100 text-sm

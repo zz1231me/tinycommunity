@@ -215,7 +215,7 @@ export const ErrorLogManagement = () => {
                 setFilterDateFrom('');
                 setFilterDateTo('');
               }}
-              className="px-4 py-1.5 bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-sm hover:bg-slate-300 dark:hover:bg-slate-500"
+              className="btn-secondary btn-sm"
             >
               초기화
             </button>
