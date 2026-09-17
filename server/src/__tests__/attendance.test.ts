@@ -480,3 +480,44 @@ describe('기준 설정', () => {
     await setPolicy({ requireChecklist: true });
   });
 });
+
+// 기록되는 시각.
+//
+// 화면은 분까지만 보여 주는데 저장은 초까지 하고 있었다. 09:59:09 에 누른 사람과
+// 09:59:41 에 누른 사람이 화면에서는 같은 09:59 인데 데이터로는 갈렸다.
+describe('기록되는 시각', () => {
+  beforeAll(async () => {
+    await setPolicy({ requireChecklist: false });
+  });
+
+  afterAll(async () => {
+    await setPolicy({ requireChecklist: true });
+  });
+
+  it('출근·퇴근 시각은 초를 버리고 분 단위로 남는다', async () => {
+    await AttendanceRecord.destroy({ where: { UserId: 'attworker3' } });
+
+    expect((await checkIn(cookies.attworker3, {})).status).toBe(201);
+    expect((await checkOut(cookies.attworker3)).status).toBe(200);
+
+    const row = await AttendanceRecord.findOne({ where: { UserId: 'attworker3' } });
+    expect(row?.checkInAt.getSeconds()).toBe(0);
+    expect(row?.checkInAt.getMilliseconds()).toBe(0);
+    expect(row?.checkOutAt?.getSeconds()).toBe(0);
+    expect(row?.checkOutAt?.getMilliseconds()).toBe(0);
+  });
+
+  it('두 시각의 간격은 정확히 분의 배수다 — 반올림이 끼어들 여지가 없다', async () => {
+    // 한쪽만 자르면 간격에 최대 59초가 끼어들어 elapsedMinutes 의 반올림이
+    // 1분을 더하거나 뺀다. 그 여지 자체가 없어야 한다.
+    await AttendanceRecord.destroy({ where: { UserId: 'attworker2' } });
+
+    expect((await checkIn(cookies.attworker2, {})).status).toBe(201);
+    expect((await checkOut(cookies.attworker2)).status).toBe(200);
+
+    const row = await AttendanceRecord.findOne({ where: { UserId: 'attworker2' } });
+    const gap = (row?.checkOutAt?.getTime() ?? 0) - (row?.checkInAt?.getTime() ?? 0);
+    expect(gap % 60_000).toBe(0);
+    expect(row?.workMinutes).toBe(gap / 60_000);
+  });
+});

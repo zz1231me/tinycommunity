@@ -96,6 +96,22 @@ function elapsedMinutes(from: Date, to: Date): number {
   return Math.max(0, Math.round((to.getTime() - from.getTime()) / 60000));
 }
 
+/**
+ * 초를 버려 분 단위로 맞춘다. 09:59:09 에 눌러도 09:59:00 으로 남는다.
+ *
+ * 화면은 분까지만 보여 주는데 저장은 초까지 하고 있었다. 같은 분에 누른 두 기록이
+ * 실제로는 수십 초 어긋난 채 남아, 같은 시각으로 보이는데 정렬이나 계산에서는 갈렸다.
+ *
+ * 출근과 퇴근 양쪽에 적용한다. 한쪽만 자르면 간격에 최대 59초가 끼어들어
+ * elapsedMinutes 의 반올림이 1분을 더하거나 뺀다. 둘 다 자르면 간격이 정확히
+ * 분의 배수라 반올림이 개입할 여지가 없다.
+ */
+function atMinute(d: Date): Date {
+  const copy = new Date(d);
+  copy.setSeconds(0, 0);
+  return copy;
+}
+
 function toRecordView(record: AttendanceRecord, userName?: string): RecordView {
   return {
     id: record.id,
@@ -232,7 +248,7 @@ export class AttendanceService extends BaseService {
       checked: answered.get(i.id) === true,
     }));
 
-    const now = new Date();
+    const now = atMinute(new Date());
 
     try {
       const record = await AttendanceRecord.create({
@@ -263,7 +279,7 @@ export class AttendanceService extends BaseService {
     if (!record) throw new AppError(400, '출근 기록이 없습니다. 출근을 먼저 눌러주세요.');
     if (record.checkOutAt) throw new AppError(409, '오늘 퇴근은 이미 기록되어 있습니다.');
 
-    const now = new Date();
+    const now = atMinute(new Date());
 
     // 두 번 눌렀을 때 뒤에 온 요청이 시각을 덮어쓰지 않도록 조건부로 갱신한다.
     const [affected] = await AttendanceRecord.update(
