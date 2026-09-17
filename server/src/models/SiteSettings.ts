@@ -8,6 +8,8 @@ import {
 } from 'sequelize';
 import { sequelize } from '../config/sequelize';
 import { LOTTERY_DEFAULTS } from '../config/lottery';
+import { DUEL_DEFAULTS } from '../config/duel';
+import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
 
 export interface SiteSettingsInstance extends Model<
   InferAttributes<SiteSettingsInstance>,
@@ -67,6 +69,15 @@ export interface SiteSettingsInstance extends Model<
   lotteryDailyLimit: CreationOptional<number>;
   lotteryDrawCost: CreationOptional<number>;
   attendanceBonus: CreationOptional<number>;
+  duelMinStake: CreationOptional<number>;
+  duelMaxStake: CreationOptional<number>;
+  duelExpireMinutes: CreationOptional<number>;
+  duelMaxOpenPerUser: CreationOptional<number>;
+  attackCost: CreationOptional<number>;
+  attackPopupCost: CreationOptional<number>;
+  attackDefendCost: CreationOptional<number>;
+  attackBlockSeconds: CreationOptional<number>;
+  attackDailyLimit: CreationOptional<number>;
   // ── 신규 (관리자 조정 가능) ────────────────────────────────────────────────
   memoMaxPerUser: CreationOptional<number>;
   /** 사이드바에서 위키가 게시판 목록 몇 번째에 오는지 */
@@ -140,6 +151,15 @@ export class SiteSettings
   declare public lotteryDailyLimit: CreationOptional<number>;
   declare public lotteryDrawCost: CreationOptional<number>;
   declare public attendanceBonus: CreationOptional<number>;
+  declare public duelMinStake: CreationOptional<number>;
+  declare public duelMaxStake: CreationOptional<number>;
+  declare public duelExpireMinutes: CreationOptional<number>;
+  declare public duelMaxOpenPerUser: CreationOptional<number>;
+  declare public attackCost: CreationOptional<number>;
+  declare public attackPopupCost: CreationOptional<number>;
+  declare public attackDefendCost: CreationOptional<number>;
+  declare public attackBlockSeconds: CreationOptional<number>;
+  declare public attackDailyLimit: CreationOptional<number>;
   declare public memoMaxPerUser: CreationOptional<number>;
   declare public wikiOrder: CreationOptional<number>;
   declare public commentContentMaxLength: CreationOptional<number>;
@@ -491,6 +511,63 @@ SiteSettings.init(
       allowNull: false,
       defaultValue: LOTTERY_DEFAULTS.attendanceBonus,
       field: 'attendance_bonus',
+    },
+    // ── 포인트 대결 ─────────────────────────────────────────────────────────
+    // 뽑기와 같은 이유로 관리자 설정에 둔다. 판돈을 바꾸려고 배포할 수는 없다.
+    duelMinStake: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: DUEL_DEFAULTS.minStake,
+      field: 'duel_min_stake',
+    },
+    duelMaxStake: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: DUEL_DEFAULTS.maxStake,
+      field: 'duel_max_stake',
+    },
+    duelExpireMinutes: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: DUEL_DEFAULTS.expireMinutes,
+      field: 'duel_expire_minutes',
+    },
+    duelMaxOpenPerUser: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: DUEL_DEFAULTS.maxOpenPerUser,
+      field: 'duel_max_open_per_user',
+    },
+    // ── 퇴근 공격 ───────────────────────────────────────────────────────────
+    attackCost: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: ATTACK_DEFAULTS.cost,
+      field: 'attack_cost',
+    },
+    attackPopupCost: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: ATTACK_DEFAULTS.popupCost,
+      field: 'attack_popup_cost',
+    },
+    attackDefendCost: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: ATTACK_DEFAULTS.defendCost,
+      field: 'attack_defend_cost',
+    },
+    attackBlockSeconds: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: ATTACK_DEFAULTS.blockSeconds,
+      field: 'attack_block_seconds',
+    },
+    attackDailyLimit: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: ATTACK_DEFAULTS.dailyLimitPerAttacker,
+      field: 'attack_daily_limit',
     },
     // ── 신규 (관리자 조정 가능) ────────────────────────────────────────────
     memoMaxPerUser: {

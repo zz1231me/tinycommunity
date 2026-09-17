@@ -21,11 +21,10 @@ import UserPointModel from '../models/UserPoint';
 import { User } from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
 import { apply, ensureBalanceRow, lockBalance, withLockRetry } from './point.service';
-import { DUEL_RULES, judge } from '../config/duel';
+import { judge } from '../config/duel';
+import { getDuelSettings } from '../utils/settingsCache';
 import { notificationService } from './notification.service';
 import { logError } from '../utils/logger';
-
-const EXPIRE_MS = DUEL_RULES.expireMinutes * 60_000;
 
 /** 목록에 이름을 함께 보여 주려면 양쪽 사람을 조인해야 한다 */
 const withUsers = [
@@ -138,6 +137,34 @@ async function sweepExpired(userId: string): Promise<void> {
   }
 }
 
+/**
+ * 시간이 지난 판을 사람 가리지 않고 걷어 낸다. 서버가 주기적으로 부른다.
+ *
+ * sweepExpired 는 화면을 연 사람이 걸린 판만 정리한다. 그래서 신청자도 상대도
+ * 한동안 접속하지 않으면 맡긴 포인트가 계속 묶여 있다 — 휴가나 퇴사면 영영 묶인다.
+ * 그 구멍을 메우려고 서버가 스스로도 한 번씩 훑는다.
+ *
+ * 한 번에 걷는 양에 상한을 둔다. 밀린 것이 많아도 한 주기에 다 하려다 DB 를
+ * 오래 붙잡는 것보다, 몇 주기에 나눠 끝내는 편이 낫다.
+ */
+export async function sweepAllExpiredDuels(limit = 200): Promise<number> {
+  const stale = await PointDuel.findAll({
+    where: { status: 'waiting', expiresAt: { [Op.lt]: new Date() } },
+    attributes: ['id'],
+    limit,
+  });
+
+  let closed = 0;
+  for (const row of stale) {
+    try {
+      if (await closeWithRefund(row.id, '대결 시간 초과 환불')) closed++;
+    } catch (err) {
+      logError('만료된 대결 환불 실패', err, { duelId: row.id });
+    }
+  }
+  return closed;
+}
+
 /** 알림은 판의 정산과 묶지 않는다 — 알림이 실패해도 포인트는 이미 옳게 움직였다 */
 function notify(userId: string, message: string, duelId: number): void {
   void notificationService
@@ -161,6 +188,7 @@ export const duelService = {
   /** 화면에 필요한 현재 상태 */
   async status(userId: string) {
     await sweepExpired(userId);
+    const rules = getDuelSettings();
 
     const [balanceRow, incoming, outgoing, recent] = await Promise.all([
       UserPointModel.findByPk(userId, { attributes: ['UserId', 'balance'] }),
@@ -168,13 +196,13 @@ export const duelService = {
         where: { opponentId: userId, status: 'waiting' },
         include: withUsers,
         order: [['id', 'DESC']],
-        limit: DUEL_RULES.maxOpenPerUser * 5,
+        limit: rules.maxOpenPerUser * 5,
       }),
       PointDuel.findAll({
         where: { challengerId: userId, status: 'waiting' },
         include: withUsers,
         order: [['id', 'DESC']],
-        limit: DUEL_RULES.maxOpenPerUser,
+        limit: rules.maxOpenPerUser,
       }),
       PointDuel.findAll({
         where: {
@@ -190,10 +218,10 @@ export const duelService = {
     return {
       balance: balanceRow?.balance ?? 0,
       rules: {
-        minStake: DUEL_RULES.minStake,
-        maxStake: DUEL_RULES.maxStake,
-        expireMinutes: DUEL_RULES.expireMinutes,
-        maxOpenPerUser: DUEL_RULES.maxOpenPerUser,
+        minStake: rules.minStake,
+        maxStake: rules.maxStake,
+        expireMinutes: rules.expireMinutes,
+        maxOpenPerUser: rules.maxOpenPerUser,
       },
       incoming: incoming.map(d => view(d, userId)),
       outgoing: outgoing.map(d => view(d, userId)),
@@ -212,15 +240,16 @@ export const duelService = {
     input: { opponentId: string; stake: number; hand: DuelHand }
   ): Promise<DuelView> {
     const { opponentId, stake, hand } = input;
+    const rules = getDuelSettings();
 
     if (opponentId === challengerId) {
       throw new AppError(400, '자기 자신에게는 대결을 신청할 수 없습니다.');
     }
     // 스키마에서도 막지만 서비스에서도 확인한다 — 이 서비스를 다른 데서 부를 수 있다
-    if (!Number.isInteger(stake) || stake < DUEL_RULES.minStake || stake > DUEL_RULES.maxStake) {
+    if (!Number.isInteger(stake) || stake < rules.minStake || stake > rules.maxStake) {
       throw new AppError(
         400,
-        `걸 수 있는 포인트는 ${DUEL_RULES.minStake.toLocaleString()}~${DUEL_RULES.maxStake.toLocaleString()}P 입니다.`
+        `걸 수 있는 포인트는 ${rules.minStake.toLocaleString()}~${rules.maxStake.toLocaleString()}P 입니다.`
       );
     }
 
@@ -240,10 +269,10 @@ export const duelService = {
           where: { challengerId, status: 'waiting' },
           transaction: t,
         });
-        if (open >= DUEL_RULES.maxOpenPerUser) {
+        if (open >= rules.maxOpenPerUser) {
           throw new AppError(
             429,
-            `동시에 걸어 둘 수 있는 대결은 ${DUEL_RULES.maxOpenPerUser}판까지입니다.`
+            `동시에 걸어 둘 수 있는 대결은 ${rules.maxOpenPerUser}판까지입니다.`
           );
         }
 
@@ -267,7 +296,7 @@ export const duelService = {
             opponentId,
             stake,
             challengerHand: hand,
-            expiresAt: new Date(Date.now() + EXPIRE_MS),
+            expiresAt: new Date(Date.now() + rules.expireMinutes * 60_000),
           },
           { transaction: t }
         );

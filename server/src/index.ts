@@ -109,6 +109,7 @@ import {
   widenGrowingEnums,
 } from './config/bootstrap';
 import { refreshUploaders } from './middlewares/upload/refresh';
+import { sweepAllExpiredDuels } from './services/duel.service';
 
 const app = express();
 const PORT = env.PORT;
@@ -668,6 +669,12 @@ const startServer = async () => {
     // 임시 공유 파일 정리 (시작 시 1회 + 2분 주기) — 만료(기본 15분) 링크의 디스크 파일·레코드 삭제
     void cleanupExpiredTempShares();
     setInterval(() => void cleanupExpiredTempShares(), 2 * 60 * 1000);
+
+    // 만료된 포인트 대결 환불 (시작 시 1회 + 2분 주기).
+    // 걸어 둔 포인트는 판이 닫혀야 돌아온다. 화면을 여는 사람만 정리하면
+    // 양쪽 다 접속하지 않는 판의 포인트가 묶인 채 남는다.
+    void sweepAllExpiredDuels();
+    setInterval(() => void sweepAllExpiredDuels(), 2 * 60 * 1000);
 
     httpServer = app.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 API 서버 시작: http://0.0.0.0:${PORT}`);

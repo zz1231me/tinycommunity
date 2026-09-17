@@ -8,7 +8,7 @@ import { AttendanceRecord } from '../models/AttendanceRecord';
 import { FeatureFlag } from '../models/FeatureFlag';
 import { featureFlagService } from '../services/featureFlag.service';
 import { today } from '../services/point.service';
-import { ATTACK_RULES } from '../config/attendanceAttack';
+import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
 
 // 퇴근 쪽지(popup 공격).
 //
@@ -103,7 +103,7 @@ describe('쪽지 보내기', () => {
     const res = await send(atkCookie, { targetId: TGT, kind: 'popup', message: '안돼요' });
     expect(res.status).toBe(200);
     expect(res.body.data.kind).toBe('popup');
-    expect(await balanceOf(ATK)).toBe(1000 - ATTACK_RULES.popupCost);
+    expect(await balanceOf(ATK)).toBe(1000 - ATTACK_DEFAULTS.popupCost);
   });
 
   it('받는 사람 화면에 보낸 사람과 함께 뜬다', async () => {
@@ -154,7 +154,7 @@ describe('쪽지 보내기', () => {
   it('하루 한도는 방해와 쪽지를 합쳐서 센다', async () => {
     await grant(ATK, 100_000);
     await startWorking(TGT);
-    for (let i = 0; i < ATTACK_RULES.dailyLimitPerAttacker; i++) {
+    for (let i = 0; i < ATTACK_DEFAULTS.dailyLimitPerAttacker; i++) {
       await AttendanceAttack.create({
         attackerId: ATK,
         targetId: THIRD,
@@ -232,6 +232,6 @@ describe('방해와 쪽지는 서로 다른 칸이다', () => {
     const res = await send(atkCookie, { targetId: TGT });
     expect(res.status).toBe(200);
     expect(res.body.data.kind).toBe('chaos');
-    expect(await balanceOf(ATK)).toBe(1000 - ATTACK_RULES.cost);
+    expect(await balanceOf(ATK)).toBe(1000 - ATTACK_DEFAULTS.cost);
   });
 });

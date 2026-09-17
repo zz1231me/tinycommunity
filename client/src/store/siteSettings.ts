@@ -58,6 +58,23 @@ export interface SiteSettings {
   lotteryDailyLimit: number;
   lotteryDrawCost: number;
   attendanceBonus: number;
+  /** 포인트 대결 — 한 판에 걸 수 있는 금액의 아래위 */
+  duelMinStake: number;
+  duelMaxStake: number;
+  /** 상대가 답하지 않으면 무효가 되기까지의 시간(분) */
+  duelExpireMinutes: number;
+  /** 한 사람이 동시에 걸어 둘 수 있는 판 수 */
+  duelMaxOpenPerUser: number;
+  /** 퇴근 방해 한 장 값 */
+  attackCost: number;
+  /** 쪽지 한 장 값 */
+  attackPopupCost: number;
+  /** 방어권 한 장 값 */
+  attackDefendCost: number;
+  /** 퇴근 버튼이 말을 안 듣는 시간(초) */
+  attackBlockSeconds: number;
+  /** 한 사람이 하루에 쓸 수 있는 공격 횟수 */
+  attackDailyLimit: number;
   // ── 계정/잠금 설정 ─────────────────────────────────────────────────────────
   maxLoginAttempts: number;
   accountLockMinutes: number;
@@ -164,6 +181,17 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   lotteryDailyLimit: 10,
   lotteryDrawCost: 0,
   attendanceBonus: 500,
+  // 서버 config/duel.ts · config/attendanceAttack.ts 의 기본값과 같은 값이다.
+  // 서버 응답이 오기 전 잠깐만 쓰이고 곧 덮어써진다.
+  duelMinStake: 10,
+  duelMaxStake: 10000,
+  duelExpireMinutes: 10,
+  duelMaxOpenPerUser: 3,
+  attackCost: 300,
+  attackPopupCost: 150,
+  attackDefendCost: 200,
+  attackBlockSeconds: 60,
+  attackDailyLimit: 5,
   // 계정/잠금 설정 기본값
   maxLoginAttempts: 5,
   accountLockMinutes: 30,

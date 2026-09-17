@@ -116,8 +116,12 @@ export default function AttendancePage() {
     queryKey: attendanceKeys.attack,
     queryFn: fetchAttackState,
     enabled: attackEnabled,
-    // 걸린 공격은 1분이면 저절로 풀린다 — 짧은 주기로 다시 물어본다
-    refetchInterval: 20_000,
+    // 걸린 공격은 1분이면 저절로 풀리니 짧은 주기로 물어봐야 한다. 다만 근무 중일
+    // 때만 묻는다 — 출근 전이거나 이미 퇴근했으면 방해받을 버튼 자체가 없다.
+    refetchInterval: () => {
+      const live = status.data?.record ?? status.data?.openPrevious ?? null;
+      return live && !live.checkOutAt ? 20_000 : false;
+    },
   });
 
   const refreshAttack = () => queryClient.invalidateQueries({ queryKey: attendanceKeys.attack });

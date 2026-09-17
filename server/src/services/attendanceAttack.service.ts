@@ -19,11 +19,12 @@ import { User } from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
 import { apply, ensureBalanceRow, lockBalance, today, withLockRetry } from './point.service';
 import {
-  ATTACK_RULES,
-  attackCost,
+  ATTACK_MESSAGE_MAX,
+  ATTACK_POPUP_WINDOW_MINUTES,
   isAttackKind,
   type AttackKind,
 } from '../config/attendanceAttack';
+import { getAttackSettings } from '../utils/settingsCache';
 import { notificationService } from './notification.service';
 import { logError } from '../utils/logger';
 
@@ -87,6 +88,7 @@ function notify(userId: string, message: string, attackId: number): void {
 export const attendanceAttackService = {
   /** 출근 화면이 물어보는 것 — 나에게 걸린 방해·기다리는 쪽지·내가 남은 횟수 */
   async state(userId: string) {
+    const rules = getAttackSettings();
     const [chaos, popup, balanceRow, usedToday] = await Promise.all([
       liveChaosAgainst(userId),
       pendingPopupFor(userId),
@@ -96,12 +98,12 @@ export const attendanceAttackService = {
 
     return {
       rules: {
-        cost: ATTACK_RULES.cost,
-        popupCost: ATTACK_RULES.popupCost,
-        defendCost: ATTACK_RULES.defendCost,
-        blockSeconds: ATTACK_RULES.blockSeconds,
-        dailyLimit: ATTACK_RULES.dailyLimitPerAttacker,
-        messageMaxLength: ATTACK_RULES.messageMaxLength,
+        cost: rules.cost,
+        popupCost: rules.popupCost,
+        defendCost: rules.defendCost,
+        blockSeconds: rules.blockSeconds,
+        dailyLimit: rules.dailyLimitPerAttacker,
+        messageMaxLength: ATTACK_MESSAGE_MAX,
       },
       balance: balanceRow?.balance ?? 0,
       /** 나에게 걸린 방해 (없으면 null) */
@@ -123,12 +125,13 @@ export const attendanceAttackService = {
           }
         : null,
       usedToday,
-      remainingToday: Math.max(0, ATTACK_RULES.dailyLimitPerAttacker - usedToday),
+      remainingToday: Math.max(0, rules.dailyLimitPerAttacker - usedToday),
     };
   },
 
   /** 공격권을 사서 바로 쓴다 */
   async attack(attackerId: string, input: { targetId: string; kind?: string; message?: string }) {
+    const rules = getAttackSettings();
     const targetId = input.targetId;
     const kind: AttackKind = isAttackKind(input.kind) ? input.kind : 'chaos';
 
@@ -152,11 +155,11 @@ export const attendanceAttackService = {
 
     const message =
       kind === 'popup'
-        ? (input.message ?? '').trim().slice(0, ATTACK_RULES.messageMaxLength) || '퇴근하지 마세요!'
+        ? (input.message ?? '').trim().slice(0, ATTACK_MESSAGE_MAX) || '퇴근하지 마세요!'
         : null;
 
     await ensureBalanceRow(attackerId);
-    const cost = attackCost(kind);
+    const cost = kind === 'popup' ? rules.popupCost : rules.cost;
 
     const created = await withLockRetry(() =>
       sequelize.transaction(async t => {
@@ -165,11 +168,8 @@ export const attendanceAttackService = {
           where: { attackerId, workDate: day },
           transaction: t,
         });
-        if (used >= ATTACK_RULES.dailyLimitPerAttacker) {
-          throw new AppError(
-            429,
-            `오늘은 ${ATTACK_RULES.dailyLimitPerAttacker}번을 모두 사용했습니다.`
-          );
+        if (used >= rules.dailyLimitPerAttacker) {
+          throw new AppError(429, `오늘은 ${rules.dailyLimitPerAttacker}번을 모두 사용했습니다.`);
         }
 
         const row = await lockBalance(attackerId, t);
@@ -182,9 +182,7 @@ export const attendanceAttackService = {
         await apply(row, -cost, 'attack_cost', kind === 'popup' ? '퇴근 쪽지' : '퇴근 방해', t);
 
         const lifeMs =
-          kind === 'popup'
-            ? ATTACK_RULES.popupWindowMinutes * 60_000
-            : ATTACK_RULES.blockSeconds * 1000;
+          kind === 'popup' ? ATTACK_POPUP_WINDOW_MINUTES * 60_000 : rules.blockSeconds * 1000;
 
         return AttendanceAttack.create(
           {
@@ -215,6 +213,7 @@ export const attendanceAttackService = {
 
   /** 방어권을 사서 지금 걸린 방해를 푼다 */
   async defend(userId: string, attackId: number) {
+    const rules = getAttackSettings();
     await ensureBalanceRow(userId);
 
     const defended = await withLockRetry(() =>
@@ -234,13 +233,13 @@ export const attendanceAttackService = {
         }
 
         const balance = await lockBalance(userId, t);
-        if (balance.balance < ATTACK_RULES.defendCost) {
+        if (balance.balance < rules.defendCost) {
           throw new AppError(
             400,
-            `포인트가 모자랍니다. 방어권은 ${ATTACK_RULES.defendCost.toLocaleString()}P 입니다 (보유 ${balance.balance.toLocaleString()}P).`
+            `포인트가 모자랍니다. 방어권은 ${rules.defendCost.toLocaleString()}P 입니다 (보유 ${balance.balance.toLocaleString()}P).`
           );
         }
-        await apply(balance, -ATTACK_RULES.defendCost, 'defend_cost', '퇴근 방어권', t);
+        await apply(balance, -rules.defendCost, 'defend_cost', '퇴근 방어권', t);
 
         row.defendedAt = new Date();
         await row.save({ transaction: t });

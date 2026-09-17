@@ -200,6 +200,16 @@ function toPayload(s: SiteSettings) {
     lotteryDailyLimit: s.lotteryDailyLimit ?? DEFAULTS.lotteryDailyLimit,
     lotteryDrawCost: s.lotteryDrawCost ?? DEFAULTS.lotteryDrawCost,
     attendanceBonus: s.attendanceBonus ?? DEFAULTS.attendanceBonus,
+    // 대결·공격 규칙도 숨길 이유가 없다 — 화면이 "얼마가 드는지" 를 보여 줘야 한다
+    duelMinStake: s.duelMinStake ?? DEFAULTS.duelMinStake,
+    duelMaxStake: s.duelMaxStake ?? DEFAULTS.duelMaxStake,
+    duelExpireMinutes: s.duelExpireMinutes ?? DEFAULTS.duelExpireMinutes,
+    duelMaxOpenPerUser: s.duelMaxOpenPerUser ?? DEFAULTS.duelMaxOpenPerUser,
+    attackCost: s.attackCost ?? DEFAULTS.attackCost,
+    attackPopupCost: s.attackPopupCost ?? DEFAULTS.attackPopupCost,
+    attackDefendCost: s.attackDefendCost ?? DEFAULTS.attackDefendCost,
+    attackBlockSeconds: s.attackBlockSeconds ?? DEFAULTS.attackBlockSeconds,
+    attackDailyLimit: s.attackDailyLimit ?? DEFAULTS.attackDailyLimit,
   };
 }
 
@@ -315,6 +325,15 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       lotteryDailyLimit,
       lotteryDrawCost,
       attendanceBonus,
+      duelMinStake,
+      duelMaxStake,
+      duelExpireMinutes,
+      duelMaxOpenPerUser,
+      attackCost,
+      attackPopupCost,
+      attackDefendCost,
+      attackBlockSeconds,
+      attackDailyLimit,
     } = req.body;
 
     // ── 입력 유효성 검사 ──────────────────────────────────────────────────────
@@ -492,6 +511,15 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       if (lotteryPrizes !== undefined) {
         parsedLotteryPrizes = validatePrizes(lotteryPrizes);
       }
+      // 대결 판돈의 아래위가 뒤집히면 어떤 금액도 걸 수 없는 상태가 된다.
+      // 각 값만 따로 보면 둘 다 멀쩡해 보이므로 여기서 함께 본다.
+      if (duelMinStake !== undefined || duelMaxStake !== undefined) {
+        const lo = Number(duelMinStake ?? DEFAULTS.duelMinStake);
+        const hi = Number(duelMaxStake ?? DEFAULTS.duelMaxStake);
+        if (Number.isFinite(lo) && Number.isFinite(hi) && lo > hi) {
+          throw new Error('대결 최소 판돈이 최대 판돈보다 큽니다.');
+        }
+      }
     } catch (validationError) {
       const msg = validationError instanceof Error ? validationError.message : '입력 형식 오류';
       return sendError(res, 400, msg);
@@ -622,6 +650,15 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       lotteryDailyLimit: intOrKeep(lotteryDailyLimit, settings.lotteryDailyLimit, 1, 100),
       lotteryDrawCost: intOrKeep(lotteryDrawCost, settings.lotteryDrawCost, 0, 100000),
       attendanceBonus: intOrKeep(attendanceBonus, settings.attendanceBonus, 0, 100000),
+      duelMinStake: intOrKeep(duelMinStake, settings.duelMinStake, 1, 1000000),
+      duelMaxStake: intOrKeep(duelMaxStake, settings.duelMaxStake, 1, 1000000),
+      duelExpireMinutes: intOrKeep(duelExpireMinutes, settings.duelExpireMinutes, 1, 120),
+      duelMaxOpenPerUser: intOrKeep(duelMaxOpenPerUser, settings.duelMaxOpenPerUser, 1, 20),
+      attackCost: intOrKeep(attackCost, settings.attackCost, 0, 100000),
+      attackPopupCost: intOrKeep(attackPopupCost, settings.attackPopupCost, 0, 100000),
+      attackDefendCost: intOrKeep(attackDefendCost, settings.attackDefendCost, 0, 100000),
+      attackBlockSeconds: intOrKeep(attackBlockSeconds, settings.attackBlockSeconds, 5, 600),
+      attackDailyLimit: intOrKeep(attackDailyLimit, settings.attackDailyLimit, 1, 100),
       workStatusLabels:
         parsedWorkStatusLabels !== undefined
           ? JSON.stringify(parsedWorkStatusLabels)

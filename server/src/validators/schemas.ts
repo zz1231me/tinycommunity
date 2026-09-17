@@ -4,8 +4,8 @@
 //    Zod 스키마에서는 구조(non-empty) 검사만 수행하고 실제 길이/복잡도 검사는 컨트롤러에서 처리
 
 import { z } from 'zod';
-import { DUEL_HANDS, DUEL_RULES } from '../config/duel';
-import { ATTACK_KINDS, ATTACK_RULES } from '../config/attendanceAttack';
+import { DUEL_HANDS, DUEL_STAKE_HARD_MAX } from '../config/duel';
+import { ATTACK_KINDS, ATTACK_MESSAGE_MAX } from '../config/attendanceAttack';
 
 // ─── 인증 ─────────────────────────────────────────────────
 
@@ -138,11 +138,14 @@ export const updateTagSchema = createTagSchema.partial();
  */
 export const duelCreateSchema = z.object({
   opponentId: z.string().trim().min(1, '상대를 골라주세요.').max(50),
+  // 여기서는 '말이 되는 범위' 만 막는다. 관리자가 정한 실제 범위는 서비스가 본다
+  // (duel.service.create) — 이 스키마는 서버가 뜰 때 한 번 만들어져서 바뀐 설정을
+  // 따라갈 수 없기 때문이다. 두 겹 중 안쪽이 진짜 규칙이다.
   stake: z
     .number()
     .int('건 포인트는 정수여야 합니다.')
-    .min(DUEL_RULES.minStake, `최소 ${DUEL_RULES.minStake}P 부터 걸 수 있습니다.`)
-    .max(DUEL_RULES.maxStake, `한 판에 최대 ${DUEL_RULES.maxStake}P 까지 걸 수 있습니다.`),
+    .min(1, '1P 이상을 걸어주세요.')
+    .max(DUEL_STAKE_HARD_MAX),
   hand: z.enum(DUEL_HANDS),
 });
 
@@ -159,7 +162,7 @@ export const duelAcceptSchema = z.object({
 export const attendanceAttackSchema = z.object({
   targetId: z.string().trim().min(1, '대상을 골라주세요.').max(50),
   kind: z.enum(ATTACK_KINDS).optional(),
-  message: z.string().trim().max(ATTACK_RULES.messageMaxLength).optional(),
+  message: z.string().trim().max(ATTACK_MESSAGE_MAX).optional(),
 });
 
 export const attendanceCheckInSchema = z.object({

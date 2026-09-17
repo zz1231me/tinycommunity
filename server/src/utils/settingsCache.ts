@@ -2,6 +2,8 @@
 import { SiteSettings } from '../models/SiteSettings';
 import { logInfo, logError } from './logger';
 import { LOTTERY_DEFAULTS, type LotteryPrize } from '../config/lottery';
+import { DUEL_DEFAULTS } from '../config/duel';
+import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
 
 // ─── 허용 확장자 기본값 ────────────────────────────────────────────────────────
 
@@ -136,6 +138,15 @@ export const SETTINGS_DEFAULTS = {
   lotteryDailyLimit: LOTTERY_DEFAULTS.dailyLimit,
   lotteryDrawCost: LOTTERY_DEFAULTS.drawCost,
   attendanceBonus: LOTTERY_DEFAULTS.attendanceBonus,
+  duelMinStake: DUEL_DEFAULTS.minStake,
+  duelMaxStake: DUEL_DEFAULTS.maxStake,
+  duelExpireMinutes: DUEL_DEFAULTS.expireMinutes,
+  duelMaxOpenPerUser: DUEL_DEFAULTS.maxOpenPerUser,
+  attackCost: ATTACK_DEFAULTS.cost,
+  attackPopupCost: ATTACK_DEFAULTS.popupCost,
+  attackDefendCost: ATTACK_DEFAULTS.defendCost,
+  attackBlockSeconds: ATTACK_DEFAULTS.blockSeconds,
+  attackDailyLimit: ATTACK_DEFAULTS.dailyLimitPerAttacker,
   maxLoginAttempts: 5,
   accountLockMinutes: 30,
   maxFileCount: 5,
@@ -195,6 +206,15 @@ export async function loadSettingsCache(): Promise<void> {
         lotteryDailyLimit: settings.lotteryDailyLimit ?? DEFAULTS.lotteryDailyLimit,
         lotteryDrawCost: settings.lotteryDrawCost ?? DEFAULTS.lotteryDrawCost,
         attendanceBonus: settings.attendanceBonus ?? DEFAULTS.attendanceBonus,
+        duelMinStake: settings.duelMinStake ?? DEFAULTS.duelMinStake,
+        duelMaxStake: settings.duelMaxStake ?? DEFAULTS.duelMaxStake,
+        duelExpireMinutes: settings.duelExpireMinutes ?? DEFAULTS.duelExpireMinutes,
+        duelMaxOpenPerUser: settings.duelMaxOpenPerUser ?? DEFAULTS.duelMaxOpenPerUser,
+        attackCost: settings.attackCost ?? DEFAULTS.attackCost,
+        attackPopupCost: settings.attackPopupCost ?? DEFAULTS.attackPopupCost,
+        attackDefendCost: settings.attackDefendCost ?? DEFAULTS.attackDefendCost,
+        attackBlockSeconds: settings.attackBlockSeconds ?? DEFAULTS.attackBlockSeconds,
+        attackDailyLimit: settings.attackDailyLimit ?? DEFAULTS.attackDailyLimit,
         maxLoginAttempts: settings.maxLoginAttempts ?? DEFAULTS.maxLoginAttempts,
         accountLockMinutes: settings.accountLockMinutes ?? DEFAULTS.accountLockMinutes,
         maxFileCount: settings.maxFileCount ?? DEFAULTS.maxFileCount,
@@ -304,6 +324,32 @@ export function getLotterySettings() {
     dailyLimit: cachedSettings?.lotteryDailyLimit ?? DEFAULTS.lotteryDailyLimit,
     drawCost: cachedSettings?.lotteryDrawCost ?? DEFAULTS.lotteryDrawCost,
     attendanceBonus: cachedSettings?.attendanceBonus ?? DEFAULTS.attendanceBonus,
+  };
+}
+
+/**
+ * 포인트 대결 규칙 — 판돈 범위·유효 시간·동시 판 수.
+ *
+ * 부를 때마다 읽는다. 모듈을 불러올 때 한 번 읽어 두면 관리자가 값을 바꿔도
+ * 서버를 다시 띄우기 전까지 옛 값으로 동작한다.
+ */
+export function getDuelSettings() {
+  return {
+    minStake: cachedSettings?.duelMinStake ?? DEFAULTS.duelMinStake,
+    maxStake: cachedSettings?.duelMaxStake ?? DEFAULTS.duelMaxStake,
+    expireMinutes: cachedSettings?.duelExpireMinutes ?? DEFAULTS.duelExpireMinutes,
+    maxOpenPerUser: cachedSettings?.duelMaxOpenPerUser ?? DEFAULTS.duelMaxOpenPerUser,
+  };
+}
+
+/** 퇴근 공격 규칙 — 값·방해 시간·하루 횟수 */
+export function getAttackSettings() {
+  return {
+    cost: cachedSettings?.attackCost ?? DEFAULTS.attackCost,
+    popupCost: cachedSettings?.attackPopupCost ?? DEFAULTS.attackPopupCost,
+    defendCost: cachedSettings?.attackDefendCost ?? DEFAULTS.attackDefendCost,
+    blockSeconds: cachedSettings?.attackBlockSeconds ?? DEFAULTS.attackBlockSeconds,
+    dailyLimitPerAttacker: cachedSettings?.attackDailyLimit ?? DEFAULTS.attackDailyLimit,
   };
 }
 

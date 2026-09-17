@@ -670,6 +670,99 @@ export const SiteSettingsManagement = () => {
               unit="P"
             />
           </SettingList>
+
+          <h4 className="mt-6 text-sm font-semibold text-slate-800 dark:text-slate-200">
+            포인트 대결
+          </h4>
+          <SettingList>
+            <NumberInput
+              label="최소 판돈"
+              description="한 판에 걸 수 있는 가장 적은 포인트"
+              min={1}
+              max={1000000}
+              value={settings.duelMinStake}
+              onChange={v => set('duelMinStake', v)}
+              unit="P"
+            />
+            <NumberInput
+              label="최대 판돈"
+              description="한 판에 전 재산이 오가지 않게 막는 상한"
+              min={1}
+              max={1000000}
+              value={settings.duelMaxStake}
+              onChange={v => set('duelMaxStake', v)}
+              unit="P"
+            />
+            <NumberInput
+              label="대결 유효 시간"
+              description="상대가 이 시간 안에 답하지 않으면 무효가 되고 건 포인트를 돌려줍니다"
+              min={1}
+              max={120}
+              value={settings.duelExpireMinutes}
+              onChange={v => set('duelExpireMinutes', v)}
+              unit="분"
+            />
+            <NumberInput
+              label="동시 신청 가능 판 수"
+              description="한 사람이 한꺼번에 걸어 둘 수 있는 대결 수"
+              min={1}
+              max={20}
+              value={settings.duelMaxOpenPerUser}
+              onChange={v => set('duelMaxOpenPerUser', v)}
+              unit="판"
+            />
+          </SettingList>
+
+          <h4 className="mt-6 text-sm font-semibold text-slate-800 dark:text-slate-200">
+            퇴근 공격
+          </h4>
+          <SettingList>
+            <NumberInput
+              label="퇴근 방해 값"
+              description="상대의 퇴근 버튼이 잠깐 말을 안 듣게 만듭니다 (기록은 그대로입니다)"
+              min={0}
+              max={100000}
+              value={settings.attackCost}
+              onChange={v => set('attackCost', v)}
+              unit="P"
+            />
+            <NumberInput
+              label="쪽지 값"
+              description="상대 화면에 알림창으로 한 번 뜨는 쪽지"
+              min={0}
+              max={100000}
+              value={settings.attackPopupCost}
+              onChange={v => set('attackPopupCost', v)}
+              unit="P"
+            />
+            <NumberInput
+              label="방어권 값"
+              description="공격보다 싸야 방어할 마음이 듭니다"
+              min={0}
+              max={100000}
+              value={settings.attackDefendCost}
+              onChange={v => set('attackDefendCost', v)}
+              unit="P"
+            />
+            <NumberInput
+              label="방해 지속 시간"
+              description="퇴근 버튼이 말을 안 듣는 시간"
+              min={5}
+              max={600}
+              value={settings.attackBlockSeconds}
+              onChange={v => set('attackBlockSeconds', v)}
+              unit="초"
+            />
+            <NumberInput
+              label="하루 공격 횟수"
+              description="방해와 쪽지를 합쳐서 셉니다"
+              min={1}
+              max={100}
+              value={settings.attackDailyLimit}
+              onChange={v => set('attackDailyLimit', v)}
+              unit="회"
+            />
+          </SettingList>
         </div>
       </AdminSection>
 
