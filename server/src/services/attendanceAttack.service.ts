@@ -63,10 +63,20 @@ async function pendingPopupFor(targetId: string): Promise<AttendanceAttackModel 
   });
 }
 
-/** 지금 근무 중인가 — 퇴근을 앞둔 사람에게만 의미가 있는 장난이다 */
+/**
+ * 지금 근무 중인가 — 퇴근을 앞둔 사람에게만 의미가 있는 장난이다.
+ *
+ * 근무일을 오늘·어제로 묶는다. 퇴근을 한 번 깜빡하면 그 기록은 영영 닫히지 않는다
+ * (checkOut 은 오늘 것이거나 자정을 넘긴 어제 것만 닫는다). 날짜를 묶지 않으면
+ * 그 사람은 그날 이후로 새벽이든 주말이든 24시간 내내 공격 대상이 된다.
+ */
 async function isWorking(userId: string): Promise<boolean> {
   const open = await AttendanceRecord.findOne({
-    where: { UserId: userId, checkOutAt: null },
+    where: {
+      UserId: userId,
+      checkOutAt: null,
+      workDate: { [Op.gte]: today(new Date(Date.now() - 86_400_000)) },
+    },
     attributes: ['id'],
   });
   return open !== null;
@@ -148,11 +158,6 @@ export const attendanceAttackService = {
     if (!(await isWorking(targetId))) {
       throw new AppError(400, '지금 근무 중인 사람에게만 쓸 수 있습니다.');
     }
-    // 방해는 겹쳐 걸 수 없다. 쪽지는 한 번 뜨고 마는 것이라 겹침이라는 개념이 없다.
-    if (kind === 'chaos' && (await liveChaosAgainst(targetId))) {
-      throw new AppError(409, '이미 방해받고 있는 사람입니다.');
-    }
-
     const message =
       kind === 'popup'
         ? (input.message ?? '').trim().slice(0, ATTACK_MESSAGE_MAX) || '퇴근하지 마세요!'
@@ -170,6 +175,24 @@ export const attendanceAttackService = {
         });
         if (used >= rules.dailyLimitPerAttacker) {
           throw new AppError(429, `오늘은 ${rules.dailyLimitPerAttacker}번을 모두 사용했습니다.`);
+        }
+
+        // 방해는 겹쳐 걸 수 없다. 쪽지는 한 번 뜨고 마는 것이라 겹침이라는 개념이 없다.
+        //
+        // 이 확인은 트랜잭션 안에 있어야 한다. 밖에서만 보면 두 사람이 같은 순간에
+        // 걸었을 때 둘 다 통과해 살아 있는 방해가 둘이 되고, 받는 쪽은 하나를 풀어도
+        // 곧바로 다음 것이 떠서 방어권 값을 두 번 내게 된다.
+        if (kind === 'chaos') {
+          const already = await AttendanceAttack.count({
+            where: {
+              targetId,
+              kind: 'chaos',
+              defendedAt: null,
+              expiresAt: { [Op.gt]: new Date() },
+            },
+            transaction: t,
+          });
+          if (already > 0) throw new AppError(409, '이미 방해받고 있는 사람입니다.');
         }
 
         const row = await lockBalance(attackerId, t);
@@ -241,8 +264,20 @@ export const attendanceAttackService = {
         }
         await apply(balance, -rules.defendCost, 'defend_cost', '퇴근 방어권', t);
 
-        row.defendedAt = new Date();
-        await row.save({ transaction: t });
+        // 값을 한 번 치렀으면 나에게 걸린 살아 있는 방해를 전부 푼다.
+        // 어떤 이유로든 둘 이상 남아 있을 때 하나씩 돈을 내게 하지 않는다.
+        await AttendanceAttack.update(
+          { defendedAt: new Date() },
+          {
+            where: {
+              targetId: userId,
+              kind: 'chaos',
+              defendedAt: null,
+              expiresAt: { [Op.gt]: new Date() },
+            },
+            transaction: t,
+          }
+        );
         return row;
       })
     );

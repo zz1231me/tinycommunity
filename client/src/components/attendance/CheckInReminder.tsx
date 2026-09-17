@@ -76,13 +76,15 @@ export function CheckInReminder() {
     setOpen(true);
   }, [data, enabled, hasRecordToday, workDate]);
 
-  // 어딘가에서 출근을 찍으면 이 창도 닫는다
+  // 어딘가에서 출근을 찍으면 이 창도 닫는다.
+  // 로그아웃해도 닫는다 — 화면만 바뀌고 이 컴포넌트는 그대로 살아 있어서(App 최상단에
+  // 붙어 있다), 열려 있던 창이 로그인 화면 위에 남는다.
   useEffect(() => {
-    if (hasRecordToday) {
+    if (hasRecordToday || !enabled) {
       setOpen(false);
       setChecklistOpen(false);
     }
-  }, [hasRecordToday]);
+  }, [hasRecordToday, enabled]);
 
   const runOnce = useSubmitLock();
 

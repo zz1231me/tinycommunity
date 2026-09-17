@@ -20,10 +20,18 @@ type Effect = 'calm' | 'dodge' | 'vanish' | 'blackout';
 // 'calm' 을 섞어 둔다. 계속 몰아치면 그냥 화만 나고, 가끔 멀쩡해야 노려서 누르는 맛이 있다.
 const EFFECTS: Effect[] = ['calm', 'dodge', 'dodge', 'vanish', 'blackout'];
 
+/**
+ * 달아날 거리.
+ *
+ * 오른쪽으로는 가지 않는다. 이 버튼은 카드(overflow-hidden) 의 오른쪽 끝에 붙어 있어서
+ * 바깥으로 밀리면 잘려 나가고, 잘린 자리는 그려지지 않을 뿐 아니라 마우스 클릭도
+ * 받지 못한다. 그러면 '성가시게' 가 '못 누르게' 로 바뀐다 — 이 파일이 지키기로 한 선을
+ * 넘는 것이라, 안쪽(왼쪽)과 위아래로만 움직인다.
+ */
 function randomOffset() {
   return {
-    x: Math.round((Math.random() - 0.5) * 140),
-    y: Math.round((Math.random() - 0.5) * 48),
+    x: -Math.round(Math.random() * 96),
+    y: Math.round((Math.random() - 0.5) * 36),
   };
 }
 

@@ -44,7 +44,9 @@ export interface PointEntry {
     | 'admin'
     | 'duel_stake'
     | 'duel_win'
-    | 'duel_refund';
+    | 'duel_refund'
+    | 'attack_cost'
+    | 'defend_cost';
   memo: string | null;
   balanceAfter: number;
   createdAt: string;

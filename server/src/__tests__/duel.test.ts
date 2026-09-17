@@ -208,6 +208,20 @@ describe('신청자의 손은 가려진다', () => {
     expect(done.challengerHand).toBe('rock');
     expect(done.opponentHand).toBe('paper');
   });
+
+  it('거절한 판에서는 신청자의 손이 끝까지 보이지 않는다', async () => {
+    // 거절은 공짜다. 거절할 때 손이 보이면, 받는 쪽은 한 푼도 쓰지 않고 상대가 무엇을
+    // 냈는지 계속 알아낼 수 있다. 승부가 난 판에서만 공개해야 한다.
+    await grant(A, 1000);
+    const made = await create(aCookie, { opponentId: B, stake: 100, hand: 'rock' });
+    await decline(bCookie, made.body.data.id);
+
+    const res = await list(bCookie);
+    const closed = res.body.data.recent[0];
+    expect(closed.status).toBe('canceled');
+    expect(closed.challengerHand).toBeNull();
+    expect(JSON.stringify(res.body)).not.toContain('rock');
+  });
 });
 
 describe('정산', () => {

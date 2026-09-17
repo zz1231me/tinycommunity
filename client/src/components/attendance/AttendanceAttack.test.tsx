@@ -5,7 +5,7 @@
 // 보낸 사람이 누구인지는 쪽지에서 절대 빠지면 안 된다.
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AttackBanner, AttackLauncher, PopupAlert } from './AttendanceAttack';
 import type { AttackState, IncomingAttack, IncomingPopup } from '../../api/attendance';
 
@@ -130,17 +130,17 @@ describe('받은 쪽지', () => {
 describe('공격 보내기', () => {
   it('기록은 건드리지 않는다고 분명히 적어 둔다', () => {
     // 이 문구가 사라지면 사람들은 남의 근무 기록이 밀린다고 오해한다
-    render(<AttackLauncher state={state()} myId="me" sending={false} onAttack={() => {}} />);
+    render(<AttackLauncher state={state()} myId="me" sending={false} onAttack={async () => true} />);
     expect(screen.getByText(/실제로 누른 순간 그대로/)).toBeInTheDocument();
   });
 
   it('상대를 고르기 전에는 보낼 수 없다', () => {
-    render(<AttackLauncher state={state()} myId="me" sending={false} onAttack={() => {}} />);
+    render(<AttackLauncher state={state()} myId="me" sending={false} onAttack={async () => true} />);
     expect(screen.getByRole('button', { name: /보내기/ })).toBeDisabled();
   });
 
   it('기본은 방해 — 고른 사람에게 chaos 로 간다', () => {
-    const onAttack = vi.fn();
+    const onAttack = vi.fn().mockResolvedValue(true);
     render(<AttackLauncher state={state()} myId="me" sending={false} onAttack={onAttack} />);
 
     fireEvent.click(screen.getByRole('button', { name: '상대 고르기' }));
@@ -150,7 +150,7 @@ describe('공격 보내기', () => {
   });
 
   it('쪽지를 고르면 내용 칸이 생기고 그대로 실려 간다', () => {
-    const onAttack = vi.fn();
+    const onAttack = vi.fn().mockResolvedValue(true);
     render(<AttackLauncher state={state()} myId="me" sending={false} onAttack={onAttack} />);
 
     fireEvent.click(screen.getByRole('button', { name: /쪽지/ }));
@@ -165,14 +165,30 @@ describe('공격 보내기', () => {
     });
   });
 
+  it('보내기에 실패하면 고른 사람과 쓴 글을 지우지 않는다', async () => {
+    // 한도 초과·포인트 부족·이미 방해받는 중처럼 거절당하는 길이 여럿이다.
+    // 보내기도 전에 비우면 실패할 때마다 사람을 다시 찾고 글을 다시 써야 한다.
+    const onAttack = vi.fn().mockResolvedValue(false);
+    render(<AttackLauncher state={state()} myId="me" sending={false} onAttack={onAttack} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /쪽지/ }));
+    fireEvent.change(screen.getByLabelText('쪽지 내용'), { target: { value: '야근각' } });
+    fireEvent.click(screen.getByRole('button', { name: '상대 고르기' }));
+    fireEvent.click(screen.getByRole('button', { name: /보내기/ }));
+
+    await waitFor(() => expect(onAttack).toHaveBeenCalled());
+    expect(screen.getByLabelText('쪽지 내용')).toHaveValue('야근각');
+    expect(screen.getByRole('button', { name: /고름:/ })).toBeInTheDocument();
+  });
+
   it('쪽지 길이는 화면에서도 묶어 둔다', () => {
-    render(<AttackLauncher state={state()} myId="me" sending={false} onAttack={() => {}} />);
+    render(<AttackLauncher state={state()} myId="me" sending={false} onAttack={async () => true} />);
     fireEvent.click(screen.getByRole('button', { name: /쪽지/ }));
     expect(screen.getByLabelText('쪽지 내용')).toHaveAttribute('maxlength', '40');
   });
 
   it('종류에 따라 값이 다르게 적힌다', () => {
-    render(<AttackLauncher state={state()} myId="me" sending={false} onAttack={() => {}} />);
+    render(<AttackLauncher state={state()} myId="me" sending={false} onAttack={async () => true} />);
     fireEvent.click(screen.getByRole('button', { name: '상대 고르기' }));
     expect(screen.getByRole('button', { name: /보내기.*300/ })).toBeInTheDocument();
 
@@ -186,7 +202,7 @@ describe('공격 보내기', () => {
         state={state({ remainingToday: 0, usedToday: 5 })}
         myId="me"
         sending={false}
-        onAttack={() => {}}
+        onAttack={async () => true}
       />
     );
     expect(screen.getByRole('button', { name: /모두 사용/ })).toBeDisabled();
@@ -198,7 +214,7 @@ describe('공격 보내기', () => {
         state={state({ balance: 10 })}
         myId="me"
         sending={false}
-        onAttack={() => {}}
+        onAttack={async () => true}
       />
     );
     expect(screen.getByRole('button', { name: /포인트가 모자랍니다/ })).toBeDisabled();

@@ -511,15 +511,6 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       if (lotteryPrizes !== undefined) {
         parsedLotteryPrizes = validatePrizes(lotteryPrizes);
       }
-      // 대결 판돈의 아래위가 뒤집히면 어떤 금액도 걸 수 없는 상태가 된다.
-      // 각 값만 따로 보면 둘 다 멀쩡해 보이므로 여기서 함께 본다.
-      if (duelMinStake !== undefined || duelMaxStake !== undefined) {
-        const lo = Number(duelMinStake ?? DEFAULTS.duelMinStake);
-        const hi = Number(duelMaxStake ?? DEFAULTS.duelMaxStake);
-        if (Number.isFinite(lo) && Number.isFinite(hi) && lo > hi) {
-          throw new Error('대결 최소 판돈이 최대 판돈보다 큽니다.');
-        }
-      }
     } catch (validationError) {
       const msg = validationError instanceof Error ? validationError.message : '입력 형식 오류';
       return sendError(res, 400, msg);
@@ -529,6 +520,18 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
     // findOrCreate로 원자적 처리 — 동시 요청 시 설정 행 중복 생성 방지
     // 신규 생성 시: settings.field = DEFAULTS.field → 아래 update의 `settings.field` 폴백이 곧 DEFAULTS
     const [settings] = await SiteSettings.findOrCreate({ where: {}, defaults: DEFAULTS });
+
+    // 대결 판돈의 아래위가 뒤집히면 어떤 금액도 걸 수 없는 상태가 된다(모든 신청이 400).
+    //
+    // 반드시 '저장될 값' 끼리 비교한다. 보내온 값끼리 비교하면 두 군데서 틀린다:
+    //  · 한쪽만 보내면 나머지를 코드 기본값으로 메워 비교하게 된다 — 저장된 값이 아니다
+    //  · 범위를 벗어난 값은 intOrKeep 이 조용히 버리고 옛 값을 남기므로,
+    //    검사한 쌍과 실제로 저장되는 쌍이 달라진다
+    const nextDuelMin = intOrKeep(duelMinStake, settings.duelMinStake, 1, 1000000);
+    const nextDuelMax = intOrKeep(duelMaxStake, settings.duelMaxStake, 1, 1000000);
+    if (nextDuelMin > nextDuelMax) {
+      return sendError(res, 400, '대결 최소 판돈이 최대 판돈보다 클 수 없습니다.');
+    }
 
     await settings.update({
       siteName: siteName !== undefined ? siteName : settings.siteName,
@@ -650,8 +653,8 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       lotteryDailyLimit: intOrKeep(lotteryDailyLimit, settings.lotteryDailyLimit, 1, 100),
       lotteryDrawCost: intOrKeep(lotteryDrawCost, settings.lotteryDrawCost, 0, 100000),
       attendanceBonus: intOrKeep(attendanceBonus, settings.attendanceBonus, 0, 100000),
-      duelMinStake: intOrKeep(duelMinStake, settings.duelMinStake, 1, 1000000),
-      duelMaxStake: intOrKeep(duelMaxStake, settings.duelMaxStake, 1, 1000000),
+      duelMinStake: nextDuelMin,
+      duelMaxStake: nextDuelMax,
       duelExpireMinutes: intOrKeep(duelExpireMinutes, settings.duelExpireMinutes, 1, 120),
       duelMaxOpenPerUser: intOrKeep(duelMaxOpenPerUser, settings.duelMaxOpenPerUser, 1, 20),
       attackCost: intOrKeep(attackCost, settings.attackCost, 0, 100000),

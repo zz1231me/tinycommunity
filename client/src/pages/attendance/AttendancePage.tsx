@@ -144,9 +144,15 @@ export default function AttendancePage() {
     onError: err => toast.error(getApiErrorMessage(err, '공격권을 사용하지 못했습니다.')),
   });
 
+  // 닫은 쪽지를 화면 쪽에서도 기억한다.
+  //
+  // 서버 응답만 보고 그리면, '봤다' 고 알리는 데 실패했을 때(오프라인·500) seenAt 이
+  // 찍히지 않아 다음 조회에 같은 쪽지가 그대로 돌아온다. ESC·바깥 클릭·닫기 버튼이
+  // 모두 같은 길로 가므로, 그 순간 모달을 영영 닫을 수 없게 된다.
+  const [dismissedPopups, setDismissedPopups] = useState<number[]>([]);
+
   const popupSeen = useMutation({
     mutationFn: markPopupSeen,
-    // 실패해도 창은 닫는다. 못 닫는 쪽지가 화면에 남는 것이 더 나쁘다.
     onSettled: () => refreshAttack(),
   });
 
@@ -252,12 +258,26 @@ export default function AttendancePage() {
           state={attack.data}
           myId={myId}
           sending={attackMutation.isPending}
-          onAttack={payload => attackMutation.mutate(payload)}
+          onAttack={async payload => {
+            try {
+              await attackMutation.mutateAsync(payload);
+              return true;
+            } catch {
+              // 오류 안내는 mutation 의 onError 가 이미 띄웠다
+              return false;
+            }
+          }}
         />
       )}
 
-      {attackEnabled && popup && (
-        <PopupAlert popup={popup} onClose={() => popupSeen.mutate(popup.id)} />
+      {attackEnabled && popup && !dismissedPopups.includes(popup.id) && (
+        <PopupAlert
+          popup={popup}
+          onClose={() => {
+            setDismissedPopups(prev => [...prev, popup.id]);
+            popupSeen.mutate(popup.id);
+          }}
+        />
       )}
 
       <section

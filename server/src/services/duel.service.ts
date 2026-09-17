@@ -44,7 +44,11 @@ function nameOf(duel: PointDuelModel, side: 'challenger' | 'opponent'): string {
  * 새로 만든 목록 하나에서 빠뜨리는 것으로 끝난다 — 그 한 곳이 곧 구멍이다.
  */
 function view(duel: PointDuelModel, viewerId: string) {
-  const settled = duel.status !== 'waiting';
+  // 승부가 난 판에서만 손을 공개한다. 'waiting 이 아니면' 으로 두면 거절·취소·시간
+  // 초과된 판에서도 신청자의 손이 상대에게 보인다. 거절은 공짜라서, 받는 쪽은 한 푼도
+  // 쓰지 않고 상대가 무엇을 냈는지 계속 알아낼 수 있다 — 숨긴 정보가 이 기능의 전부인데
+  // 그게 새는 길이 된다.
+  const revealed = duel.status === 'done';
   const iAmChallenger = duel.challengerId === viewerId;
   return {
     id: duel.id,
@@ -55,9 +59,9 @@ function view(duel: PointDuelModel, viewerId: string) {
     challengerName: nameOf(duel, 'challenger'),
     opponentId: duel.opponentId,
     opponentName: nameOf(duel, 'opponent'),
-    // 아직 기다리는 판이면 신청자 본인에게만 보인다
-    challengerHand: settled || iAmChallenger ? duel.challengerHand : null,
-    opponentHand: settled ? duel.opponentHand : null,
+    // 승부가 나기 전(그리고 무효로 끝난 판)에는 신청자 본인에게만 보인다
+    challengerHand: revealed || iAmChallenger ? duel.challengerHand : null,
+    opponentHand: revealed ? duel.opponentHand : null,
     expiresAt: duel.expiresAt,
     settledAt: duel.settledAt,
     createdAt: duel.createdAt,
@@ -178,6 +182,15 @@ function notify(userId: string, message: string, duelId: number): void {
     .catch(err => logError('대결 알림 생성 실패', err, { userId, duelId }));
 }
 
+/**
+ * 알림에 쓸 사람 이름. 아이디가 아니라 이름으로 부른다 —
+ * 'duelalpha님이 신청했습니다' 는 받는 사람에게 누구인지 알려 주지 못한다.
+ */
+async function displayName(userId: string): Promise<string> {
+  const user = await User.findByPk(userId, { attributes: ['id', 'name'] });
+  return user?.name ?? userId;
+}
+
 async function findOrFail(duelId: number): Promise<PointDuelModel> {
   const duel = await PointDuel.findByPk(duelId, { include: withUsers });
   if (!duel) throw new AppError(404, '대결을 찾을 수 없습니다.');
@@ -196,7 +209,9 @@ export const duelService = {
         where: { opponentId: userId, status: 'waiting' },
         include: withUsers,
         order: [['id', 'DESC']],
-        limit: rules.maxOpenPerUser * 5,
+        // 받은 대결 수는 '내가 걸 수 있는 판 수' 와 상관이 없다. 그 설정으로 자르면
+        // 스무 명에게 신청받았을 때 몇 개는 보이지도 않아 답할 수 없다.
+        limit: 50,
       }),
       PointDuel.findAll({
         where: { challengerId: userId, status: 'waiting' },
@@ -305,7 +320,7 @@ export const duelService = {
 
     notify(
       opponentId,
-      `${challengerId}님이 ${stake.toLocaleString()}P 를 걸고 대결을 신청했습니다.`,
+      `${await displayName(challengerId)}님이 ${stake.toLocaleString()}P 를 걸고 대결을 신청했습니다.`,
       created.id
     );
 
@@ -359,12 +374,13 @@ export const duelService = {
       })
     );
 
+    const who = await displayName(opponentId);
     const toChallenger =
       settled.result === 'draw'
-        ? `${opponentId}님과의 대결은 비겼습니다. 건 포인트를 돌려받았습니다.`
+        ? `${who}님과의 대결은 비겼습니다. 건 포인트를 돌려받았습니다.`
         : settled.result === 'challenger'
-          ? `${opponentId}님과의 대결에서 이겼습니다! ${(settled.stake * 2).toLocaleString()}P 획득`
-          : `${opponentId}님과의 대결에서 졌습니다.`;
+          ? `${who}님과의 대결에서 이겼습니다! ${(settled.stake * 2).toLocaleString()}P 획득`
+          : `${who}님과의 대결에서 졌습니다.`;
     notify(settled.challengerId, toChallenger, settled.id);
 
     return view(await findOrFail(settled.id), opponentId);
@@ -376,8 +392,16 @@ export const duelService = {
     if (duel.opponentId !== opponentId) throw new AppError(403, '나에게 온 대결이 아닙니다.');
     if (duel.status !== 'waiting') throw new AppError(409, '이미 끝난 대결입니다.');
 
-    await closeWithRefund(duelId, '대결 거절 환불');
-    notify(duel.challengerId, `${opponentId}님이 대결을 거절했습니다.`, duelId);
+    // 실제로 닫고 돌려준 경우에만 알린다. 그 사이 시간 초과로 이미 닫혔다면
+    // 거절당한 것이 아닌데 '거절했습니다' 가 가서, 있지도 않은 일을 알리게 된다.
+    const refunded = await closeWithRefund(duelId, '대결 거절 환불');
+    if (refunded) {
+      notify(
+        duel.challengerId,
+        `${await displayName(opponentId)}님이 대결을 거절했습니다.`,
+        duelId
+      );
+    }
   },
 
   /** 신청한 사람이 거둬들인다 */

@@ -22,6 +22,8 @@ const REASON_LABEL: Record<PointEntry['reason'], string> = {
   duel_stake: '대결',
   duel_win: '대결 승리',
   duel_refund: '대결 환불',
+  attack_cost: '퇴근 공격',
+  defend_cost: '퇴근 방어',
 };
 
 /** 숫자가 섞이는 최소 시간(ms). 서버가 곧바로 답해도 이만큼은 돌아야 '뽑았다'로 읽힌다 */
@@ -104,6 +106,7 @@ export function LotteryPanel() {
   const [status, setStatus] = useState<PointStatus | null>(null);
   const [entries, setEntries] = useState<PointEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [last, setLast] = useState<{ amount: number; cost: number; isBlank: boolean } | null>(null);
   /** 릴에 지금 떠 있는 숫자. null 이면 릴이 멈춘 상태 */
@@ -136,7 +139,12 @@ export function LotteryPanel() {
         setStatus(s);
         setEntries(h.entries);
       } catch {
-        if (alive) toast.error('포인트 정보를 불러오지 못했습니다.');
+        // 토스트는 곧 사라진다. 그것만 띄우고 화면을 통째로 비우면, 잠시 뒤에는
+        // 실패했다는 사실조차 남지 않고 '포인트 기능이 없는 화면' 처럼 보인다.
+        if (alive) {
+          setFailed(true);
+          toast.error('포인트 정보를 불러오지 못했습니다.');
+        }
       } finally {
         if (alive) setLoading(false);
       }
@@ -224,7 +232,14 @@ export function LotteryPanel() {
   const shownBalance = useCountUp(status?.balance ?? 0, motionOk, !!status);
 
   if (loading) return <LoadingSpinner size="sm" message="포인트 정보를 불러오는 중..." />;
-  if (!status) return null;
+  // 같은 폴더의 PointRanking·DuelPanel 과 같은 방식으로 실패를 실패라고 말한다
+  if (failed || !status) {
+    return (
+      <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+        <ListState>포인트 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</ListState>
+      </div>
+    );
+  }
 
   const soldOut = status.drawsLeft <= 0;
 

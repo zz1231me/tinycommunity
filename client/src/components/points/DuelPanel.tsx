@@ -51,10 +51,16 @@ function HandPick({
   value,
   onChange,
   disabled,
+  labelFor,
 }: {
   value: DuelHand | null;
   onChange: (hand: DuelHand) => void;
   disabled?: boolean;
+  /**
+   * 버튼을 읽어 줄 말. 받은 대결에서는 이 버튼이 '고르기' 가 아니라 '포인트를 걸고
+   * 지금 받기' 라, 손 이름만 읽어 주면 무슨 일이 일어나는지 알 수 없다.
+   */
+  labelFor?: (hand: DuelHand) => string;
 }) {
   return (
     <div className="flex gap-1.5">
@@ -64,8 +70,10 @@ function HandPick({
           type="button"
           disabled={disabled}
           onClick={() => onChange(hand)}
-          aria-pressed={value === hand}
-          aria-label={HAND_LABEL[hand]}
+          // 고르는 자리에서만 토글이다. 받은 대결에서는 누르는 즉시 승부가 나므로
+          // '눌린 상태' 라는 개념이 없다.
+          aria-pressed={labelFor ? undefined : value === hand}
+          aria-label={labelFor ? labelFor(hand) : HAND_LABEL[hand]}
           className={`flex-1 rounded-lg border px-2 py-1.5 text-sm transition-colors disabled:opacity-40 ${
             value === hand
               ? 'border-primary-500 bg-primary-50 font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
@@ -130,13 +138,15 @@ export function DuelPanel({ myId }: { myId: string }) {
     if (busy) return;
     setBusy(true);
     try {
+      // 동작과 뒤이은 갱신을 같은 try 에 두지 않는다. 한데 묶으면 신청은 성공했는데
+      // 목록 갱신만 실패했을 때 '신청하지 못했습니다' 가 떠서, 사용자가 사실과 반대로
+      // 알고 다시 걸게 된다 — 판돈은 이미 빠져 있는데 한 번 더 빠진다.
       await action();
-      await reload();
     } catch (err) {
       toast.error(getApiErrorMessage(err, fallback));
-      // 거절·시간 초과처럼 서버 쪽이 이미 바뀐 경우가 있어 다시 읽는다
-      await reload().catch(() => {});
     } finally {
+      // 성공이든 실패든 서버 쪽은 이미 바뀌었을 수 있어 늘 다시 읽는다
+      await reload().catch(() => {});
       setBusy(false);
     }
   };
@@ -216,7 +226,14 @@ export function DuelPanel({ myId }: { myId: string }) {
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <div className="min-w-[180px] flex-1">
-                    <HandPick value={null} onChange={h => void respond(duel, h)} disabled={busy} />
+                    <HandPick
+                      value={null}
+                      onChange={h => void respond(duel, h)}
+                      disabled={busy}
+                      labelFor={hand =>
+                        `${HAND_LABEL[hand]} 내고 ${duel.stake.toLocaleString()}P 대결 받기`
+                      }
+                    />
                   </div>
                   <button
                     type="button"

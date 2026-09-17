@@ -119,7 +119,12 @@ export function AttackLauncher({
   state: AttackState;
   myId: string;
   sending: boolean;
-  onAttack: (payload: { targetId: string; kind: AttackKind; message?: string }) => void;
+  /** 보냈으면 true. 실패했는데 고른 사람과 쓴 글을 지우면 처음부터 다시 해야 한다. */
+  onAttack: (payload: {
+    targetId: string;
+    kind: AttackKind;
+    message?: string;
+  }) => Promise<boolean>;
 }) {
   const [picked, setPicked] = useState<UserSuggestion[]>([]);
   const [kind, setKind] = useState<AttackKind>('chaos');
@@ -190,13 +195,19 @@ export function AttackLauncher({
         type="button"
         disabled={picked.length === 0 || sending || soldOut || !affordable}
         onClick={() => {
-          onAttack({
-            targetId: picked[0].id,
-            kind,
-            ...(kind === 'popup' ? { message: message.trim() } : {}),
-          });
-          setPicked([]);
-          setMessage('');
+          void (async () => {
+            const sent = await onAttack({
+              targetId: picked[0].id,
+              kind,
+              ...(kind === 'popup' ? { message: message.trim() } : {}),
+            });
+            // 보내진 뒤에만 비운다. 한도 초과·포인트 부족처럼 거절당하는 길이 여럿이라,
+            // 미리 비우면 그때마다 사람을 다시 찾고 글을 다시 써야 한다.
+            if (sent) {
+              setPicked([]);
+              setMessage('');
+            }
+          })();
         }}
         className="btn-secondary mt-3 inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
       >

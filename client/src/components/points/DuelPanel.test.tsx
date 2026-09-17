@@ -100,7 +100,8 @@ describe('받은 대결', () => {
     render(<DuelPanel myId={ME} />);
 
     await screen.findByText('브라보');
-    fireEvent.click(screen.getAllByRole('button', { name: '보' })[0]);
+    // 받은 대결의 버튼은 '보' 가 아니라 무슨 일이 일어나는지까지 읽어 준다
+    fireEvent.click(screen.getByRole('button', { name: /보 내고 .*대결 받기/ }));
 
     await waitFor(() => expect(acceptDuel).toHaveBeenCalledWith(7, 'paper'));
   });

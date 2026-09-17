@@ -123,10 +123,12 @@ export function AttendanceReminder() {
     // tick 은 다시 계산하게 만드는 값일 뿐이라 의존성에 둔다
   }, [enabled, working, record, standard, worked, tick]);
 
-  // 퇴근을 찍으면 알림도 닫는다
+  // 퇴근을 찍으면 알림도 닫는다.
+  // 로그아웃해도 닫는다 — 화면만 바뀌고 이 컴포넌트는 그대로 살아 있어서,
+  // 열려 있던 창이 로그인 화면 위에 남는다.
   useEffect(() => {
-    if (!working) setOpen(false);
-  }, [working]);
+    if (!working || !enabled) setOpen(false);
+  }, [working, enabled]);
 
   // 여기서 바로 찍을 수 있게 한다 — 알림을 보고 다시 출근 확인 화면까지 들어가야 하면
   // 그냥 안 찍고 넘어가게 된다.
