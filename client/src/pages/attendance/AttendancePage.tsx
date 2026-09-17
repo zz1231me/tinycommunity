@@ -20,19 +20,16 @@ import {
   fetchMyAttendance,
   fetchMyAttendanceHistory,
   markPopupSeen,
-  sendAttack,
   sendDefend,
 } from '../../api/attendance';
 import {
   AttackBanner,
-  AttackLauncher,
   PopupAlert,
 } from '../../components/attendance/AttendanceAttack';
 import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
 import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { useFeature } from '../../store/features';
-import { useAuth } from '../../store/auth';
 import {
   formatClock,
   formatDay,
@@ -109,8 +106,6 @@ export default function AttendancePage() {
   // 잠기는 것은 아래 퇴근 버튼뿐이다. 서버의 퇴근 기록은 이 상태를 보지 않으므로,
   // 어떤 경로로든 퇴근을 찍으면 그 순간이 그대로 기록된다.
   const attackEnabled = useFeature('tools.attendanceAttack');
-  const { getUser } = useAuth();
-  const myId = getUser()?.id ?? '';
 
   const attack = useQuery({
     queryKey: attendanceKeys.attack,
@@ -133,15 +128,6 @@ export default function AttendancePage() {
       toast.success('방어했습니다. 퇴근 버튼이 풀렸습니다.');
     },
     onError: err => toast.error(getApiErrorMessage(err, '방어하지 못했습니다.')),
-  });
-
-  const attackMutation = useMutation({
-    mutationFn: sendAttack,
-    onSuccess: () => {
-      refreshAttack();
-      toast.success('공격권을 사용했습니다.');
-    },
-    onError: err => toast.error(getApiErrorMessage(err, '공격권을 사용하지 못했습니다.')),
   });
 
   // 닫은 쪽지를 화면 쪽에서도 기억한다.
@@ -251,23 +237,6 @@ export default function AttendancePage() {
             </section>
           )}
         </>
-      )}
-
-      {attackEnabled && attack.data && (
-        <AttackLauncher
-          state={attack.data}
-          myId={myId}
-          sending={attackMutation.isPending}
-          onAttack={async payload => {
-            try {
-              await attackMutation.mutateAsync(payload);
-              return true;
-            } catch {
-              // 오류 안내는 mutation 의 onError 가 이미 띄웠다
-              return false;
-            }
-          }}
-        />
       )}
 
       {attackEnabled && popup && !dismissedPopups.includes(popup.id) && (

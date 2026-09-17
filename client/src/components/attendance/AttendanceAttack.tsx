@@ -1,5 +1,9 @@
 // client/src/components/attendance/AttendanceAttack.tsx
-// 퇴근 공격권·방어권의 화면.
+// 퇴근 공격을 '받는 쪽' 의 화면 — 경고 띠와 받은 쪽지.
+//
+// 보내는 쪽(공격권 사용)은 포인트 화면으로 옮겼다(components/points/AttackPanel).
+// 포인트를 쓰는 일이니 포인트가 있는 곳에서 하는 편이 자연스럽고, 이 화면에는
+// 방해받는 당사자에게 필요한 것만 남는다.
 //
 // ⚠️ 방해할 뿐 막지는 않는다. 서버의 퇴근 기록은 이 기능을 쳐다보지도 않고,
 // 퇴근 버튼도 끝까지 살아 있다(ChaosButton 참고). 여기서 하는 일은
@@ -7,10 +11,8 @@
 
 import { useEffect, useState } from 'react';
 import { Shield, Swords, MessageSquareWarning, Loader2 } from 'lucide-react';
-import type { AttackKind, AttackState, IncomingAttack, IncomingPopup } from '../../api/attendance';
+import type { IncomingAttack, IncomingPopup } from '../../api/attendance';
 import { ModalShell } from '../common/ModalShell';
-import { UserPicker } from '../common/UserPicker';
-import type { UserSuggestion } from '../../api/users';
 
 function secondsLeft(expiresAt: string): number {
   return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000));
@@ -104,120 +106,3 @@ export function PopupAlert({ popup, onClose }: { popup: IncomingPopup; onClose: 
   );
 }
 
-const KINDS: Array<{ kind: AttackKind; label: string; hint: string }> = [
-  { kind: 'chaos', label: '퇴근 방해', hint: '퇴근 버튼이 도망다니고 깜빡입니다' },
-  { kind: 'popup', label: '쪽지', hint: '상대 화면에 알림창으로 한 번 뜹니다' },
-];
-
-/** 누구에게 무엇을 보낼지 고른다 */
-export function AttackLauncher({
-  state,
-  myId,
-  sending,
-  onAttack,
-}: {
-  state: AttackState;
-  myId: string;
-  sending: boolean;
-  /** 보냈으면 true. 실패했는데 고른 사람과 쓴 글을 지우면 처음부터 다시 해야 한다. */
-  onAttack: (payload: {
-    targetId: string;
-    kind: AttackKind;
-    message?: string;
-  }) => Promise<boolean>;
-}) {
-  const [picked, setPicked] = useState<UserSuggestion[]>([]);
-  const [kind, setKind] = useState<AttackKind>('chaos');
-  const [message, setMessage] = useState('');
-
-  const { rules } = state;
-  const cost = kind === 'popup' ? rules.popupCost : rules.cost;
-  const soldOut = state.remainingToday <= 0;
-  const affordable = state.balance >= cost;
-  const chosen = KINDS.find(k => k.kind === kind);
-
-  return (
-    <section className="card mt-4 p-5">
-      <h2 className="card-title flex items-center gap-1.5">
-        <Swords className="h-4 w-4 text-rose-500" />
-        퇴근 공격권
-      </h2>
-      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-        근무 중인 사람을 {rules.blockSeconds}초 동안 방해합니다. 버튼이 잠기는 것은 아니라 끝까지
-        누르면 눌리고, 기록되는 퇴근 시각은 실제로 누른 순간 그대로입니다. 오늘{' '}
-        {state.remainingToday}/{rules.dailyLimit}번 남았습니다.
-      </p>
-
-      <div className="mt-3 flex gap-1.5">
-        {KINDS.map(option => (
-          <button
-            key={option.kind}
-            type="button"
-            onClick={() => setKind(option.kind)}
-            aria-pressed={kind === option.kind}
-            className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
-              kind === option.kind
-                ? 'border-rose-500 bg-rose-50 font-semibold text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
-                : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'
-            }`}
-          >
-            {option.label}
-            <span className="ml-1 text-xs font-normal text-slate-400">
-              {(option.kind === 'popup' ? rules.popupCost : rules.cost).toLocaleString()}P
-            </span>
-          </button>
-        ))}
-      </div>
-      {chosen && <p className="mt-1.5 text-xs text-slate-500">{chosen.hint}</p>}
-
-      {kind === 'popup' && (
-        <input
-          value={message}
-          onChange={e => setMessage(e.target.value)}
-          maxLength={rules.messageMaxLength}
-          placeholder="한 줄만 — 상대 화면에 그대로 뜹니다"
-          aria-label="쪽지 내용"
-          className="input input-sm mt-2 w-full"
-        />
-      )}
-
-      <div className="mt-3">
-        <UserPicker
-          selected={picked}
-          onChange={setPicked}
-          single
-          excludeIds={[myId]}
-          placeholder="공격할 사람을 검색"
-        />
-      </div>
-
-      <button
-        type="button"
-        disabled={picked.length === 0 || sending || soldOut || !affordable}
-        onClick={() => {
-          void (async () => {
-            const sent = await onAttack({
-              targetId: picked[0].id,
-              kind,
-              ...(kind === 'popup' ? { message: message.trim() } : {}),
-            });
-            // 보내진 뒤에만 비운다. 한도 초과·포인트 부족처럼 거절당하는 길이 여럿이라,
-            // 미리 비우면 그때마다 사람을 다시 찾고 글을 다시 써야 한다.
-            if (sent) {
-              setPicked([]);
-              setMessage('');
-            }
-          })();
-        }}
-        className="btn-secondary mt-3 inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
-        {soldOut
-          ? '오늘은 모두 사용했어요'
-          : !affordable
-            ? '포인트가 모자랍니다'
-            : `보내기 (−${cost.toLocaleString()}P)`}
-      </button>
-    </section>
-  );
-}

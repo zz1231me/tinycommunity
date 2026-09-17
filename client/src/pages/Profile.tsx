@@ -22,6 +22,7 @@ import { NotificationSettings } from '../components/social/NotificationSettings'
 import { LotteryPanel } from '../components/points/LotteryPanel';
 import { PointRanking } from '../components/points/PointRanking';
 import { DuelPanel } from '../components/points/DuelPanel';
+import { AttackPanel } from '../components/points/AttackPanel';
 import { useFeature, type FeatureKey } from '../store/features';
 import { useAuth } from '../store/auth';
 import { useSiteSettings } from '../store/siteSettings';
@@ -123,6 +124,12 @@ export default function Profile() {
   const lotteryEnabled = useFeature('tools.lottery');
   // 대결은 포인트 기능 안에 있지만 따로 끌 수 있다 (서버도 requireFeature 로 막는다)
   const duelEnabled = useFeature('tools.pointDuel');
+  // 퇴근 공격권도 포인트로 산다. 다만 서버 쪽 스위치가 출퇴근 기능까지 함께 요구하므로
+  // 포인트 탭이 열려 있어도 이것만 따로 꺼져 있을 수 있다.
+  const attackEnabled = useFeature('tools.attendanceAttack');
+  // 공격권을 쓰면 잔액이 준다. 위쪽 뽑기 판이 들고 있는 잔액도 다시 불러오게 신호를
+  // 보낸다 — 그러지 않으면 한 화면에 서로 다른 잔액이 둘 뜬다.
+  const [pointsVersion, setPointsVersion] = useState(0);
   // 꺼진 기능의 탭은 아예 보여주지 않는다 (서버도 requireFeature 로 막는다)
   const visibleTabs = TABS.filter(t => {
     const key = FEATURE_TABS[t.id];
@@ -636,8 +643,14 @@ export default function Profile() {
             {/* 5. 계정설정 탭 */}
             {activeTab === 'points' && lotteryEnabled && (
               <div className="space-y-6">
-                <LotteryPanel />
+                <LotteryPanel refreshSignal={pointsVersion} />
                 {duelEnabled && <DuelPanel myId={user.id} />}
+                {attackEnabled && (
+                  <AttackPanel
+                    myId={user.id}
+                    onSpent={() => setPointsVersion(v => v + 1)}
+                  />
+                )}
                 <PointRanking />
               </div>
             )}

@@ -102,7 +102,7 @@ function WinPulse() {
  * 결과는 서버가 정한다 — 이 화면은 눌러서 받아 적을 뿐이고, 확률·금액·횟수도
  * 서버에서 내려온 값을 그대로 보여준다(바꾸는 곳은 관리자 페이지다).
  */
-export function LotteryPanel() {
+export function LotteryPanel({ refreshSignal = 0 }: { refreshSignal?: number }) {
   const [status, setStatus] = useState<PointStatus | null>(null);
   const [entries, setEntries] = useState<PointEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,6 +153,16 @@ export function LotteryPanel() {
       alive = false;
     };
   }, []);
+
+  // 같은 화면의 다른 곳에서 포인트를 쓰면(공격권 등) 잔액을 다시 불러온다.
+  // 이것이 없으면 아래 공격권 칸의 잔액만 줄고 여기 적힌 숫자는 그대로라, 한 화면에
+  // 서로 다른 잔액이 둘 뜬다.
+  //
+  // 0 은 첫 렌더라 건너뛴다 — 위의 첫 조회와 겹쳐 같은 것을 두 번 부르게 된다.
+  useEffect(() => {
+    if (refreshSignal === 0) return;
+    void reload().catch(() => {});
+  }, [refreshSignal, reload]);
 
   /** 결과가 나온 순간 — 잔액·내역 갱신과 알림·진동·신호를 여기서 한 번에 낸다 */
   const revealResult = useCallback(

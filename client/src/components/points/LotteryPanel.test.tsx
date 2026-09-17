@@ -214,3 +214,37 @@ describe('뽑기', () => {
     );
   });
 });
+
+// 이 판 말고도 같은 화면에서 포인트를 쓰는 곳이 있다(퇴근 공격권). 거기서 쓰고 나면
+// 여기 적힌 잔액도 다시 읽어야 한다 — 그러지 않으면 한 화면에 서로 다른 잔액이 둘 뜬다.
+describe('바깥에서 포인트를 썼을 때', () => {
+  it('신호가 바뀌면 잔액을 다시 읽는다', async () => {
+    const { rerender } = render(<LotteryPanel refreshSignal={0} />);
+    await screen.findByText('1,200');
+    const before = fetchPointStatus.mock.calls.length;
+
+    rerender(<LotteryPanel refreshSignal={1} />);
+
+    await waitFor(() => expect(fetchPointStatus.mock.calls.length).toBeGreaterThan(before));
+  });
+
+  it('처음 그릴 때는 한 번만 읽는다 — 신호 0 은 건너뛴다', async () => {
+    // 0 을 건너뛰지 않으면 첫 조회와 겹쳐 같은 것을 두 번 부른다.
+    // 이 단언이 없으면 그 낭비를 아무도 잡지 못한다 — 화면은 똑같아 보인다.
+    render(<LotteryPanel refreshSignal={0} />);
+    await screen.findByText('1,200');
+
+    expect(fetchPointStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it('같은 신호로 다시 그려도 또 읽지 않는다 — 음성 대조', async () => {
+    const { rerender } = render(<LotteryPanel refreshSignal={0} />);
+    await screen.findByText('1,200');
+    const before = fetchPointStatus.mock.calls.length;
+
+    rerender(<LotteryPanel refreshSignal={0} />);
+    await waitFor(() => expect(screen.getByText('1,200')).toBeInTheDocument());
+
+    expect(fetchPointStatus.mock.calls.length).toBe(before);
+  });
+});
