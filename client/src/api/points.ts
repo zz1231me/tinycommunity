@@ -37,11 +37,75 @@ export interface DrawResult {
 export interface PointEntry {
   id: number;
   amount: number;
-  reason: 'lottery' | 'lottery_cost' | 'attendance' | 'admin';
+  reason:
+    | 'lottery'
+    | 'lottery_cost'
+    | 'attendance'
+    | 'admin'
+    | 'duel_stake'
+    | 'duel_win'
+    | 'duel_refund';
   memo: string | null;
   balanceAfter: number;
   createdAt: string;
 }
+
+// ── 포인트 대결 ────────────────────────────────────────────────────────────
+
+export type DuelHand = 'rock' | 'paper' | 'scissors';
+export type DuelStatus = 'waiting' | 'done' | 'canceled';
+export type DuelResult = 'challenger' | 'opponent' | 'draw';
+
+export interface Duel {
+  id: number;
+  stake: number;
+  status: DuelStatus;
+  result: DuelResult | null;
+  challengerId: string;
+  challengerName: string;
+  opponentId: string;
+  opponentName: string;
+  /**
+   * 승부가 나기 전에는 신청자 본인에게만 내려온다. 받은 쪽에서는 null 이다 —
+   * 서버가 가리는 값이라 화면에서 다시 확인할 필요는 없지만, 타입이 null 을
+   * 허용해야 "있겠지" 하고 쓰는 코드가 생기지 않는다.
+   */
+  challengerHand: DuelHand | null;
+  opponentHand: DuelHand | null;
+  expiresAt: string;
+  settledAt: string | null;
+  createdAt: string;
+}
+
+export interface DuelBoard {
+  balance: number;
+  rules: { minStake: number; maxStake: number; expireMinutes: number; maxOpenPerUser: number };
+  /** 나에게 온 대결 */
+  incoming: Duel[];
+  /** 내가 건 대결 */
+  outgoing: Duel[];
+  /** 끝난 판 (양쪽 모두) */
+  recent: Duel[];
+}
+
+export const fetchDuels = async (): Promise<DuelBoard> => unwrap(await api.get('/points/duels'));
+
+export const createDuel = async (body: {
+  opponentId: string;
+  stake: number;
+  hand: DuelHand;
+}): Promise<Duel> => unwrap(await api.post('/points/duels', body));
+
+export const acceptDuel = async (id: number, hand: DuelHand): Promise<Duel> =>
+  unwrap(await api.post(`/points/duels/${id}/accept`, { hand }));
+
+export const declineDuel = async (id: number): Promise<void> => {
+  await api.post(`/points/duels/${id}/decline`);
+};
+
+export const cancelDuel = async (id: number): Promise<void> => {
+  await api.delete(`/points/duels/${id}`);
+};
 
 export interface RankingEntry {
   rank: number;

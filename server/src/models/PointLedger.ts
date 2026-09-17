@@ -21,8 +21,13 @@ import { sequelize } from '../config/sequelize';
  *
  * 하루 한도를 'lottery' 줄 수로 세므로 참가비는 'lottery_cost' 로 분리한다.
  * 같은 이름으로 적으면 한 번 뽑을 때 두 줄이 쌓여 한도가 절반이 된다.
+ *
+ * 대결은 세 갈래다 — 걸 때 맡기고(duel_stake), 이기면 두 배를 받고(duel_win),
+ * 비기거나 무효가 되면 맡긴 만큼 돌려받는다(duel_refund). 셋을 한 이름으로 적으면
+ * 나중에 "이 판에서 오간 게 얼마인지" 를 내역에서 되짚을 수 없다.
  */
-export type PointReason = 'lottery' | 'lottery_cost' | 'attendance' | 'admin';
+export type PointReason =
+  'lottery' | 'lottery_cost' | 'attendance' | 'admin' | 'duel_stake' | 'duel_win' | 'duel_refund';
 
 class PointLedgerModel extends Model<
   InferAttributes<PointLedgerModel>,

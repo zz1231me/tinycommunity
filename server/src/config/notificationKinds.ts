@@ -55,6 +55,12 @@ export const NOTIFICATION_KINDS = {
     defaultEnabled: true,
     configurable: true,
   },
+  DUEL: {
+    label: '포인트 대결',
+    description: '누가 나에게 대결을 신청하거나, 내가 신청한 대결의 결과가 나오면 알립니다.',
+    defaultEnabled: true,
+    configurable: true,
+  },
   SYSTEM: {
     label: '운영 공지',
     description: '점검·계정 관련 안내입니다. 끌 수 없습니다.',

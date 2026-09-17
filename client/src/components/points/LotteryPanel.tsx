@@ -18,6 +18,9 @@ const REASON_LABEL: Record<PointEntry['reason'], string> = {
   lottery_cost: '참가비',
   attendance: '출석',
   admin: '관리자',
+  duel_stake: '대결',
+  duel_win: '대결 승리',
+  duel_refund: '대결 환불',
 };
 
 /** 숫자가 섞이는 최소 시간(ms). 서버가 곧바로 답해도 이만큼은 돌아야 '뽑았다'로 읽힌다 */

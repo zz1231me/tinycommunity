@@ -121,6 +121,14 @@ async function apply(
   return next;
 }
 
+/**
+ * 포인트를 움직이는 다른 서비스(대결)가 같은 잠금 규칙을 그대로 쓰도록 내보낸다.
+ *
+ * 복사해서 두 벌로 두면 한쪽만 고쳐졌을 때 잔액과 원장이 어긋난다 —
+ * 그 어긋남은 테스트가 아니라 사용자의 잔액에서 처음 발견된다.
+ */
+export { ensureBalanceRow, lockBalance, apply, withLockRetry };
+
 export const pointService = {
   /** 화면에 필요한 현재 상태 */
   async getStatus(userId: string) {

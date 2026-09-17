@@ -21,6 +21,7 @@ import {
 import { NotificationSettings } from '../components/social/NotificationSettings';
 import { LotteryPanel } from '../components/points/LotteryPanel';
 import { PointRanking } from '../components/points/PointRanking';
+import { DuelPanel } from '../components/points/DuelPanel';
 import { useFeature, type FeatureKey } from '../store/features';
 import { useAuth } from '../store/auth';
 import { useSiteSettings } from '../store/siteSettings';
@@ -104,6 +105,8 @@ export default function Profile() {
 
   const [activeTab, setActiveTab] = useState<TabId>('profile');
   const lotteryEnabled = useFeature('tools.lottery');
+  // 대결은 포인트 기능 안에 있지만 따로 끌 수 있다 (서버도 requireFeature 로 막는다)
+  const duelEnabled = useFeature('tools.pointDuel');
   // 꺼진 기능의 탭은 아예 보여주지 않는다 (서버도 requireFeature 로 막는다)
   const visibleTabs = TABS.filter(t => {
     const key = FEATURE_TABS[t.id];
@@ -600,6 +603,7 @@ export default function Profile() {
             {activeTab === 'points' && lotteryEnabled && (
               <div className="space-y-6">
                 <LotteryPanel />
+                {duelEnabled && <DuelPanel myId={user.id} />}
                 <PointRanking />
               </div>
             )}

@@ -4,6 +4,7 @@
 //    Zod 스키마에서는 구조(non-empty) 검사만 수행하고 실제 길이/복잡도 검사는 컨트롤러에서 처리
 
 import { z } from 'zod';
+import { DUEL_HANDS, DUEL_RULES } from '../config/duel';
 
 // ─── 인증 ─────────────────────────────────────────────────
 
@@ -126,6 +127,27 @@ export const createTagSchema = z.object({
 export const updateTagSchema = createTagSchema.partial();
 
 // ─── 출퇴근 ───────────────────────────────────────────────
+
+/**
+ * 포인트 대결 신청.
+ *
+ * 금액 범위는 config/duel 의 규칙과 같은 값을 쓴다 — 여기서만 막고 서비스에서
+ * 안 막으면 API 를 직접 부르는 쪽에 제약이 없고, 두 곳에 숫자를 따로 적어 두면
+ * 한쪽만 바뀐다.
+ */
+export const duelCreateSchema = z.object({
+  opponentId: z.string().trim().min(1, '상대를 골라주세요.').max(50),
+  stake: z
+    .number()
+    .int('건 포인트는 정수여야 합니다.')
+    .min(DUEL_RULES.minStake, `최소 ${DUEL_RULES.minStake}P 부터 걸 수 있습니다.`)
+    .max(DUEL_RULES.maxStake, `한 판에 최대 ${DUEL_RULES.maxStake}P 까지 걸 수 있습니다.`),
+  hand: z.enum(DUEL_HANDS),
+});
+
+export const duelAcceptSchema = z.object({
+  hand: z.enum(DUEL_HANDS),
+});
 
 export const attendanceCheckInSchema = z.object({
   responses: z

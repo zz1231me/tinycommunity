@@ -194,6 +194,15 @@ export const FEATURES = {
     group: 'tools',
     defaultEnabled: false,
   },
+  'tools.pointDuel': {
+    label: '포인트 대결',
+    description:
+      '포인트를 걸고 다른 사람과 가위바위보를 합니다. 건 포인트는 신청하는 순간 맡겨지고, 이긴 쪽이 두 배를 가져갑니다.',
+    group: 'tools',
+    defaultEnabled: false,
+    // 포인트 자체가 없으면 걸 것도 없다
+    requires: ['tools.lottery'],
+  },
   'tools.attendance': {
     label: '출퇴근 기록',
     description: '직원이 출근·퇴근을 직접 기록하고, 관리자는 인원별 기록을 봅니다.',

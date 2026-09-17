@@ -30,6 +30,7 @@ import { PostTag } from './PostTag';
 import { Memo } from './Memo';
 import { UserPoint } from './UserPoint';
 import { PointLedger } from './PointLedger';
+import { PointDuel } from './PointDuel';
 import { WikiPage } from './WikiPage';
 import { WikiRevision } from './WikiRevision';
 import { PostRevision } from './PostRevision';
@@ -397,6 +398,10 @@ User.hasMany(PointLedger, {
 });
 PointLedger.belongsTo(User, { foreignKey: 'UserId', as: 'user' });
 
+// 대결은 사람 둘을 가리킨다 — 목록에서 이름을 보여 주려면 양쪽 다 조인해야 한다
+PointDuel.belongsTo(User, { foreignKey: 'challengerId', as: 'challenger' });
+PointDuel.belongsTo(User, { foreignKey: 'opponentId', as: 'opponent' });
+
 // WikiPage 관련 관계
 WikiPage.belongsTo(WikiPage, { as: 'parent', foreignKey: 'parentId', constraints: false });
 WikiPage.hasMany(WikiPage, { as: 'children', foreignKey: 'parentId', constraints: false });
@@ -516,6 +521,7 @@ export {
   PostTag,
   UserPoint,
   PointLedger,
+  PointDuel,
   Memo,
   WikiPage,
   WikiRevision,
