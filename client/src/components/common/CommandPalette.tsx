@@ -1,8 +1,9 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Command } from 'cmdk';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
 import { useAccessibleBoards } from '../../hooks/useAccessibleBoards';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import '../../styles/command-palette.css';
 
 interface CommandPaletteProps {
@@ -23,21 +24,31 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
     [onOpenChange]
   );
 
+  // cmdk 가 입력칸에 포커스를 주기는 하지만 Tab 은 아무도 잡지 않는다 — 그대로 두면
+  // Tab 한 번에 팔레트 뒤 화면으로 포커스가 새어, 가려진 곳의 단추를 누르게 된다.
+  //
+  // ESC 도 여기 하나로 모은다. cmdk 의 onKeyDown 은 포커스가 팔레트 안에 있을 때만
+  // 듣는데, 훅은 문서에서 들으므로 포커스가 어디로 빠졌든 닫힌다.
+  //
+  // 훅은 아래 early return 보다 위에 있어야 한다. 조건부 훅 호출은 렌더마다 순서를
+  // 어긋나게 한다. 닫혀 있을 때 ESC 를 먹지 않도록 open 을 그대로 넘긴다.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => onOpenChange(false), [onOpenChange]);
+  useFocusTrap(panelRef, close, open);
+
   if (!open) return null;
 
   return (
     <div className="command-palette-overlay" onClick={() => onOpenChange(false)}>
-      <div className="command-palette-container" onClick={e => e.stopPropagation()}>
-        <Command
-          label="명령어 팔레트"
-          onKeyDown={e => {
-            // cmdk bare <Command>는 Escape 닫기 로직이 없어 직접 처리 (푸터 "Esc 닫기" 안내와 일치)
-            if (e.key === 'Escape') {
-              e.preventDefault();
-              onOpenChange(false);
-            }
-          }}
-        >
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="명령어 팔레트"
+        className="command-palette-container"
+        onClick={e => e.stopPropagation()}
+      >
+        <Command label="명령어 팔레트">
           <div className="command-input-wrapper">
             <svg
               className="command-search-icon"
