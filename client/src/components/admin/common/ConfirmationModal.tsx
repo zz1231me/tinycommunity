@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface ConfirmationModalProps {
   open: boolean;
@@ -23,54 +24,20 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   onCancel,
   variant = 'danger',
 }) => {
+  const panelRef = useRef<HTMLDivElement>(null);
   const cancelBtnRef = useRef<HTMLButtonElement>(null);
-  const confirmBtnRef = useRef<HTMLButtonElement>(null);
-  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
-  // onCancel을 ref로 보관 — 부모가 인라인 화살표로 전달해도 useEffect cleanup이
-  // 매 렌더마다 재실행되지 않게 (모달 사용 중 트리거로 focus 튀는 회귀 차단)
-  const onCancelRef = useRef(onCancel);
-  useEffect(() => {
-    onCancelRef.current = onCancel;
-  }, [onCancel]);
 
-  // 접근성: ESC로 닫기, 모달 안에서 Tab 순환(focus trap), 첫 포커스를 취소 버튼으로
-  useEffect(() => {
-    if (!open) return;
-    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
-    // 다음 tick에 cancel 버튼으로 포커스 (위험 액션은 기본 cancel이 안전)
-    const t = setTimeout(() => cancelBtnRef.current?.focus(), 0);
-
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onCancelRef.current();
-        return;
-      }
-      if (e.key === 'Tab') {
-        const focusables = [cancelBtnRef.current, confirmBtnRef.current].filter(
-          (el): el is HTMLButtonElement => el !== null
-        );
-        if (focusables.length === 0) return;
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      clearTimeout(t);
-      document.removeEventListener('keydown', handleKey);
-      // 모달 닫힐 때 이전 포커스 복원 — detached element는 focus가 무동작
-      const el = previouslyFocusedRef.current;
-      if (el && el.isConnected) el.focus();
-    };
-  }, [open]);
+  // 접근성: ESC로 닫기, 모달 안에서 Tab 순환(focus trap), 첫 포커스를 취소 버튼으로,
+  // 닫힐 때 이전 포커스 복원.
+  //
+  // 같은 일을 하던 손코드를 공용 훅으로 바꿨다. 동작은 그대로다 — 이 패널 안에서
+  // 포커스를 받는 것은 단추 둘뿐이라(제목·본문은 글자고 message 는 문자열 prop),
+  // '단추 둘만 순환' 과 '안쪽 전부 순환' 이 지금은 같은 뜻이다. 바뀌는 것은 사본이
+  // 하나 줄고, 테스트가 붙어 있는 쪽으로 합쳐진다는 점이다.
+  //
+  // 첫 포커스는 취소로 못 박는다. 훅 기본값(안쪽 첫 요소)도 지금은 취소지만,
+  // 위험한 확인에서 그것이 단추 순서에 딸려 바뀌게 두면 안 된다.
+  useFocusTrap(panelRef, onCancel, open, cancelBtnRef);
 
   const confirmCls =
     variant === 'danger'
@@ -86,6 +53,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           role="presentation"
         >
           <motion.div
+            ref={panelRef}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="confirmation-modal-title"
@@ -120,7 +88,6 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                 {cancelLabel}
               </button>
               <button
-                ref={confirmBtnRef}
                 onClick={onConfirm}
                 className={`px-4 py-2 text-sm rounded-lg font-medium focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 transition-colors ${confirmCls}`}
               >
