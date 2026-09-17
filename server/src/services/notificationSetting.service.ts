@@ -76,13 +76,21 @@ export const notificationSettingService = {
   ): Promise<{ applied: NotificationKind[]; rejected: string[] }> {
     const applied: NotificationKind[] = [];
     const rejected: string[] = [];
+    const valid: NotificationKind[] = [];
 
-    for (const [key, value] of Object.entries(changes)) {
-      if (!isNotificationKind(key) || !isConfigurable(key)) {
-        rejected.push(key);
-        continue;
-      }
-      await NotificationSetting.upsert({ userId, type: key, enabled: !!value });
+    // 먼저 전부 확인하고, 하나라도 걸리면 아무것도 바꾸지 않는다.
+    //
+    // 하나씩 저장하며 걸러 내면 절반만 반영된 채 컨트롤러가 400 을 돌려준다.
+    // 사용자는 저장이 안 된 줄 알지만 실제로는 일부가 바뀌어 있어서, 끈 적 없는
+    // 알림이 꺼진 상태로 남는다 — 알림이 안 온다는 사실 자체를 모르게 된다.
+    for (const key of Object.keys(changes)) {
+      if (isNotificationKind(key) && isConfigurable(key)) valid.push(key);
+      else rejected.push(key);
+    }
+    if (rejected.length > 0) return { applied, rejected };
+
+    for (const key of valid) {
+      await NotificationSetting.upsert({ userId, type: key, enabled: !!changes[key] });
       applied.push(key);
     }
 

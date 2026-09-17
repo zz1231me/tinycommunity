@@ -263,6 +263,48 @@ describe('알림 설정', () => {
     expect(res.status).toBe(400);
   });
 
+  it('하나라도 거절되면 나머지도 저장하지 않는다', async () => {
+    // 예전에는 하나씩 저장하며 걸렀다. 이 요청은 COMMENT 를 먼저 꺼 버린 뒤 SYSTEM 에서
+    // 걸려 400 을 돌려줬다 — 사용자는 저장이 안 된 줄 알지만 실제로는 댓글 알림이
+    // 꺼져 있었고, 알림이 안 온다는 사실 자체를 모르게 된다.
+    const res = await request(app)
+      .put('/api/social/notification-settings')
+      .set(CSRF_HEADER)
+      .set('Cookie', userCookie)
+      .send({ COMMENT: false, SYSTEM: false });
+    expect(res.status).toBe(400);
+
+    const after = await request(app)
+      .get('/api/social/notification-settings')
+      .set('Cookie', userCookie);
+    const comment = after.body.data.kinds.find((k: { key: string }) => k.key === 'COMMENT');
+    expect(comment.enabled).toBe(true);
+  });
+
+  it('모두 올바르면 물론 저장된다 — 양성 대조', async () => {
+    const res = await request(app)
+      .put('/api/social/notification-settings')
+      .set(CSRF_HEADER)
+      .set('Cookie', userCookie)
+      .send({ COMMENT: false, LIKE: false });
+    expect(res.status).toBe(200);
+
+    const after = await request(app)
+      .get('/api/social/notification-settings')
+      .set('Cookie', userCookie);
+    const off = (key: string) =>
+      after.body.data.kinds.find((k: { key: string }) => k.key === key).enabled;
+    expect(off('COMMENT')).toBe(false);
+    expect(off('LIKE')).toBe(false);
+
+    // 뒤 테스트에 영향이 없도록 되돌린다
+    await request(app)
+      .put('/api/social/notification-settings')
+      .set(CSRF_HEADER)
+      .set('Cookie', userCookie)
+      .send({ COMMENT: true, LIKE: true });
+  });
+
   it('모르는 종류는 400', async () => {
     const res = await request(app)
       .put('/api/social/notification-settings')

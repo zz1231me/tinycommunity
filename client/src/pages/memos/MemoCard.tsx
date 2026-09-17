@@ -60,7 +60,10 @@ export const MemoCard: React.FC<MemoCardProps> = ({
       {memo.title && <h3 className="card-title mb-2 pr-6 line-clamp-1">{memo.title}</h3>}
 
       {/* Content */}
-      <p className="text-slate-700 dark:text-slate-200 text-xs whitespace-pre-wrap line-clamp-4 min-h-[2rem]">
+      {/* break-words 가 없으면 붙여 넣은 URL 처럼 띄어쓰기 없는 긴 글이 카드를 밀어
+          늘려, 그 줄의 격자가 통째로 어긋난다 (본문 전역 word-break:keep-all 때문에
+          기본값으로는 끊기지 않는다). 메시지 본문도 같은 이유로 break-words 를 쓴다. */}
+      <p className="text-slate-700 dark:text-slate-200 text-xs whitespace-pre-wrap break-words line-clamp-4 min-h-[2rem]">
         {memo.content || <span className="italic opacity-50">내용 없음</span>}
       </p>
 

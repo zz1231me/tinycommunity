@@ -55,6 +55,9 @@ export const toggleLike = async (req: AuthRequest, res: Response): Promise<void>
     sendSuccess(res, result, result.liked ? '좋아요를 눌렀습니다.' : '좋아요를 취소했습니다.');
   } catch (err: unknown) {
     if (err instanceof AppError && err.statusCode === 404) return sendNotFound(res, '게시글');
+    // 여기서 적지 않으면 아무 데도 기록이 남지 않는다 — 컨트롤러가 직접 응답을 만들어
+    // 에러 미들웨어의 ErrorLog 기록까지 건너뛰기 때문이다.
+    logError('좋아요 처리 실패', err, { postId, userId });
     sendError(res, 500, '좋아요 처리 실패');
   }
 };
@@ -81,7 +84,8 @@ export const getLikeStatus = async (req: AuthRequest, res: Response): Promise<vo
 
     const result = await likeService.getLikeStatus(postId, userId);
     sendSuccess(res, result);
-  } catch (_err) {
+  } catch (err) {
+    logError('좋아요 조회 실패', err, { postId, userId });
     sendError(res, 500, '좋아요 조회 실패');
   }
 };

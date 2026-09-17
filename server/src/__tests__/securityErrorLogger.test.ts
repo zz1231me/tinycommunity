@@ -91,6 +91,22 @@ describe('권한 없는 요청의 기록', () => {
     expect(hit.requestBody?.body?.password).toBe('[REDACTED]');
     expect(JSON.stringify(hit)).not.toContain('SuperSecret123!');
   });
+
+  it('비밀번호 재설정 인증번호도 가려서 기록한다', async () => {
+    // 이 값은 계정을 넘겨받는 데 쓴다. 틀린 요청은 400 으로 기록에 남는데,
+    // 민감어 목록이 부분 일치라 'code' 를 그냥 넣으면 zipcode·qrcode 까지 덮는다 —
+    // 그래서 이름이 정확히 'code' 인 칸만 가리도록 따로 두었다.
+    await request(app)
+      .post('/api/auth/password-reset-verify')
+      .set(CSRF_HEADER)
+      .send({ loginId: 'someone', code: 'NOT6DIGITS', password: 'Whatever123!' });
+
+    const hit = logged('HTTP_400')[0];
+    expect(hit.requestBody?.body?.code).toBe('[REDACTED]');
+    expect(JSON.stringify(hit)).not.toContain('NOT6DIGITS');
+    // 같은 본문의 새 비밀번호도 함께 가려져 있어야 한다
+    expect(hit.requestBody?.body?.password).toBe('[REDACTED]');
+  });
 });
 
 describe('이상 징후(400·404)는 등급을 낮춰 남긴다', () => {

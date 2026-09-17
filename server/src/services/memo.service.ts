@@ -13,7 +13,12 @@ export class MemoService extends BaseService {
         ['order', 'ASC'],
         ['createdAt', 'DESC'],
       ],
-      limit: 500, // 사용자당 최대 500개 메모 반환 (무제한 조회 방지)
+      // 만들 수 있는 상한과 같은 값을 쓴다.
+      //
+      // 500 으로 못 박아 두면, 관리자가 상한을 그보다 크게 올렸을 때(최대 2000) 그 너머의
+      // 메모는 만들어지기만 하고 목록에는 영영 나오지 않는다 — 화면에서 열 수도 지울 수도
+      // 없는 메모가 된다. 상한 자체가 이미 2000 으로 묶여 있어 무제한 조회도 아니다.
+      limit: getSettings().memoMaxPerUser,
     });
   }
 

@@ -61,7 +61,9 @@ export class AuditLogService extends BaseService {
    * 감사 로그 조회
    */
   async getAuditLogs(params: GetAuditLogsDTO) {
-    const page = Math.max(1, params.page || 1);
+    // 위쪽 상한이 없으면 page=99999999 요청 하나로 거대한 OFFSET 스캔과 COUNT(*) 가 함께 돈다.
+    // 형제들은 모두 막아 두었다 — utils/pagination 은 maxPage 1000, loginHistory 는 10000.
+    const page = Math.min(1000, Math.max(1, params.page || 1));
     const limit = Math.min(params.limit || 20, 100);
     const offset = (page - 1) * limit;
 

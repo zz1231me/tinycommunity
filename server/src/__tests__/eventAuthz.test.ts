@@ -69,6 +69,40 @@ beforeAll(async () => {
   otherCookie = await makeUser('evt-other', '남');
 });
 
+describe('반복 일정의 자식을 지우는 범위', () => {
+  it('관리자가 지워도, 남이 부모로 걸어 둔 일정은 살아남는다', async () => {
+    // parentEventId 는 검증 없이 본문으로 설정할 수 있다. 소유자 범위 없이 지우면
+    // 남이 이 일정을 부모로 걸어 둔 경우 그 사람의 일정까지 함께 사라진다.
+    // 사용자 경로는 이미 소유자로 범위를 두고 있었는데, 관리자 경로만 빠져 있었다.
+    const parent = await makeEvent('evt-owner', '부모 일정');
+    const victim = await makeEvent('evt-other', '남의 일정');
+    await Event.update({ parentEventId: parent.id }, { where: { id: victim.id } });
+
+    const res = await request(app)
+      .delete(`/api/admin/events/${parent.id}`)
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie);
+    expect([200, 204]).toContain(res.status);
+
+    expect(await Event.findByPk(parent.id)).toBeNull();
+    expect(await Event.findByPk(victim.id)).not.toBeNull();
+  });
+
+  it('같은 소유자의 자식은 함께 지워진다 — 양성 대조', async () => {
+    // 범위를 둔다고 해서 '아무것도 안 지우기' 가 되면 고아 인스턴스가 남는다
+    const parent = await makeEvent('evt-owner', '부모 일정 2');
+    const child = await makeEvent('evt-owner', '자식 일정');
+    await Event.update({ parentEventId: parent.id }, { where: { id: child.id } });
+
+    await request(app)
+      .delete(`/api/admin/events/${parent.id}`)
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie);
+
+    expect(await Event.findByPk(child.id)).toBeNull();
+  });
+});
+
 describe('남의 일정', () => {
   it('소유자는 자기 일정을 고칠 수 있다 — 양성 대조', async () => {
     const ev = await makeEvent('evt-owner', '원래 제목');

@@ -21,6 +21,7 @@ import { loginHistoryService } from '../services/loginHistory.service';
 import { auditLogService } from '../services/auditLog.service';
 import { userSessionService } from '../services/userSession.service';
 import { postService } from '../services/post.service';
+import { notificationService } from '../services/notification.service';
 
 /**
  * 오래된 로그 자동 정리
@@ -32,16 +33,26 @@ export async function runLogCleanup(): Promise<void> {
     const { securityLogRetentionDays, errorLogRetentionDays, deletedPostRetentionDays } =
       getSettings();
 
-    const [secDeleted, errDeleted, loginDeleted, auditDeleted, sessionDeleted, postsPurged] =
-      await Promise.all([
-        securityLogService.deleteOldLogs(securityLogRetentionDays),
-        errorLogService.deleteOldLogs(errorLogRetentionDays),
-        loginHistoryService.deleteOldRecords(90),
-        auditLogService.deleteOldLogs(365),
-        userSessionService.cleanExpiredSessions(),
-        // 삭제된 게시글: soft-delete 후 보관 기간(관리자 설정값)이 지나면 DB에서 영구 삭제
-        postService.purgeExpiredPosts(deletedPostRetentionDays),
-      ]);
+    const [
+      secDeleted,
+      errDeleted,
+      loginDeleted,
+      auditDeleted,
+      sessionDeleted,
+      postsPurged,
+      notifDeleted,
+    ] = await Promise.all([
+      securityLogService.deleteOldLogs(securityLogRetentionDays),
+      errorLogService.deleteOldLogs(errorLogRetentionDays),
+      loginHistoryService.deleteOldRecords(90),
+      auditLogService.deleteOldLogs(365),
+      userSessionService.cleanExpiredSessions(),
+      // 삭제된 게시글: soft-delete 후 보관 기간(관리자 설정값)이 지나면 DB에서 영구 삭제
+      postService.purgeExpiredPosts(deletedPostRetentionDays),
+      // 알림: 댓글·좋아요·멘션·구독 전파마다 한 줄씩 쌓이는데 지우는 길이 사용자가
+      // 직접 누르는 것뿐이었다. 다른 기록들과 달리 보관 기간이 없어 끝없이 늘어났다.
+      notificationService.deleteOldNotifications(90),
+    ]);
 
     if (
       secDeleted > 0 ||
@@ -49,7 +60,8 @@ export async function runLogCleanup(): Promise<void> {
       loginDeleted > 0 ||
       auditDeleted > 0 ||
       sessionDeleted > 0 ||
-      postsPurged > 0
+      postsPurged > 0 ||
+      notifDeleted > 0
     ) {
       logger.info(
         `🗑️ 자동 정리 완료 — 보안로그: ${secDeleted}건, 에러로그: ${errDeleted}건, 로그인이력: ${loginDeleted}건, 감사로그: ${auditDeleted}건, 세션: ${sessionDeleted}건, 만료게시글: ${postsPurged}건 삭제`

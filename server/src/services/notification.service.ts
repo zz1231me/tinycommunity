@@ -149,6 +149,20 @@ export class NotificationService {
   }
 
   // 내 알림 전체 삭제 — 삭제된 개수 반환 (0건이어도 에러 아님)
+  /**
+   * 보관 기간이 지난 알림을 지운다. 서버가 하루 한 번 부른다.
+   *
+   * 알림은 댓글·좋아요·멘션·구독 전파·메시지마다 한 줄씩 쌓이는데(구독 전파는 구독자
+   * 수만큼), 지우는 길이 사용자가 직접 누르는 것밖에 없었다. 보안·에러·로그인·감사
+   * 로그는 모두 보관 기간이 있는데 알림만 빠져 있어서, 오래 돌린 설치에서는 끝없이
+   * 늘어나고 안 읽은 수 세기와 목록 조회가 함께 느려진다.
+   */
+  async deleteOldNotifications(retentionDays = 90): Promise<number> {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - retentionDays);
+    return Notification.destroy({ where: { createdAt: { [Op.lt]: cutoff } } });
+  }
+
   async deleteAllNotifications(userId: string): Promise<number> {
     const count = await Notification.destroy({ where: { userId } });
     invalidateCache('notifications:unread', userId);

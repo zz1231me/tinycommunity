@@ -42,8 +42,16 @@ export class EventService extends BaseService {
         if (!event) {
           throw new AppError(404, '이벤트를 찾을 수 없습니다.');
         }
-        // 반복 이벤트 자식 인스턴스까지 원자적으로 삭제 (고아화 방지)
-        await Event.destroy({ where: { parentEventId: id }, transaction: t });
+        // 반복 이벤트 자식 인스턴스까지 원자적으로 삭제 (고아화 방지).
+        //
+        // ⚠️ 같은 소유자의 자식만 지운다. parentEventId 는 검증 없이 본문으로 설정할 수
+        // 있어서, 범위를 두지 않으면 남이 이 이벤트를 부모로 걸어 둔 경우 그 사람의
+        // 이벤트까지 함께 사라진다. 사용자 경로(event.controller)는 이미 이렇게 막아
+        // 두었는데, 관리자 삭제가 지나는 이 경로만 빠져 있었다.
+        await Event.destroy({
+          where: { parentEventId: id, UserId: event.UserId },
+          transaction: t,
+        });
         await event.destroy({ transaction: t });
       });
     } catch (error) {
