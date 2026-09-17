@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { safeStorage } from '../../utils/safeStorage';
 import { useParams, useNavigate } from 'react-router-dom';
 import { WikiPage as WikiPageType, WikiTreePage } from '../../types/wiki.types';
@@ -17,6 +17,7 @@ import { WikiEditor } from './WikiEditor';
 import { useAuth } from '../../store/auth';
 import { LoadingSpinner } from '../../components/admin/common/LoadingSpinner';
 import { useImageUpload } from '../../hooks/useImageUpload';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 const WikiPageRoute = () => {
   const { slug } = useParams<{ slug?: string }>();
@@ -172,21 +173,32 @@ const WikiPageRoute = () => {
     }
   };
 
-  // ESC로 확인 모달 닫기(취소 방향) — 다른 모달과 일관
-  useEffect(() => {
-    const deleteOpen = showDeleteConfirm;
-    const navOpen = pendingNavSlug !== undefined;
-    const restoreOpen = restoreContent !== null;
-    if (!deleteOpen && !navOpen && !restoreOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      if (deleteOpen) setShowDeleteConfirm(false);
-      else if (restoreOpen) setRestoreContent(null);
-      else setPendingNavSlug(undefined);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [showDeleteConfirm, pendingNavSlug, restoreContent]);
+  // ESC로 확인 모달 닫기(취소 방향) + 열려 있는 동안 포커스 가두기 — 다른 모달과 일관.
+  //
+  // 확인 모달이 셋인데 ESC 를 한 곳에서 받아 delete → restore → nav 순으로 처리하고
+  // 있었다. 가두기는 대화상자마다 따로 걸어야 하므로 그 순서를 active 로 옮긴다 —
+  // 셋을 그냥 켜 두면 ESC 한 번에 여럿이 함께 닫힌다.
+  //
+  // 닫는 동작은 예전 ESC 와 똑같이 둔다. 각 취소 단추는 오류 메시지까지 지우지만
+  // ESC 는 원래 지우지 않았다.
+  //
+  // 첫 포커스는 훅 기본값(안쪽 첫 요소)에 맡긴다 — 셋 다 안전한 쪽(계속 편집·취소)이
+  // 먼저 오고 삭제·복원은 그 뒤라, 파괴적인 단추에 포커스가 얹히지 않는다.
+  const deleteOpen = showDeleteConfirm;
+  const restoreOpen = restoreContent !== null;
+  const navOpen = pendingNavSlug !== undefined;
+
+  const deletePanelRef = useRef<HTMLDivElement>(null);
+  const restorePanelRef = useRef<HTMLDivElement>(null);
+  const navPanelRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(deletePanelRef, () => setShowDeleteConfirm(false), deleteOpen);
+  useFocusTrap(restorePanelRef, () => setRestoreContent(null), restoreOpen && !deleteOpen);
+  useFocusTrap(
+    navPanelRef,
+    () => setPendingNavSlug(undefined),
+    navOpen && !deleteOpen && !restoreOpen
+  );
 
   const handleDelete = () => {
     setDeleteError(null);
@@ -386,7 +398,13 @@ const WikiPageRoute = () => {
       {/* 편집 중 이탈 확인 모달 */}
       {pendingNavSlug !== undefined && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6">
+          <div
+            ref={navPanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="저장하지 않은 변경사항"
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6"
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg
@@ -431,7 +449,13 @@ const WikiPageRoute = () => {
       {/* 삭제 확인 모달 */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6">
+          <div
+            ref={deletePanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="페이지 삭제"
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6"
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg
@@ -493,7 +517,13 @@ const WikiPageRoute = () => {
       {/* 리비전 복원 확인 모달 */}
       {restoreContent !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6">
+          <div
+            ref={restorePanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="이 버전으로 복원"
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6"
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg

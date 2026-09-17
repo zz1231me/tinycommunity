@@ -136,6 +136,65 @@ describe('열었을 때 첫 포커스', () => {
   });
 });
 
+/**
+ * 대화상자 둘이 함께 떠 있고 그중 하나만 켜진 화면.
+ *
+ * 위키 화면은 확인 대화상자 셋(삭제·복원·이탈)이 한곳에 있고, 겹칠 때를 대비해 ESC 를
+ * delete → restore → nav 순서로 한 곳에서 처리해 왔다. 가두기는 대화상자마다 따로
+ * 걸어야 해서 그 순서를 active 로 옮겼는데, 그러면 '꺼진 쪽은 조용하다' 가 그 순서를
+ * 지탱하는 전제가 된다.
+ */
+function TwoDialogs({
+  onCloseTop,
+  onCloseBottom,
+  topActive,
+}: {
+  onCloseTop: () => void;
+  onCloseBottom: () => void;
+  topActive: boolean;
+}) {
+  const topRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(topRef, onCloseTop, topActive);
+  useFocusTrap(bottomRef, onCloseBottom, !topActive);
+  return (
+    <>
+      <div ref={bottomRef}>
+        <button type="button">아래</button>
+      </div>
+      <div ref={topRef}>
+        <button type="button">위</button>
+      </div>
+    </>
+  );
+}
+
+describe('대화상자가 겹칠 때', () => {
+  it('켜진 쪽만 ESC 를 받는다', () => {
+    // 둘 다 받으면 ESC 한 번에 여럿이 닫힌다 — 위에 뜬 것만 닫으려던 사람이
+    // 뒤에 있던 것까지 잃는다
+    const top = vi.fn();
+    const bottom = vi.fn();
+    render(<TwoDialogs onCloseTop={top} onCloseBottom={bottom} topActive />);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(top).toHaveBeenCalledTimes(1);
+    expect(bottom).not.toHaveBeenCalled();
+  });
+
+  it('켜진 쪽이 바뀌면 받는 쪽도 바뀐다', () => {
+    const top = vi.fn();
+    const bottom = vi.fn();
+    render(<TwoDialogs onCloseTop={top} onCloseBottom={bottom} topActive={false} />);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(bottom).toHaveBeenCalledTimes(1);
+    expect(top).not.toHaveBeenCalled();
+  });
+});
+
 describe('닫을 때 포커스를 되돌린다', () => {
   it('열기 전에 보던 자리로 돌아온다', () => {
     render(<Harness />);
