@@ -80,11 +80,11 @@ export const getPostsByTag = async (req: AuthRequest, res: Response): Promise<vo
 };
 
 export const toggleScrap = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { id: userId } = req.user;
-  const postId = req.params.id;
+  const { id: userId, role: userRole } = req.user;
+  const { boardType, id: postId } = req.params;
 
   try {
-    const result = await postScrapService.toggle(postId, userId);
+    const result = await postScrapService.toggle(postId, userId, boardType, userRole);
     sendSuccess(res, result);
   } catch (err) {
     sendServiceError(res, err, '스크랩 처리에 실패했습니다.', { userId, postId });
@@ -92,14 +92,18 @@ export const toggleScrap = async (req: AuthRequest, res: Response): Promise<void
 };
 
 export const getScrapStatus = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { id: userId } = req.user;
-  const postId = req.params.id;
+  const { id: userId, role: userRole } = req.user;
+  const { boardType, id: postId } = req.params;
 
   try {
-    sendSuccess(res, { scrapped: await postScrapService.isScrapped(postId, userId) });
+    // 주소로 들어온 요청이라, 글이 정말 그 게시판 소속인지부터 본다
+    await postScrapService.assertReachable(postId, boardType, userId, userRole);
+    const scrapped = await postScrapService.isScrapped(postId, userId);
+    sendSuccess(res, { scrapped });
   } catch (err) {
-    logError('스크랩 상태 조회 실패', err, { userId, postId });
-    sendError(res, 500, '스크랩 상태를 확인하지 못했습니다.');
+    // sendServiceError 로 바꾼다. 여기서 500 으로 뭉개면 교차 게시판 요청의 404 와
+    // 비밀글 403 이 모두 '서버 오류' 가 되어, 막았다는 사실이 응답에 드러나지 않는다.
+    sendServiceError(res, err, '스크랩 상태를 확인하지 못했습니다.', { userId, postId });
   }
 };
 

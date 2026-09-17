@@ -15,6 +15,7 @@ import { User } from '../models/User';
 import { SecurityLog } from '../models/SecurityLog';
 import { sendSuccess, sendError } from '../utils/response';
 import { logError } from '../utils/logger';
+import { sanitizeHtmlContent } from '../utils/contentRenderer';
 import { getSettings } from '../utils/settingsCache';
 import {
   invalidateCache,
@@ -771,7 +772,10 @@ export const updateEventAsAdmin = async (req: Request, res: Response): Promise<v
       title,
       start,
       end,
-      body,
+      // 사용자 경로(event.controller)는 만들 때도 고칠 때도 본문을 정화하는데,
+      // 관리자 화면으로 고치는 이 경로만 빠져 있었다. 관리자가 넣은 HTML 이 그대로
+      // 저장되어 일정을 보는 모든 사람에게 그려진다.
+      body: body ? sanitizeHtmlContent(String(body)) : body,
       location,
       color,
       backgroundColor,

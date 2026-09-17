@@ -9,6 +9,7 @@ import { PostTag } from '../models/PostTag';
 import { Comment } from '../models/Comment';
 import { PostLike } from '../models/PostLike';
 import { PostRead } from '../models/PostRead';
+import { PostAttachmentVersion } from '../models/PostAttachmentVersion';
 import { BoardManager } from '../models/BoardManager';
 import { CommentLike } from '../models/CommentLike';
 import { Notification } from '../models/Notification';
@@ -202,6 +203,20 @@ export class BoardService extends BaseService {
     // 자식 데이터(댓글·좋아요·조회기록·북마크·태그)도 직접 정리한다. SQLite 는 FK 를
     // 강제하지 않아, 정리하지 않으면 사라진 게시글을 가리키는 orphan 행이 남는다.
     const postIds = posts.map(p => p.id);
+
+    // 같은 이름으로 교체돼 밀려난 예전 첨부들도 함께 지운다. 반드시 삭제 '전' 에 모은다 —
+    // 이 행들은 게시글이 사라질 때 cascade 로 함께 사라지고, 그러면 어떤 파일이었는지
+    // 되짚을 방법이 없어져 아무도 열 수 없는 파일이 업로드 폴더에 영원히 남는다.
+    // 글 하나를 지우는 경로(post.service)는 이미 이렇게 하고 있었는데, 게시판을 통째로
+    // 지우는 이 경로만 빠져 있었다.
+    if (postIds.length > 0) {
+      const versions = await PostAttachmentVersion.findAll({
+        where: { postId: { [Op.in]: postIds } },
+        attributes: ['filename'],
+      });
+      filesToDelete.push(...versions.map(v => ({ filename: v.filename })));
+    }
+
     await sequelize.transaction(async t => {
       if (postIds.length > 0) {
         const childWhere = { PostId: { [Op.in]: postIds } };

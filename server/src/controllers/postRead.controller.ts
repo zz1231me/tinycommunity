@@ -15,7 +15,7 @@ export const markAsRead = async (req: AuthRequest, res: Response): Promise<void>
   }
 
   try {
-    await postReadService.markRead(postId, userId, boardType);
+    await postReadService.markRead(postId, userId, boardType, req.user?.role);
     sendSuccess(res, null, '읽음 처리 완료');
   } catch (err) {
     if (err instanceof AppError) {
