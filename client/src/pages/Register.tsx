@@ -295,7 +295,7 @@ function Register() {
                   onChange={e => handleChange('confirmPassword', e.target.value)}
                   disabled={isLoading}
                   required
-                  className="w-full pl-4 pr-12 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100
+                  className="w-full pl-4 pr-12 py-3 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100
                             focus:bg-slate-50 dark:focus:bg-slate-600 focus:ring-2 focus:ring-primary-500/40
                             disabled:opacity-50 disabled:cursor-not-allowed
                             transition-all duration-200
