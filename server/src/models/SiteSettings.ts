@@ -74,7 +74,8 @@ export interface SiteSettingsInstance extends Model<
   duelExpireMinutes: CreationOptional<number>;
   duelMaxOpenPerUser: CreationOptional<number>;
   attackCost: CreationOptional<number>;
-  attackPopupCost: CreationOptional<number>;
+  attackHideCost: CreationOptional<number>;
+  attackHideSeconds: CreationOptional<number>;
   attackDefendCost: CreationOptional<number>;
   attackBlockSeconds: CreationOptional<number>;
   attackDailyLimit: CreationOptional<number>;
@@ -156,7 +157,8 @@ export class SiteSettings
   declare public duelExpireMinutes: CreationOptional<number>;
   declare public duelMaxOpenPerUser: CreationOptional<number>;
   declare public attackCost: CreationOptional<number>;
-  declare public attackPopupCost: CreationOptional<number>;
+  declare public attackHideCost: CreationOptional<number>;
+  declare public attackHideSeconds: CreationOptional<number>;
   declare public attackDefendCost: CreationOptional<number>;
   declare public attackBlockSeconds: CreationOptional<number>;
   declare public attackDailyLimit: CreationOptional<number>;
@@ -545,11 +547,20 @@ SiteSettings.init(
       defaultValue: ATTACK_DEFAULTS.cost,
       field: 'attack_cost',
     },
-    attackPopupCost: {
+    // 쪽지 공격을 숨기기 공격으로 바꾸면서 attack_popup_cost 를 대신한다.
+    // 옛 칸은 ensureAllModelColumns 가 지우지 않으므로 그대로 남는다 — 설정값이라
+    // 잃을 데이터는 없고, 지우는 쪽이 더 위험하다.
+    attackHideCost: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: ATTACK_DEFAULTS.popupCost,
-      field: 'attack_popup_cost',
+      defaultValue: ATTACK_DEFAULTS.hideCost,
+      field: 'attack_hide_cost',
+    },
+    attackHideSeconds: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: ATTACK_DEFAULTS.hideSeconds,
+      field: 'attack_hide_seconds',
     },
     attackDefendCost: {
       type: DataTypes.INTEGER,

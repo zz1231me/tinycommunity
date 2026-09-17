@@ -19,12 +19,10 @@ import {
   fetchAttackState,
   fetchMyAttendance,
   fetchMyAttendanceHistory,
-  markPopupSeen,
   sendDefend,
 } from '../../api/attendance';
 import {
   AttackBanner,
-  PopupAlert,
 } from '../../components/attendance/AttendanceAttack';
 import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
@@ -130,20 +128,7 @@ export default function AttendancePage() {
     onError: err => toast.error(getApiErrorMessage(err, '방어하지 못했습니다.')),
   });
 
-  // 닫은 쪽지를 화면 쪽에서도 기억한다.
-  //
-  // 서버 응답만 보고 그리면, '봤다' 고 알리는 데 실패했을 때(오프라인·500) seenAt 이
-  // 찍히지 않아 다음 조회에 같은 쪽지가 그대로 돌아온다. ESC·바깥 클릭·닫기 버튼이
-  // 모두 같은 길로 가므로, 그 순간 모달을 영영 닫을 수 없게 된다.
-  const [dismissedPopups, setDismissedPopups] = useState<number[]>([]);
-
-  const popupSeen = useMutation({
-    mutationFn: markPopupSeen,
-    onSettled: () => refreshAttack(),
-  });
-
   const incoming = attack.data?.incoming ?? null;
-  const popup = attack.data?.popup ?? null;
   // 서버가 준 만료 시각으로 직접 판단한다 — 이미 지난 공격을 아직 받아 오지 않았을 수 있다
   const underAttack = Boolean(incoming && new Date(incoming.expiresAt).getTime() > Date.now());
 
@@ -204,7 +189,7 @@ export default function AttendancePage() {
             // 공격받는 중에도 퇴근은 누를 수 있다. 버튼이 도망다닐 뿐이다 —
             // 막아 버리면 남이 내 퇴근 기록 시각을 늦출 수 있게 된다.
             canCheckOut={Boolean(live && !live.checkOutAt)}
-            chaos={attackEnabled && underAttack}
+            attackKind={attackEnabled && underAttack && incoming ? incoming.kind : null}
             checkingOut={checkOutMutation.isPending}
             onCheckIn={() => setDialogOpen(true)}
             onCheckOut={() => runOnce(() => checkOutMutation.mutateAsync().catch(() => {}))}
@@ -237,16 +222,6 @@ export default function AttendancePage() {
             </section>
           )}
         </>
-      )}
-
-      {attackEnabled && popup && !dismissedPopups.includes(popup.id) && (
-        <PopupAlert
-          popup={popup}
-          onClose={() => {
-            setDismissedPopups(prev => [...prev, popup.id]);
-            popupSeen.mutate(popup.id);
-          }}
-        />
       )}
 
       <section

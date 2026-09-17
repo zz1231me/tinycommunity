@@ -97,8 +97,10 @@ export interface SiteSettings {
   duelMaxOpenPerUser: number;
   /** 퇴근 방해 한 장 값 */
   attackCost: number;
-  /** 쪽지 한 장 값 */
-  attackPopupCost: number;
+  /** 퇴근 버튼 숨기기 한 장 값 */
+  attackHideCost: number;
+  /** 퇴근 버튼이 보이지 않는 시간(초) */
+  attackHideSeconds: number;
   /** 방어권 한 장 값 */
   attackDefendCost: number;
   /** 퇴근 버튼이 말을 안 듣는 시간(초) */

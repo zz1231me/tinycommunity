@@ -5,7 +5,7 @@
 
 import { z } from 'zod';
 import { DUEL_HANDS, DUEL_STAKE_HARD_MAX } from '../config/duel';
-import { ATTACK_KINDS, ATTACK_MESSAGE_MAX } from '../config/attendanceAttack';
+import { ATTACK_KINDS } from '../config/attendanceAttack';
 
 // ─── 인증 ─────────────────────────────────────────────────
 
@@ -162,7 +162,6 @@ export const duelAcceptSchema = z.object({
 export const attendanceAttackSchema = z.object({
   targetId: z.string().trim().min(1, '대상을 골라주세요.').max(50),
   kind: z.enum(ATTACK_KINDS).optional(),
-  message: z.string().trim().max(ATTACK_MESSAGE_MAX).optional(),
 });
 
 export const attendanceCheckInSchema = z.object({

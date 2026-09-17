@@ -29,7 +29,7 @@ import { toast } from '../../utils/toast';
 
 const KINDS: Array<{ kind: AttackKind; label: string; hint: string }> = [
   { kind: 'chaos', label: '퇴근 방해', hint: '퇴근 버튼이 도망다니고 깜빡입니다' },
-  { kind: 'popup', label: '쪽지', hint: '상대 화면에 알림창으로 한 번 뜹니다' },
+  { kind: 'hide', label: '버튼 숨기기', hint: '퇴근 버튼이 잠깐 사라집니다' },
 ];
 
 /**
@@ -44,7 +44,6 @@ export function AttackPanel({ myId, onSpent }: { myId: string; onSpent?: () => v
 
   const [picked, setPicked] = useState<UserSuggestion[]>([]);
   const [kind, setKind] = useState<AttackKind>('chaos');
-  const [message, setMessage] = useState('');
 
   const reload = useCallback(async () => {
     setState(await fetchAttackState());
@@ -72,16 +71,11 @@ export function AttackPanel({ myId, onSpent }: { myId: string; onSpent?: () => v
     if (!state || picked.length === 0 || sending) return;
     setSending(true);
     try {
-      await sendAttack({
-        targetId: picked[0].id,
-        kind,
-        ...(kind === 'popup' ? { message: message.trim() } : {}),
-      });
+      await sendAttack({ targetId: picked[0].id, kind });
       toast.success('공격권을 사용했습니다.');
       // 보내진 뒤에만 비운다. 한도 초과·포인트 부족처럼 거절당하는 길이 여럿이라,
-      // 미리 비우면 그때마다 사람을 다시 찾고 글을 다시 써야 한다.
+      // 미리 비우면 그때마다 상대를 다시 찾아야 한다.
       setPicked([]);
-      setMessage('');
       await reload().catch(() => {});
       onSpent?.();
     } catch (err) {
@@ -92,7 +86,7 @@ export function AttackPanel({ myId, onSpent }: { myId: string; onSpent?: () => v
   };
 
   const rules = state?.rules;
-  const cost = !rules ? 0 : kind === 'popup' ? rules.popupCost : rules.cost;
+  const cost = !rules ? 0 : kind === 'hide' ? rules.hideCost : rules.cost;
   const soldOut = (state?.remainingToday ?? 0) <= 0;
   const affordable = (state?.balance ?? 0) >= cost;
   const chosen = KINDS.find(k => k.kind === kind);
@@ -111,9 +105,9 @@ export function AttackPanel({ myId, onSpent }: { myId: string; onSpent?: () => v
       ) : (
         <>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            근무 중인 사람을 {rules.blockSeconds}초 동안 방해합니다. 버튼이 잠기는 것은 아니라
-            끝까지 누르면 눌리고, 기록되는 퇴근 시각은 실제로 누른 순간 그대로입니다. 오늘{' '}
-            {state.remainingToday}/{rules.dailyLimit}번 남았습니다.
+            근무 중인 사람의 퇴근 버튼을 {rules.blockSeconds}초 동안 성가시게 하거나{' '}
+            {rules.hideSeconds}초 동안 감춥니다. 기록되는 퇴근 시각은 어느 쪽이든 실제로 누른 순간
+            그대로입니다. 오늘 {state.remainingToday}/{rules.dailyLimit}번 남았습니다.
           </p>
 
           <div className="mt-3 flex gap-1.5">
@@ -131,23 +125,12 @@ export function AttackPanel({ myId, onSpent }: { myId: string; onSpent?: () => v
               >
                 {option.label}
                 <span className="ml-1 text-xs font-normal text-slate-400">
-                  {(option.kind === 'popup' ? rules.popupCost : rules.cost).toLocaleString()}P
+                  {(option.kind === 'hide' ? rules.hideCost : rules.cost).toLocaleString()}P
                 </span>
               </button>
             ))}
           </div>
           {chosen && <p className="mt-1.5 text-xs text-slate-500">{chosen.hint}</p>}
-
-          {kind === 'popup' && (
-            <input
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              maxLength={rules.messageMaxLength}
-              placeholder="한 줄만 — 상대 화면에 그대로 뜹니다"
-              aria-label="쪽지 내용"
-              className="input input-sm mt-2 w-full"
-            />
-          )}
 
           <div className="mt-3">
             <UserPicker

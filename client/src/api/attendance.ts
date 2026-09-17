@@ -34,42 +34,36 @@ export const checkOut = async (): Promise<AttendanceRecord> =>
 
 /**
  * 공격의 종류.
- *  · chaos — 잠깐 동안 퇴근 버튼이 도망다니고 깜빡인다
- *  · popup — 한 번 뜨는 쪽지
+ *  · chaos — 잠깐 동안 퇴근 버튼이 도망다니고 깜빡인다 (막지는 않는다)
+ *  · hide  — 잠깐 동안 퇴근 버튼이 아예 보이지 않는다 (그동안은 누를 수 없다)
  */
-export type AttackKind = 'chaos' | 'popup';
+export type AttackKind = 'chaos' | 'hide';
 
 export interface AttackRules {
   cost: number;
-  popupCost: number;
+  hideCost: number;
   defendCost: number;
-  /** 퇴근 버튼이 말을 안 듣는 시간(초) */
+  /** 퇴근 버튼이 말을 안 듣는 시간(초) — chaos */
   blockSeconds: number;
+  /** 퇴근 버튼이 보이지 않는 시간(초) — hide */
+  hideSeconds: number;
   dailyLimit: number;
-  messageMaxLength: number;
 }
 
 export interface IncomingAttack {
   id: number;
   attackerId: string;
   attackerName: string;
+  /** 흔들지, 감출지를 이것으로 가른다 */
+  kind: AttackKind;
   expiresAt: string;
-}
-
-export interface IncomingPopup {
-  id: number;
-  attackerId: string;
-  attackerName: string;
-  message: string;
 }
 
 export interface AttackState {
   rules: AttackRules;
   balance: number;
-  /** 지금 나에게 걸린 방해 (없으면 null) */
+  /** 지금 나에게 걸린 공격 (없으면 null) */
   incoming: IncomingAttack | null;
-  /** 아직 못 본 쪽지 하나 (없으면 null) */
-  popup: IncomingPopup | null;
   usedToday: number;
   remainingToday: number;
 }
@@ -80,16 +74,11 @@ export const fetchAttackState = async (): Promise<AttackState> =>
 export const sendAttack = async (body: {
   targetId: string;
   kind: AttackKind;
-  message?: string;
 }): Promise<{ id: number; targetId: string; kind: AttackKind; expiresAt: string }> =>
   unwrap(await api.post('/attendance/attack', body));
 
 export const sendDefend = async (id: number): Promise<{ id: number }> =>
   unwrap(await api.post(`/attendance/attack/${id}/defend`));
-
-/** 쪽지를 봤다고 알린다 — 같은 쪽지가 다시 뜨지 않는다 */
-export const markPopupSeen = async (id: number): Promise<{ id: number }> =>
-  unwrap(await api.post(`/attendance/attack/${id}/seen`));
 
 // ── 관리자 ────────────────────────────────────────────────────────────────
 

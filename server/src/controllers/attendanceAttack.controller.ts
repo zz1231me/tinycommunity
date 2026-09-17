@@ -37,16 +37,6 @@ export const useAttack = async (req: AuthRequest, res: Response): Promise<void> 
   }
 };
 
-/** POST /api/attendance/attack/:id/seen — 쪽지를 봤다고 표시한다 */
-export const markPopupSeen = async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const result = await attendanceAttackService.markSeen(req.user.id, attackId(req.params.id));
-    sendSuccess(res, result);
-  } catch (err) {
-    fail(res, err, '쪽지를 닫지 못했습니다.', { userId: req.user.id, id: req.params.id });
-  }
-};
-
 /** POST /api/attendance/attack/:id/defend — 방어권을 사서 지금 걸린 공격을 푼다 */
 export const useDefend = async (req: AuthRequest, res: Response): Promise<void> => {
   try {

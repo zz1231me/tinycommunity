@@ -40,15 +40,16 @@ vi.mock('../../utils/toast', () => ({
 const state = (over: Partial<AttackState> = {}): AttackState => ({
   rules: {
     cost: 300,
-    popupCost: 150,
+    // 일부러 방해 값과 다르게 둔다. 같은 값이면 '종류에 따라 값이 다르게 적힌다' 가
+    // 어느 쪽을 읽든 통과해, 아무것도 가려내지 못하는 테스트가 된다.
+    hideCost: 250,
     defendCost: 200,
     blockSeconds: 60,
+    hideSeconds: 10,
     dailyLimit: 5,
-    messageMaxLength: 40,
   },
   balance: 1000,
   incoming: null,
-  popup: null,
   usedToday: 0,
   remainingToday: 5,
   ...over,
@@ -91,56 +92,43 @@ describe('공격 보내기', () => {
     );
   });
 
-  it('쪽지를 고르면 내용 칸이 생기고 그대로 실려 간다', async () => {
+  it('숨기기를 고르면 그 종류로 간다', async () => {
     await show();
 
-    fireEvent.click(screen.getByRole('button', { name: /쪽지/ }));
-    fireEvent.change(screen.getByLabelText('쪽지 내용'), { target: { value: '야근각' } });
+    fireEvent.click(screen.getByRole('button', { name: /버튼 숨기기/ }));
     fireEvent.click(screen.getByRole('button', { name: '상대 고르기' }));
     fireEvent.click(sendBtn());
 
     await waitFor(() =>
-      expect(mockSendAttack).toHaveBeenCalledWith({
-        targetId: 'victim',
-        kind: 'popup',
-        message: '야근각',
-      })
+      expect(mockSendAttack).toHaveBeenCalledWith({ targetId: 'victim', kind: 'hide' })
     );
   });
 
-  it('보내기에 실패하면 고른 사람과 쓴 글을 지우지 않는다', async () => {
+  it('보내기에 실패하면 고른 사람을 지우지 않는다', async () => {
     // 한도 초과·포인트 부족·이미 방해받는 중처럼 거절당하는 길이 여럿이다.
-    // 보내기도 전에 비우면 실패할 때마다 사람을 다시 찾고 글을 다시 써야 한다.
+    // 보내기도 전에 비우면 실패할 때마다 상대를 다시 찾아야 한다.
     mockSendAttack.mockRejectedValue(new Error('한도 초과'));
     await show();
 
-    fireEvent.click(screen.getByRole('button', { name: /쪽지/ }));
-    fireEvent.change(screen.getByLabelText('쪽지 내용'), { target: { value: '야근각' } });
     fireEvent.click(screen.getByRole('button', { name: '상대 고르기' }));
     fireEvent.click(sendBtn());
 
     await waitFor(() => expect(mockSendAttack).toHaveBeenCalled());
-    expect(screen.getByLabelText('쪽지 내용')).toHaveValue('야근각');
     expect(screen.getByRole('button', { name: /고름:/ })).toBeInTheDocument();
   });
 
-  it('보내고 나면 고른 사람과 쓴 글을 비운다 — 양성 대조', async () => {
+  it('보내고 나면 고른 사람을 비운다 — 양성 대조', async () => {
     // 위 테스트만 있으면 '아무 때도 비우지 않는' 구현도 통과한다
     await show();
 
-    fireEvent.click(screen.getByRole('button', { name: /쪽지/ }));
-    fireEvent.change(screen.getByLabelText('쪽지 내용'), { target: { value: '야근각' } });
     fireEvent.click(screen.getByRole('button', { name: '상대 고르기' }));
+    expect(screen.getByRole('button', { name: /고름:/ })).toBeInTheDocument();
+
     fireEvent.click(sendBtn());
 
-    await waitFor(() => expect(screen.getByLabelText('쪽지 내용')).toHaveValue(''));
-    expect(screen.getByRole('button', { name: '상대 고르기' })).toBeInTheDocument();
-  });
-
-  it('쪽지 길이는 화면에서도 묶어 둔다', async () => {
-    await show();
-    fireEvent.click(screen.getByRole('button', { name: /쪽지/ }));
-    expect(screen.getByLabelText('쪽지 내용')).toHaveAttribute('maxlength', '40');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '상대 고르기' })).toBeInTheDocument()
+    );
   });
 
   it('종류에 따라 값이 다르게 적힌다', async () => {
@@ -148,8 +136,8 @@ describe('공격 보내기', () => {
     fireEvent.click(screen.getByRole('button', { name: '상대 고르기' }));
     expect(screen.getByRole('button', { name: /보내기.*300/ })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /쪽지/ }));
-    expect(screen.getByRole('button', { name: /보내기.*150/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /버튼 숨기기/ }));
+    expect(screen.getByRole('button', { name: /보내기.*250/ })).toBeInTheDocument();
   });
 
   it('오늘 다 썼으면 그렇게 말하고 막는다', async () => {

@@ -29,15 +29,18 @@ class AttendanceAttackModel extends Model<
   declare public targetId: ForeignKey<string>;
   /** 근무일 (YYYY-MM-DD, 서버 기준) — 하루 몇 번 썼는지를 센다 */
   declare public workDate: string;
-  /** 'chaos'(버튼 방해) 또는 'popup'(한 번 뜨는 쪽지) */
+  /** 'chaos'(버튼이 도망다닌다) 또는 'hide'(버튼이 잠깐 사라진다) */
   declare public kind: CreationOptional<string>;
-  /** 쪽지 내용. chaos 에는 없다. */
+  /**
+   * 더 이상 쓰지 않는다 — 쪽지 공격을 없애면서 남은 칸.
+   * 칸을 지우는 쪽이 더 위험해서 그대로 둔다(항상 null 로 들어간다).
+   */
   declare public message: CreationOptional<string | null>;
-  /** 이 시각이 지나면 방해가 끝난다(chaos), 또는 쪽지가 사라진다(popup) */
+  /** 이 시각이 지나면 방해가 끝난다 */
   declare public expiresAt: Date;
-  /** 방어권을 써서 일찍 풀었으면 그 시각 (chaos 에만 있다) */
+  /** 방어권을 써서 일찍 풀었으면 그 시각 */
   declare public defendedAt: CreationOptional<Date | null>;
-  /** 쪽지를 받아 본 시각 — 한 번 본 쪽지는 다시 뜨지 않는다 (popup 에만 있다) */
+  /** 더 이상 쓰지 않는다 — 쪽지를 봤는지 적던 칸 (message 와 같은 이유로 남겨 둔다) */
   declare public seenAt: CreationOptional<Date | null>;
   declare public readonly createdAt: CreationOptional<Date>;
   declare public readonly updatedAt: CreationOptional<Date>;

@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { LogIn, LogOut } from 'lucide-react';
 import type { AttendanceRecord } from '../../types/attendance.types';
+import type { AttackKind } from '../../api/attendance';
 import { ChaosButton } from './ChaosButton';
 import { formatClock, formatDay, formatMinutes, minutesBetween } from '../../utils/attendance';
 
@@ -20,8 +21,12 @@ interface Props {
   /** 자정을 넘겨 남은 어제 기록이 있으면 오늘 출근 전이라도 퇴근을 누를 수 있다 */
   canCheckOut: boolean;
   checkingOut: boolean;
-  /** 퇴근 공격을 받는 중인가 — 퇴근 버튼이 도망다닌다(막지는 않는다) */
-  chaos?: boolean;
+  /**
+   * 지금 걸린 퇴근 공격의 종류 (없으면 null).
+   *  · chaos — 버튼이 도망다니고 깜빡인다. 막지는 않는다.
+   *  · hide  — 버튼이 잠깐 사라진다. 그동안은 정말로 누를 수 없다.
+   */
+  attackKind?: AttackKind | null;
   onCheckIn: () => void;
   onCheckOut: () => void;
 }
@@ -46,7 +51,7 @@ export function TodayHero({
   canCheckIn,
   canCheckOut,
   checkingOut,
-  chaos = false,
+  attackKind = null,
   onCheckIn,
   onCheckOut,
 }: Props) {
@@ -127,18 +132,35 @@ export function TodayHero({
             <LogIn className="h-4 w-4" />
             출근
           </button>
-          {/* 공격을 받는 중에도 버튼은 살아 있다 — 성가실 뿐 끝내 눌린다 */}
-          <ChaosButton active={chaos}>
-            <button
-              type="button"
-              onClick={onCheckOut}
-              disabled={!canCheckOut || checkingOut}
-              className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+          {attackKind === 'hide' ? (
+            // 숨기기 공격 — 잠깐 동안 버튼 자체가 없다.
+            //
+            // 자리는 그대로 남긴다(같은 크기의 투명한 자리). 버튼이 빠지면 줄이
+            // 줄어들어 옆의 출근 버튼까지 움직인다.
+            //
+            // disabled 버튼이 아니라 span 이다. 안 보이는 버튼을 눌리게 두면
+            // "보이지도 않는데 눌렸다" 가 되고, Tab 으로도 잡히지 않아야 감춘 것이 된다.
+            <span
+              aria-hidden
+              className="pointer-events-none inline-flex select-none items-center gap-2 px-4 py-2 text-sm opacity-0"
             >
               <LogOut className="h-4 w-4" />
               퇴근
-            </button>
-          </ChaosButton>
+            </span>
+          ) : (
+            /* 방해를 받는 중에도 버튼은 살아 있다 — 성가실 뿐 끝내 눌린다 */
+            <ChaosButton active={attackKind === 'chaos'}>
+              <button
+                type="button"
+                onClick={onCheckOut}
+                disabled={!canCheckOut || checkingOut}
+                className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <LogOut className="h-4 w-4" />
+                퇴근
+              </button>
+            </ChaosButton>
+          )}
         </div>
       </div>
 

@@ -66,7 +66,8 @@ async function restoreDefaults() {
     duelExpireMinutes: DUEL_DEFAULTS.expireMinutes,
     duelMaxOpenPerUser: DUEL_DEFAULTS.maxOpenPerUser,
     attackCost: ATTACK_DEFAULTS.cost,
-    attackPopupCost: ATTACK_DEFAULTS.popupCost,
+    attackHideCost: ATTACK_DEFAULTS.hideCost,
+    attackHideSeconds: ATTACK_DEFAULTS.hideSeconds,
     attackDefendCost: ATTACK_DEFAULTS.defendCost,
     attackBlockSeconds: ATTACK_DEFAULTS.blockSeconds,
     attackDailyLimit: ATTACK_DEFAULTS.dailyLimitPerAttacker,
@@ -167,12 +168,12 @@ describe('퇴근 공격 값도 관리자 설정에서 온다', () => {
     expect(await balanceOf(A)).toBe(5000 - 777);
   });
 
-  it('쪽지 값을 바꾸면 그만큼 빠진다', async () => {
-    await setRules({ attackPopupCost: 55 });
+  it('숨기기 값을 바꾸면 그만큼 빠진다', async () => {
+    await setRules({ attackHideCost: 55 });
     await grant(A, 5000);
     await startWorking(B);
 
-    expect((await attack({ targetId: B, kind: 'popup', message: '안돼' })).status).toBe(200);
+    expect((await attack({ targetId: B, kind: 'hide' })).status).toBe(200);
     expect(await balanceOf(A)).toBe(5000 - 55);
   });
 
@@ -188,13 +189,31 @@ describe('퇴근 공격 값도 관리자 설정에서 온다', () => {
   });
 
   it('하루 횟수를 바꾸면 그 횟수에서 막힌다', async () => {
-    await setRules({ attackDailyLimit: 1, attackCost: 10, attackPopupCost: 10 });
+    await setRules({ attackDailyLimit: 1, attackCost: 10, attackHideCost: 10 });
     await grant(A, 5000);
     await startWorking(B);
 
-    expect((await attack({ targetId: B, kind: 'popup', message: '하나' })).status).toBe(200);
-    const second = await attack({ targetId: B, kind: 'popup', message: '둘' });
+    expect((await attack({ targetId: B, kind: 'hide' })).status).toBe(200);
+    // 같은 사람에게 두 번이라 겹침(409)에도 걸리지만, 트랜잭션 안에서 하루 횟수를
+    // 먼저 보므로 429 가 나온다. 순서가 뒤집히면 '횟수 초과' 가 '이미 방해 중' 으로
+    // 둔갑해, 내일 다시 하라는 안내 대신 엉뚱한 말을 듣게 된다.
+    const second = await attack({ targetId: B, kind: 'hide' });
     expect(second.status).toBe(429);
+  });
+
+  it('숨기는 시간을 바꾸면 그 시간만큼 걸린다', async () => {
+    // 방해 시간을 일부러 멀리 떨어뜨려 둔다. 두 값이 가까우면 숨기기가 방해 시간을
+    // 잘못 따라가도 단언이 통과해, 어느 쪽을 읽는지 가려내지 못하는 검사가 된다.
+    await setRules({ attackHideSeconds: 45, attackBlockSeconds: 300 });
+    await grant(A, 5000);
+    await startWorking(B);
+
+    const made = await attack({ targetId: B, kind: 'hide' });
+    const row = await AttendanceAttack.findByPk(made.body.data.id);
+    const seconds = Math.round((row!.expiresAt.getTime() - Date.now()) / 1000);
+    // 기본값(10초)도, 방해 시간(300초)도 아닌 45초여야 한다
+    expect(seconds).toBeGreaterThan(40);
+    expect(seconds).toBeLessThan(60);
   });
 
   it('방해 시간을 바꾸면 그 시간만큼 걸린다', async () => {

@@ -727,12 +727,12 @@ export const SiteSettingsManagement = () => {
               unit="P"
             />
             <NumberInput
-              label="쪽지 값"
-              description="상대 화면에 알림창으로 한 번 뜨는 쪽지"
+              label="버튼 숨기기 값"
+              description="상대의 퇴근 버튼을 잠깐 감춥니다"
               min={0}
               max={100000}
-              value={settings.attackPopupCost}
-              onChange={v => set('attackPopupCost', v)}
+              value={settings.attackHideCost}
+              onChange={v => set('attackHideCost', v)}
               unit="P"
             />
             <NumberInput
@@ -754,8 +754,17 @@ export const SiteSettingsManagement = () => {
               unit="초"
             />
             <NumberInput
+              label="숨기는 시간"
+              description="이 시간 동안은 정말로 누를 수 없으므로 짧게 둡니다"
+              min={3}
+              max={60}
+              value={settings.attackHideSeconds}
+              onChange={v => set('attackHideSeconds', v)}
+              unit="초"
+            />
+            <NumberInput
               label="하루 공격 횟수"
-              description="방해와 쪽지를 합쳐서 셉니다"
+              description="방해와 숨기기를 합쳐서 셉니다"
               min={1}
               max={100}
               value={settings.attackDailyLimit}

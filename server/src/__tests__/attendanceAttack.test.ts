@@ -86,12 +86,13 @@ async function startWorking(userId: string) {
   });
 }
 
-const attack = (cookie: string, targetId: string) =>
+/** kind 를 주지 않으면 서버 기본값(chaos)으로 간다 — 기존 호출들이 그대로 동작한다 */
+const attack = (cookie: string, targetId: string, kind?: 'chaos' | 'hide') =>
   request(app)
     .post('/api/attendance/attack')
     .set(CSRF_HEADER)
     .set('Cookie', cookie)
-    .send({ targetId });
+    .send(kind ? { targetId, kind } : { targetId });
 
 const defend = (cookie: string, id: number) =>
   request(app).post(`/api/attendance/attack/${id}/defend`).set(CSRF_HEADER).set('Cookie', cookie);
@@ -167,6 +168,35 @@ describe('공격권 사용', () => {
     expect(await balanceOf(THIRD)).toBe(5000);
   });
 
+  it('종류가 달라도 겹쳐 쓸 수 없다', async () => {
+    // 겹침 확인이 chaos 행만 세던 때가 있었다. 그때는 숨기기가 걸려 있어도 그 행이
+    // 세어지지 않아 그 위에 방해를 덧걸 수 있었고, 받는 쪽은 하나를 풀어도 다음 것이
+    // 남아 방어권 값을 두 번 치러야 했다.
+    //
+    // 숨기기를 '먼저' 거는 순서여야 한다. chaos 를 먼저 걸면 낡은 코드에서도 그 행이
+    // 세어져 막히므로, 순서를 뒤집으면 아무것도 가려내지 못하는 검사가 된다.
+    await grant(ATK, 5000);
+    await grant(THIRD, 5000);
+    await startWorking(TGT);
+
+    expect((await attack(atkCookie, TGT, 'hide')).status).toBe(200);
+    const second = await attack(thirdCookie, TGT, 'chaos');
+    expect(second.status).toBe(409);
+    expect(await balanceOf(THIRD)).toBe(5000);
+  });
+
+  it('걸린 공격의 종류를 함께 알려 준다', async () => {
+    // 받는 화면은 이 값 하나로 '버튼을 흔들지, 감출지' 를 고른다.
+    // 빠지거나 늘 chaos 로 오면, 숨기기를 받은 사람의 화면에서는 버튼이 그냥 흔들린다.
+    await grant(ATK, 5000);
+    await startWorking(TGT);
+
+    await attack(atkCookie, TGT, 'hide');
+
+    const seen = await state(tgtCookie);
+    expect(seen.body.data.incoming.kind).toBe('hide');
+  });
+
   it('하루 한도를 넘겨 쓸 수 없다', async () => {
     await grant(ATK, 100_000);
     // 한도만큼 이미 쓴 것으로 둔다 (대상은 서로 달라도 한도는 쓴 사람 기준이다)
@@ -197,6 +227,23 @@ describe('방어권', () => {
     expect(res.status).toBe(200);
     expect(await balanceOf(TGT)).toBe(1000 - ATTACK_DEFAULTS.defendCost);
     await expectLedgerConsistent(TGT);
+
+    const seen = await state(tgtCookie);
+    expect(seen.body.data.incoming).toBeNull();
+  });
+
+  it('숨기기도 방어권으로 풀린다', async () => {
+    // 예전에는 chaos 가 아닌 공격을 방어하려 하면 거절했다 — 쪽지는 이미 뜬 것이라
+    // 되돌릴 것이 없었기 때문이다. 숨기기는 되돌릴 것이 있으므로 그 거절을 걷어 냈다.
+    // 풀 수 없는 숨기기는 '기다리는 수밖에 없는' 공격이 된다.
+    await grant(ATK, 1000);
+    await grant(TGT, 1000);
+    await startWorking(TGT);
+    const made = await attack(atkCookie, TGT, 'hide');
+
+    const res = await defend(tgtCookie, made.body.data.id);
+    expect(res.status).toBe(200);
+    expect(await balanceOf(TGT)).toBe(1000 - ATTACK_DEFAULTS.defendCost);
 
     const seen = await state(tgtCookie);
     expect(seen.body.data.incoming).toBeNull();
