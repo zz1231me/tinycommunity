@@ -4,6 +4,7 @@ import { Op, Transaction } from 'sequelize';
 import { sequelize } from '../config/sequelize';
 import UserPointModel, { UserPoint } from '../models/UserPoint';
 import { PointLedger, type PointReason } from '../models/PointLedger';
+import { User } from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
 import { getLotterySettings } from '../utils/settingsCache';
 import { blankWeight, type LotteryPrize } from '../config/lottery';
@@ -277,6 +278,73 @@ export const pointService = {
       total: count,
       page: Math.max(1, page),
       totalPages: Math.max(1, Math.ceil(count / safeLimit)),
+    };
+  },
+
+  /**
+   * 포인트 순위 — 상위 몇 명과 호출한 본인의 자리.
+   *
+   * 비활성·삭제된 계정은 뺀다. 지워진 사람이 순위표에 되살아나면 안 된다.
+   * 거르는 일은 조인에서 한다 — 가져온 뒤 걸러 내면 빠진 사람이 상위 자리를
+   * 차지한 채 목록만 짧아진다. (User 는 paranoid 라 삭제된 행은 조인에서 빠지고,
+   * isActive·isDeleted 기준은 다른 사용자 목록들과 같게 맞춘다.)
+   *
+   * 같은 잔액일 때의 차례는 UserId 로 고정한다. 정하지 않으면 새로고침할 때마다
+   * 등수가 뒤바뀐다.
+   *
+   * 본인 순위는 상위 목록 밖이어도 늘 함께 내려준다 — 위쪽만 보이면 대부분의
+   * 사람에게는 남의 이야기가 된다.
+   */
+  async ranking(userId: string) {
+    /** 순위표에 보이는 사람의 조건 */
+    const visible = {
+      model: User,
+      as: 'user',
+      attributes: ['id', 'name'],
+      required: true,
+      where: { isActive: true, isDeleted: false },
+    };
+    const nameOf = (row: UserPointModel, fallback: string) =>
+      (row as unknown as { user?: { name?: string } }).user?.name ?? fallback;
+
+    const rows = await UserPoint.findAll({
+      include: [visible],
+      order: [
+        ['balance', 'DESC'],
+        ['UserId', 'ASC'],
+      ],
+      // 상한은 서버가 정한다 — 화면이 정하게 두면 한 번에 전부 끌어갈 수 있다
+      limit: 10,
+    });
+
+    const top = rows.map((row, i) => ({
+      rank: i + 1,
+      userId: row.UserId,
+      name: nameOf(row, row.UserId),
+      balance: row.balance,
+    }));
+
+    const mine = await UserPoint.findOne({ where: { UserId: userId }, include: [visible] });
+    if (!mine) return { top, me: null };
+
+    const already = top.find(t => t.userId === userId);
+    if (already) return { top, me: already };
+
+    // 나보다 위에 있는 사람 수 + 1. 같은 잔액이면 UserId 가 앞서는 쪽이 위다 —
+    // 목록의 정렬 기준과 같아야 등수와 자리가 어긋나지 않는다.
+    const above = await UserPoint.count({
+      include: [visible],
+      where: {
+        [Op.or]: [
+          { balance: { [Op.gt]: mine.balance } },
+          { balance: mine.balance, UserId: { [Op.lt]: userId } },
+        ],
+      },
+    });
+
+    return {
+      top,
+      me: { rank: above + 1, userId, name: nameOf(mine, userId), balance: mine.balance },
     };
   },
 };

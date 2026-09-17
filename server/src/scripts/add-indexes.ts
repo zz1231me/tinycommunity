@@ -205,6 +205,16 @@ export async function addDatabaseIndexes(): Promise<void> {
         unique: true,
         description: '같은 종류·같은 IP 규칙 중복 방지',
       },
+
+      // ── UserPoint ─────────────────────────────────────
+      // 랭킹이 잔액으로 정렬한다. 모델에도 선언해 두었지만 sync 는 alter:false 라
+      // 이미 있는 테이블에는 만들어 주지 않으므로 여기에도 넣는다.
+      {
+        table: 'user_points',
+        name: 'idx_user_points_balance',
+        fields: ['balance'],
+        description: '포인트 랭킹 정렬',
+      },
     ];
 
     let added = 0;

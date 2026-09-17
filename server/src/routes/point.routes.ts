@@ -5,6 +5,7 @@ import {
   claimAttendance,
   drawLottery,
   getMyPointHistory,
+  getPointRanking,
 } from '../controllers/point.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { requireFeature } from '../middlewares/featureGate.middleware';
@@ -44,6 +45,21 @@ router.get(
 router.get(
   '/history',
   asyncHandler((req, res) => getMyPointHistory(req as AuthRequest, res))
+);
+
+/**
+ * @swagger
+ * /api/points/ranking:
+ *   get:
+ *     summary: 포인트 랭킹 (상위 10명 + 내 순위)
+ *     tags: [Points]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: 상위 목록과 호출자 본인의 순위 }
+ */
+router.get(
+  '/ranking',
+  asyncHandler((req, res) => getPointRanking(req as AuthRequest, res))
 );
 
 /**

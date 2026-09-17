@@ -43,8 +43,24 @@ export interface PointEntry {
   createdAt: string;
 }
 
+export interface RankingEntry {
+  rank: number;
+  userId: string;
+  name: string;
+  balance: number;
+}
+
+export interface PointRanking {
+  top: RankingEntry[];
+  /** 호출한 본인의 자리 — 상위권 밖이어도 늘 내려온다. 포인트가 없으면 null */
+  me: RankingEntry | null;
+}
+
 export const fetchPointStatus = async (): Promise<PointStatus> =>
   unwrap(await api.get('/points/me'));
+
+export const fetchPointRanking = async (): Promise<PointRanking> =>
+  unwrap(await api.get('/points/ranking'));
 
 export const drawLottery = async (): Promise<DrawResult> =>
   unwrap(await api.post('/points/lottery'));

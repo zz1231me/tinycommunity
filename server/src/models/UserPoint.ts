@@ -47,6 +47,8 @@ UserPointModel.init(
     modelName: 'UserPoint',
     tableName: 'user_points',
     timestamps: true,
+    // 랭킹은 잔액으로 정렬한다. 인덱스가 없으면 사람이 늘수록 매번 전체를 훑어 정렬한다.
+    indexes: [{ fields: ['balance'], name: 'idx_user_points_balance' }],
   }
 );
 

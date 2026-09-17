@@ -337,3 +337,100 @@ describe('뽑기 참가비', () => {
     expect(await PointLedger.count({ where: { UserId: USER, reason: 'lottery_cost' } })).toBe(0);
   });
 });
+
+// 순위표.
+//
+// 남의 이름과 포인트를 보여 주는 자리다. 누가 보이고 누가 안 보이는지가 조용히
+// 어긋나면 지워진 사람이 순위에 되살아난다. 그리고 등수는 볼 때마다 같아야 한다 —
+// 새로고침마다 순서가 바뀌면 순위표로 쓸 수 없다.
+describe('포인트 순위', () => {
+  const ranking = () => request(app).get('/api/points/ranking').set('Cookie', cookie);
+  const ids = (res: { body: { data: { top: { userId: string }[] } } }) =>
+    res.body.data.top.map(t => t.userId);
+
+  /** 순위에 함께 오를 사람들. User 표는 beforeEach 가 비우지 않으므로 한 번만 만든다. */
+  async function ensureUser(id: string, name: string, isActive = true) {
+    if (await User.findByPk(id)) return;
+    await User.create({
+      id,
+      password: 'Test1234!',
+      name,
+      email: `${id}@test.com`,
+      roleId: 'user',
+      isActive,
+    });
+  }
+
+  beforeAll(async () => {
+    await ensureUser('ranktop', '일등');
+    await ensureUser('rankmid', '중간');
+    await ensureUser('rankoff', '비활성계정', false);
+  });
+
+  it('잔액이 많은 순으로 준다', async () => {
+    await UserPoint.upsert({ UserId: 'ranktop', balance: 900 });
+    await UserPoint.upsert({ UserId: 'rankmid', balance: 500 });
+    await UserPoint.upsert({ UserId: USER, balance: 100 });
+
+    const res = await ranking();
+
+    expect(res.status).toBe(200);
+    expect(ids(res)).toEqual(['ranktop', 'rankmid', USER]);
+    expect(res.body.data.top[0].rank).toBe(1);
+    expect(res.body.data.top[0].name).toBe('일등');
+  });
+
+  it('비활성 계정은 오르지 않는다 — 잔액이 제일 많아도', async () => {
+    await UserPoint.upsert({ UserId: 'rankoff', balance: 9999 });
+    await UserPoint.upsert({ UserId: USER, balance: 10 });
+
+    const res = await ranking();
+
+    expect(ids(res)).not.toContain('rankoff');
+    expect(ids(res)).toContain(USER);
+  });
+
+  it('상위 목록 밖이어도 내 순위를 알려 준다', async () => {
+    // 상한(10명)보다 많은 사람을 나보다 위에 둔다
+    for (let i = 0; i < 11; i++) {
+      const id = `rankfill${i}`;
+      await ensureUser(id, `채움${i}`);
+      await UserPoint.upsert({ UserId: id, balance: 1000 + i });
+    }
+    await UserPoint.upsert({ UserId: USER, balance: 1 });
+
+    const res = await ranking();
+
+    expect(res.body.data.top).toHaveLength(10);
+    expect(ids(res)).not.toContain(USER);
+    expect(res.body.data.me.userId).toBe(USER);
+    // 위에 11명이 있으니 12등
+    expect(res.body.data.me.rank).toBe(12);
+  });
+
+  it('잔액이 같아도 볼 때마다 순서가 같다', async () => {
+    await UserPoint.upsert({ UserId: 'ranktop', balance: 300 });
+    await UserPoint.upsert({ UserId: 'rankmid', balance: 300 });
+
+    const first = await ranking();
+    const second = await ranking();
+
+    expect(ids(first)).toEqual(ids(second));
+  });
+
+  it('포인트 기록이 없으면 내 자리는 비워 둔다', async () => {
+    await UserPoint.upsert({ UserId: 'ranktop', balance: 50 });
+
+    const res = await ranking();
+
+    expect(res.body.data.me).toBeNull();
+  });
+
+  it('기능이 꺼져 있으면 막는다 — 화면에서 숨기는 것만으로는 부족하다', async () => {
+    await setLottery(false);
+
+    expect((await ranking()).status).toBe(403);
+
+    await setLottery(true);
+  });
+});

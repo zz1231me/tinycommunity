@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { NotificationSettings } from '../components/social/NotificationSettings';
 import { LotteryPanel } from '../components/points/LotteryPanel';
+import { PointRanking } from '../components/points/PointRanking';
 import { useFeature, type FeatureKey } from '../store/features';
 import { useAuth } from '../store/auth';
 import { useSiteSettings } from '../store/siteSettings';
@@ -596,7 +597,12 @@ export default function Profile() {
             )}
 
             {/* 5. 계정설정 탭 */}
-            {activeTab === 'points' && lotteryEnabled && <LotteryPanel />}
+            {activeTab === 'points' && lotteryEnabled && (
+              <div className="space-y-6">
+                <LotteryPanel />
+                <PointRanking />
+              </div>
+            )}
             {activeTab === 'notifications' && <NotificationSettings />}
 
             {activeTab === 'settings' && (

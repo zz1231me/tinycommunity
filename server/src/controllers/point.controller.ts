@@ -61,3 +61,12 @@ export const getMyPointHistory = async (req: AuthRequest, res: Response): Promis
     fail(res, err, '적립 내역을 불러오지 못했습니다.', { userId: req.user.id });
   }
 };
+
+/** GET /api/points/ranking — 상위 목록과 내 순위 */
+export const getPointRanking = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    sendSuccess(res, await pointService.ranking(req.user.id));
+  } catch (err) {
+    fail(res, err, '순위를 불러오지 못했습니다.', { userId: req.user.id });
+  }
+};
