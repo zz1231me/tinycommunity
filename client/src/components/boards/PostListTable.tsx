@@ -17,7 +17,14 @@ interface PostListTableProps {
   showTasks?: boolean;
 }
 
-const ColumnHeader = ({ showAssignee }: { showAssignee: boolean }) => (
+/**
+ * 목록 머리줄.
+ *
+ * 불러오는 동안에도 같은 것을 쓴다(PostList 의 로딩 화면). 예전에는 그쪽에 머리줄을
+ * 손으로 한 벌 더 그려 두었는데, 여백도 칸 수도 글자 굵기도 서로 달라 목록이 도착하는
+ * 순간 줄이 덜컥 바뀌었다. 한 곳에서만 그리면 어긋날 수가 없다.
+ */
+export const ColumnHeader = ({ showAssignee }: { showAssignee: boolean }) => (
   <div
     role="rowgroup"
     className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-3"
@@ -27,9 +34,10 @@ const ColumnHeader = ({ showAssignee }: { showAssignee: boolean }) => (
       role="row"
       className="grid grid-cols-12 gap-2 sm:gap-4 items-center text-xs font-semibold text-slate-600 dark:text-slate-400"
     >
+      {/* 좁은 화면에서는 행의 제목도 12칸을 다 쓴다 — 머리줄만 10칸이면 한 칸씩 어긋난다 */}
       <div
         role="columnheader"
-        className={`col-span-10 ${showAssignee ? 'sm:col-span-6' : 'sm:col-span-8'}`}
+        className={`col-span-12 ${showAssignee ? 'sm:col-span-6' : 'sm:col-span-8'}`}
       >
         제목
       </div>
@@ -41,7 +49,9 @@ const ColumnHeader = ({ showAssignee }: { showAssignee: boolean }) => (
       <div role="columnheader" className="col-span-2 hidden sm:block">
         작성자
       </div>
-      <div role="columnheader" className="col-span-2 text-center">
+      {/* 좁은 화면에서 행은 작성일을 제목 아래 줄로 내린다. 머리줄에만 칸이 남아 있으면
+          아무 행도 쓰지 않는 빈 칸에 '작성일' 만 떠 있게 된다 */}
+      <div role="columnheader" className="col-span-2 text-center hidden sm:block">
         작성일
       </div>
     </div>
