@@ -151,30 +151,20 @@ describe('뽑기', () => {
     }
   });
 
-  it('덮개를 눌러야 결과가 열린다', async () => {
+  it('한 번만 누르면 된다 — 결과도 알림도 추가 확인 없이 나온다', async () => {
+    // 예전에는 결과가 덮개에 가려져 '결과 확인' 을 한 번 더 눌러야 했다.
+    // 하루에도 여러 번 누르는 자리라 그 한 단계를 없앴다.
     drawLottery.mockResolvedValue(result());
+    const before = fetchPointStatus.mock.calls.length;
     render(<LotteryPanel />);
 
     fireEvent.click(await screen.findByRole('button', { name: /뽑기/ }));
-    const cover = await screen.findByRole('button', { name: '결과 확인' }, { timeout: 4000 });
-    expect(toastSuccess).not.toHaveBeenCalled();
 
-    fireEvent.click(cover);
+    expect(await screen.findByText('+700P', {}, { timeout: 4000 })).toBeInTheDocument();
     await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('700P 당첨!'));
-  });
-
-  it('덮개를 열기 전에는 잔액을 다시 읽지 않는다 — 가려 둔 채로 결과가 드러나면 안 된다', async () => {
-    drawLottery.mockResolvedValue(result());
-    render(<LotteryPanel />);
-    const button = await screen.findByRole('button', { name: /뽑기/ });
-    const before = fetchPointStatus.mock.calls.length;
-
-    fireEvent.click(button);
-    const cover = await screen.findByRole('button', { name: '결과 확인' }, { timeout: 4000 });
-    expect(fetchPointStatus).toHaveBeenCalledTimes(before);
-
-    fireEvent.click(cover);
+    // 잔액·내역도 그 자리에서 다시 읽는다
     await waitFor(() => expect(fetchPointStatus.mock.calls.length).toBeGreaterThan(before));
+    expect(screen.queryByRole('button', { name: '결과 확인' })).not.toBeInTheDocument();
   });
 
   it('미당첨을 당첨처럼 그리지 않는다', async () => {

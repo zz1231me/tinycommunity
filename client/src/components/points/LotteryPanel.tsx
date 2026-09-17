@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Gift, Loader2, TicketCheck } from 'lucide-react';
-import { ResultCover } from './ResultCover';
 import {
   drawLottery,
   fetchPointHistory,
@@ -114,9 +113,7 @@ export function LotteryPanel() {
   /** 릴에 지금 떠 있는 숫자. null 이면 릴이 멈춘 상태 */
   const [reel, setReel] = useState<number | null>(null);
   const reelTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  /** 덮개를 씌울지 — 움직임을 줄인 설정이면 덮지 않고 바로 보여 준다 */
-  const [covered, setCovered] = useState(false);
-  /** 덮개가 걷힌 뒤에만 당첨 신호를 낸다 */
+  /** 결과가 나온 순간 당첨 신호를 낸다 */
   const [celebrate, setCelebrate] = useState(0);
   const motionOk = !prefersReducedMotion();
 
@@ -153,11 +150,9 @@ export function LotteryPanel() {
     };
   }, []);
 
-  /** 덮개가 걷힌 순간 — 잔액·내역 갱신과 알림·진동·신호를 여기서 한 번에 낸다 */
+  /** 결과가 나온 순간 — 잔액·내역 갱신과 알림·진동·신호를 여기서 한 번에 낸다 */
   const revealResult = useCallback(
     (isBlank: boolean, amount: number) => {
-      // 잔액과 내역은 덮개를 연 뒤에 바꾼다. 먼저 바꾸면 덮여 있는 동안 잔액이 올라가고
-      // 내역에 '+700P' 가 찍혀 결과가 다 보인다.
       void reload().catch(() => {});
       if (isBlank) {
         toast.info('이번에는 당첨되지 않았습니다.');
@@ -175,7 +170,6 @@ export function LotteryPanel() {
     if (drawing || !status) return;
     setDrawing(true);
     setLast(null);
-    setCovered(false);
 
     // 릴에 띄울 숫자는 실제로 나올 수 있는 것만 넣는다.
     // 꽝 확률이 0 인 표에서 '0P' 가 지나가면 나올 수 없는 결과를 보여 주게 된다.
@@ -200,10 +194,7 @@ export function LotteryPanel() {
       }
 
       setLast({ amount: result.amount, cost: result.cost, isBlank: result.isBlank });
-      // 결과는 이미 정해졌다. 덮개는 그것을 언제 볼지만 정한다.
-      setCovered(roll);
-      // 남은 횟수와 참가비 여유는 바로 맞춘다 — 버튼을 막을지가 걸려 있다.
-      // 잔액 숫자는 덮개를 열 때 바뀐다(revealResult).
+      // 남은 횟수와 참가비 여유를 맞춘다 — 버튼을 막을지가 걸려 있다.
       setStatus(prev =>
         prev
           ? {
@@ -214,7 +205,9 @@ export function LotteryPanel() {
             }
           : prev
       );
-      if (!roll) revealResult(result.isBlank, result.amount);
+      // 결과가 나오면 바로 보여 준다. 예전에는 '결과 확인' 덮개를 한 번 더 눌러야 했는데,
+      // 하루에도 여러 번 누르는 자리라 그 한 단계가 번거로웠다.
+      revealResult(result.isBlank, result.amount);
     } catch (err) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -282,13 +275,6 @@ export function LotteryPanel() {
     </div>
   );
 
-  const resultBox =
-    covered && last ? (
-      <ResultCover onRevealed={() => revealResult(last.isBlank, last.amount)}>{board}</ResultCover>
-    ) : (
-      board
-    );
-
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
@@ -321,12 +307,10 @@ export function LotteryPanel() {
       </div>
 
       {/* 추첨 표시창.
-          누르면 숫자가 섞이고(서버를 기다리는 동안), 답이 오면 그 자리를 덮개가 가린다.
-          '결과 확인' 을 누르면 열리고 그때 신호가 한 번 지나간다.
-          결과는 덮개 아래에 이미 그려져 있어 낭독기는 바로 읽는다.
+          누르면 숫자가 섞이고(서버를 기다리는 동안), 답이 오면 그 자리에 결과가 바로 뜬다.
           자리를 늘 차지하게 둬서, 결과가 나올 때 아래 내용이 밀리지 않는다. */}
       <div className="relative">
-        {resultBox}
+        {board}
         {celebrate > 0 && !last?.isBlank && <WinPulse key={celebrate} />}
       </div>
 
