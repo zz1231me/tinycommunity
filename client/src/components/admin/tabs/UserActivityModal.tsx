@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import { adminKeys } from '../../../api/queryKeys';
 import {
   fetchUserLoginHistory,
@@ -164,14 +165,11 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
     }
   };
 
-  // ESC 키로 닫기
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
+  // ESC 로 닫고, 열려 있는 동안 포커스를 안에 가둔다. 이 대화상자는 부모가 열 때만
+  // 그리므로(UserManagement 의 {activityModal && ...}) 항상 켜 둔다.
+  // 가두지 않으면 Tab 이 뒤쪽 사용자 목록으로 새어, 가려진 줄의 단추를 누르게 된다.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, onClose);
 
   const tabClass = (tab: ModalTab) =>
     `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
@@ -182,7 +180,13 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
 
   return (
     <div className="fixed inset-0 modal-scrim z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="활동 내역"
+        className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+      >
         {/* 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
           <div>

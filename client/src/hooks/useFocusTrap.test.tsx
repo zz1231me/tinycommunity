@@ -6,7 +6,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { useRef, useState } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useFocusTrap } from './useFocusTrap';
 
 function Dialog({ onClose, active = true }: { onClose: () => void; active?: boolean }) {
@@ -105,6 +105,34 @@ describe('ESC 로 닫는다', () => {
     fireEvent.keyDown(document, { key: 'Tab' });
     // 가두지 않으므로 훅이 포커스를 옮기지 않는다
     expect(document.activeElement).toBe(btn('마지막'));
+  });
+});
+
+/** 단추가 먼저 오고 쓸 칸이 뒤에 있는 대화상자 — 메모 편집기와 같은 모양 */
+function InputDialog({ withInitial }: { withInitial: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useFocusTrap(ref, () => {}, true, withInitial ? inputRef : undefined);
+  return (
+    <div ref={ref}>
+      <button type="button">단추</button>
+      <input ref={inputRef} aria-label="제목" />
+    </div>
+  );
+}
+
+describe('열었을 때 첫 포커스', () => {
+  it('지정한 곳이 있으면 그리로 간다', async () => {
+    render(<InputDialog withInitial />);
+    // 지정하지 않으면 단추가 먼저라 글 쓰러 연 사람이 단추에서 시작하게 된다
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('제목')));
+  });
+
+  it('지정하지 않으면 안쪽 첫 요소로 간다 — 기존 동작', async () => {
+    render(<InputDialog withInitial={false} />);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: '단추' }))
+    );
   });
 });
 

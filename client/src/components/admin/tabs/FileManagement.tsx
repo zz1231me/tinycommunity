@@ -1,6 +1,7 @@
 // client/src/components/admin/tabs/FileManagement.tsx - 파일 관리 탭
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import { deleteAdminFile, fetchAdminFiles, type AdminFileItem } from '../../../api/uploads';
 import { adminKeys } from '../../../api/queryKeys';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -54,15 +55,10 @@ export const FileManagement = React.memo(() => {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
 
-  // 삭제 확인 모달 — Esc로 닫기 (다른 모달과 동일한 UX)
-  useEffect(() => {
-    if (!confirmDelete) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setConfirmDelete(null);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [confirmDelete]);
+  // 삭제 확인 모달 — Esc로 닫고, 열려 있는 동안 포커스를 안에 가둔다.
+  // 가두지 않으면 Tab 이 뒤쪽 목록의 '삭제' 단추들로 새어 나간다.
+  const confirmPanelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(confirmPanelRef, () => setConfirmDelete(null), !!confirmDelete);
 
   const { data, isPending: loading } = useQuery({
     queryKey: adminKeys.files.list({ page, typeFilter, search: debouncedSearch }),
@@ -282,7 +278,10 @@ export const FileManagement = React.memo(() => {
           aria-modal="true"
           aria-labelledby="delete-file-title"
         >
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+          <div
+            ref={confirmPanelRef}
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm p-6"
+          >
             <h3
               id="delete-file-title"
               className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-2"

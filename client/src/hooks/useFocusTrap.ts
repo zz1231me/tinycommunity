@@ -17,11 +17,15 @@ const FOCUSABLE =
  * @param panelRef 대화상자 바깥 상자. 이 안쪽만 포커스가 돈다.
  * @param onClose  ESC 를 눌렀을 때 부를 것
  * @param active   열려 있을 때만 건다. 닫힌 채로 걸어 두면 ESC 가 엉뚱하게 먹는다.
+ * @param initialFocusRef 처음 포커스를 줄 곳. 안 주면 안쪽 첫 요소로 간다.
+ *   글을 쓰러 여는 대화상자는 첫 요소가 쓸 자리가 아니다 — 메모 편집기는 색상 단추가
+ *   먼저 오고 제목 칸이 뒤에 있어, 그냥 두면 열자마자 색상 단추에 포커스가 간다.
  */
 export function useFocusTrap(
   panelRef: RefObject<HTMLElement | null>,
   onClose: () => void,
-  active = true
+  active = true,
+  initialFocusRef?: RefObject<HTMLElement | null>
 ): void {
   // onClose 를 ref 로 둔다 — 부모가 인라인 화살표로 넘겨도 effect 가 매 렌더마다
   // 정리·재설치되지 않게 한다. 재설치되면 열어 둔 사이에 포커스가 첫 요소로 튄다.
@@ -34,9 +38,11 @@ export function useFocusTrap(
     if (!active) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
 
-    // 첫 포커스는 안쪽 첫 요소로 — 열자마자 바로 쓸 수 있어야 한다
+    // 첫 포커스는 지정한 곳, 없으면 안쪽 첫 요소로 — 열자마자 바로 쓸 수 있어야 한다
     const t = setTimeout(() => {
-      panelRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+      const target =
+        initialFocusRef?.current ?? panelRef.current?.querySelector<HTMLElement>(FOCUSABLE);
+      target?.focus();
     }, 0);
 
     const onKey = (e: KeyboardEvent) => {
@@ -69,5 +75,5 @@ export function useFocusTrap(
       // 그냥 부르면 포커스가 body 로 떨어져 키보드 사용자가 처음부터 다시 Tab 해야 한다.
       if (previouslyFocused?.isConnected) previouslyFocused.focus();
     };
-  }, [active, panelRef]);
+  }, [active, panelRef, initialFocusRef]);
 }

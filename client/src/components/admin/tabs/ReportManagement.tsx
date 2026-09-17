@@ -1,6 +1,7 @@
 // client/src/components/admin/tabs/ReportManagement.tsx - 신고 관리 탭
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import { adminKeys } from '../../../api/queryKeys';
 import {
   getReports,
@@ -61,15 +62,10 @@ export const ReportManagement = React.memo(() => {
   const fetchReports = () => queryClient.invalidateQueries({ queryKey: adminKeys.reports.all });
   const fetchStats = () => queryClient.invalidateQueries({ queryKey: adminKeys.reports.stats });
 
-  // 신고 처리 모달 — Esc로 닫기 (다른 모달과 동일한 UX)
-  useEffect(() => {
-    if (!reviewTarget) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setReviewTarget(null);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [reviewTarget]);
+  // 신고 처리 모달 — Esc로 닫고, 열려 있는 동안 포커스를 안에 가둔다.
+  // 가두지 않으면 Tab 이 뒤쪽 신고 목록의 '처리' 단추들로 새어 나간다.
+  const reviewPanelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(reviewPanelRef, () => setReviewTarget(null), !!reviewTarget);
 
   const handleReview = async () => {
     if (!reviewTarget) return;
@@ -269,7 +265,10 @@ export const ReportManagement = React.memo(() => {
           aria-modal="true"
           aria-labelledby="review-report-title"
         >
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6">
+          <div
+            ref={reviewPanelRef}
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6"
+          >
             <h3
               id="review-report-title"
               className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4"
