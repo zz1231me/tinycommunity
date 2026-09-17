@@ -1,0 +1,98 @@
+/* client/src/styles/dracula.css
+ * 드라큘라 테마 — https://github.com/dracula/dracula-theme
+ *
+ * 새 클래스를 만들지 않는다. 화면 전체가 이미 Tailwind 의 slate/primary 계단을
+ * 쓰고 있고, Tailwind v4 는 그것을 var(--color-slate-800) 로 컴파일한다.
+ * 그래서 <html data-palette="dracula"> 일 때 변수만 갈아 끼우면 앱 전체가 바뀐다.
+ * (관리자 브랜드 색을 입히는 applyTheme 과 같은 방식이다.)
+ *
+ * 드라큘라는 다크의 변종이므로 ThemeContext 가 .dark 도 함께 붙인다 —
+ * dark: 변형이 그대로 살아 있어야 표면/글자 규칙이 이미 맞춰진 상태로 색만 바뀐다.
+ *
+ * 계단의 방향(50=밝음 → 950=어두움)은 그대로 둔다. 뒤집으면 dark: 짝이 없는
+ * 몇 안 되는 요소들이 정반대 색이 된다.
+ *   50~300  : 어두운 배경 위에 얹는 글자 (dark:text-slate-100/300 …)
+ *   400~500 : 보조 글자
+ *   600~950 : 표면과 테두리 (dark:bg-slate-800, dark:border-slate-700 …)
+ *
+ * 글자색은 카드 배경(#282a36) 대비로 WCAG AA(4.5:1) 를 확인하고 골랐다.
+ * 표면끼리의 대비(페이지 vs 카드, 테두리)는 드라큘라 원본대로 낮게 둔다 —
+ * 그 은은한 층이 이 테마의 인상이라, 억지로 높이면 드라큘라가 아니게 된다.
+ */
+
+:root[data-palette='dracula'] {
+  /* ── 표면과 글자 (slate 계단 재정의) ── */
+  --color-slate-50: #fbfbf7;
+  --color-slate-100: #f8f8f2; /* Dracula Foreground — 제목·본문 (13.4:1) */
+  --color-slate-200: #e8e9f0; /* 11.8:1 */
+  --color-slate-300: #cfd2e3; /* 본문 (9.5:1) */
+  --color-slate-400: #9aa3cc; /* 보조 글자, 가장 많이 쓰인다 (5.8:1) */
+  --color-slate-500: #8a94c0; /* 가장 흐린 글자 (4.8:1) */
+  --color-slate-600: #565a75; /* 강조된 테두리·올라온 표면 */
+  --color-slate-700: #44475a; /* Dracula Current Line — 기본 테두리·입력창 */
+  --color-slate-800: #282a36; /* Dracula Background — 카드 */
+  --color-slate-900: #21222c; /* 페이지 바탕 */
+  --color-slate-950: #191a21;
+
+  /* ── 강조색: 드라큘라 보라 ──
+   * 400 은 어두운 배경 위의 글자·아이콘(5.9:1), 600 은 버튼 바탕(흰 글자 5.3:1).
+   * 드라큘라 보라(#bd93f9)를 그대로 버튼 바탕에 쓰면 흰 글자가 2.4:1 로 읽히지 않아,
+   * 바탕은 한 단계 진한 보라를 쓰고 원래 보라는 400 자리에 둔다. */
+  --color-primary-50: #f5efff;
+  --color-primary-100: #ebe0ff;
+  --color-primary-200: #dcc9fd;
+  --color-primary-300: #cdb0fb;
+  --color-primary-400: #bd93f9; /* Dracula Purple */
+  --color-primary-500: #a273f2;
+  --color-primary-600: #7c4ddb;
+  --color-primary-700: #6a3cc4;
+  --color-primary-800: #55309c;
+  --color-primary-900: #422779;
+  --color-primary-950: #2a1750;
+
+  /* ── 보조색: 드라큘라 분홍 ── */
+  --color-secondary-50: #fff0f9;
+  --color-secondary-100: #ffe0f3;
+  --color-secondary-200: #ffc7e9;
+  --color-secondary-300: #ffa3da;
+  --color-secondary-400: #ff79c6; /* Dracula Pink */
+  --color-secondary-500: #f050ae;
+  --color-secondary-600: #b8438f;
+  --color-secondary-700: #9b3778;
+  --color-secondary-800: #7d2c60;
+  --color-secondary-900: #5f2249;
+
+  /* ── 의미색: 배지·상태에 쓰이는 톤만 드라큘라 쪽으로 당긴다.
+   * 400 은 어두운 배경 위 글자, 900 은 그 배지의 옅은 바탕(bg-*-900/30)이다. */
+  --color-red-400: #ff5555; /* Dracula Red (4.5:1) */
+  --color-red-500: #ff5555;
+  --color-red-900: #4a2230;
+  --color-green-400: #50fa7b; /* Dracula Green (10.4:1) */
+  --color-green-500: #3fe069;
+  --color-green-900: #1f4a33;
+  --color-emerald-400: #50fa7b;
+  --color-amber-400: #ffb86c; /* Dracula Orange (8.4:1) */
+  --color-amber-500: #ffb86c;
+  --color-amber-900: #4a3520;
+  --color-yellow-400: #f1fa8c; /* Dracula Yellow */
+  --color-cyan-400: #8be9fd; /* Dracula Cyan */
+  --color-sky-400: #8be9fd;
+
+  /* ── 의미 토큰(design-system.css) 도 함께 갈아 끼운다 ──
+   * .dark 가 여기에 회색 표면(#1e293b·#0f172a)을 넣어 두는데, 드라큘라는 slate 계단만
+   * 바꾸므로 이 토큰을 쓰는 화면(전체 검색 팔레트)만 다른 어두움으로 남는다.
+   * 값은 위 계단과 같은 색을 가리킨다. */
+  --surface-page: #21222c; /* slate-900 자리 */
+  --surface-card: #282a36; /* slate-800 자리 — Dracula Background */
+  --surface-subtle: #1e1f29;
+  --surface-overlay: rgba(13, 13, 18, 0.7);
+
+  --border-default: rgba(248, 248, 242, 0.1);
+  --border-subtle: rgba(248, 248, 242, 0.06);
+  --border-strong: rgba(248, 248, 242, 0.18);
+
+  --text-primary: #f8f8f2; /* Dracula Foreground */
+  --text-secondary: #cfd2e3;
+  --text-tertiary: #9aa3cc;
+  --text-disabled: #8a94c0;
+}

@@ -1,0 +1,575 @@
+// CustomPageManagement.tsx — 관리자 커스텀 HTML 페이지 CRUD.
+// 두 가지 방식: (1) HTML 직접 입력, (2) 폴더를 ZIP으로 압축해 업로드(index.html + 자산).
+// 저장된 내용은 사용자 화면에서 sandbox iframe으로 격리 렌더된다(앱과 분리).
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { adminKeys } from '../../../api/queryKeys';
+import {
+  Plus,
+  Trash2,
+  ExternalLink,
+  Save,
+  X,
+  UploadCloud,
+  FolderArchive,
+  Code,
+  Globe,
+} from 'lucide-react';
+import {
+  fetchAllPages,
+  createCustomPage,
+  updateCustomPage,
+  deleteCustomPage,
+  uploadPageBundle,
+  fetchBundleFiles,
+  type CustomPage,
+  type CustomPageInput,
+} from '../../../api/customPages';
+import { AdminSection } from '../common/AdminSection';
+import { LoadingSpinner } from '../common/LoadingSpinner';
+import { ConfirmationModal } from '../common/ConfirmationModal';
+import { toast } from '../../../utils/toast';
+import { getApiErrorMessage } from '../../../api/utils';
+import { ListState } from '../../common/ListState';
+
+const EMPTY: CustomPageInput = {
+  slug: '',
+  title: '',
+  html: '',
+  isPublished: false,
+  order: 0,
+  externalUrl: '',
+};
+type Mode = 'html' | 'bundle' | 'url';
+const BUNDLE_MAX_MB = 100; // 서버 BUNDLE_MAX_ZIP와 일치
+
+export const CustomPageManagement = () => {
+  const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null); // null=목록, 'new'=신규
+  const [form, setForm] = useState<CustomPageInput>(EMPTY);
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<CustomPage | null>(null);
+
+  // 번들 모드 상태
+  const [mode, setMode] = useState<Mode>('html');
+  const [zipFile, setZipFile] = useState<File | null>(null);
+  const [uploadPct, setUploadPct] = useState(0);
+  const [bundleEntry, setBundleEntry] = useState('');
+  const [bundleHtmlFiles, setBundleHtmlFiles] = useState<string[]>([]);
+  const [editingSlug, setEditingSlug] = useState(''); // 편집 시작 시점의 서버 slug(미리보기 링크용)
+
+  const { data: pages = [], isPending: loading } = useQuery<CustomPage[]>({
+    queryKey: adminKeys.customPages.all,
+    queryFn: fetchAllPages,
+  });
+
+  const load = () => queryClient.invalidateQueries({ queryKey: adminKeys.customPages.all });
+
+  /** 올려 둔 번들 관련 상태만 비운다 (편집 중인 slug 는 건드리지 않는다) */
+  const resetBundleFiles = () => {
+    setZipFile(null);
+    setUploadPct(0);
+    setBundleEntry('');
+    setBundleHtmlFiles([]);
+  };
+
+  const resetBundle = () => {
+    resetBundleFiles();
+    setEditingSlug('');
+  };
+
+  const startNew = () => {
+    setForm(EMPTY);
+    setMode('html');
+    resetBundle();
+    setEditingId('new');
+  };
+  const startEdit = (p: CustomPage) => {
+    setForm({
+      slug: p.slug,
+      title: p.title,
+      html: p.html,
+      isPublished: p.isPublished,
+      order: p.order,
+      externalUrl: p.externalUrl ?? '',
+    });
+    setEditingId(p.id);
+    // resetBundle 이 editingSlug 도 비우므로 먼저 부른다 — 뒤에 두면 미리보기 링크가 사라진다
+    resetBundle();
+    setEditingSlug(p.slug);
+    // 타입 판정: 외부 URL > 번들 > HTML
+    if (p.externalUrl) {
+      setMode('url');
+    } else if (p.bundlePath) {
+      setMode('bundle');
+      // 진입 파일 선택용 목록 로드
+      fetchBundleFiles(p.id)
+        .then(r => {
+          setBundleHtmlFiles(r.htmlFiles);
+          setBundleEntry(r.entryFile);
+        })
+        .catch(() => {
+          setBundleEntry(p.entryFile ?? 'index.html');
+        });
+    } else {
+      setMode('html');
+    }
+  };
+  /**
+   * 방식 바꾸기. 번들에서 벗어나면 올려 둔 파일이 저장 시 지워지므로 미리 알린다.
+   * (예전에는 아예 못 바꿔서, 종류를 바꾸려면 지우고 같은 주소로 다시 만들어야 했다)
+   */
+  const switchMode = (next: Mode) => {
+    if (next === mode) return;
+    const leavingBundle = mode === 'bundle' && bundleHtmlFiles.length > 0;
+    if (leavingBundle && !window.confirm('올려 둔 폴더 파일이 저장할 때 삭제됩니다. 바꿀까요?')) {
+      return;
+    }
+    if (next !== 'bundle') resetBundleFiles();
+    setMode(next);
+  };
+
+  const cancel = () => {
+    setEditingId(null);
+    setForm(EMPTY);
+    resetBundle();
+  };
+
+  const save = async () => {
+    if (saving) return;
+    // 번들 페이지는 올려 둔 파일이 있거나 새로 고른 ZIP 이 있어야 한다
+    if (mode === 'bundle' && !zipFile && bundleHtmlFiles.length === 0) {
+      toast.error('업로드할 ZIP 파일을 선택해주세요.');
+      return;
+    }
+    // ZIP 크기 사전 검증(서버 상한과 동일) — 큰 업로드 낭비 방지
+    if (mode === 'bundle' && zipFile && zipFile.size > BUNDLE_MAX_MB * 1024 * 1024) {
+      toast.error(`ZIP이 너무 큽니다. 최대 ${BUNDLE_MAX_MB}MB까지 가능합니다.`);
+      return;
+    }
+    // URL 페이지는 URL이 반드시 필요(형식 최종 검증은 서버가 수행)
+    if (mode === 'url' && !form.externalUrl?.trim()) {
+      toast.error('임베드할 URL을 입력해주세요.');
+      return;
+    }
+    setSaving(true);
+    // 신규 번들 페이지는 '생성 → 업로드 → 저장' 세 단계다. 중간에 끊기면 내용 없는
+    // 페이지가 남으므로, 그때만 방금 만든 것을 지운다.
+    let createdNewId: string | null = null;
+    try {
+      if (mode === 'url') {
+        const payload = { ...form, mode, html: '', externalUrl: form.externalUrl?.trim() || '' };
+        if (editingId === 'new') await createCustomPage(payload);
+        else if (editingId) await updateCustomPage(editingId, payload);
+      } else if (mode === 'html') {
+        const payload = { ...form, mode, externalUrl: '' };
+        if (editingId === 'new') await createCustomPage(payload);
+        else if (editingId) await updateCustomPage(editingId, payload);
+      } else {
+        // 번들 모드: (신규면) 페이지 먼저 생성 → ZIP 업로드 → 진입 파일까지 저장
+        let id = editingId;
+        if (id === 'new') {
+          const created = await createCustomPage({ ...form, html: '', externalUrl: '' });
+          id = created.id;
+          createdNewId = created.id;
+        }
+        let entryToSave = bundleEntry;
+        if (zipFile && id) {
+          const r = await uploadPageBundle(id, zipFile, setUploadPct);
+          setBundleHtmlFiles(r.htmlFiles);
+          entryToSave =
+            bundleEntry && r.htmlFiles.includes(bundleEntry) ? bundleEntry : r.entryFile;
+          setBundleEntry(entryToSave);
+        }
+        if (id) {
+          await updateCustomPage(id, {
+            ...form,
+            mode,
+            html: '',
+            externalUrl: '',
+            entryFile: entryToSave || undefined,
+          });
+        }
+      }
+    } catch (err) {
+      if (createdNewId) await deleteCustomPage(createdNewId).catch(() => {});
+      toast.error(getApiErrorMessage(err, '저장에 실패했습니다.'));
+      return;
+    } finally {
+      setSaving(false);
+      setUploadPct(0);
+    }
+
+    // 저장은 끝났다. 목록 갱신이 실패했다고 되돌리면 방금 만든 페이지가 지워진다.
+    toast.success('저장했습니다.');
+    cancel();
+    await load();
+  };
+
+  const doDelete = async () => {
+    if (!confirmDelete) return;
+    const p = confirmDelete;
+    setConfirmDelete(null);
+    try {
+      await deleteCustomPage(p.id);
+      toast.success('삭제했습니다.');
+      await load();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, '삭제에 실패했습니다.'));
+    }
+  };
+
+  // ── 편집 폼 ──
+  if (editingId) {
+    const isNew = editingId === 'new';
+    return (
+      <AdminSection
+        title={isNew ? '커스텀 페이지 추가' : '커스텀 페이지 수정'}
+        description="HTML 직접 입력·폴더(ZIP) 업로드·외부 URL 임베드 중 선택합니다. 사용자 화면에서 격리(sandbox)된 iframe으로 렌더되어 앱의 쿠키·데이터엔 접근할 수 없습니다."
+        actions={
+          <button type="button" onClick={cancel} className="btn-secondary">
+            <X className="h-4 w-4" />
+            취소
+          </button>
+        }
+      >
+        <div className="space-y-4">
+          {/* 방식 선택 — 만든 뒤에도 바꿀 수 있다. 서버가 바뀐 방식에 맞춰 나머지를 비운다. */}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => switchMode('html')}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                mode === 'html'
+                  ? 'border-secondary-500 bg-secondary-50 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-300'
+                  : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Code className="h-4 w-4" />
+              HTML 직접 입력
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('bundle')}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                mode === 'bundle'
+                  ? 'border-secondary-500 bg-secondary-50 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-300'
+                  : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'
+              }`}
+            >
+              <FolderArchive className="h-4 w-4" />
+              폴더(ZIP) 업로드
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('url')}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                mode === 'url'
+                  ? 'border-secondary-500 bg-secondary-50 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-300'
+                  : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Globe className="h-4 w-4" />
+              외부 URL
+            </button>
+          </div>
+
+          {/* 공통: 제목 / slug */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="form-label">제목 *</label>
+              <input
+                className="input"
+                value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="예: 사내 가이드"
+              />
+            </div>
+            <div>
+              <label className="form-label">주소(slug) *</label>
+              <input
+                className="input font-mono"
+                value={form.slug}
+                onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}
+                placeholder="guide (영문 소문자·숫자·하이픈)"
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                /dashboard/pages/<span className="font-mono">{form.slug || 'slug'}</span> 로
+                열립니다.
+              </p>
+            </div>
+          </div>
+
+          {/* 모드별 본문 */}
+          {mode === 'html' ? (
+            <div>
+              <label className="form-label">HTML</label>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <textarea
+                  className="input min-h-[360px] font-mono text-xs leading-relaxed"
+                  value={form.html}
+                  onChange={e => setForm(f => ({ ...f, html: e.target.value }))}
+                  placeholder="<!doctype html><html>... 내 HTML을 그대로 붙여넣으세요 ...</html>"
+                  spellCheck={false}
+                />
+                <div className="flex min-h-[360px] flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="flex-shrink-0 border-b border-slate-100 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-800/50">
+                    미리보기 (사용자 화면과 동일하게 격리 렌더)
+                  </div>
+                  <iframe
+                    title="미리보기"
+                    srcDoc={form.html}
+                    sandbox="allow-scripts allow-popups allow-forms allow-modals"
+                    className="w-full flex-1 border-0 bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : mode === 'url' ? (
+            <div className="space-y-3">
+              <div>
+                <label className="form-label">임베드할 URL *</label>
+                <input
+                  className="input font-mono"
+                  type="url"
+                  inputMode="url"
+                  value={form.externalUrl ?? ''}
+                  onChange={e => setForm(f => ({ ...f, externalUrl: e.target.value }))}
+                  placeholder="https://example.com/page"
+                  spellCheck={false}
+                />
+                <p className="mt-1 text-xs text-slate-400">
+                  입력한 주소를 사용자 화면에 iframe으로 표시합니다. <b>http:// 또는 https://</b> 로
+                  시작해야 합니다.
+                </p>
+              </div>
+
+              {form.externalUrl?.trim() && (
+                <div className="flex min-h-[360px] flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 bg-slate-50 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-800/50">
+                    <span className="text-xs font-medium text-slate-400">미리보기</span>
+                    <a
+                      href={form.externalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-secondary-600 hover:underline dark:text-secondary-400"
+                    >
+                      <ExternalLink className="h-3 w-3" />새 탭
+                    </a>
+                  </div>
+                  <iframe
+                    title="URL 미리보기"
+                    src={form.externalUrl}
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
+                    referrerPolicy="no-referrer"
+                    className="w-full flex-1 border-0 bg-white"
+                  />
+                </div>
+              )}
+
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
+                ⚠️ 많은 사이트(구글·네이버·유튜브 메인·은행 등)는 보안 정책(X-Frame-Options)으로
+                다른 사이트에서의 iframe 표시를 차단합니다. 이런 경우 화면이 비어 보일 수 있으며,
+                사용자는 제목 옆 “새 탭에서 열기”로 접속할 수 있습니다. 임베드가 허용된
+                주소(문서·지도 embed·사내 시스템 등)를 사용하세요.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <label className="form-label">폴더(ZIP) 업로드</label>
+              {/* 드롭존/파일선택 */}
+              <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 py-8 text-center transition-colors hover:border-secondary-400 hover:bg-secondary-50/40 dark:border-slate-700 dark:hover:border-secondary-600 dark:hover:bg-secondary-900/10">
+                <UploadCloud className="h-8 w-8 text-slate-400" />
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {zipFile ? zipFile.name : 'index.html이 포함된 폴더를 ZIP으로 압축해 선택'}
+                </span>
+                <span className="text-xs text-slate-400">
+                  .zip · 최대 100MB · 상대경로 자산 지원
+                </span>
+                <input
+                  type="file"
+                  accept=".zip,application/zip"
+                  className="hidden"
+                  onChange={e => {
+                    const f = e.target.files?.[0] ?? null;
+                    setZipFile(f);
+                  }}
+                />
+              </label>
+
+              {uploadPct > 0 && uploadPct < 100 && (
+                <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                  <div
+                    className="h-full rounded-full bg-secondary-500 transition-all"
+                    style={{ width: `${uploadPct}%` }}
+                  />
+                </div>
+              )}
+
+              {/* 진입 파일 선택 (업로드/편집으로 목록이 있을 때) */}
+              {bundleHtmlFiles.length > 0 && (
+                <div>
+                  <label className="form-label">처음 열릴 파일</label>
+                  <select
+                    className="input"
+                    value={bundleEntry}
+                    onChange={e => setBundleEntry(e.target.value)}
+                  >
+                    {bundleHtmlFiles.map(f => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-slate-400">
+                    기본은 index.html입니다. 다른 파일을 시작 페이지로 지정할 수 있어요.
+                  </p>
+                </div>
+              )}
+
+              {!isNew && editingSlug && (
+                <a
+                  href={`/dashboard/pages/${editingSlug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-secondary-600 hover:underline dark:text-secondary-400"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  현재 저장된 페이지 미리보기(새 탭)
+                </a>
+              )}
+
+              <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
+                자산은 <span className="font-mono">./style.css</span> 처럼 <b>상대경로</b>로
+                참조하세요. 서버 실행 파일(.php/.jsp/.sh 등)은 업로드가 거부됩니다. 페이지는 앱과
+                격리된 sandbox에서 렌더됩니다.
+              </p>
+            </div>
+          )}
+
+          {/* 공통: 게시 / 정렬 */}
+          <div className="flex flex-wrap items-center gap-6">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={form.isPublished}
+                onChange={e => setForm(f => ({ ...f, isPublished: e.target.checked }))}
+                className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-secondary-600 focus:ring-secondary-500"
+              />
+              게시(사이드바에 노출)
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+              정렬 순서
+              <input
+                type="number"
+                className="input w-24"
+                value={form.order}
+                onChange={e => setForm(f => ({ ...f, order: Number(e.target.value) || 0 }))}
+              />
+            </label>
+          </div>
+
+          <div className="flex justify-end border-t border-slate-100 pt-4 dark:border-slate-800">
+            <button type="button" onClick={save} disabled={saving} className="btn-primary">
+              <Save className="h-4 w-4" />
+              {saving ? '저장 중…' : '저장'}
+            </button>
+          </div>
+        </div>
+      </AdminSection>
+    );
+  }
+
+  // ── 목록 ──
+  if (loading && pages.length === 0) return <LoadingSpinner message="불러오는 중..." />;
+
+  return (
+    <>
+      <AdminSection
+        title={`커스텀 페이지 (${pages.length})`}
+        description="HTML 직접 입력·폴더(ZIP) 업로드·외부 URL 임베드로 만드는 사이드바 페이지입니다."
+        actions={
+          <button type="button" onClick={startNew} className="btn-primary">
+            <Plus className="h-4 w-4" />새 페이지
+          </button>
+        }
+      >
+        {pages.length === 0 ? (
+          <ListState size="roomy">아직 페이지가 없습니다. “새 페이지”로 만들어보세요.</ListState>
+        ) : (
+          <div className="space-y-2">
+            {pages.map(p => (
+              <div key={p.id} className="card flex items-center gap-3 p-3.5">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-800 dark:text-slate-100">
+                      {p.title}
+                    </span>
+                    {p.externalUrl ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
+                        <Globe className="h-3 w-3" />
+                        URL
+                      </span>
+                    ) : (
+                      p.bundlePath && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                          <FolderArchive className="h-3 w-3" />
+                          폴더
+                        </span>
+                      )
+                    )}
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        p.isPublished
+                          ? 'bg-secondary-100 text-secondary-700 dark:bg-secondary-900/40 dark:text-secondary-300'
+                          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                      }`}
+                    >
+                      {p.isPublished ? '게시됨' : '비공개'}
+                    </span>
+                  </div>
+                  <div className="truncate font-mono text-xs text-slate-400">
+                    /dashboard/pages/{p.slug}
+                  </div>
+                </div>
+                {p.isPublished && (
+                  <a
+                    href={`/dashboard/pages/${p.slug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="새 탭에서 보기"
+                    className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                )}
+                <button type="button" onClick={() => startEdit(p)} className="btn-secondary btn-sm">
+                  수정
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(p)}
+                  title="삭제"
+                  className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </AdminSection>
+
+      <ConfirmationModal
+        open={confirmDelete !== null}
+        title="페이지 삭제"
+        message={`"${confirmDelete?.title ?? ''}" 페이지를 삭제할까요?`}
+        variant="danger"
+        onConfirm={doDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
+    </>
+  );
+};
+
+export default CustomPageManagement;

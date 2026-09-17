@@ -1,0 +1,373 @@
+// src/hooks/usePostDetail.ts - 비밀글 + 좋아요 지원
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../store/auth';
+import { fetchPostById, deletePost, verifySecretPost, toggleLike } from '../api/posts';
+import { formatRelativeDate } from '../utils/date';
+import { toast } from '../utils/toast';
+import { getApiErrorMessage } from '../api/utils';
+import { getBoardTitle } from '../constants/boardTitles';
+import { decryptContent } from '../utils/crypto';
+import type { Assignee, WorkStatus } from '../api/tasks';
+import type { Tag } from '../types/board.types';
+
+/** 상세 응답에 함께 오는 "보는 사람의 상태" */
+export interface ViewerState {
+  liked: boolean;
+  likeCount: number;
+  scrapped: boolean;
+  /** 관리자·매니저·이 게시판 담당자인지 */
+  canManage: boolean;
+}
+
+export type Post = {
+  id: string;
+  title: string;
+  content: string;
+  author: string; // 표시용 이름 (user.name)
+  UserId?: string; // 실제 작성자 ID (권한 체크용)
+  createdAt: string;
+  updatedAt: string;
+  boardType: string;
+  viewCount?: number;
+  isSecret?: boolean;
+  secretType?: 'password' | 'users' | null;
+  isEncrypted?: boolean;
+  secretSalt?: string | null;
+  likeCount?: number;
+  isPinned?: boolean;
+  /** 상단 고정 만료 시각 (무기한이면 null) */
+  pinnedUntil?: string | null;
+  /** 업무 상태 — 업무로 추적하지 않는 글은 'none' */
+  workStatus?: WorkStatus;
+  assignee?: Assignee | null;
+  /** 이 글이 속한 게시판. 이름과 용도를 글과 함께 받는다 */
+  board?: { id: string; name: string; taskEnabled: boolean } | null;
+  /** 이 글의 태그. 목록과 마찬가지로 글과 함께 온다 */
+  tags?: Tag[];
+  user?: {
+    id: string;
+    name: string;
+    avatar?: string | null;
+  };
+  attachments?: Array<{
+    url: string;
+    originalName: string;
+    storedName: string;
+    size?: number;
+    mimeType?: string;
+  }>;
+};
+
+interface UsePostDetailProps {
+  boardType: string | undefined;
+  id: string | undefined;
+}
+
+export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
+  const fetchIdRef = useRef(0);
+  const mountedRef = useRef(true);
+  const [post, setPost] = useState<Post | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isBoardManager, setIsBoardManager] = useState(false);
+
+  // 비밀글 상태
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockedMeta, setLockedMeta] = useState<{
+    id: string;
+    title: string;
+    secretType: 'password';
+    isEncrypted?: boolean;
+    ciphertext?: string;
+    secretSalt?: string | null;
+  } | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+
+  // 좋아요 상태
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [likeLoading, setLikeLoading] = useState(false);
+  // 스크랩 — 버튼이 자기 것으로 들고 가지만, 첫 값은 상세 응답에서 온다
+  const [scrapped, setScrapped] = useState(false);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, getUserId, getUserName, isAdmin } = useAuth();
+
+  const canEditOrDelete = useMemo(() => {
+    if (!post || !user) return false;
+    const currentUserId = getUserId();
+    // UserId(서버에서 내려주는 작성자 PK)로 비교 (가장 정확)
+    // fallback: author 이름으로 비교 (하위 호환)
+    return (
+      (post.UserId !== null && post.UserId !== undefined && post.UserId === currentUserId) ||
+      post.author === getUserName() ||
+      isAdmin() ||
+      isBoardManager
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    post?.UserId,
+    post?.author,
+    user?.id,
+    user?.name,
+    getUserId,
+    getUserName,
+    isAdmin,
+    isBoardManager,
+  ]);
+
+  const setPostFromData = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (data: any, decryptedContent?: string) => {
+      setPost({
+        id: data.id,
+        title: data.title,
+        content: decryptedContent !== undefined ? decryptedContent : data.content,
+        author: data.author,
+        UserId: data.UserId, // 권한 체크용 작성자 ID
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt || data.createdAt,
+        boardType: boardType!,
+        viewCount: data.viewCount || 0,
+        isSecret: data.isSecret,
+        secretType: data.secretType,
+        isEncrypted: data.isEncrypted,
+        secretSalt: data.secretSalt,
+        likeCount: data.likeCount ?? 0,
+        isPinned: data.isPinned,
+        pinnedUntil: data.pinnedUntil ?? null,
+        workStatus: data.workStatus ?? 'none',
+        assignee: data.assignee ?? null,
+        board: data.board ?? null,
+        tags: Array.isArray(data.tags) ? data.tags : [],
+        user: data.user,
+        attachments: Array.isArray(data.attachments) ? data.attachments : [],
+      });
+    },
+    [boardType]
+  );
+
+  /**
+   * 상세 응답에 함께 오는 "보는 사람의 상태" 를 반영한다.
+   * 좋아요·스크랩·관리 권한을 따로 묻지 않는 이유는 서버 쪽에 적어 두었다.
+   * 옛 응답(viewer 없음)에서도 화면이 깨지지 않게 없으면 건드리지 않는다.
+   */
+  const applyViewer = useCallback((viewer: ViewerState | undefined) => {
+    if (!viewer) return;
+    setLiked(viewer.liked);
+    setLikeCount(viewer.likeCount);
+    setIsBoardManager(viewer.canManage);
+    setScrapped(viewer.scrapped);
+  }, []);
+
+  const fetchPost = useCallback(async () => {
+    if (!boardType || !id) {
+      setError('잘못된 접근입니다.');
+      setLoading(false);
+      return;
+    }
+
+    const fetchId = ++fetchIdRef.current;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const data = await fetchPostById(boardType, id);
+      if (fetchIdRef.current !== fetchId) return; // Stale fetch — a newer one is in progress
+
+      if (data?.isLocked) {
+        setIsLocked(true);
+        setLockedMeta({
+          id: data.id,
+          title: data.title,
+          secretType: data.secretType,
+          isEncrypted: data.isEncrypted,
+          ciphertext: data.ciphertext,
+          secretSalt: data.secretSalt,
+        });
+        return;
+      }
+
+      if (!data || !data.title || !data.content) {
+        throw new Error('게시글 제목 또는 내용이 없습니다');
+      }
+
+      setIsLocked(false);
+      setLockedMeta(null);
+      setPostFromData(data);
+      applyViewer(data.viewer);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      if (fetchIdRef.current !== fetchId) return; // Stale fetch
+      if (err.response?.status === 403) {
+        setError('접근 권한이 없습니다.');
+      } else if (err.response?.status === 404) {
+        setError('게시글을 찾을 수 없습니다.');
+      } else {
+        setError(
+          err.response?.data?.message || err.message || '게시글을 불러오는 중 오류가 발생했습니다.'
+        );
+      }
+    } finally {
+      if (fetchIdRef.current === fetchId) setLoading(false);
+    }
+  }, [boardType, id, setPostFromData, applyViewer]);
+
+  // 비밀글 비밀번호 검증
+  // - E2EE: 암호문만 가져와 클라이언트에서 복호화 (비밀번호 서버 미전송)
+  // - 일반 비밀글: 서버에서 비밀번호 검증 후 평문 반환
+  const handleVerifyPassword = useCallback(
+    async (password: string) => {
+      if (!boardType || !id) return;
+      setVerifying(true);
+      setVerifyError(null);
+      try {
+        if (lockedMeta?.isEncrypted) {
+          // E2EE 경로: 서버에서 비밀번호 bcrypt 검증 + 암호문 수신 → 클라이언트에서 복호화
+          const data = await verifySecretPost(boardType, id, password);
+
+          if (!data.isEncrypted || !data.secretSalt || !data.rawContent) {
+            setVerifyError('암호화 게시글 데이터가 올바르지 않습니다.');
+            return;
+          }
+
+          const plaintext = decryptContent(data.rawContent, password, data.secretSalt);
+          if (plaintext === null) {
+            setVerifyError('비밀번호가 올바르지 않습니다.');
+            return;
+          }
+
+          if (!mountedRef.current) return;
+          setIsLocked(false);
+          setLockedMeta(null);
+          setPostFromData(data, plaintext);
+        } else {
+          // 일반 비밀글 경로: 서버에서 비밀번호 검증
+          const data = await verifySecretPost(boardType, id, password);
+          if (!mountedRef.current) return;
+          setIsLocked(false);
+          setLockedMeta(null);
+          setPostFromData(data);
+          applyViewer(data.viewer);
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (err: any) {
+        if (!mountedRef.current) return;
+        if (err.response?.status === 401) {
+          setVerifyError('비밀번호가 올바르지 않습니다.');
+        } else {
+          setVerifyError(err.response?.data?.message || '비밀번호 확인 중 오류가 발생했습니다.');
+        }
+      } finally {
+        if (mountedRef.current) setVerifying(false);
+      }
+    },
+    [boardType, id, lockedMeta, setPostFromData, applyViewer]
+  );
+
+  // 좋아요 토글
+  //
+  // 누르는 즉시 반영한다(스크랩 버튼과 같은 방식). 왕복을 기다리면 네트워크가
+  // 느린 만큼 하트가 늦게 움직여, 안 눌린 줄 알고 한 번 더 누르게 된다.
+  const handleToggleLike = useCallback(async () => {
+    if (!boardType || !id || likeLoading) return;
+
+    const previous = { liked, likeCount };
+    setLiked(!previous.liked);
+    setLikeCount(Math.max(0, previous.likeCount + (previous.liked ? -1 : 1)));
+    setLikeLoading(true);
+
+    try {
+      const result = await toggleLike(boardType, id);
+      // 언마운트/다른 게시글 이동 후 응답이 도착해 잘못된 상태를 덮어쓰지 않도록 가드
+      if (!mountedRef.current) return;
+      // 서버 값이 최종이다 — 다른 탭에서 이미 눌렀을 수 있다
+      setLiked(result.liked);
+      setLikeCount(result.likeCount);
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setLiked(previous.liked);
+      setLikeCount(previous.likeCount);
+      toast.error(getApiErrorMessage(err, '좋아요 처리에 실패했습니다.'));
+    } finally {
+      if (mountedRef.current) setLikeLoading(false);
+    }
+  }, [boardType, id, likeLoading, liked, likeCount]);
+
+  const handleBack = useCallback(() => {
+    // 목록에서 넘어온 경우 원래 목록 위치(페이지·검색·태그)로 복귀, 아니면 게시판 첫 페이지
+    const from = (location.state as { from?: string } | null)?.from;
+    navigate(from || `/dashboard/posts/${boardType}`);
+  }, [navigate, boardType, location.state]);
+
+  const handleEdit = useCallback(() => {
+    if (!canEditOrDelete) {
+      setError('수정 권한이 없습니다.');
+      return;
+    }
+    navigate(`/dashboard/posts/${boardType}/edit/${id}`);
+  }, [navigate, boardType, id, canEditOrDelete]);
+
+  const handleDelete = useCallback(async () => {
+    if (!canEditOrDelete) {
+      setError('삭제 권한이 없습니다.');
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      await deletePost(boardType!, id!);
+      navigate(`/dashboard/posts/${boardType}`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      setError(err.response?.data?.message || '게시글 삭제에 실패했습니다.');
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [id, boardType, navigate, canEditOrDelete]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    fetchPost();
+  }, [fetchPost]);
+
+  // 게시판 담당자 여부는 상세 응답의 viewer.canManage 로 온다.
+  // /board-managers/check 를 따로 묻지 않는다. 서버가 글을 내주기 전 권한 미들웨어에서
+  // 같은 판정을 끝내고 응답에 실어 준다.
+
+  return {
+    post,
+    loading,
+    error,
+    isDeleting,
+    canEditOrDelete,
+    isBoardManager,
+    scrapped,
+    isLocked,
+    lockedMeta,
+    verifyError,
+    verifying,
+    liked,
+    likeCount,
+    likeLoading,
+    getBoardTitle,
+    formatDate: formatRelativeDate,
+    handleBack,
+    handleEdit,
+    handleDelete,
+    handleVerifyPassword,
+    handleToggleLike,
+    refreshPost: fetchPost,
+  };
+};

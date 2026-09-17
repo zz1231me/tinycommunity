@@ -1,0 +1,53 @@
+# 의존성
+# package-lock.json 은 제외하지 않는다 — Dockerfile 이 npm ci 를 쓰는데
+# 락파일이 없으면 곧바로 실패한다("npm ci can only install with an existing package-lock.json").
+# 패턴은 컨텍스트 최상위에서만 맞는다. server/ 아래까지 빼려면 **/ 가 필요하다 —
+# 없어서 server/node_modules · server/.env · 개발용 sqlite · 테스트 70개가
+# 그대로 빌드 컨텍스트로 들어가고 builder 레이어에 남고 있었다.
+**/node_modules
+**/npm-debug.log
+
+# 빌드 산출물
+**/dist
+**/build
+**/*.log
+
+# 환경변수 (보안)
+**/.env
+**/.env.local
+**/.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+**/.DS_Store
+**/Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# 테스트 및 커버리지
+**/coverage
+**/*.test.ts
+**/__tests__
+
+# 로컬 전용 파일
+.claude
+server/uploads
+**/*.sqlite
+**/*.sqlite-shm
+**/*.sqlite-wal
+**/*.db
+
+# 기타
+*.md
+!README.md
+docker-compose.yml
+Dockerfile
+.dockerignore
