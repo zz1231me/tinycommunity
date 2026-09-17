@@ -484,6 +484,11 @@ export default function Profile() {
                 </div>
                 {sessionsLoading ? (
                   <LoadingRows />
+                ) : !sessionsLoaded ? (
+                  // 불러오지 못한 것과 '기기가 없는 것' 은 전혀 다르다. 여기는 내 계정에
+                  // 누가 접속해 있는지 보는 자리라, 실패를 '없음' 으로 보여 주면
+                  // "아무도 접속해 있지 않다" 로 읽힌다. 아래 접속 기록 칸과 같은 방식.
+                  <RetryState onRetry={() => void loadSessions()} />
                 ) : sessions.length === 0 ? (
                   <EmptyState icon={<Monitor className="w-6 h-6" />} text="활성 세션이 없습니다." />
                 ) : (

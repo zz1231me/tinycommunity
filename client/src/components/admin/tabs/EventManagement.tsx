@@ -34,6 +34,7 @@ export const EventManagement = () => {
     saving: savingEvents,
     loading,
     dataLoaded,
+    permissionsError,
   } = useEventManagement();
 
   // 이벤트 목록은 useQuery 가 자동으로 가져온다. 권한은 로컬 관리라 한 번만 로드.
@@ -155,7 +156,10 @@ export const EventManagement = () => {
           </span>
         }
       >
-        {eventPermissions.length === 0 ? (
+        {/* 실패를 '불러오는 중' 으로 두면 영원히 끝나지 않는 로딩 문구가 남는다 */}
+        {permissionsError ? (
+          <p className="text-center py-8 text-slate-400 text-sm">{permissionsError}</p>
+        ) : eventPermissions.length === 0 ? (
           <p className="text-center py-8 text-slate-400 text-sm">권한 설정을 불러오는 중...</p>
         ) : (
           <>

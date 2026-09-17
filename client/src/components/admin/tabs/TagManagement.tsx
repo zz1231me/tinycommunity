@@ -44,7 +44,13 @@ const TagManagement = () => {
   });
 
   // 선택된 게시판이 없으면 조회하지 않는다(enabled).
-  const { data: tags = [], isFetching: loadingTags } = useQuery({
+  const {
+    data: tags = [],
+    isFetching: loadingTags,
+    // 조회가 실패해도 목록은 빈 배열이다. 그대로 두면 '태그가 없습니다' 가 떠서
+    // 관리자가 이미 있는 태그를 다시 만들게 된다.
+    isError: tagsFailed,
+  } = useQuery({
     queryKey: adminKeys.tags.byBoard(selectedBoardId),
     queryFn: () => getTags(selectedBoardId),
     enabled: selectedBoardId !== null,
@@ -287,6 +293,8 @@ const TagManagement = () => {
                   <div className="flex justify-center py-8">
                     <LoadingSpinner />
                   </div>
+                ) : tagsFailed ? (
+                  <ListState>태그를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</ListState>
                 ) : tags.length === 0 ? (
                   <ListState>이 게시판에 등록된 태그가 없습니다</ListState>
                 ) : (

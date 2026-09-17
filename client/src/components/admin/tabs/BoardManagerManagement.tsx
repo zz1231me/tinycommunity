@@ -27,7 +27,13 @@ const BoardManagerManagement = () => {
 
   const queryClient = useQueryClient();
 
-  const { data: boards = [], isPending: loading } = useQuery({
+  const {
+    data: boards = [],
+    isPending: loading,
+    // 실패해도 빈 배열이라, 그대로 두면 왼쪽 칸이 아무 문구도 없이 비어 버린다 —
+    // 관리자는 '게시판이 하나도 없다' 고 읽는다.
+    isError: boardsFailed,
+  } = useQuery({
     queryKey: adminKeys.boardManagers.all,
     queryFn: getAllBoardsWithManagers,
   });
@@ -101,6 +107,14 @@ const BoardManagerManagement = () => {
               게시판 선택
             </h3>
             <div className="space-y-1.5 max-h-96 overflow-y-auto">
+              {boardsFailed && (
+                <p className="py-6 text-center text-sm text-slate-400">
+                  게시판 목록을 불러오지 못했습니다.
+                </p>
+              )}
+              {!boardsFailed && boards.length === 0 && (
+                <p className="py-6 text-center text-sm text-slate-400">게시판이 없습니다.</p>
+              )}
               {boards.map(board => (
                 <button
                   key={board.id}

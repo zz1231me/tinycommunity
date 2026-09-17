@@ -39,6 +39,9 @@ export const useEventManagement = () => {
   // 권한은 낙관적 토글 + 저장 직렬화(coalescing)를 직접 관리하므로 캐시로 옮기지 않는다.
   const [permissions, setPermissions] = useState<EventPermission[]>([]);
   const [saving, setSaving] = useState(false);
+  // 권한 조회가 실패했는지. 목록이 비어 있다는 것만으로는 '아직 안 왔다' 와
+  // '못 가져왔다' 를 구분할 수 없어, 실패하면 화면이 영원히 '불러오는 중' 으로 남았다.
+  const [permissionsError, setPermissionsError] = useState<string | null>(null);
   // 저장 직렬화용 — 저장 진행 중 들어온 후속 토글의 최신 상태를 적재(coalescing)해 클릭 유실 방지
   const savingRef = useRef(false);
   const pendingRef = useRef<EventPermission[] | null>(null);
@@ -51,8 +54,10 @@ export const useEventManagement = () => {
       const data = unwrap<EventPermission[]>(await api.get('/admin/events/permissions'));
       permissionsRef.current = data;
       setPermissions(data);
+      setPermissionsError(null);
     } catch (err) {
       if (import.meta.env.DEV) console.error('이벤트 권한 오류:', err);
+      setPermissionsError('권한 설정을 불러오지 못했습니다.');
     }
   };
 
@@ -130,5 +135,6 @@ export const useEventManagement = () => {
     deleteEvent: (id: number) => deleteEventMutation.mutateAsync(id),
     updatePermission,
     fetchError: eventsError ? '이벤트 목록을 불러오지 못했습니다.' : null,
+    permissionsError,
   };
 };
