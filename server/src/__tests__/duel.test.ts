@@ -431,6 +431,15 @@ describe('알림은 사람을 이름으로 부른다', () => {
     expect(rows[0].message).toContain(`${B}이름`);
   });
 
+  it('알림을 누르면 그 판으로 바로 가도록 판 번호를 싣는다', async () => {
+    // 탭만 가리키면 받은 사람이 포인트 화면을 내려가며 직접 찾아야 한다
+    await grant(A, 1000);
+    const made = await create(aCookie, { opponentId: B, stake: 100, hand: 'rock' });
+
+    const rows = await notificationsFor(B);
+    expect(rows[0].link).toBe(`/profile?tab=points&duel=${made.body.data.id}`);
+  });
+
   it('시간이 지나 이미 닫힌 판을 거절해도 거절 알림은 가지 않는다', async () => {
     // 거절당한 것이 아닌데 '거절했습니다' 가 가면 있지도 않은 일을 알리게 된다
     await grant(A, 1000);

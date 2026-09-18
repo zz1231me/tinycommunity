@@ -252,3 +252,66 @@ describe('실패', () => {
     expect(await screen.findByText(/불러오지 못했습니다/)).toBeInTheDocument();
   });
 });
+
+describe('알림에서 넘어온 판', () => {
+  it('받은 판으로 가서 강조한다 — 포커스는 손 버튼이 아니라 카드에 둔다', async () => {
+    // 손 버튼에 포커스를 두면 Enter 한 번에 포인트가 걸린 승부가 나 버린다
+    fetchDuels.mockResolvedValue(board({ incoming: [duel({ id: 7 })] }));
+    render(<DuelPanel myId={ME} focusDuelId={7} focusKey="k1" />);
+
+    await waitFor(() => expect(document.getElementById('duel-7')).toHaveClass('animate-duelPulse'));
+    expect(document.activeElement).toBe(document.getElementById('duel-7'));
+    expect(acceptDuel).not.toHaveBeenCalled();
+  });
+
+  it('목록에 없는 판이면 다시 읽어서 찾는다', async () => {
+    // 이미 이 화면에 있을 때 알림을 누르면, 들고 있는 목록은 그 사이에 온 판을 모른다
+    fetchDuels
+      .mockResolvedValueOnce(board())
+      .mockResolvedValueOnce(board({ incoming: [duel({ id: 8 })] }));
+    render(<DuelPanel myId={ME} focusDuelId={8} focusKey="k1" />);
+
+    await waitFor(() => expect(document.getElementById('duel-8')).toHaveClass('animate-duelPulse'));
+    expect(fetchDuels).toHaveBeenCalledTimes(2);
+    expect(toastInfo).not.toHaveBeenCalled();
+  });
+
+  it('끝내 없으면 사라진 판이라고 알려 준다', async () => {
+    render(<DuelPanel myId={ME} focusDuelId={99} focusKey="k1" />);
+
+    await waitFor(() =>
+      expect(toastInfo).toHaveBeenCalledWith(expect.stringMatching(/사라진 대결/))
+    );
+  });
+
+  it('같은 알림으로는 한 번만, 새로 누르면 다시 찾아간다', async () => {
+    const { rerender } = render(<DuelPanel myId={ME} focusDuelId={99} focusKey="k1" />);
+    await waitFor(() => expect(toastInfo).toHaveBeenCalledTimes(1));
+
+    rerender(<DuelPanel myId={ME} focusDuelId={99} focusKey="k1" />);
+    await new Promise(r => setTimeout(r, 20));
+    expect(toastInfo).toHaveBeenCalledTimes(1);
+
+    rerender(<DuelPanel myId={ME} focusDuelId={99} focusKey="k2" />);
+    await waitFor(() => expect(toastInfo).toHaveBeenCalledTimes(2));
+  });
+
+  it('끝난 판이면 최근 결과 줄을 강조한다', async () => {
+    fetchDuels.mockResolvedValue(
+      board({
+        recent: [
+          duel({
+            id: 5,
+            status: 'done',
+            result: 'opponent',
+            challengerHand: 'rock',
+            opponentHand: 'paper',
+          }),
+        ],
+      })
+    );
+    render(<DuelPanel myId={ME} focusDuelId={5} focusKey="k1" />);
+
+    await waitFor(() => expect(document.getElementById('duel-5')).toHaveClass('animate-duelPulse'));
+  });
+});

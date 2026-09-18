@@ -301,6 +301,20 @@ body {
   animation: spin 1s linear infinite;
 }
 
+/* 알림을 눌러 넘어온 대결 — 어느 판인지 한눈에 들어오게 몇 번 숨쉬듯 빛난다 */
+@keyframes duelPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(139 92 246 / 0);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgb(139 92 246 / 0.28);
+  }
+}
+.animate-duelPulse {
+  animation: duelPulse 1.1s ease-in-out 3;
+}
+
 /* 접근성: 애니메이션 감소 설정 존중 */
 @media (prefers-reduced-motion: reduce) {
   *,

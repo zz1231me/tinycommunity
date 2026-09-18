@@ -9,8 +9,8 @@
 //
 // 받아 오는 방식은 같은 폴더의 다른 판들과 맞춘다(React Query 대신 useEffect).
 
-import { useCallback, useEffect, useState } from 'react';
-import { Swords, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Swords, Loader2, Clock } from 'lucide-react';
 import {
   acceptDuel,
   cancelDuel,
@@ -52,10 +52,13 @@ function HandPick({
   onChange,
   disabled,
   labelFor,
+  large = false,
 }: {
   value: DuelHand | null;
   onChange: (hand: DuelHand) => void;
   disabled?: boolean;
+  /** 받은 대결에서는 크게 — 이 판에서 할 일이 이 세 버튼뿐이다 */
+  large?: boolean;
   /**
    * 버튼을 읽어 줄 말. 받은 대결에서는 이 버튼이 '고르기' 가 아니라 '포인트를 걸고
    * 지금 받기' 라, 손 이름만 읽어 주면 무슨 일이 일어나는지 알 수 없다.
@@ -74,20 +77,45 @@ function HandPick({
           // '눌린 상태' 라는 개념이 없다.
           aria-pressed={labelFor ? undefined : value === hand}
           aria-label={labelFor ? labelFor(hand) : HAND_LABEL[hand]}
-          className={`flex-1 rounded-lg border px-2 py-1.5 text-sm transition-colors disabled:opacity-40 ${
-            value === hand
-              ? 'border-primary-500 bg-primary-50 font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
-              : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'
+          className={`flex-1 rounded-lg border transition-colors disabled:opacity-40 ${
+            large
+              ? 'flex flex-col items-center gap-1 border-violet-200 bg-white py-2.5 text-sm font-medium text-slate-700 hover:border-violet-400 hover:bg-violet-50 dark:border-violet-500/30 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-violet-500/10'
+              : `px-2 py-1.5 text-sm ${
+                  value === hand
+                    ? 'border-primary-500 bg-primary-50 font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                    : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'
+                }`
           }`}
         >
-          <span aria-hidden>{HAND_FACE[hand]}</span> {HAND_LABEL[hand]}
+          {large ? (
+            <>
+              <span aria-hidden className="text-2xl leading-none">
+                {HAND_FACE[hand]}
+              </span>
+              <span>{HAND_LABEL[hand]}</span>
+            </>
+          ) : (
+            <>
+              <span aria-hidden>{HAND_FACE[hand]}</span> {HAND_LABEL[hand]}
+            </>
+          )}
         </button>
       ))}
     </div>
   );
 }
 
-export function DuelPanel({ myId }: { myId: string }) {
+export function DuelPanel({
+  myId,
+  focusDuelId = null,
+  focusKey,
+}: {
+  myId: string;
+  /** 알림이 가리킨 판 (?duel=). 그 판으로 스크롤하고 잠깐 강조한다. */
+  focusDuelId?: number | null;
+  /** 알림을 누를 때마다 바뀐다 — 같은 알림을 다시 눌러도 다시 찾아간다 */
+  focusKey?: string;
+}) {
   const [board, setBoard] = useState<DuelBoard | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -132,6 +160,57 @@ export function DuelPanel({ myId }: { myId: string }) {
     }, 15_000);
     return () => window.clearInterval(id);
   }, [waitingCount, reload]);
+
+  // ── 알림에서 넘어온 판 찾아가기 ──
+  //
+  // 알림은 탭까지만 가리켜서, 받은 사람이 뽑기 판 아래로 내려가며 직접 찾아야 했다.
+  // 이제 판 번호가 오면 그 판으로 스크롤하고 몇 번 빛나게 한다.
+  const [highlightId, setHighlightId] = useState<number | null>(null);
+  const boardRef = useRef<DuelBoard | null>(null);
+  useEffect(() => {
+    boardRef.current = board;
+  }, [board]);
+  // focusKey 는 본문에서 쓰지 않지만 의존성에 둔다. 알림을 누를 때마다 바뀌므로,
+  // 같은 판을 가리키는 알림을 다시 눌러도 다시 찾아간다.
+  useEffect(() => {
+    if (loading || focusDuelId === null) return;
+
+    let alive = true;
+    const has = (b: DuelBoard | null) =>
+      !!b && [...b.incoming, ...b.outgoing, ...b.recent].some(d => d.id === focusDuelId);
+
+    void (async () => {
+      let current = boardRef.current;
+      // 이미 이 화면에 있을 때 알림을 누르면, 목록은 그 사이에 온 판을 모른다 — 다시 읽는다
+      if (!has(current)) {
+        try {
+          current = await fetchDuels();
+          if (alive) setBoard(current);
+        } catch {
+          // 못 읽었으면 아래에서 '찾을 수 없음' 으로 안내한다
+        }
+      }
+      if (!alive) return;
+      if (has(current)) setHighlightId(focusDuelId);
+      else toast.info('이미 끝났거나 시간이 지나 사라진 대결입니다.');
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [loading, focusDuelId, focusKey]);
+
+  useEffect(() => {
+    if (highlightId === null) return;
+    const el = document.getElementById(`duel-${highlightId}`);
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el?.scrollIntoView?.({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+    // 포커스는 손 버튼이 아니라 카드에 둔다. 손 버튼에 두면 Enter 한 번에 포인트가 걸린
+    // 승부가 나 버린다. 카드에 두면 화면 낭독기가 누가 얼마를 걸었는지부터 읽어 준다.
+    el?.focus({ preventScroll: true });
+    const timer = window.setTimeout(() => setHighlightId(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [highlightId]);
 
   /** 무엇을 하든 끝나면 판을 다시 읽는다 — 포인트와 목록이 함께 바뀐다 */
   const run = async (action: () => Promise<unknown>, fallback: string) => {
@@ -197,6 +276,11 @@ export function DuelPanel({ myId }: { myId: string }) {
       <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
         <Swords className="h-4 w-4 text-violet-500" />
         포인트 대결
+        {board.incoming.length > 0 && (
+          <span className="ml-1 rounded-full bg-violet-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+            도전장 {board.incoming.length}
+          </span>
+        )}
       </h3>
       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
         건 포인트는 신청하는 순간 맡겨지고, 이긴 쪽이 두 배를 가져갑니다. {rules.expireMinutes}분
@@ -209,23 +293,56 @@ export function DuelPanel({ myId }: { myId: string }) {
           <h4 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
             받은 대결
           </h4>
-          <ul className="space-y-2">
-            {board.incoming.map(duel => (
-              <li
-                key={duel.id}
-                className="rounded-lg border border-violet-200 bg-violet-50/60 p-3 dark:border-violet-500/30 dark:bg-violet-500/10"
-              >
-                <p className="text-sm text-slate-800 dark:text-slate-100">
-                  <span className="font-semibold">{duel.challengerName}</span>님이{' '}
-                  <span className="font-semibold tabular-nums">{duel.stake.toLocaleString()}P</span>{' '}
-                  를 걸었습니다
-                  <span className="ml-1.5 text-xs text-slate-500 dark:text-slate-400">
-                    · {minutesLeft(duel.expiresAt)}분 남음
-                  </span>
-                </p>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <div className="min-w-[180px] flex-1">
+          <ul className="space-y-3">
+            {board.incoming.map(duel => {
+              const left = minutesLeft(duel.expiresAt);
+              const urgent = left <= 3;
+              const highlighted = highlightId === duel.id;
+              return (
+                <li
+                  key={duel.id}
+                  id={`duel-${duel.id}`}
+                  tabIndex={-1}
+                  className={`rounded-xl border-2 bg-gradient-to-br from-violet-50 to-white p-4 shadow-sm transition-colors dark:from-violet-500/15 dark:to-slate-900 ${
+                    highlighted
+                      ? 'animate-duelPulse border-violet-500'
+                      : 'border-violet-200 dark:border-violet-500/30'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold tracking-wide text-violet-600 dark:text-violet-300">
+                        ⚔️ 도전장
+                      </p>
+                      <p className="mt-0.5 text-sm text-slate-700 dark:text-slate-200">
+                        <span className="font-semibold text-slate-900 dark:text-white">
+                          {duel.challengerName}
+                        </span>
+                        님이 대결을 신청했습니다
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
+                        urgent
+                          ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300'
+                          : 'bg-white text-violet-700 ring-1 ring-violet-200 dark:bg-slate-800 dark:text-violet-300 dark:ring-violet-500/30'
+                      }`}
+                    >
+                      <Clock className="h-3 w-3" aria-hidden />
+                      {urgent ? `곧 무효 · ${left}분` : `${left}분 남음`}
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-2xl font-bold tabular-nums text-violet-700 dark:text-violet-200">
+                    {duel.stake.toLocaleString()}P
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    이기면 {(duel.stake * 2).toLocaleString()}P · 손을 고르는 즉시 승부가 납니다
+                  </p>
+
+                  <div className="mt-3">
                     <HandPick
+                      large
                       value={null}
                       onChange={h => void respond(duel, h)}
                       disabled={busy}
@@ -234,19 +351,21 @@ export function DuelPanel({ myId }: { myId: string }) {
                       }
                     />
                   </div>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() =>
-                      void run(() => declineDuel(duel.id), '대결을 거절하지 못했습니다.')
-                    }
-                    className="btn-secondary px-3 py-1.5 text-sm disabled:opacity-40"
-                  >
-                    거절
-                  </button>
-                </div>
-              </li>
-            ))}
+                  <div className="mt-2 text-right">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        void run(() => declineDuel(duel.id), '대결을 거절하지 못했습니다.')
+                      }
+                      className="text-xs text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline disabled:opacity-40 dark:text-slate-400 dark:hover:text-slate-200"
+                    >
+                      거절
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -307,7 +426,13 @@ export function DuelPanel({ myId }: { myId: string }) {
             {board.outgoing.map(duel => (
               <li
                 key={duel.id}
-                className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700"
+                id={`duel-${duel.id}`}
+                tabIndex={-1}
+                className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm ${
+                  highlightId === duel.id
+                    ? 'animate-duelPulse border-violet-500'
+                    : 'border-slate-200 dark:border-slate-700'
+                }`}
               >
                 <span className="min-w-0 truncate text-slate-700 dark:text-slate-300">
                   {duel.opponentName}님에게{' '}
@@ -348,7 +473,13 @@ export function DuelPanel({ myId }: { myId: string }) {
               return (
                 <li
                   key={duel.id}
-                  className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                  id={`duel-${duel.id}`}
+                  tabIndex={-1}
+                  className={`flex items-center justify-between gap-3 px-3 py-2 text-sm ${
+                    highlightId === duel.id
+                      ? 'animate-duelPulse bg-violet-50 dark:bg-violet-500/10'
+                      : ''
+                  }`}
                 >
                   <span className="min-w-0 truncate text-slate-600 dark:text-slate-300">
                     {other}

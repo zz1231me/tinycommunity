@@ -165,7 +165,8 @@ function notify(userId: string, message: string, duelId: number): void {
       userId,
       type: 'DUEL',
       message,
-      link: '/profile?tab=points',
+      // 어느 판인지까지 싣는다. 탭만 가리키면 받은 사람이 화면을 내려가며 직접 찾아야 한다.
+      link: `/profile?tab=points&duel=${duelId}`,
       relatedId: String(duelId),
     })
     .catch(err => logError('대결 알림 생성 실패', err, { userId, duelId }));

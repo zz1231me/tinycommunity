@@ -1,6 +1,6 @@
 // client/src/pages/Profile.tsx - 탭 기반 재구성
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LoadingSpinner } from '../components/common/LoadingStates';
 import { PageContainer } from '../components/common/PageContainer';
@@ -121,6 +121,12 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState<TabId>(() =>
     isTabId(requestedTab) ? requestedTab : 'profile'
   );
+  // 알림을 누를 때마다 바뀐다. 주소가 같아도(같은 알림을 다시 누름) 이동마다 새로 생긴다.
+  const location = useLocation();
+
+  // 알림이 가리킨 대결 (?duel=<id>). 대결 판이 그 판으로 스크롤하고 잠깐 강조한다.
+  const duelParam = Number(searchParams.get('duel'));
+  const focusDuelId = Number.isInteger(duelParam) && duelParam > 0 ? duelParam : null;
   const lotteryEnabled = useFeature('tools.lottery');
   // 대결은 포인트 기능 안에 있지만 따로 끌 수 있다 (서버도 requireFeature 로 막는다)
   const duelEnabled = useFeature('tools.pointDuel');
@@ -136,10 +142,12 @@ export default function Profile() {
     return !key || (key === 'tools.lottery' ? lotteryEnabled : true);
   });
 
-  // 이미 이 화면에 있는데 다른 탭을 가리키는 알림을 누르면 주소만 바뀐다 — 그때도 따라간다
+  // 이미 이 화면에 있는데 다른 탭을 가리키는 알림을 누르면 주소만 바뀐다 — 그때도 따라간다.
+  // 주소가 그대로인 경우도 있다: 알림으로 포인트 탭에 온 뒤 손으로 다른 탭을 눌렀다가
+  // 같은 알림을 다시 누르면 주소가 변하지 않는다. 그래서 주소가 아니라 이동(key)에도 반응한다.
   useEffect(() => {
     if (isTabId(requestedTab)) setActiveTab(requestedTab);
-  }, [requestedTab]);
+  }, [requestedTab, location.key]);
 
   // 꺼진 기능의 탭으로 링크가 와도 열지 않는다. 보이지도 않는 탭이 열려 있으면
   // 탭 줄에는 아무것도 선택돼 있지 않은데 내용만 떠 있는 상태가 된다.
@@ -644,7 +652,9 @@ export default function Profile() {
             {activeTab === 'points' && lotteryEnabled && (
               <div className="space-y-6">
                 <LotteryPanel refreshSignal={pointsVersion} />
-                {duelEnabled && <DuelPanel myId={user.id} />}
+                {duelEnabled && (
+                  <DuelPanel myId={user.id} focusDuelId={focusDuelId} focusKey={location.key} />
+                )}
                 {attackEnabled && (
                   <AttackPanel myId={user.id} onSpent={() => setPointsVersion(v => v + 1)} />
                 )}
