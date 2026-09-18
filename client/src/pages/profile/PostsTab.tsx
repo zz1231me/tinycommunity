@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { FileText, Lock } from 'lucide-react';
 import { getMyPosts } from '../../api/users';
 import { profileKeys } from '../../api/queryKeys';
@@ -24,7 +24,6 @@ interface MyPost {
 }
 
 export function PostsTab() {
-  const navigate = useNavigate();
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -52,12 +51,12 @@ export function PostsTab() {
       ) : (
         <ul className="divide-y divide-slate-100 dark:divide-slate-700">
           {posts.map(post => (
-            <li
-              key={post.id}
-              onClick={() => navigate(`/dashboard/posts/${post.boardType}/${post.id}`)}
-              className="cursor-pointer px-5 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50"
-            >
-              <div className="flex items-start justify-between gap-3">
+            <li key={post.id}>
+              {/* 진짜 링크다. 클릭만 받는 행이면 키보드로 열 수 없고, 새 탭에서 열기도 안 된다. */}
+              <Link
+                to={`/dashboard/posts/${post.boardType}/${post.id}`}
+                className="flex items-start justify-between gap-3 px-5 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50"
+              >
                 <div className="min-w-0">
                   <p className="flex items-center gap-1.5 truncate text-sm font-medium text-slate-900 dark:text-slate-100">
                     {post.isSecret && <Lock className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />}
@@ -72,7 +71,7 @@ export function PostsTab() {
                 <span className="flex-shrink-0 text-xs text-slate-400">
                   {formatRelativeDate(post.createdAt)}
                 </span>
-              </div>
+              </Link>
             </li>
           ))}
         </ul>

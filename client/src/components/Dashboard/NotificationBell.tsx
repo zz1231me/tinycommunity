@@ -101,6 +101,7 @@ export function NotificationBell() {
   const [clearing, setClearing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null); // 벨 버튼 래퍼(앵커)
   const dropdownRef = useRef<HTMLDivElement>(null); // body로 포털된 드롭다운
+  const bellRef = useRef<HTMLButtonElement>(null);
   // 포털된 드롭다운 위치 — 헤더의 backdrop-blur가 position:fixed의 containing block이 되어
   // 헤더 안에서 fixed로 두면 트랩되므로(모바일 정렬 깨짐) body로 포털하고 벨 rect 기준으로 계산한다.
   const [pos, setPos] = useState<{ top: number; left?: number; right: number; width?: string }>({
@@ -164,6 +165,25 @@ export function NotificationBell() {
       setConfirmClear(false);
     }
   }, [open, fetchNotifications]);
+
+  // 키보드로도 쓸 수 있게 — 목록은 body 끝으로 포털되어 벨에서 Tab 을 눌러도 닿지 않는다.
+  // 열리면 목록으로 포커스를 옮기고, Esc 로 닫으면 벨로 되돌린다.
+  useEffect(() => {
+    if (!open) return;
+    const id = window.requestAnimationFrame(() =>
+      dropdownRef.current?.focus({ preventScroll: true })
+    );
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      bellRef.current?.focus();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      window.cancelAnimationFrame(id);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open, setOpen]);
 
   // 외부 클릭 닫기 — 포털된 드롭다운도 "안쪽"으로 취급(둘 다 벗어날 때만 닫힘)
   useEffect(() => {
@@ -279,7 +299,10 @@ export function NotificationBell() {
     <div ref={panelRef} className="relative">
       {/* 벨 버튼 */}
       <button
+        ref={bellRef}
         onClick={() => setOpen(v => !v)}
+        aria-expanded={open}
+        aria-haspopup="dialog"
         className="relative p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
         aria-label={`알림${unreadCount > 0 ? ` ${unreadCount}개 미읽음` : ''}`}
       >
@@ -313,6 +336,7 @@ export function NotificationBell() {
               }}
               role="dialog"
               aria-label="알림 목록"
+              tabIndex={-1}
               className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-[70] overflow-hidden"
             >
               {/* 헤더 */}
@@ -402,6 +426,17 @@ export function NotificationBell() {
                         key={n.id}
                         variants={listItem}
                         onClick={() => handleRead(n)}
+                        // 클릭만 받던 행이라 키보드로는 알림을 열 수 없었다
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={e => {
+                          // 안쪽 삭제 단추에서 올라온 키는 그 단추의 몫이다
+                          if (e.target !== e.currentTarget) return;
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            void handleRead(n);
+                          }
+                        }}
                         className={`group flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 ${
                           !n.isRead ? 'bg-primary-50/60 dark:bg-primary-900/10' : ''
                         }`}

@@ -266,7 +266,9 @@ describe('알림에서 넘어온 판', () => {
     render(<DuelPanel myId={ME} focusDuelId={7} focusKey="k1" />);
 
     await waitFor(() => expect(document.getElementById('duel-7')).toHaveClass('animate-duelPulse'));
-    expect(document.activeElement).toBe(document.getElementById('duel-7'));
+    // 포커스는 강조를 그린 '다음' 효과에서 옮겨진다. 클래스가 보인 순간 바로 확인하면
+    // 빠른 기기에서만 통과한다(CI 에서 실제로 떨어졌다) — 옮겨질 때까지 기다린다.
+    await waitFor(() => expect(document.activeElement).toBe(document.getElementById('duel-7')));
     expect(acceptDuel).not.toHaveBeenCalled();
   });
 
@@ -423,5 +425,76 @@ describe('이긴 판의 한마디', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /바위 내고 .*대결 받기/ }));
     expect(await screen.findByLabelText('이긴 판에 남길 한마디')).toBeInTheDocument();
+  });
+});
+
+describe('여러 번 다시 읽을 때', () => {
+  it('늦게 도착한 옛 응답이 새 목록을 덮지 않는다', async () => {
+    // 받기 전에 떠난 요청이 받은 뒤에 도착해, 이미 끝난 판을 '받은 대결' 로 되살렸다
+    let resolveOld: (b: DuelBoard) => void = () => {};
+    fetchDuels
+      .mockImplementationOnce(() => new Promise<DuelBoard>(r => (resolveOld = r))) // 첫 조회 — 늦게 온다
+      .mockResolvedValueOnce(board({ recent: [duel({ id: 3, status: 'done', result: 'draw' })] }));
+    const { rerender } = render(<DuelPanel myId={ME} refreshSignal={0} />);
+    rerender(<DuelPanel myId={ME} refreshSignal={1} />); // 새 조회 — 먼저 온다
+
+    await waitFor(() => expect(fetchDuels).toHaveBeenCalledTimes(2));
+    // 옛 응답: 아직 기다리는 판이 있다고 말한다
+    resolveOld(board({ incoming: [duel({ id: 3 })] }));
+    await new Promise(r => setTimeout(r, 30));
+
+    expect(screen.queryByRole('button', { name: /대결 받기/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('알림에서 넘어온 판 — 한 번만', () => {
+  it('찾아간 뒤 부모에게 알린다 — 주소에서 지우게', async () => {
+    fetchDuels.mockResolvedValue(board({ incoming: [duel({ id: 7 })] }));
+    const onFocusHandled = vi.fn();
+    render(<DuelPanel myId={ME} focusDuelId={7} focusKey="k1" onFocusHandled={onFocusHandled} />);
+    await waitFor(() => expect(onFocusHandled).toHaveBeenCalledTimes(1));
+  });
+
+  it('못 찾았어도 알린다 — 다시 그려질 때마다 사라진 판이라고 하지 않게', async () => {
+    const onFocusHandled = vi.fn();
+    render(<DuelPanel myId={ME} focusDuelId={99} focusKey="k1" onFocusHandled={onFocusHandled} />);
+    await waitFor(() => expect(onFocusHandled).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe('잔액 신호', () => {
+  it('신청이 되면 같은 화면의 다른 판에 알린다', async () => {
+    createDuel.mockResolvedValue(duel());
+    const onSpent = vi.fn();
+    render(<DuelPanel myId={ME} onSpent={onSpent} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '상대 고르기' }));
+    fireEvent.change(screen.getByLabelText('걸 포인트'), { target: { value: '300' } });
+    fireEvent.click(screen.getByRole('button', { name: '바위' }));
+    fireEvent.click(screen.getByRole('button', { name: /대결 신청/ }));
+
+    await waitFor(() => expect(onSpent).toHaveBeenCalledTimes(1));
+  });
+
+  it('신청이 거절되면 알리지 않는다 — 음성 대조', async () => {
+    createDuel.mockRejectedValue(new Error('포인트가 모자랍니다.'));
+    const onSpent = vi.fn();
+    render(<DuelPanel myId={ME} onSpent={onSpent} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '상대 고르기' }));
+    fireEvent.change(screen.getByLabelText('걸 포인트'), { target: { value: '300' } });
+    fireEvent.click(screen.getByRole('button', { name: '바위' }));
+    fireEvent.click(screen.getByRole('button', { name: /대결 신청/ }));
+
+    await waitFor(() => expect(toastError).toHaveBeenCalled());
+    expect(onSpent).not.toHaveBeenCalled();
+  });
+
+  it('다른 판이 포인트를 쓰면 다시 읽는다', async () => {
+    const { rerender } = render(<DuelPanel myId={ME} refreshSignal={0} />);
+    await screen.findByRole('button', { name: /대결 신청/ });
+    const before = fetchDuels.mock.calls.length;
+    rerender(<DuelPanel myId={ME} refreshSignal={1} />);
+    await waitFor(() => expect(fetchDuels.mock.calls.length).toBe(before + 1));
   });
 });

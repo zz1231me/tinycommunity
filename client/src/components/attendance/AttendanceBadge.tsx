@@ -27,6 +27,10 @@ export function AttendanceBadge() {
     queryFn: fetchMyAttendance,
     enabled,
     staleTime: 5 * 60_000,
+    // 창으로 돌아오면 다시 읽는다(앱 기본값은 끔). 어제 퇴근한 채 밤새 열어 둔 탭은 아침에도
+    // 어제 기록을 들고 있어, '아직 출근 안 함' 알림 대신 '퇴근 완료' 가 떠 있었다.
+    // 이 배지는 모든 화면 머리에 있으므로, 같은 키를 쓰는 출근 알림들도 함께 새로 읽힌다.
+    refetchOnWindowFocus: true,
   });
 
   if (!enabled) return null;

@@ -1,45 +1,30 @@
-// client/src/components/attendance/AttendanceAttack.tsx
-// 퇴근 공격을 '받는 쪽' 의 화면 — 경고 띠와 받은 쪽지.
+// client/src/components/points/IncomingAttack.tsx
+// 나에게 걸린 퇴근 공격 — 경고 띠, 방어권 구매, 방어 성공.
 //
-// 보내는 쪽(공격권 사용)은 포인트 화면으로 옮겼다(components/points/AttackPanel).
-// 포인트를 쓰는 일이니 포인트가 있는 곳에서 하는 편이 자연스럽고, 이 화면에는
-// 방해받는 당사자에게 필요한 것만 남는다.
+// 출근은 업무 화면이라 포인트를 쓰는 일은 여기(포인트 탭)에 모은다. 출근 화면에는
+// 퇴근 버튼에 걸리는 효과와 안내 한 줄(attendance/AttackNotice)만 남는다.
+//
+// 공격 상태는 출근 화면과 같은 쿼리 키(attendanceKeys.attack)로 읽는다. 여기서 방어하면
+// 출근 화면의 효과도 같은 캐시로 바로 풀린다 — 따로 읽으면 한쪽만 풀린 채 남는다.
 //
 // ⚠️ 방해할 뿐 막지는 않는다. 서버의 퇴근 기록은 이 기능을 쳐다보지도 않고,
-// 퇴근 버튼도 끝까지 살아 있다(ChaosButton 참고). 여기서 하는 일은
-// '누르기 성가시게 만드는 것' 이지 '못 누르게 하는 것' 이 아니다.
+// 퇴근 버튼도 끝까지 살아 있다(ChaosButton 참고).
 
 import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Shield, Loader2 } from 'lucide-react';
-import type { IncomingAttack } from '../../api/attendance';
-
-function secondsLeft(expiresAt: string): number {
-  return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000));
-}
-
-/** 1초마다 남은 시간을 다시 센다. 0 이 되면 한 번만 알린다. */
-function useCountdown(expiresAt: string, onDone: () => void): number {
-  const [left, setLeft] = useState(() => secondsLeft(expiresAt));
-
-  useEffect(() => {
-    setLeft(secondsLeft(expiresAt));
-    const id = window.setInterval(() => {
-      const next = secondsLeft(expiresAt);
-      setLeft(next);
-      if (next <= 0) {
-        window.clearInterval(id);
-        onDone();
-      }
-    }, 1000);
-    return () => window.clearInterval(id);
-    // onDone 이 매 렌더 새 함수여도 타이머를 다시 깔지 않는다 — 시각이 기준이다
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expiresAt]);
-
-  return left;
-}
-
-const KIND_FACE = { chaos: '🌀', hide: '🙈' } as const;
+import {
+  ATTACK_FACE,
+  fetchAttackState,
+  sendDefend,
+  type AttackState,
+  type IncomingAttack as IncomingAttackData,
+} from '../../api/attendance';
+import { attendanceKeys } from '../../api/queryKeys';
+import { getApiErrorMessage } from '../../api/utils';
+import { toast } from '../../utils/toast';
+import { secondsLeft, useCountdown } from '../../hooks/useCountdown';
+import { useNotificationArrival } from '../../hooks/useNotificationArrival';
 
 /** 방해받는 중임을 알리고, 방어권을 살 기회를 준다 */
 export function AttackBanner({
@@ -51,7 +36,7 @@ export function AttackBanner({
   onDefend,
   onExpire,
 }: {
-  incoming: IncomingAttack;
+  incoming: IncomingAttackData;
   /**
    * 이 공격이 처음에 몇 초짜리였는가 — 남은 시간 막대의 기준.
    * 주지 않으면 처음 그릴 때 남아 있던 시간을 기준으로 삼는다.
@@ -81,7 +66,7 @@ export function AttackBanner({
         aria-hidden
         className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-rose-100 text-xl dark:bg-rose-500/20"
       >
-        {KIND_FACE[incoming.kind]}
+        {ATTACK_FACE[incoming.kind]}
       </span>
       <p className="min-w-[12rem] flex-1 text-sm text-rose-800 dark:text-rose-300">
         <span className="font-semibold">{incoming.attackerName}</span>님이 공격권을 사용했습니다!
@@ -157,6 +142,80 @@ export function DefendedBanner({ attackerName }: { attackerName: string }) {
         <span className="font-semibold">방어 성공!</span> {attackerName}님의 공격을 막았습니다. 퇴근
         버튼이 돌아왔습니다.
       </p>
+    </div>
+  );
+}
+
+/**
+ * 포인트 탭 맨 위 — 나에게 걸린 공격이 있을 때만 보인다.
+ *
+ * @param onSpent 방어권을 산 뒤 — 같은 화면의 다른 잔액 표시를 다시 불러오게 한다
+ */
+export function IncomingAttack({ onSpent }: { onSpent?: () => void }) {
+  const queryClient = useQueryClient();
+  const attack = useQuery({
+    queryKey: attendanceKeys.attack,
+    queryFn: fetchAttackState,
+    // 걸린 공격은 저절로 풀린다. 걸려 있는 동안만 짧게 다시 묻는다.
+    refetchInterval: query => (query.state.data?.incoming ? 10_000 : false),
+    refetchOnWindowFocus: true,
+  });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: attendanceKeys.attack });
+
+  // 공격 알림이 오면 바로 다시 읽는다 — 이 탭을 보고 있는 중에 걸린 공격도 곧바로 뜬다
+  useNotificationArrival(['ATTACK'], () => {
+    void refresh();
+  });
+
+  // 방어에 성공하면 경고 띠 자리에 잠깐 초록 띠를 띄운다(누구의 공격을 막았는지)
+  const [defendedFrom, setDefendedFrom] = useState<string | null>(null);
+  useEffect(() => {
+    if (!defendedFrom) return;
+    const id = window.setTimeout(() => setDefendedFrom(null), 2600);
+    return () => window.clearTimeout(id);
+  }, [defendedFrom]);
+
+  const defend = useMutation({
+    mutationFn: ({ id }: { id: number; attackerName: string }) => sendDefend(id),
+    onSuccess: (_data, { attackerName }) => {
+      // 다시 읽어 오기 전에 캐시에서 먼저 공격을 지운다. 기다리는 동안 경고 띠와 살아 있는
+      // 방어 버튼이 남아, 한 번 더 누르면 '이미 방어했습니다' 가 방어 성공 옆에 떴다.
+      // 같은 캐시를 쓰는 출근 화면의 퇴근 버튼 효과도 이 순간 함께 풀린다.
+      queryClient.setQueryData<AttackState>(attendanceKeys.attack, prev =>
+        prev ? { ...prev, incoming: null, balance: prev.balance - prev.rules.defendCost } : prev
+      );
+      void refresh();
+      setDefendedFrom(attackerName);
+      onSpent?.();
+    },
+    onError: err => toast.error(getApiErrorMessage(err, '방어하지 못했습니다.')),
+  });
+
+  const state = attack.data;
+  const incoming = state?.incoming ?? null;
+  // 서버가 준 만료 시각으로 직접 판단한다 — 이미 지난 공격을 아직 다시 받아 오지 않았을 수 있다
+  const live = Boolean(incoming && new Date(incoming.expiresAt).getTime() > Date.now());
+
+  if (!defendedFrom && !(incoming && live && state)) return null;
+
+  return (
+    <div>
+      {defendedFrom && <DefendedBanner attackerName={defendedFrom} />}
+      {incoming && live && state && (
+        <AttackBanner
+          // 새 공격이면 새로 그린다 — 등장 연출과 남은 시간 막대의 기준이 공격마다 다르다
+          key={incoming.id}
+          incoming={incoming}
+          totalSeconds={
+            incoming.kind === 'hide' ? state.rules.hideSeconds : state.rules.blockSeconds
+          }
+          defendCost={state.rules.defendCost}
+          balance={state.balance}
+          defending={defend.isPending}
+          onDefend={() => defend.mutate({ id: incoming.id, attackerName: incoming.attackerName })}
+          onExpire={() => void refresh()}
+        />
+      )}
     </div>
   );
 }

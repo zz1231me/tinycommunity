@@ -7,14 +7,18 @@
 // 옮기면서 이 판이 직접 조회하게 됐으므로, 불러오기 실패와 잔액 갱신 신호가 새로 붙는다.
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { AttackPanel } from './AttackPanel';
+import { renderWithQuery } from '../../test/renderWithQuery';
+import { QueryClientProvider } from '@tanstack/react-query';
 import type { AttackState } from '../../api/attendance';
 
 const mockFetchAttackState = vi.fn();
 const mockSendAttack = vi.fn();
 
-vi.mock('../../api/attendance', () => ({
+vi.mock('../../api/attendance', async importOriginal => ({
+  // 얼굴·이름 같은 상수는 진짜를 쓴다 — 서버를 부르는 두 함수만 가짜다
+  ...(await importOriginal<typeof import('../../api/attendance')>()),
   fetchAttackState: () => mockFetchAttackState(),
   sendAttack: (body: unknown) => mockSendAttack(body),
 }));
@@ -57,7 +61,7 @@ const state = (over: Partial<AttackState> = {}): AttackState => ({
 
 /** 조회가 끝나 판이 그려질 때까지 기다린다 */
 const show = async (onSpent?: () => void) => {
-  render(<AttackPanel myId="me" onSpent={onSpent} />);
+  renderWithQuery(<AttackPanel myId="me" onSpent={onSpent} />);
   await screen.findByRole('button', { name: '상대 고르기' });
 };
 
@@ -181,7 +185,7 @@ describe('포인트 화면으로 옮기면서 생긴 것', () => {
   it('불러오지 못하면 비워 두지 않고 그렇게 말한다', async () => {
     // 빈 화면으로 두면 '공격권 기능이 없는 화면' 처럼 보인다
     mockFetchAttackState.mockRejectedValue(new Error('network down'));
-    render(<AttackPanel myId="me" />);
+    renderWithQuery(<AttackPanel myId="me" />);
 
     expect(await screen.findByText(/불러오지 못했습니다/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '상대 고르기' })).not.toBeInTheDocument();
@@ -205,5 +209,21 @@ describe('보낸 뒤의 손맛', () => {
 
     await waitFor(() => expect(mockSendAttack).toHaveBeenCalled());
     expect(screen.queryByText(/명중/)).not.toBeInTheDocument();
+  });
+});
+
+describe('같은 화면의 다른 판이 포인트를 움직이면', () => {
+  it('잔액을 다시 읽는다', async () => {
+    // 대결에서 이겨 포인트가 생겨도 여기 버튼은 '포인트가 모자랍니다' 로 막혀 있었다
+    const { rerender, queryClient } = renderWithQuery(<AttackPanel myId="me" refreshSignal={0} />);
+    await screen.findByRole('button', { name: '상대 고르기' });
+    const before = mockFetchAttackState.mock.calls.length;
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <AttackPanel myId="me" refreshSignal={1} />
+      </QueryClientProvider>
+    );
+    await waitFor(() => expect(mockFetchAttackState.mock.calls.length).toBeGreaterThan(before));
   });
 });

@@ -3,7 +3,7 @@
 //
 // 하루 한 번씩만 찍힌다. 이미 찍은 뒤에는 버튼 대신 찍힌 시각과 흐른 시간을 보여 준다.
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { PageContainer } from '../../components/common/PageContainer';
@@ -19,9 +19,8 @@ import {
   fetchAttackState,
   fetchMyAttendance,
   fetchMyAttendanceHistory,
-  sendDefend,
 } from '../../api/attendance';
-import { AttackBanner, DefendedBanner } from '../../components/attendance/AttendanceAttack';
+import { AttackNotice } from '../../components/attendance/AttackNotice';
 import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
 import { useSubmitLock } from '../../hooks/useSubmitLock';
@@ -86,7 +85,10 @@ export default function AttendancePage() {
   });
 
   // 더블클릭으로 두 번 찍히지 않게 — 서버가 409 로 막긴 하지만 성공 뒤에 오류가 따라붙는다
-  const runOnce = useSubmitLock();
+  // 출근과 퇴근은 잠금을 따로 쓴다. 하나로 묶으면, 어제 기록이 안 닫힌 채 퇴근을 누른 사이
+  // 출근 확인 창의 '출근하기' 가 아무 말 없이 무시되고 창도 그대로 남았다.
+  const runCheckIn = useSubmitLock();
+  const runCheckOut = useSubmitLock();
 
   const checkOutMutation = useMutation({
     mutationFn: requestCheckOut,
@@ -126,24 +128,6 @@ export default function AttendancePage() {
   // 종 숫자만 바뀌고 공격은 새로고침을 해야 보였다.
   useNotificationArrival(['ATTACK'], () => {
     void refreshAttack();
-  });
-
-  // 방어에 성공하면 경고 띠 자리에 잠깐 초록 띠를 띄운다(누구의 공격을 막았는지).
-  // 토스트는 띄우지 않는다 — 같은 말을 두 곳에서 하면 소음이다.
-  const [defendedFrom, setDefendedFrom] = useState<string | null>(null);
-  useEffect(() => {
-    if (!defendedFrom) return;
-    const id = window.setTimeout(() => setDefendedFrom(null), 2600);
-    return () => window.clearTimeout(id);
-  }, [defendedFrom]);
-
-  const defendMutation = useMutation({
-    mutationFn: ({ id }: { id: number; attackerName: string }) => sendDefend(id),
-    onSuccess: (_data, { attackerName }) => {
-      refreshAttack();
-      setDefendedFrom(attackerName);
-    },
-    onError: err => toast.error(getApiErrorMessage(err, '방어하지 못했습니다.')),
   });
 
   const incoming = attack.data?.incoming ?? null;
@@ -186,26 +170,10 @@ export default function AttendancePage() {
             </div>
           )}
 
-          {defendedFrom && <DefendedBanner attackerName={defendedFrom} />}
-
-          {attackEnabled && incoming && underAttack && attack.data && (
-            <AttackBanner
-              // 새 공격이면 새로 그린다 — 등장 연출과 남은 시간 막대의 기준이 공격마다 다르다
-              key={incoming.id}
-              incoming={incoming}
-              totalSeconds={
-                incoming.kind === 'hide'
-                  ? attack.data.rules.hideSeconds
-                  : attack.data.rules.blockSeconds
-              }
-              defendCost={attack.data.rules.defendCost}
-              balance={attack.data.balance}
-              defending={defendMutation.isPending}
-              onDefend={() =>
-                defendMutation.mutate({ id: incoming.id, attackerName: incoming.attackerName })
-              }
-              onExpire={refreshAttack}
-            />
+          {/* 출근은 업무 화면이라 방어권 구매(포인트)는 포인트 탭에 있다. 여기에는 버튼이
+              왜 이상한지와 언제 풀리는지, 방어하러 갈 길만 한 줄로 둔다. */}
+          {attackEnabled && incoming && underAttack && (
+            <AttackNotice key={incoming.id} incoming={incoming} onExpire={refreshAttack} />
           )}
 
           <TodayHero
@@ -222,7 +190,7 @@ export default function AttendancePage() {
             attackExpiresAt={attackEnabled && underAttack && incoming ? incoming.expiresAt : null}
             checkingOut={checkOutMutation.isPending}
             onCheckIn={() => setDialogOpen(true)}
-            onCheckOut={() => runOnce(() => checkOutMutation.mutateAsync().catch(() => {}))}
+            onCheckOut={() => runCheckOut(() => checkOutMutation.mutateAsync().catch(() => {}))}
           />
 
           {live && live.checklist.length > 0 && (
@@ -387,7 +355,9 @@ export default function AttendancePage() {
           graceMinutes={status.data.policy.checkInGraceMinutes}
           submitting={checkInMutation.isPending}
           onClose={() => setDialogOpen(false)}
-          onSubmit={payload => runOnce(() => checkInMutation.mutateAsync(payload).catch(() => {}))}
+          onSubmit={payload =>
+            runCheckIn(() => checkInMutation.mutateAsync(payload).catch(() => {}))
+          }
         />
       )}
     </PageContainer>

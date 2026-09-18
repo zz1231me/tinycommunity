@@ -113,12 +113,24 @@ export function DuelPanel({
   myId,
   focusDuelId = null,
   focusKey,
+  onFocusHandled,
+  refreshSignal = 0,
+  onSpent,
 }: {
   myId: string;
   /** 알림이 가리킨 판 (?duel=). 그 판으로 스크롤하고 잠깐 강조한다. */
   focusDuelId?: number | null;
   /** 알림을 누를 때마다 바뀐다 — 같은 알림을 다시 눌러도 다시 찾아간다 */
   focusKey?: string;
+  /**
+   * 알림이 가리킨 판을 찾아간 뒤(찾았든 못 찾았든) — 부모가 주소에서 ?duel= 을 지운다.
+   * 남겨 두면 다른 탭에 갔다 돌아올 때마다 다시 스크롤하고 번쩍인다.
+   */
+  onFocusHandled?: () => void;
+  /** 같은 화면의 다른 판이 포인트를 움직이면 바뀐다 — 잔액을 다시 읽는다 */
+  refreshSignal?: number;
+  /** 이 판에서 포인트가 움직인 뒤 — 같은 화면의 다른 판들이 잔액을 다시 읽게 한다 */
+  onSpent?: () => void;
 }) {
   const [board, setBoard] = useState<DuelBoard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -135,17 +147,20 @@ export function DuelPanel({
   const [tauntFor, setTauntFor] = useState<number | null>(null);
   const [tauntText, setTauntText] = useState('');
 
-  const reload = useCallback(async () => {
+  // 다시 읽는 길이 여럿이다(첫 로딩·주기·알림·동작 뒤·알림에서 넘어온 판 찾기). 응답은
+  // 보낸 순서대로 오지 않으므로, 가장 나중에 보낸 요청의 응답만 화면에 둔다. 그러지 않으면
+  // 받기 전에 떠난 주기 요청이 받은 뒤에 도착해, 이미 끝난 판을 다시 '받은 대결' 로 되살린다.
+  const requestSeq = useRef(0);
+  const reload = useCallback(async (): Promise<DuelBoard> => {
+    const mine = ++requestSeq.current;
     const next = await fetchDuels();
-    setBoard(next);
+    if (mine === requestSeq.current) setBoard(next);
+    return next;
   }, []);
 
   useEffect(() => {
     let alive = true;
-    fetchDuels()
-      .then(b => {
-        if (alive) setBoard(b);
-      })
+    reload()
       .catch(() => {
         // 실패를 '대결이 없습니다' 로 보여 주면 비어 있는 것으로 오해한다
         if (alive) setFailed(true);
@@ -156,7 +171,14 @@ export function DuelPanel({
     return () => {
       alive = false;
     };
-  }, []);
+  }, [reload]);
+
+  // 같은 화면의 다른 판(뽑기·공격권·방어권)이 포인트를 쓰면 잔액을 다시 읽는다.
+  // 0 은 첫 렌더라 건너뛴다 — 위의 첫 조회와 겹친다.
+  useEffect(() => {
+    if (refreshSignal === 0) return;
+    void reload().catch(() => {});
+  }, [refreshSignal, reload]);
 
   // 기다리는 판이 있으면 주기적으로 다시 읽는다. 상대가 답했는지, 시간이 지났는지는
   // 이쪽에서 물어보지 않으면 알 수 없다 — 알림이 와도 이 목록은 그대로였다.
@@ -174,6 +196,12 @@ export function DuelPanel({
   // 있을 때만 돌아서, 아무것도 없을 때 온 도전장은 새로고침을 해야 보였다.
   useNotificationArrival(['DUEL'], () => {
     void reload().catch(() => {});
+  });
+
+  // 부모가 매 렌더 새 함수를 넘겨도 찾아가기를 다시 돌리지 않는다
+  const focusHandled = useRef(onFocusHandled);
+  useEffect(() => {
+    focusHandled.current = onFocusHandled;
   });
 
   // ── 알림에서 넘어온 판 찾아가기 ──
@@ -199,8 +227,7 @@ export function DuelPanel({
       // 이미 이 화면에 있을 때 알림을 누르면, 목록은 그 사이에 온 판을 모른다 — 다시 읽는다
       if (!has(current)) {
         try {
-          current = await fetchDuels();
-          if (alive) setBoard(current);
+          current = await reload();
         } catch {
           // 못 읽었으면 아래에서 '찾을 수 없음' 으로 안내한다
         }
@@ -208,12 +235,13 @@ export function DuelPanel({
       if (!alive) return;
       if (has(current)) setHighlightId(focusDuelId);
       else toast.info('이미 끝났거나 시간이 지나 사라진 대결입니다.');
+      focusHandled.current?.();
     })();
 
     return () => {
       alive = false;
     };
-  }, [loading, focusDuelId, focusKey]);
+  }, [loading, focusDuelId, focusKey, reload]);
 
   useEffect(() => {
     if (highlightId === null) return;
@@ -231,11 +259,13 @@ export function DuelPanel({
   const run = async (action: () => Promise<unknown>, fallback: string) => {
     if (busy) return;
     setBusy(true);
+    let done = false;
     try {
       // 동작과 뒤이은 갱신을 같은 try 에 두지 않는다. 한데 묶으면 신청은 성공했는데
       // 목록 갱신만 실패했을 때 '신청하지 못했습니다' 가 떠서, 사용자가 사실과 반대로
       // 알고 다시 걸게 된다 — 판돈은 이미 빠져 있는데 한 번 더 빠진다.
       await action();
+      done = true;
     } catch (err) {
       toast.error(getApiErrorMessage(err, fallback));
     } finally {
@@ -243,6 +273,8 @@ export function DuelPanel({
       await reload().catch(() => {});
       setBusy(false);
     }
+    // 포인트가 움직였을 수 있다(신청·응수·취소) — 같은 화면의 다른 판에 알린다
+    if (done) onSpent?.();
   };
 
   const submit = async () => {

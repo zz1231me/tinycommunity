@@ -23,6 +23,7 @@ import { LotteryPanel } from '../components/points/LotteryPanel';
 import { PointRanking } from '../components/points/PointRanking';
 import { DuelPanel } from '../components/points/DuelPanel';
 import { AttackPanel } from '../components/points/AttackPanel';
+import { IncomingAttack } from '../components/points/IncomingAttack';
 import { useFeature, type FeatureKey } from '../store/features';
 import { useAuth } from '../store/auth';
 import { useSiteSettings } from '../store/siteSettings';
@@ -116,7 +117,7 @@ export default function Profile() {
 
   // 알림에서 넘어올 때 주소가 탭을 가리킨다(?tab=points). 이걸 읽지 않으면
   // '대결이 신청됐습니다' 를 눌러도 기본 탭이 열려, 알림이 가리킨 곳에 닿지 못한다.
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState<TabId>(() =>
     isTabId(requestedTab) ? requestedTab : 'profile'
@@ -127,6 +128,18 @@ export default function Profile() {
   // 알림이 가리킨 대결 (?duel=<id>). 대결 판이 그 판으로 스크롤하고 잠깐 강조한다.
   const duelParam = Number(searchParams.get('duel'));
   const focusDuelId = Number.isInteger(duelParam) && duelParam > 0 ? duelParam : null;
+  // 찾아간 뒤에는 주소에서 지운다. 남겨 두면 다른 탭에 갔다 돌아올 때마다(대결 판이 다시
+  // 그려질 때마다) 또 스크롤하고 번쩍이며, 이미 끝난 판이면 '사라진 대결' 을 다시 띄운다.
+  const clearDuelFocus = useCallback(() => {
+    setSearchParams(
+      prev => {
+        const next = new URLSearchParams(prev);
+        next.delete('duel');
+        return next;
+      },
+      { replace: true }
+    );
+  }, [setSearchParams]);
   const lotteryEnabled = useFeature('tools.lottery');
   // 대결은 포인트 기능 안에 있지만 따로 끌 수 있다 (서버도 requireFeature 로 막는다)
   const duelEnabled = useFeature('tools.pointDuel');
@@ -136,6 +149,7 @@ export default function Profile() {
   // 공격권을 쓰면 잔액이 준다. 위쪽 뽑기 판이 들고 있는 잔액도 다시 불러오게 신호를
   // 보낸다 — 그러지 않으면 한 화면에 서로 다른 잔액이 둘 뜬다.
   const [pointsVersion, setPointsVersion] = useState(0);
+  const bumpPoints = useCallback(() => setPointsVersion(v => v + 1), []);
   // 꺼진 기능의 탭은 아예 보여주지 않는다 (서버도 requireFeature 로 막는다)
   const visibleTabs = TABS.filter(t => {
     const key = FEATURE_TABS[t.id];
@@ -651,12 +665,25 @@ export default function Profile() {
             {/* 5. 계정설정 탭 */}
             {activeTab === 'points' && lotteryEnabled && (
               <div className="space-y-6">
-                <LotteryPanel refreshSignal={pointsVersion} />
+                {/* 나에게 걸린 퇴근 공격 — 맨 위. 알림을 누르면 여기로 온다. 출근 화면에는
+                    효과와 안내 한 줄만 있고, 방어권(포인트를 쓰는 일)은 여기서 산다. */}
+                {/* 포인트가 움직이는 판마다 onSpent 로 알리고, 모든 판이 refreshSignal 로 다시
+                    읽는다. 예전에는 공격권만 알려서, 뽑기·대결 뒤에는 다른 판들이 옛 잔액으로
+                    버튼을 막거나 열어 두었다. (공격 두 판은 같은 쿼리 캐시를 함께 쓴다.) */}
+                {attackEnabled && <IncomingAttack onSpent={bumpPoints} />}
+                <LotteryPanel refreshSignal={pointsVersion} onSpent={bumpPoints} />
                 {duelEnabled && (
-                  <DuelPanel myId={user.id} focusDuelId={focusDuelId} focusKey={location.key} />
+                  <DuelPanel
+                    myId={user.id}
+                    focusDuelId={focusDuelId}
+                    focusKey={location.key}
+                    onFocusHandled={clearDuelFocus}
+                    refreshSignal={pointsVersion}
+                    onSpent={bumpPoints}
+                  />
                 )}
                 {attackEnabled && (
-                  <AttackPanel myId={user.id} onSpent={() => setPointsVersion(v => v + 1)} />
+                  <AttackPanel myId={user.id} refreshSignal={pointsVersion} onSpent={bumpPoints} />
                 )}
                 <PointRanking />
               </div>

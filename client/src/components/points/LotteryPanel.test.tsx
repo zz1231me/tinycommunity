@@ -248,3 +248,26 @@ describe('바깥에서 포인트를 썼을 때', () => {
     expect(fetchPointStatus.mock.calls.length).toBe(before);
   });
 });
+
+describe('같은 화면의 다른 판에 알린다', () => {
+  it('뽑고 나면 잔액이 바뀌었다고 알린다', async () => {
+    // 뽑기만 알리지 않아서, 뽑아서 잔액이 줄어도 대결·공격권 판은 옛 잔액으로 버튼을 열어 뒀다
+    drawLottery.mockResolvedValue(result());
+    const onSpent = vi.fn();
+    render(<LotteryPanel onSpent={onSpent} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /뽑기/ }));
+    await waitFor(() => expect(onSpent).toHaveBeenCalledTimes(1), { timeout: 4000 });
+  });
+
+  it('뽑기에 실패하면 알리지 않는다 — 음성 대조', async () => {
+    drawLottery.mockRejectedValue(new Error('한도 초과'));
+    const onSpent = vi.fn();
+    render(<LotteryPanel onSpent={onSpent} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /뽑기/ }));
+    await waitFor(() => expect(drawLottery).toHaveBeenCalled());
+    await new Promise(r => setTimeout(r, 50));
+    expect(onSpent).not.toHaveBeenCalled();
+  });
+});

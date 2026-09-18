@@ -47,7 +47,7 @@ const reset = () =>
     toast: null,
     lastSeenId: null,
     isLive: false,
-    lastArrived: null,
+    arrivals: {},
     _timer: null,
     _source: null,
     _subscribers: 0,
@@ -192,16 +192,16 @@ describe('폴링 폴백 주기', () => {
   });
 });
 
-describe('도착 신호 (lastArrived)', () => {
+describe('도착 신호 (arrivals)', () => {
   // 알림이 오면 관련 화면이 스스로 다시 읽는 데 쓰는 신호다(useNotificationArrival).
   // SSE 와 폴링 어느 쪽으로 오든 남아야 한다.
-  it('SSE 로 온 알림을 도착 신호로 남긴다', () => {
+  it('SSE 로 온 알림을 그 종류의 도착으로 센다', () => {
     useNotificationStore.getState().start();
     FakeEventSource.last!.emit('notification', { id: 11, type: 'ATTACK', message: '공격' });
-    expect(useNotificationStore.getState().lastArrived).toMatchObject({ id: 11, type: 'ATTACK' });
+    expect(useNotificationStore.getState().arrivals.ATTACK).toBe(1);
   });
 
-  it('폴링으로 새로 알게 된 알림도 남긴다 — 이미 읽은 알림이어도', async () => {
+  it('폴링으로 새로 알게 된 알림도 센다 — 이미 읽은 알림이어도', async () => {
     // 읽은 알림은 토스트를 띄우지 않는다. 토스트를 신호로 썼다면 여기서 신호가 빠진다.
     useNotificationStore.setState({ lastSeenId: 10 });
     mockGetNotifications.mockResolvedValue({
@@ -212,7 +212,24 @@ describe('도착 신호 (lastArrived)', () => {
 
     const s = useNotificationStore.getState();
     expect(s.toast).toBeNull();
-    expect(s.lastArrived).toMatchObject({ id: 12, type: 'DUEL' });
+    expect(s.arrivals.DUEL).toBe(1);
+  });
+
+  it('한 번의 폴링에 여러 개가 오면 종류마다 모두 센다', async () => {
+    // SSE 가 끊겨 30초 폴링으로 받을 때다. 가장 최근 것(댓글)만 보면 도전장이 묻힌다.
+    useNotificationStore.setState({ lastSeenId: 10 });
+    mockGetNotifications.mockResolvedValue({
+      notifications: [
+        { id: 13, type: 'COMMENT', message: '댓글', isRead: false },
+        { id: 12, type: 'DUEL', message: '도전장', isRead: false },
+        { id: 11, type: 'ATTACK', message: '공격', isRead: false },
+      ],
+      unreadCount: 3,
+    });
+    await useNotificationStore.getState().poll();
+
+    const { arrivals } = useNotificationStore.getState();
+    expect(arrivals).toEqual({ COMMENT: 1, DUEL: 1, ATTACK: 1 });
   });
 
   it('이미 본 알림은 새로 도착한 것으로 치지 않는다 — 음성 대조', async () => {
@@ -222,6 +239,6 @@ describe('도착 신호 (lastArrived)', () => {
       unreadCount: 1,
     });
     await useNotificationStore.getState().poll();
-    expect(useNotificationStore.getState().lastArrived).toBeNull();
+    expect(useNotificationStore.getState().arrivals).toEqual({});
   });
 });

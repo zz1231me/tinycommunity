@@ -247,11 +247,11 @@ export const duelService = {
     challengerId: string,
     input: { opponentId: string; stake: number; hand: DuelHand; message?: string }
   ): Promise<DuelView> {
-    const { opponentId, stake, hand } = input;
+    const { stake, hand } = input;
     const message = cleanLine(input.message, DUEL_MESSAGE_MAX);
     const rules = getDuelSettings();
 
-    if (opponentId === challengerId) {
+    if (input.opponentId === challengerId) {
       throw new AppError(400, '자기 자신에게는 대결을 신청할 수 없습니다.');
     }
     // 스키마에서도 막지만 서비스에서도 확인한다 — 이 서비스를 다른 데서 부를 수 있다
@@ -262,11 +262,17 @@ export const duelService = {
       );
     }
 
-    const opponent = await User.findByPk(opponentId, {
+    const opponent = await User.findByPk(input.opponentId, {
       attributes: ['id', 'name', 'isActive', 'isDeleted'],
     });
     if (!opponent || !opponent.isActive || opponent.isDeleted) {
       throw new AppError(404, '상대를 찾을 수 없습니다.');
+    }
+    // 이제부터는 DB 가 돌려준 아이디를 쓴다(대소문자를 가리지 않는 DB 대비 — 퇴근 공격과 같다).
+    // 입력값을 저장하면 상대는 '나에게 온 대결이 아닙니다' 로 받지도 거절하지도 못한다.
+    const opponentId = opponent.id;
+    if (opponentId === challengerId) {
+      throw new AppError(400, '자기 자신에게는 대결을 신청할 수 없습니다.');
     }
 
     await sweepExpired(challengerId);
@@ -398,13 +404,10 @@ export const duelService = {
     // 실제로 닫고 돌려준 경우에만 알린다. 그 사이 시간 초과로 이미 닫혔다면
     // 거절당한 것이 아닌데 '거절했습니다' 가 가서, 있지도 않은 일을 알리게 된다.
     const refunded = await closeWithRefund(duelId, '대결 거절 환불');
-    if (refunded) {
-      notify(
-        duel.challengerId,
-        `${await displayName(opponentId)}님이 대결을 거절했습니다.`,
-        duelId
-      );
-    }
+    // 앞의 확인과 이 사이에 시간 초과 정리가 먼저 닫았으면 거절한 것이 아니다. 성공이라고
+    // 답하면 '대결을 거절했습니다' 가 뜬다 — 있지도 않은 일이다.
+    if (!refunded) throw new AppError(409, '이미 끝난 대결입니다.');
+    notify(duel.challengerId, `${await displayName(opponentId)}님이 대결을 거절했습니다.`, duelId);
   },
 
   /**
@@ -441,6 +444,8 @@ export const duelService = {
     if (duel.challengerId !== challengerId) throw new AppError(403, '내가 신청한 대결이 아닙니다.');
     if (duel.status !== 'waiting') throw new AppError(409, '이미 끝난 대결입니다.');
 
-    await closeWithRefund(duelId, '대결 취소 환불');
+    if (!(await closeWithRefund(duelId, '대결 취소 환불'))) {
+      throw new AppError(409, '이미 끝난 대결입니다.');
+    }
   },
 };

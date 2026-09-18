@@ -32,6 +32,16 @@ function parseEvent<T>(evt: Event): T | null {
   }
 }
 
+/** 도착한 알림들을 종류별 횟수에 더한다 */
+function countArrivals(
+  prev: NotificationStoreState['arrivals'],
+  arrived: Notification[]
+): NotificationStoreState['arrivals'] {
+  const next = { ...prev };
+  for (const n of arrived) next[n.type] = (next[n.type] ?? 0) + 1;
+  return next;
+}
+
 interface NotificationStoreState {
   unreadCount: number;
   /** 토스트로 띄울 신규 알림(없으면 null) */
@@ -41,14 +51,17 @@ interface NotificationStoreState {
   /** SSE 스트림이 연결된 상태인지 */
   isLive: boolean;
   /**
-   * 가장 최근에 새로 도착한 알림 (SSE·폴링 어느 쪽으로 왔든).
+   * 종류별로 지금까지 새로 도착한 알림 수 (SSE·폴링 어느 쪽으로 왔든).
    *
    * 알림이 오면 그와 관련된 화면이 스스로 다시 읽게 하려는 것이다(useNotificationArrival).
    * 이것이 없어서, 공격을 받거나 도전장이 와도 종 숫자만 바뀌고 화면은 새로고침을
-   * 해야 바뀌었다. toast 와 따로 두는 이유: toast 는 읽은 알림이면 비워 두고, 화면이
-   * 띄운 뒤 지운다 — 그 값을 신호로 쓰면 신호가 빠진다.
+   * 해야 바뀌었다.
+   *
+   * '마지막 알림 하나' 가 아니라 종류별 횟수인 이유: SSE 가 끊겨 폴링으로 받을 때는 한
+   * 주기에 여러 개가 함께 온다. 마지막 하나만 남기면 도전장 뒤에 댓글이 오면 도전장이
+   * 묻힌다. toast 를 신호로 쓰지 않는 이유: 읽은 알림이면 비어 있어 신호가 빠진다.
    */
-  lastArrived: Notification | null;
+  arrivals: Partial<Record<Notification['type'], number>>;
   _timer: ReturnType<typeof setInterval> | null;
   _source: EventSource | null;
   _subscribers: number;
@@ -66,7 +79,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   toast: null,
   lastSeenId: null,
   isLive: false,
-  lastArrived: null,
+  arrivals: {},
   _timer: null,
   _source: null,
   _subscribers: 0,
@@ -88,7 +101,9 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
         return;
       }
       if (latest.id > lastSeenId) {
-        set({ lastSeenId: latest.id, lastArrived: latest });
+        // 이번에 새로 알게 된 것을 모두 센다 — 가장 최근 것만이 아니다
+        const fresh = list.filter(n => n.id > lastSeenId);
+        set(prev => ({ lastSeenId: latest.id, arrivals: countArrivals(prev.arrivals, fresh) }));
         if (!latest.isRead) set({ toast: latest });
       }
     } catch {
@@ -123,7 +138,10 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
           const n = parseEvent<Notification>(evt);
           if (!n) return;
           const { lastSeenId } = get();
-          set(prev => ({ unreadCount: prev.unreadCount + 1, lastArrived: n }));
+          set(prev => ({
+            unreadCount: prev.unreadCount + 1,
+            arrivals: countArrivals(prev.arrivals, [n]),
+          }));
           // 기준선이 아직 없으면(초기 폴링 전) 토스트를 띄우지 않고 기준선만 세운다.
           if (lastSeenId !== null && n.id > lastSeenId) set({ toast: n });
           set({ lastSeenId: Math.max(lastSeenId ?? 0, n.id) });
@@ -165,7 +183,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       _source: null,
       isLive: false,
       lastSeenId: null,
-      lastArrived: null,
+      arrivals: {},
       toast: null,
       unreadCount: 0,
     });

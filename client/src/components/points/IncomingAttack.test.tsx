@@ -7,8 +7,25 @@
 // 보내는 쪽(공격권 사용)은 포인트 화면으로 옮겼다 — points/AttackPanel.test.tsx.
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { AttackBanner, DefendedBanner } from './AttendanceAttack';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { renderWithQuery } from '../../test/renderWithQuery';
+import { attendanceKeys } from '../../api/queryKeys';
+import {
+  AttackBanner,
+  DefendedBanner,
+  IncomingAttack as IncomingAttackCard,
+} from './IncomingAttack';
+
+const fetchAttackState = vi.hoisted(() => vi.fn());
+const sendDefend = vi.hoisted(() => vi.fn());
+vi.mock('../../api/attendance', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../api/attendance')>()),
+  fetchAttackState,
+  sendDefend,
+}));
+vi.mock('../../utils/toast', () => ({
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
+}));
 import type { IncomingAttack } from '../../api/attendance';
 
 const incoming = (over: Partial<IncomingAttack> = {}): IncomingAttack => ({
@@ -206,5 +223,54 @@ describe('휴대폰에서도 읽히는 안내', () => {
     );
     expect(screen.getByText(/곧 풀립니다/)).toBeInTheDocument();
     expect(screen.queryByText(/0초 동안/)).not.toBeInTheDocument();
+  });
+});
+
+describe('포인트 탭 맨 위의 받은 공격', () => {
+  const state = (over: Record<string, unknown> = {}) => ({
+    rules: {
+      cost: 300,
+      hideCost: 300,
+      defendCost: 200,
+      blockSeconds: 60,
+      hideSeconds: 20,
+      dailyLimit: 5,
+    },
+    balance: 1000,
+    incoming: incoming(),
+    usedToday: 0,
+    remainingToday: 5,
+    ...over,
+  });
+
+  it('걸린 공격이 없으면 아무것도 그리지 않는다', async () => {
+    fetchAttackState.mockResolvedValue(state({ incoming: null }));
+    const { container } = renderWithQuery(<IncomingAttackCard />);
+    await waitFor(() => expect(fetchAttackState).toHaveBeenCalled());
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('방어하면 경고 띠가 곧바로 사라지고 방어 성공이 뜬다 — 다시 누를 틈이 없다', async () => {
+    // 다시 읽어 오기를 기다리는 동안 살아 있는 방어 버튼이 남아, 한 번 더 누르면
+    // '이미 방어했습니다' 가 방어 성공 옆에 떴다
+    fetchAttackState.mockResolvedValueOnce(state());
+    // 다시 읽기는 느리게 온다 — 그 전에 이미 사라져 있어야 한다
+    fetchAttackState.mockImplementation(() => new Promise(() => {}));
+    sendDefend.mockResolvedValue({ id: 1 });
+    const onSpent = vi.fn();
+    const { queryClient } = renderWithQuery(<IncomingAttackCard onSpent={onSpent} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /방어권 구매/ }));
+
+    expect(await screen.findByText(/방어 성공/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /방어권/ })).not.toBeInTheDocument();
+    expect(onSpent).toHaveBeenCalledTimes(1);
+    // 같은 캐시를 쓰는 출근 화면의 퇴근 버튼 효과도 이 순간 풀린다
+    expect(
+      queryClient.getQueryData<{ incoming: unknown; balance: number }>(attendanceKeys.attack)
+    ).toMatchObject({
+      incoming: null,
+      balance: 800,
+    });
   });
 });

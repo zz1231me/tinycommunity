@@ -9,18 +9,15 @@ import { useNotificationArrival } from './useNotificationArrival';
 import { useNotificationStore } from '../store/notifications';
 import type { Notification } from '../api/notifications';
 
-const notice = (id: number, type: Notification['type']): Notification => ({
-  id,
-  type,
-  message: '알림',
-  link: null,
-  relatedId: null,
-  isRead: false,
-  createdAt: new Date().toISOString(),
-});
+const arrive = (type: Notification['type']) =>
+  act(() =>
+    useNotificationStore.setState(s => ({
+      arrivals: { ...s.arrivals, [type]: (s.arrivals[type] ?? 0) + 1 },
+    }))
+  );
 
 afterEach(() => {
-  act(() => useNotificationStore.setState({ lastArrived: null }));
+  act(() => useNotificationStore.setState({ arrivals: {} }));
 });
 
 describe('알림 도착 연결', () => {
@@ -28,7 +25,7 @@ describe('알림 도착 연결', () => {
     const onArrive = vi.fn();
     renderHook(() => useNotificationArrival(['ATTACK'], onArrive));
 
-    act(() => useNotificationStore.setState({ lastArrived: notice(1, 'ATTACK') }));
+    arrive('ATTACK');
     expect(onArrive).toHaveBeenCalledTimes(1);
   });
 
@@ -36,20 +33,28 @@ describe('알림 도착 연결', () => {
     const onArrive = vi.fn();
     renderHook(() => useNotificationArrival(['ATTACK'], onArrive));
 
-    act(() => useNotificationStore.setState({ lastArrived: notice(2, 'COMMENT') }));
+    arrive('COMMENT');
     expect(onArrive).not.toHaveBeenCalled();
   });
 
-  it('다시 그려져도 같은 알림으로 두 번 부르지 않는다', () => {
+  it('다시 그려져도 같은 도착으로 두 번 부르지 않는다', () => {
     const onArrive = vi.fn();
     const { rerender } = renderHook(() => useNotificationArrival(['DUEL'], onArrive));
 
-    act(() => useNotificationStore.setState({ lastArrived: notice(3, 'DUEL') }));
+    arrive('DUEL');
     rerender();
     rerender();
     expect(onArrive).toHaveBeenCalledTimes(1);
 
-    act(() => useNotificationStore.setState({ lastArrived: notice(4, 'DUEL') }));
+    arrive('DUEL');
     expect(onArrive).toHaveBeenCalledTimes(2);
+  });
+
+  it('화면을 열기 전에 온 것은 신호가 아니다', () => {
+    // 다른 화면에 있을 때 온 도전장 때문에, 대결 판을 열자마자 한 번 더 읽을 이유는 없다
+    arrive('DUEL');
+    const onArrive = vi.fn();
+    renderHook(() => useNotificationArrival(['DUEL'], onArrive));
+    expect(onArrive).not.toHaveBeenCalled();
   });
 });

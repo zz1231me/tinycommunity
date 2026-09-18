@@ -434,14 +434,51 @@ describe('알림이 데려가는 곳', () => {
     expect(rows[0].link).toBe('/profile?tab=points');
   });
 
-  it('공격받은 사람은 출근 화면으로 간다 — 대조', async () => {
-    // 방해받는 퇴근 버튼과 방어권이 그 화면에 있다
+  it('공격받은 사람도 포인트 탭으로 간다 — 방어권은 거기서 산다', async () => {
+    // 출근은 업무 화면이라 포인트를 쓰는 일(방어권)은 포인트 탭에 모았다
     await grant(ATK, 1000);
     await startWorking(TGT);
     await attack(atkCookie, TGT);
 
     const rows = await attackNotices(TGT);
     expect(rows).toHaveLength(1);
-    expect(rows[0].link).toBe('/attendance');
+    expect(rows[0].link).toBe('/profile?tab=points');
+  });
+});
+
+describe('어제 퇴근을 깜빡한 사람', () => {
+  // 공격 대상 판정은 퇴근 버튼이 닫을 기록과 같은 기록을 본다. 예전에는 '오늘·어제 중 안
+  // 닫힌 것이 하나라도 있으면' 근무 중으로 봐서, 어제 퇴근을 깜빡한 사람은 오늘 퇴근한
+  // 뒤에도 하루 종일 공격 대상이었다(오늘 기록이 있으면 퇴근은 어제 것을 닫지 않는다).
+  const yesterday = () => today(new Date(Date.now() - 86_400_000));
+
+  async function openYesterday(userId: string) {
+    const checkInAt = new Date(Date.now() - 26 * 60 * 60_000);
+    checkInAt.setSeconds(0, 0);
+    await AttendanceRecord.create({ UserId: userId, workDate: yesterday(), checkInAt });
+  }
+
+  it('오늘 퇴근까지 했으면 공격 대상이 아니다', async () => {
+    await grant(ATK, 5000);
+    await openYesterday(TGT);
+    const checkInAt = new Date(Date.now() - 3 * 60 * 60_000);
+    checkInAt.setSeconds(0, 0);
+    await AttendanceRecord.create({
+      UserId: TGT,
+      workDate: today(),
+      checkInAt,
+      checkOutAt: new Date(),
+      workMinutes: 180,
+    });
+
+    expect((await attack(atkCookie, TGT)).status).toBe(400);
+    expect(await balanceOf(ATK)).toBe(5000);
+  });
+
+  it('오늘 출근 전이면 어제 기록이 살아 있는 동안은 근무 중이다 — 대조', async () => {
+    // 자정을 넘겨 이어 일하는 중이다. 퇴근을 누르면 이 어제 기록이 닫힌다.
+    await grant(ATK, 5000);
+    await openYesterday(TGT);
+    expect((await attack(atkCookie, TGT)).status).toBe(200);
   });
 });

@@ -102,7 +102,14 @@ function WinPulse() {
  * 결과는 서버가 정한다 — 이 화면은 눌러서 받아 적을 뿐이고, 확률·금액·횟수도
  * 서버에서 내려온 값을 그대로 보여준다(바꾸는 곳은 관리자 페이지다).
  */
-export function LotteryPanel({ refreshSignal = 0 }: { refreshSignal?: number }) {
+export function LotteryPanel({
+  refreshSignal = 0,
+  onSpent,
+}: {
+  refreshSignal?: number;
+  /** 뽑은 뒤 — 참가비·당첨금으로 잔액이 바뀌었다. 같은 화면의 다른 판들이 다시 읽게 한다. */
+  onSpent?: () => void;
+}) {
   const [status, setStatus] = useState<PointStatus | null>(null);
   const [entries, setEntries] = useState<PointEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -222,6 +229,8 @@ export function LotteryPanel({ refreshSignal = 0 }: { refreshSignal?: number }) 
       // 결과가 나오면 바로 보여 준다. 예전에는 '결과 확인' 덮개를 한 번 더 눌러야 했는데,
       // 하루에도 여러 번 누르는 자리라 그 한 단계가 번거로웠다.
       revealResult(result.isBlank, result.amount);
+      // 뽑기만 알리지 않아서, 뽑아서 잔액이 줄어도 대결·공격권 판은 옛 잔액으로 버튼을 열어 뒀다
+      onSpent?.();
     } catch (err) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??

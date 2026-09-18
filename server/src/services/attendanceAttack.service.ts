@@ -63,19 +63,31 @@ async function liveAttackAgainst(targetId: string): Promise<AttendanceAttackMode
  * 그 사람은 그날 이후로 새벽이든 주말이든 24시간 내내 공격 대상이 된다.
  */
 async function isWorking(userId: string): Promise<boolean> {
-  const open = await AttendanceRecord.findOne({
+  // 퇴근 버튼이 닫을 기록과 같은 기록을 본다(attendance.service 의 checkOut): 오늘 것이
+  // 있으면 그것, 없을 때만 자정을 넘긴 어제의 안 닫힌 것.
+  //
+  // '오늘·어제 중 안 닫힌 것이 하나라도 있으면' 으로 보면, 어제 퇴근을 깜빡한 사람은 오늘
+  // 출근하고 퇴근까지 한 뒤에도 하루 종일 공격 대상이 된다 — 오늘 기록이 있으면 퇴근은
+  // 어제 것을 닫지 않으므로 그 기록은 끝내 열린 채로 남는다.
+  const todays = await AttendanceRecord.findOne({
+    where: { UserId: userId, workDate: today() },
+    attributes: ['id', 'checkOutAt'],
+  });
+  if (todays) return todays.checkOutAt === null;
+
+  const carried = await AttendanceRecord.findOne({
     where: {
       UserId: userId,
       checkOutAt: null,
-      workDate: { [Op.gte]: today(new Date(Date.now() - 86_400_000)) },
+      workDate: today(new Date(Date.now() - 86_400_000)),
     },
     attributes: ['id'],
   });
-  return open !== null;
+  return carried !== null;
 }
 
 /** 알림은 포인트 정산과 묶지 않는다 — 알림이 실패해도 포인트는 이미 옳게 움직였다 */
-function notify(userId: string, message: string, attackId: number, link = '/attendance'): void {
+function notify(userId: string, message: string, attackId: number, link: string): void {
   void notificationService
     .create({
       userId,
@@ -129,18 +141,24 @@ export const attendanceAttackService = {
   /** 공격권을 사서 바로 쓴다 */
   async attack(attackerId: string, input: { targetId: string; kind?: string }) {
     const rules = getAttackSettings();
-    const targetId = input.targetId;
     const kind: AttackKind = isAttackKind(input.kind) ? input.kind : 'chaos';
 
-    if (attackerId === targetId) {
+    if (attackerId === input.targetId) {
       throw new AppError(400, '자기 자신에게는 쓸 수 없습니다.');
     }
 
-    const target = await User.findByPk(targetId, {
+    const target = await User.findByPk(input.targetId, {
       attributes: ['id', 'name', 'isActive', 'isDeleted'],
     });
     if (!target || !target.isActive || target.isDeleted) {
       throw new AppError(404, '상대를 찾을 수 없습니다.');
+    }
+    // 이제부터는 입력이 아니라 DB 가 돌려준 아이디를 쓴다. 대소문자를 가리지 않는 DB(MariaDB
+    // 기본값)에서는 'ALICE' 로 찾아도 alice 가 나오는데, 입력값을 그대로 저장하면 alice 가
+    // 방어하려 할 때 '나에게 걸린 공격이 아닙니다' 로 막힌다. 자기 자신 확인도 여기서 다시 한다.
+    const targetId = target.id;
+    if (attackerId === targetId) {
+      throw new AppError(400, '자기 자신에게는 쓸 수 없습니다.');
     }
     if (!(await isWorking(targetId))) {
       throw new AppError(400, '지금 근무 중인 사람에게만 쓸 수 있습니다.');
@@ -225,7 +243,9 @@ export const attendanceAttackService = {
       kind === 'hide'
         ? `${who}님이 퇴근 버튼을 잠깐 숨겼습니다!`
         : `${who}님이 퇴근 방해를 걸었습니다!`,
-      created.id
+      created.id,
+      // 방어권은 포인트 탭에서 산다 — 출근 화면에는 효과와 안내 한 줄만 있다
+      '/profile?tab=points'
     );
 
     return { id: created.id, targetId, kind, expiresAt: created.expiresAt };

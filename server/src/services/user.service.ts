@@ -196,7 +196,10 @@ export class UserService extends BaseService {
   async rejectUser(id: string): Promise<void> {
     const user = await User.findByPk(id);
     if (!user) throw new AppError(404, '사용자를 찾을 수 없습니다.');
-    if (user.isActive)
+    // 거절은 '승인 대기 중인 가입 신청' 만 대상이다. isActive 만 보면 비활성화해 둔 기존 계정
+    // (isApproved=true, isActive=false)도 대기 중으로 보여 영구 삭제되고, 딸린 포인트·원장·대결이
+    // 함께 사라진다 — 그 사람에게 걸려 있던 대결의 상대는 건 포인트를 돌려받지 못한다.
+    if (user.isActive || user.isApproved)
       throw new AppError(400, '이미 승인된 사용자는 거부할 수 없습니다. 삭제를 이용해주세요.');
 
     await user.destroy({ force: true });

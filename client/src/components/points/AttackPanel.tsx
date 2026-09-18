@@ -1,25 +1,27 @@
 // client/src/components/points/AttackPanel.tsx
 // 퇴근 공격권 — 포인트를 주고 남의 퇴근 버튼을 잠깐 성가시게 만든다.
 //
-// 보내는 쪽만 여기 있다. 받는 쪽(경고 띠·받은 쪽지·도망다니는 퇴근 버튼)은 출퇴근
-// 화면에 그대로 남아 있다 — 방해받는 대상이 그 화면의 퇴근 버튼이기 때문이다.
+// 보내는 쪽이다. 받는 쪽은 둘로 나뉜다 — 방어권 구매·경고 띠는 같은 포인트 탭 맨 위
+// (IncomingAttack), 도망다니는 퇴근 버튼과 안내 한 줄은 출근 화면이다.
 //
-// 받아 오는 방식은 같은 폴더의 다른 판들과 맞춘다(React Query 대신 useEffect).
-// 출퇴근 화면은 같은 API 를 React Query 로 읽는데, 거기서는 1분이면 저절로 풀리는
-// 공격을 짧은 주기로 다시 물어봐야 해서다. 여기에는 그럴 이유가 없다.
+// 공격 상태는 그 둘과 같은 쿼리 키(attendanceKeys.attack)로 읽는다. 예전에는 여기만
+// 따로 읽어서, 같은 탭에서 방어권을 산 뒤에도 이 판의 잔액은 그대로 남았다.
 //
 // ⚠️ 방해할 뿐 막지는 않는다. 서버의 퇴근 기록은 이 기능을 쳐다보지도 않고, 퇴근
 // 버튼도 끝까지 살아 있다. 하는 일은 '누르기 성가시게 만드는 것' 이지 '못 누르게
 // 하는 것' 이 아니다.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Zap, Loader2 } from 'lucide-react';
 import {
+  ATTACK_FACE,
+  ATTACK_LABEL,
   fetchAttackState,
   sendAttack,
   type AttackKind,
-  type AttackState,
 } from '../../api/attendance';
+import { attendanceKeys } from '../../api/queryKeys';
 import { UserPicker } from '../common/UserPicker';
 import type { UserSuggestion } from '../../api/users';
 import { ListState } from '../common/ListState';
@@ -27,21 +29,50 @@ import { LoadingSpinner } from '../common/LoadingStates';
 import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
 
-// face 는 받는 쪽 경고 띠(AttendanceAttack)와 같은 얼굴이다 — 보낸 것과 받은 것이 이어져 보이게.
+// 얼굴과 이름은 받는 쪽(경고 띠·출근 안내 줄)과 같은 정의다 — 보낸 것과 받은 것이 이어져 보이게.
 const KINDS: Array<{ kind: AttackKind; face: string; label: string; hint: string }> = [
-  { kind: 'chaos', face: '🌀', label: '퇴근 방해', hint: '퇴근 버튼이 도망다니고 깜빡입니다' },
-  { kind: 'hide', face: '🙈', label: '버튼 숨기기', hint: '퇴근 버튼이 잠깐 사라집니다' },
+  {
+    kind: 'chaos',
+    face: ATTACK_FACE.chaos,
+    label: ATTACK_LABEL.chaos,
+    hint: '퇴근 버튼이 카드 곳곳으로 달아나고 깜빡입니다',
+  },
+  {
+    kind: 'hide',
+    face: ATTACK_FACE.hide,
+    label: ATTACK_LABEL.hide,
+    hint: '퇴근 버튼이 숨고 가짜 버튼이 나타납니다',
+  },
 ];
 
 /**
  * @param myId 나 자신은 고를 수 없게 빼기 위한 것
  * @param onSpent 포인트를 쓴 뒤 — 같은 화면의 잔액 표시를 다시 불러오게 한다
  */
-export function AttackPanel({ myId, onSpent }: { myId: string; onSpent?: () => void }) {
-  const [state, setState] = useState<AttackState | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
+export function AttackPanel({
+  myId,
+  onSpent,
+  refreshSignal = 0,
+}: {
+  myId: string;
+  onSpent?: () => void;
+  /** 같은 화면의 다른 판이 포인트를 움직이면 바뀐다 — 잔액을 다시 읽는다 */
+  refreshSignal?: number;
+}) {
+  const queryClient = useQueryClient();
+  const query = useQuery({ queryKey: attendanceKeys.attack, queryFn: fetchAttackState });
+  const state = query.data ?? null;
+  const loading = query.isLoading;
+  // 실패를 빈 화면으로 두면 '공격권 기능이 없는 화면' 처럼 보인다
+  const failed = query.isError;
   const [sending, setSending] = useState(false);
+
+  // 다른 판(뽑기·대결)에서 포인트가 움직이면 잔액을 다시 읽는다. 이것이 없어서 대결에서
+  // 이겨 포인트가 생겨도 여기 버튼은 '포인트가 모자랍니다' 로 막혀 있었다.
+  useEffect(() => {
+    if (refreshSignal === 0) return;
+    void queryClient.invalidateQueries({ queryKey: attendanceKeys.attack });
+  }, [refreshSignal, queryClient]);
 
   const [picked, setPicked] = useState<UserSuggestion[]>([]);
   const [kind, setKind] = useState<AttackKind>('chaos');
@@ -55,28 +86,6 @@ export function AttackPanel({ myId, onSpent }: { myId: string; onSpent?: () => v
     return () => window.clearTimeout(id);
   }, [hit]);
 
-  const reload = useCallback(async () => {
-    setState(await fetchAttackState());
-  }, []);
-
-  useEffect(() => {
-    let alive = true;
-    fetchAttackState()
-      .then(s => {
-        if (alive) setState(s);
-      })
-      .catch(() => {
-        // 실패를 빈 화면으로 두면 '공격권 기능이 없는 화면' 처럼 보인다
-        if (alive) setFailed(true);
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
-
   const handleSend = async () => {
     if (!state || picked.length === 0 || sending) return;
     setSending(true);
@@ -86,7 +95,7 @@ export function AttackPanel({ myId, onSpent }: { myId: string; onSpent?: () => v
       // 보내진 뒤에만 비운다. 한도 초과·포인트 부족처럼 거절당하는 길이 여럿이라,
       // 미리 비우면 그때마다 상대를 다시 찾아야 한다.
       setPicked([]);
-      await reload().catch(() => {});
+      await queryClient.invalidateQueries({ queryKey: attendanceKeys.attack }).catch(() => {});
       onSpent?.();
     } catch (err) {
       toast.error(getApiErrorMessage(err, '공격권을 사용하지 못했습니다.'));

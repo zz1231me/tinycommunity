@@ -12,6 +12,9 @@ import { ATTACK_KINDS } from '../config/attendanceAttack';
 export const loginSchema = z.object({
   id: z.string().min(1, '아이디는 필수입니다.').max(30),
   password: z.string().min(1, '비밀번호는 필수입니다.').max(100),
+  // 로그인 기록(LOGIN_SUCCESS)에 남기는 기기 식별값. 빠져 있어서 z.object 가 조용히 버렸고,
+  // 컨트롤러는 늘 undefined 를 받아 보안 기록에 기기가 한 번도 남지 않았다.
+  fingerprint: z.string().max(200).optional(),
 });
 
 export const registerSchema = z.object({

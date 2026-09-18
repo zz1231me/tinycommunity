@@ -39,6 +39,10 @@ export const checkOut = async (): Promise<AttendanceRecord> =>
  */
 export type AttackKind = 'chaos' | 'hide';
 
+/** 공격 종류의 얼굴과 이름 — 출근 화면의 안내 줄·포인트 탭의 경고 띠·공격 패널이 함께 쓴다 */
+export const ATTACK_FACE: Record<AttackKind, string> = { chaos: '🌀', hide: '🙈' };
+export const ATTACK_LABEL: Record<AttackKind, string> = { chaos: '퇴근 방해', hide: '버튼 숨기기' };
+
 export interface AttackRules {
   cost: number;
   hideCost: number;
