@@ -515,7 +515,8 @@ describe('알림이 데려가는 곳', () => {
 
     const rows = await attackNotices(TGT);
     expect(rows).toHaveLength(1);
-    expect(rows[0].link).toBe('/attendance');
+    // 출퇴근 기록 화면은 대시보드 안에 있다 — '/attendance' 는 없는 페이지였다
+    expect(rows[0].link).toBe('/dashboard/attendance');
   });
 });
 

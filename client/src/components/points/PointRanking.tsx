@@ -68,7 +68,7 @@ function Podium({ entries, myId }: { entries: Entry[]; myId?: string }) {
             {/* 왕관 자리는 모두 비워 둔다 — 1등만 있으면 1등 사진이 그만큼 아래로 밀려 받침대 높이 차가 흐려진다 */}
             <span className="flex h-6 items-end" aria-hidden>
               {e.rank === 1 && (
-                <Crown className="h-5 w-5 fill-amber-300 text-amber-500 motion-safe:animate-crownFloat" />
+                <Crown className="h-5 w-5 fill-amber-300 text-amber-500 animate-crownFloat" />
               )}
             </span>
             <div className={`relative rounded-[11px] bg-gradient-to-br p-[3px] ${medal.ring}`}>

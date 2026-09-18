@@ -260,8 +260,9 @@ export const attendanceAttackService = {
         quiz: `${who}님이 퇴근 버튼에 계산 문제를 걸었습니다! 풀어야 퇴근할 수 있어요`,
       }[kind] + (stack > 1 ? ` (쌓인 공격 ${stack}개)` : ''),
       created.id,
-      // 공격받은 자리(출근 화면)로 — 퇴근 버튼 효과와 방어권이 거기 있다
-      '/attendance'
+      // 공격받은 자리(출퇴근 기록 화면)로 — 퇴근 버튼 효과와 방어권이 거기 있다.
+      // 그 화면은 대시보드 안에 있다. '/attendance' 로 두었더니 없는 페이지로 갔다.
+      '/dashboard/attendance'
     );
 
     return {

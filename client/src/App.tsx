@@ -4,7 +4,7 @@
 // 라우팅 구조 개선
 
 import { useEffect, Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazyWithRetry as lazy } from './utils/lazyWithRetry';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -173,6 +173,10 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+
+              {/* 예전 퇴근 공격 알림은 '/attendance' 로 걸려 있었다(없는 페이지). 이미 쌓인
+                  알림도 눌리면 출퇴근 기록 화면으로 가게 돌려보낸다. */}
+              <Route path="/attendance" element={<Navigate to="/dashboard/attendance" replace />} />
 
               {/* ✅ 프로필 페이지 - 독립적인 보호된 라우트 */}
               <Route

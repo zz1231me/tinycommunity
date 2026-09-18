@@ -79,8 +79,8 @@ export function QuizGate({
         <span
           key={missKey}
           data-testid="quiz-question"
-          className={`text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100 ${
-            missKey > 0 ? 'animate-chaosShake [animation-iteration-count:2]' : ''
+          className={`inline-block text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100 ${
+            missKey > 0 ? 'animate-quizMiss' : ''
           }`}
         >
           {question.text} =
