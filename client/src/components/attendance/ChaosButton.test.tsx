@@ -35,9 +35,9 @@ function setReducedMotion(reduce: boolean) {
 
 /**
  * 연출을 골라 고정한다.
- * EFFECTS = ['calm','dodge','dodge','vanish','blackout'] 에서 floor(r*5) 로 고른다.
+ * EFFECTS = ['calm','dodge','shake','vanish','blackout'] 에서 floor(r*5) 로 고른다.
  */
-const PICK = { calm: 0.05, dodge: 0.25, vanish: 0.75, blackout: 0.95 };
+const PICK = { calm: 0.05, dodge: 0.25, shake: 0.5, vanish: 0.75, blackout: 0.95 };
 
 function forceEffect(value: number) {
   vi.spyOn(Math, 'random').mockReturnValue(value);
@@ -206,5 +206,21 @@ describe('연출을 걸지 않아야 할 때', () => {
     // 그 설정을 켠 사람에게 이건 재미가 아니라 못 쓰는 화면이다
     expect(container.querySelector('span')).toBeNull();
     expect(screen.getByRole('button', { name: '퇴근' })).toBeEnabled();
+  });
+});
+
+describe('부르르 떨기', () => {
+  it('떨어도 클릭은 살아 있다', () => {
+    forceEffect(PICK.shake);
+    const onClick = vi.fn();
+    const { container } = render(
+      <ChaosButton active>
+        <Target onClick={onClick} />
+      </ChaosButton>
+    );
+    const { mover } = parts(container);
+    expect(mover?.className).toContain('animate-chaosShake');
+    fireEvent.click(screen.getByRole('button', { name: '퇴근' }));
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 });

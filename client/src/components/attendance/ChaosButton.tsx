@@ -15,10 +15,12 @@ import { prefersReducedMotion } from '../../utils/animations';
 /** 연출 한 가지가 유지되는 시간 */
 const SWITCH_MS = 1200;
 
-type Effect = 'calm' | 'dodge' | 'vanish' | 'blackout';
+type Effect = 'calm' | 'dodge' | 'shake' | 'vanish' | 'blackout';
 
 // 'calm' 을 섞어 둔다. 계속 몰아치면 그냥 화만 나고, 가끔 멀쩡해야 노려서 누르는 맛이 있다.
-const EFFECTS: Effect[] = ['calm', 'dodge', 'dodge', 'vanish', 'blackout'];
+// shake 는 제자리에서 부르르 떤다 — 자리를 지키므로 노리기는 쉽지만 손이 멈칫한다.
+// (자리 순서를 바꾸지 말 것. 테스트가 Math.random 값으로 연출을 골라 본다.)
+const EFFECTS: Effect[] = ['calm', 'dodge', 'shake', 'vanish', 'blackout'];
 
 /**
  * 달아날 거리.
@@ -72,6 +74,7 @@ export function ChaosButton({ active, children }: { active: boolean; children: R
     <span className="relative inline-flex">
       <span
         onMouseEnter={flee}
+        className={effect === 'shake' ? 'animate-chaosShake' : undefined}
         style={{
           display: 'inline-flex',
           transform: `translate(${offset.x}px, ${offset.y}px)`,

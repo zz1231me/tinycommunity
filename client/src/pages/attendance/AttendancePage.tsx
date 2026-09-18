@@ -3,7 +3,7 @@
 //
 // 하루 한 번씩만 찍힌다. 이미 찍은 뒤에는 버튼 대신 찍힌 시각과 흐른 시간을 보여 준다.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { PageContainer } from '../../components/common/PageContainer';
@@ -21,7 +21,7 @@ import {
   fetchMyAttendanceHistory,
   sendDefend,
 } from '../../api/attendance';
-import { AttackBanner } from '../../components/attendance/AttendanceAttack';
+import { AttackBanner, DefendedBanner } from '../../components/attendance/AttendanceAttack';
 import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
 import { useSubmitLock } from '../../hooks/useSubmitLock';
@@ -117,11 +117,20 @@ export default function AttendancePage() {
 
   const refreshAttack = () => queryClient.invalidateQueries({ queryKey: attendanceKeys.attack });
 
+  // 방어에 성공하면 경고 띠 자리에 잠깐 초록 띠를 띄운다(누구의 공격을 막았는지).
+  // 토스트는 띄우지 않는다 — 같은 말을 두 곳에서 하면 소음이다.
+  const [defendedFrom, setDefendedFrom] = useState<string | null>(null);
+  useEffect(() => {
+    if (!defendedFrom) return;
+    const id = window.setTimeout(() => setDefendedFrom(null), 2600);
+    return () => window.clearTimeout(id);
+  }, [defendedFrom]);
+
   const defendMutation = useMutation({
-    mutationFn: sendDefend,
-    onSuccess: () => {
+    mutationFn: ({ id }: { id: number; attackerName: string }) => sendDefend(id),
+    onSuccess: (_data, { attackerName }) => {
       refreshAttack();
-      toast.success('방어했습니다. 퇴근 버튼이 풀렸습니다.');
+      setDefendedFrom(attackerName);
     },
     onError: err => toast.error(getApiErrorMessage(err, '방어하지 못했습니다.')),
   });
@@ -166,13 +175,24 @@ export default function AttendancePage() {
             </div>
           )}
 
+          {defendedFrom && <DefendedBanner attackerName={defendedFrom} />}
+
           {attackEnabled && incoming && underAttack && attack.data && (
             <AttackBanner
+              // 새 공격이면 새로 그린다 — 등장 연출과 남은 시간 막대의 기준이 공격마다 다르다
+              key={incoming.id}
               incoming={incoming}
+              totalSeconds={
+                incoming.kind === 'hide'
+                  ? attack.data.rules.hideSeconds
+                  : attack.data.rules.blockSeconds
+              }
               defendCost={attack.data.rules.defendCost}
               balance={attack.data.balance}
               defending={defendMutation.isPending}
-              onDefend={() => defendMutation.mutate(incoming.id)}
+              onDefend={() =>
+                defendMutation.mutate({ id: incoming.id, attackerName: incoming.attackerName })
+              }
               onExpire={refreshAttack}
             />
           )}

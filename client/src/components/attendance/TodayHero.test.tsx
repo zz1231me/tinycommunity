@@ -66,3 +66,35 @@ describe('그 밖의 경우에는 퇴근 버튼이 살아 있다', () => {
     expect(checkOutButton()).toBeEnabled();
   });
 });
+
+describe('숨겼던 버튼이 돌아올 때', () => {
+  const hero = (attackKind: AttackKind | null) => (
+    <TodayHero
+      workDate="2026-09-18"
+      record={null}
+      standardWorkMinutes={480}
+      canCheckIn
+      canCheckOut
+      checkingOut={false}
+      attackKind={attackKind}
+      onCheckIn={vi.fn()}
+      onCheckOut={vi.fn()}
+    />
+  );
+  const popped = () => checkOutButton()?.closest('.animate-popIn') ?? null;
+
+  it('숨기기가 풀리면 톡 튀어나온다', () => {
+    const { rerender } = render(hero('hide'));
+    rerender(hero(null));
+    expect(popped()).not.toBeNull();
+  });
+
+  it('처음 그릴 때와 방해가 풀릴 때는 움직이지 않는다 — 음성 대조', () => {
+    // 늘 튀어나오게 하는 구현도 위 테스트는 통과한다. 괜히 들썩이는 버튼은 그것도 방해다.
+    const { rerender } = render(hero(null));
+    expect(popped()).toBeNull();
+    rerender(hero('chaos'));
+    rerender(hero(null));
+    expect(popped()).toBeNull();
+  });
+});

@@ -4,7 +4,7 @@
 // 경과 시간은 이 안에서만 센다. 부모에서 세면 시간이 바뀔 때마다 아래 표까지
 // 함께 다시 그려진다.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LogIn, LogOut } from 'lucide-react';
 import type { AttendanceRecord } from '../../types/attendance.types';
 import type { AttackKind } from '../../api/attendance';
@@ -56,6 +56,15 @@ export function TodayHero({
   onCheckOut,
 }: Props) {
   const working = Boolean(record && !record.checkOutAt);
+
+  // 숨기기가 풀려 버튼이 돌아오는 순간에만 톡 튀어나오게 한다. 처음 그릴 때나
+  // 방해가 풀릴 때는 움직이지 않는다 — 버튼이 괜히 들썩이면 그것도 방해다.
+  const [popKey, setPopKey] = useState(0);
+  const prevKind = useRef(attackKind);
+  useEffect(() => {
+    if (prevKind.current === 'hide' && attackKind !== 'hide') setPopKey(k => k + 1);
+    prevKind.current = attackKind;
+  }, [attackKind]);
   // 퇴근까지 찍고 나면 더 셀 것이 없다
   const now = useTick(!record || working);
 
@@ -140,26 +149,39 @@ export function TodayHero({
             //
             // disabled 버튼이 아니라 span 이다. 안 보이는 버튼을 눌리게 두면
             // "보이지도 않는데 눌렸다" 가 되고, Tab 으로도 잡히지 않아야 감춘 것이 된다.
+            //
+            // 사라진 자리에는 점선 흔적을 남기고 연기(💨)가 흩어진 뒤 🙈 가 앉는다.
+            // 그냥 비워 두면 버튼이 고장 난 건지 숨겨진 건지 알 수 없다.
             <span
               aria-hidden
-              className="pointer-events-none inline-flex select-none items-center gap-2 px-4 py-2 text-sm opacity-0"
+              className="pointer-events-none relative inline-flex select-none items-center gap-2 rounded-lg border-2 border-dashed border-slate-300 px-4 py-2 text-sm dark:border-slate-600"
             >
-              <LogOut className="h-4 w-4" />
-              퇴근
+              <span className="inline-flex items-center gap-2 opacity-0">
+                <LogOut className="h-4 w-4" />
+                퇴근
+              </span>
+              <span className="animate-poof absolute inset-0 flex items-center justify-center text-xl">
+                💨
+              </span>
+              <span className="animate-fadeInLate absolute inset-0 flex items-center justify-center text-lg">
+                🙈
+              </span>
             </span>
           ) : (
             /* 방해를 받는 중에도 버튼은 살아 있다 — 성가실 뿐 끝내 눌린다 */
-            <ChaosButton active={attackKind === 'chaos'}>
-              <button
-                type="button"
-                onClick={onCheckOut}
-                disabled={!canCheckOut || checkingOut}
-                className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <LogOut className="h-4 w-4" />
-                퇴근
-              </button>
-            </ChaosButton>
+            <span key={popKey} className={`inline-flex ${popKey > 0 ? 'animate-popIn' : ''}`}>
+              <ChaosButton active={attackKind === 'chaos'}>
+                <button
+                  type="button"
+                  onClick={onCheckOut}
+                  disabled={!canCheckOut || checkingOut}
+                  className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <LogOut className="h-4 w-4" />
+                  퇴근
+                </button>
+              </ChaosButton>
+            </span>
           )}
         </div>
       </div>

@@ -45,6 +45,15 @@ export function AttackPanel({ myId, onSpent }: { myId: string; onSpent?: () => v
   const [picked, setPicked] = useState<UserSuggestion[]>([]);
   const [kind, setKind] = useState<AttackKind>('chaos');
 
+  // 보낸 직후 잠깐 띄우는 '명중' 표시. 토스트 한 줄로는 보낸 맛이 없다.
+  // key 를 함께 둬서 같은 사람에게 연달아 보내도 매번 다시 튀어나오게 한다.
+  const [hit, setHit] = useState<{ key: number; name: string; kind: AttackKind } | null>(null);
+  useEffect(() => {
+    if (!hit) return;
+    const id = window.setTimeout(() => setHit(null), 3000);
+    return () => window.clearTimeout(id);
+  }, [hit]);
+
   const reload = useCallback(async () => {
     setState(await fetchAttackState());
   }, []);
@@ -72,7 +81,7 @@ export function AttackPanel({ myId, onSpent }: { myId: string; onSpent?: () => v
     setSending(true);
     try {
       await sendAttack({ targetId: picked[0].id, kind });
-      toast.success('공격권을 사용했습니다.');
+      setHit({ key: Date.now(), name: picked[0].name, kind });
       // 보내진 뒤에만 비운다. 한도 초과·포인트 부족처럼 거절당하는 길이 여럿이라,
       // 미리 비우면 그때마다 상대를 다시 찾아야 한다.
       setPicked([]);
@@ -159,6 +168,22 @@ export function AttackPanel({ myId, onSpent }: { myId: string; onSpent?: () => v
                 ? '포인트가 모자랍니다'
                 : `보내기 (−${cost.toLocaleString()}P)`}
           </button>
+
+          {hit && (
+            <p
+              key={hit.key}
+              role="status"
+              className="animate-popIn mt-3 flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+            >
+              <span aria-hidden className="text-lg">
+                💥
+              </span>
+              {hit.name}님에게 명중!
+              <span className="text-xs font-normal text-rose-500 dark:text-rose-400">
+                {hit.kind === 'hide' ? '퇴근 버튼이 사라졌습니다' : '퇴근 버튼이 날뛰기 시작합니다'}
+              </span>
+            </p>
+          )}
         </>
       )}
     </div>

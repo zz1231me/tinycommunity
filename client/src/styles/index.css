@@ -315,6 +315,141 @@ body {
   animation: duelPulse 1.1s ease-in-out 3;
 }
 
+/* ── 퇴근 공격·방어 연출 ──
+ * 움직임 줄이기 설정에서는 아래 전역 규칙이 길이를 0.01ms 로 줄여 사실상 꺼진다.
+ * 그래서 시간이 흐르는 것을 보여 주는 표시(남은 시간 막대)에는 애니메이션을 쓰지 않는다 —
+ * 꺼지는 순간 막대가 비어 '끝났다' 로 읽힌다. */
+
+/* 공격받음 — 떨어져 내려와 부르르 */
+@keyframes attackIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  55% {
+    transform: translateX(-6px);
+  }
+  70% {
+    transform: translateX(5px);
+  }
+  85% {
+    transform: translateX(-3px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+.animate-attackIn {
+  animation: attackIn 0.6s ease-out;
+}
+
+/* 방어권 — 눌러 달라고 은근히 빛난다 */
+@keyframes shieldGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(16 185 129 / 0);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgb(16 185 129 / 0.3);
+  }
+}
+.animate-shieldGlow {
+  animation: shieldGlow 1.8s ease-in-out infinite;
+}
+
+/* 방어 성공 — 방패가 튀어나오고 둥근 물결이 퍼진다 */
+@keyframes shieldPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-20deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.25) rotate(6deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+.animate-shieldPop {
+  animation: shieldPop 0.5s ease-out both;
+}
+@keyframes ringBurst {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+.animate-ringBurst {
+  animation: ringBurst 0.9s ease-out both;
+}
+
+/* 퇴근 방해 — 제자리에서 부르르 떤다 */
+@keyframes chaosShake {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0);
+  }
+  20% {
+    transform: translate(-3px, 1px) rotate(-3deg);
+  }
+  40% {
+    transform: translate(3px, -1px) rotate(3deg);
+  }
+  60% {
+    transform: translate(-2px, 1px) rotate(-2deg);
+  }
+  80% {
+    transform: translate(2px, 0) rotate(2deg);
+  }
+}
+.animate-chaosShake {
+  animation: chaosShake 0.35s linear infinite;
+}
+
+/* 버튼 숨기기 — 연기처럼 흩어지고, 돌아올 때는 톡 튀어나온다 */
+@keyframes poof {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.7) translateY(-8px);
+    filter: blur(2px);
+  }
+}
+.animate-poof {
+  animation: poof 0.6s ease-out both;
+}
+.animate-fadeInLate {
+  animation: fadeIn 0.3s ease-out 0.45s both;
+}
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-popIn {
+  animation: popIn 0.35s ease-out both;
+}
+
 /* 접근성: 애니메이션 감소 설정 존중 */
 @media (prefers-reduced-motion: reduce) {
   *,

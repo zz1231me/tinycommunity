@@ -187,3 +187,23 @@ describe('포인트 화면으로 옮기면서 생긴 것', () => {
     expect(screen.queryByRole('button', { name: '상대 고르기' })).not.toBeInTheDocument();
   });
 });
+
+describe('보낸 뒤의 손맛', () => {
+  it('보내면 누구에게 명중했는지 튀어나온다', async () => {
+    await show();
+    fireEvent.click(screen.getByRole('button', { name: '상대 고르기' }));
+    fireEvent.click(sendBtn());
+
+    expect(await screen.findByText(/피해자님에게 명중/)).toBeInTheDocument();
+  });
+
+  it('거절당했으면 명중이라고 하지 않는다 — 음성 대조', async () => {
+    mockSendAttack.mockRejectedValue(new Error('이미 방해받는 중'));
+    await show();
+    fireEvent.click(screen.getByRole('button', { name: '상대 고르기' }));
+    fireEvent.click(sendBtn());
+
+    await waitFor(() => expect(mockSendAttack).toHaveBeenCalled());
+    expect(screen.queryByText(/명중/)).not.toBeInTheDocument();
+  });
+});

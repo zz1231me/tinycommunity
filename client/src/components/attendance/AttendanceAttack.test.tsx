@@ -8,7 +8,7 @@
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { AttackBanner } from './AttendanceAttack';
+import { AttackBanner, DefendedBanner } from './AttendanceAttack';
 import type { IncomingAttack } from '../../api/attendance';
 
 const incoming = (over: Partial<IncomingAttack> = {}): IncomingAttack => ({
@@ -90,5 +90,75 @@ describe('종류에 따라 다르게 알린다', () => {
 
     expect(screen.getByText(/보이지 않습니다/)).toBeInTheDocument();
     expect(screen.queryByText(/말을 안 듣습니다/)).not.toBeInTheDocument();
+  });
+});
+
+describe('남은 시간 막대', () => {
+  const banner = (over: { totalSeconds?: number } = {}) =>
+    render(
+      <AttackBanner
+        incoming={incoming()}
+        {...over}
+        defendCost={200}
+        balance={1000}
+        defending={false}
+        onDefend={() => {}}
+        onExpire={() => {}}
+      />
+    );
+
+  it('원래 길이에 대해 남은 만큼만 차 있다', () => {
+    // 60초짜리 공격이 45초 남았다 → 75%
+    banner({ totalSeconds: 60 });
+    const bar = screen.getByRole('progressbar', { name: /남은 시간/ });
+    expect(bar).toHaveAttribute('aria-valuemax', '60');
+    expect(bar).toHaveAttribute('aria-valuenow', '45');
+    expect((bar.firstElementChild as HTMLElement).style.width).toBe('75%');
+  });
+
+  it('원래 길이를 모르면 처음 남아 있던 시간을 가득 찬 것으로 본다', () => {
+    banner();
+    const bar = screen.getByRole('progressbar', { name: /남은 시간/ });
+    expect((bar.firstElementChild as HTMLElement).style.width).toBe('100%');
+  });
+});
+
+describe('방어권 버튼의 빛', () => {
+  const glow = () => screen.getByRole('button', { name: /방어권 구매/ }).className;
+
+  it('살 수 있을 때만 빛난다', () => {
+    render(
+      <AttackBanner
+        incoming={incoming()}
+        defendCost={200}
+        balance={1000}
+        defending={false}
+        onDefend={() => {}}
+        onExpire={() => {}}
+      />
+    );
+    expect(glow()).toContain('animate-shieldGlow');
+  });
+
+  it('못 사는 버튼은 눌러 달라고 빛나지 않는다 — 음성 대조', () => {
+    render(
+      <AttackBanner
+        incoming={incoming()}
+        defendCost={200}
+        balance={50}
+        defending={false}
+        onDefend={() => {}}
+        onExpire={() => {}}
+      />
+    );
+    expect(glow()).not.toContain('animate-shieldGlow');
+  });
+});
+
+describe('방어 성공', () => {
+  it('누구의 공격을 막았는지 알려 준다', () => {
+    render(<DefendedBanner attackerName="공격자" />);
+    expect(screen.getByRole('status')).toHaveTextContent(/방어 성공/);
+    expect(screen.getByRole('status')).toHaveTextContent(/공격자님의 공격을 막았습니다/);
   });
 });
