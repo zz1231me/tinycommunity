@@ -56,8 +56,13 @@ export const passwordResetVerifySchema = z.object({
 // 길이 상한은 사이트 설정(commentContentMaxLength)에서 오는 동적 값이라 컨트롤러에 남긴다.
 // 여기서는 구조(타입·형식)만 확정해 컨트롤러가 값의 모양을 다시 의심하지 않게 한다.
 
+// 구조적 상한. 컨트롤러의 길이 검사는 태그를 걷어낸 '글자 수' 를 세므로, 빈 태그를
+// 수만 번 반복하면 0자로 세어져 그대로 통과한다. 모델의 len [1, 100000] 과 같은 값으로
+// 막아 둔다 — 동적 상한을 대신하는 것이 아니라 그 밑을 받치는 것이다.
+const COMMENT_MAX = 100000;
+
 export const createCommentSchema = z.object({
-  content: z.string().min(1, '댓글 내용을 입력해주세요.'),
+  content: z.string().min(1, '댓글 내용을 입력해주세요.').max(COMMENT_MAX),
   // INTEGER 컬럼이라 범위를 넘기면 방언에 따라 DB 오류가 된다.
   // 문자열 분기는 Number 로 바뀌므로 변환 뒤에도 상한을 다시 본다.
   parentId: z
@@ -76,7 +81,7 @@ export const createCommentSchema = z.object({
 });
 
 export const updateCommentSchema = z.object({
-  content: z.string().min(1, '댓글 내용을 입력해주세요.'),
+  content: z.string().min(1, '댓글 내용을 입력해주세요.').max(COMMENT_MAX),
 });
 
 // ─── 메모 ─────────────────────────────────────────────────

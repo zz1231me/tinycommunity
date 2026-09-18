@@ -16,7 +16,11 @@ import {
   updateProfile,
 } from '../controllers/auth.controller';
 import { authenticate } from '../middlewares/auth.middleware';
-import { passwordResetRequestLimiter } from '../middlewares/bruteForceGuard';
+import {
+  loginLimiter,
+  passwordResetRequestLimiter,
+  registerLimiter,
+} from '../middlewares/bruteForceGuard';
 import { uploadAvatar } from '../middlewares/upload/avatar'; // ✅ 직접 import
 import { getOwnSessions, terminateOwnSession } from '../controllers/userSession.controller';
 
@@ -54,7 +58,7 @@ const router = Router();
  *       401: { description: 아이디 또는 비밀번호 불일치 }
  *       429: { description: 로그인 시도 제한 초과 }
  */
-router.post('/login', validateBody(loginSchema), login);
+router.post('/login', loginLimiter, validateBody(loginSchema), login);
 /**
  * @swagger
  * /api/auth/register:
@@ -79,7 +83,7 @@ router.post('/login', validateBody(loginSchema), login);
  *       400: { description: 입력값 오류 }
  *       409: { description: 이미 존재하는 아이디 }
  */
-router.post('/register', validateBody(registerSchema), register);
+router.post('/register', registerLimiter, validateBody(registerSchema), register);
 router.post('/refresh', refreshToken);
 // 로그인 없이 부를 수 있는데 요청 한 번이 남에게 피해를 준다 — 대기 중인 인증번호가
 // 새로 발급되고(= 남의 재설정을 계속 무효로 만들 수 있다), 관리자마다 알림이 쌓인다.

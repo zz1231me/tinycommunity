@@ -6,10 +6,38 @@
 
 import { Op, WhereOptions } from 'sequelize';
 import { Post } from '../models/Post';
+import { PostAttachmentVersion } from '../models/PostAttachmentVersion';
 import { boardService } from './board.service';
 import { ROLES } from '../config/constants';
 
 export type AttachmentAccessResult = { ok: true } | { ok: false; message: string };
+
+/**
+ * 이 파일을 가진 게시글을 찾는다.
+ *
+ * 지금 붙어 있는 첨부는 Post.attachments 에서 찾는다. 그런데 같은 이름으로 다시 올려
+ * 밀려난 파일은 그 목록에서 빠지고 PostAttachmentVersion 으로 옮겨지면서도 디스크에는
+ * 그대로 남는다(이력이라 일부러 남긴다). 목록만 보고 판단하면 그 파일들은 '주인이 없는
+ * 파일' 로 보여 아래 검사를 통째로 건너뛰었다 — 권한이 끊긴 뒤에도, 비밀글로 바뀐
+ * 뒤에도, 예전에 받아 둔 주소로 계속 내려받을 수 있었다. 이력 표까지 따라간다.
+ *
+ * paranoid: false — 지운 글(soft delete)의 첨부도 주인을 찾아 규칙을 그대로 적용한다.
+ * 빼면 글을 지우는 순간 그 첨부가 아무나 받을 수 있는 파일이 된다.
+ */
+async function findOwningPost(savedFilename: string) {
+  // attachments는 TEXT(JSON 문자열) 컬럼이지만 모델 게터 타입이 Attachment[]라 LIKE에 캐스팅 필요
+  const current = await Post.findOne({
+    where: { attachments: { [Op.like]: `%${savedFilename}%` } } as WhereOptions,
+    paranoid: false,
+  });
+  if (current) return current;
+
+  const archived = await PostAttachmentVersion.findOne({
+    where: { filename: savedFilename },
+    attributes: ['postId'],
+  });
+  return archived ? Post.findByPk(archived.postId, { paranoid: false }) : null;
+}
 
 /**
  * 저장 파일명으로 소유 게시글을 찾아 게시판 읽기 권한과 비밀글 접근을 검증한다.
@@ -22,10 +50,7 @@ export async function authorizeAttachmentAccess(
   userId: string,
   userRole: string
 ): Promise<AttachmentAccessResult> {
-  // attachments는 TEXT(JSON 문자열) 컬럼이지만 모델 게터 타입이 Attachment[]라 LIKE에 캐스팅 필요
-  const owningPost = await Post.findOne({
-    where: { attachments: { [Op.like]: `%${savedFilename}%` } } as WhereOptions,
-  });
+  const owningPost = await findOwningPost(savedFilename);
   if (!owningPost) return { ok: true };
 
   const perm = await boardService.checkPermission(

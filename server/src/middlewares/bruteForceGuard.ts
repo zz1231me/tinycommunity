@@ -70,6 +70,57 @@ export const passwordResetRequestLimiter = rateLimit({
 });
 
 /**
+ * 로그인 실패 (IP 단위).
+ *
+ * 계정 잠금(5회 실패 → 30분, models/User)은 이미 있다. 그런데 그것은 '한 계정을 계속
+ * 두드리는' 것만 막는다. 흔한 비밀번호 하나를 아이디 수천 개에 한 번씩 시도하면(password
+ * spraying) 어느 계정의 카운터도 올라가지 않아 그대로 통과한다. 아이디가 있는지 훑어보는
+ * 것도 마찬가지로 무제한이었다.
+ *
+ * 그래서 계정이 아니라 '어디서 오는가' 로 센다. 둘은 서로를 대신하지 못하고 함께 있어야
+ * 한다 — 계정 잠금은 한 계정을 지키고, 이것은 한 출처가 여러 계정을 훑는 것을 막는다.
+ *
+ * 성공한 로그인은 세지 않는다(skipSuccessfulRequests). 사무실처럼 여러 사람이 같은 IP 를
+ * 쓰는 곳에서 아침마다 서로의 몫을 깎아먹게 두면, 막는 것은 공격이 아니라 출근이다.
+ */
+export const loginLimiter = rateLimit({
+  windowMs: RATE_LIMIT.LOGIN_WINDOW_MS,
+  max: RATE_LIMIT.LOGIN_FAIL_MAX,
+  skipSuccessfulRequests: true,
+  standardHeaders: 'draft-6',
+  legacyHeaders: false,
+  keyGenerator: req => `login:ip:${ipKeyGenerator(req.ip ?? '')}`,
+  handler: (req, res) => {
+    logWarning('로그인 실패 과다', { ip: req.ip });
+    res.status(429).json({
+      success: false,
+      message: '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.',
+    });
+  },
+});
+
+/**
+ * 가입 요청 (IP 단위).
+ *
+ * 가입은 관리자 승인 대기 상태로 들어가므로 바로 들어올 수는 없다. 다만 상한이 없으면
+ * 승인 대기 목록을 쓰레기로 채워 관리자가 진짜 신청을 찾지 못하게 만들 수 있다.
+ */
+export const registerLimiter = rateLimit({
+  windowMs: RATE_LIMIT.REGISTER_WINDOW_MS,
+  max: RATE_LIMIT.REGISTER_MAX,
+  standardHeaders: 'draft-6',
+  legacyHeaders: false,
+  keyGenerator: req => `register:ip:${ipKeyGenerator(req.ip ?? '')}`,
+  handler: (req, res) => {
+    logWarning('가입 요청 과다', { ip: req.ip });
+    res.status(429).json({
+      success: false,
+      message: '가입 요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.',
+    });
+  },
+});
+
+/**
  * 2FA 켜기·끄기 (사용자 단위).
  * 두 엔드포인트 모두 6자리 TOTP 를 검증한다. authenticate 뒤에 두어야
  * req.user 가 채워져 사용자별로 센다(인증 전이면 IP 로 센다).

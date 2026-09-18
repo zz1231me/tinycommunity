@@ -7,6 +7,7 @@ import { User } from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
 import { isAdminOrManager } from '../config/constants';
 import { getCommentSettings } from '../utils/settingsCache';
+import { sanitizeHtmlContent } from '../utils/contentRenderer';
 import { sequelize } from '../config/sequelize';
 
 // Note: User is still needed for the include in findByPk responses
@@ -67,7 +68,11 @@ export class CommentService extends BaseService {
 
       return Comment.create(
         {
-          content: content.trim(),
+          // 댓글도 HTML 로 다룬다(길이를 셀 때 태그를 걷어내는 것이 그 증거다).
+          // 그런데 이 앱의 다른 본문(위키·일정·게시글)과 달리 여기만 서버에서 정화하지
+          // 않고 화면의 DOMPurify 에 기대고 있었다. 화면을 거치지 않는 소비자가 하나라도
+          // 생기면(알림 미리보기·내보내기·미리보기 카드) 그 순간 XSS 가 된다.
+          content: sanitizeHtmlContent(content.trim()),
           PostId: postId,
           UserId: userId,
           author: authorName,
@@ -299,7 +304,8 @@ export class CommentService extends BaseService {
       }
 
       // beforeUpdate 훅이 isEdited/editedAt 자동 설정하므로 content만 전달
-      await comment.update({ content: content.trim() }, { transaction: t });
+      // 정화는 만들 때와 같은 자리에서 한다 — 한쪽만 하면 수정으로 우회된다
+      await comment.update({ content: sanitizeHtmlContent(content.trim()) }, { transaction: t });
 
       // 응답용 데이터 조회
       const updated = await Comment.findByPk(commentId, {
