@@ -8,7 +8,7 @@ import { AttendanceRecord } from '../models/AttendanceRecord';
 import { FeatureFlag } from '../models/FeatureFlag';
 import { featureFlagService } from '../services/featureFlag.service';
 import { today } from '../services/point.service';
-import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
+import { ATTACK_DEFAULTS, ATTACK_MAX_STACK } from '../config/attendanceAttack';
 import { Notification } from '../models/Notification';
 
 // 퇴근 공격권·방어권.
@@ -157,33 +157,37 @@ describe('공격권 사용', () => {
     expect(await AttendanceAttack.count()).toBe(0);
   });
 
-  it('이미 공격받는 사람에게 겹쳐 쓸 수 없다', async () => {
+  it('쌓인다 — 두 번째 공격은 첫 공격이 끝나면 시작한다', async () => {
     await grant(ATK, 5000);
     await grant(THIRD, 5000);
     await startWorking(TGT);
 
-    expect((await attack(atkCookie, TGT)).status).toBe(200);
+    const first = await attack(atkCookie, TGT);
     const second = await attack(thirdCookie, TGT);
-    expect(second.status).toBe(409);
-    // 막힌 공격으로 포인트가 빠지면 안 된다
-    expect(await balanceOf(THIRD)).toBe(5000);
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(second.body.data.stack).toBe(2);
+    // 줄을 선다 — 앞 공격이 끝나는 순간 시작하고, 자기 길이만큼 간다
+    expect(new Date(second.body.data.startsAt).getTime()).toBe(
+      new Date(first.body.data.expiresAt).getTime()
+    );
+    expect(
+      new Date(second.body.data.expiresAt).getTime() - new Date(second.body.data.startsAt).getTime()
+    ).toBe(ATTACK_DEFAULTS.blockSeconds * 1000);
   });
 
-  it('종류가 달라도 겹쳐 쓸 수 없다', async () => {
-    // 겹침 확인이 chaos 행만 세던 때가 있었다. 그때는 숨기기가 걸려 있어도 그 행이
-    // 세어지지 않아 그 위에 방해를 덧걸 수 있었고, 받는 쪽은 하나를 풀어도 다음 것이
-    // 남아 방어권 값을 두 번 치러야 했다.
-    //
-    // 숨기기를 '먼저' 거는 순서여야 한다. chaos 를 먼저 걸면 낡은 코드에서도 그 행이
-    // 세어져 막히므로, 순서를 뒤집으면 아무것도 가려내지 못하는 검사가 된다.
+  it('종류가 달라도 쌓이고, 먼저 건 것부터 걸린다', async () => {
     await grant(ATK, 5000);
     await grant(THIRD, 5000);
     await startWorking(TGT);
 
     expect((await attack(atkCookie, TGT, 'hide')).status).toBe(200);
-    const second = await attack(thirdCookie, TGT, 'chaos');
-    expect(second.status).toBe(409);
-    expect(await balanceOf(THIRD)).toBe(5000);
+    expect((await attack(thirdCookie, TGT, 'chaos')).status).toBe(200);
+
+    const seen = (await state(tgtCookie)).body.data;
+    expect(seen.queue.map((q: { kind: string }) => q.kind)).toEqual(['hide', 'chaos']);
+    // 지금 걸려 있는 것은 맨 앞(숨기기)이다
+    expect(seen.incoming.kind).toBe('hide');
   });
 
   it('걸린 공격의 종류를 함께 알려 준다', async () => {
@@ -371,38 +375,108 @@ describe('언제 근무 중으로 보는가', () => {
   });
 });
 
-describe('동시에 걸어도 방해는 하나만 산다', () => {
-  it('둘이 같은 순간에 걸면 하나만 통과한다', async () => {
-    // 겹침 확인이 트랜잭션 밖에 있으면 둘 다 통과해 살아 있는 방해가 둘이 된다.
-    // 그러면 받는 쪽은 하나를 풀어도 곧바로 다음 것이 떠서 방어권 값을 두 번 낸다.
+describe('쌓이는 공격', () => {
+  /** 줄을 곧바로 채운다 — 사람마다 하루 한도가 있어 HTTP 로는 10개를 쌓기 번거롭다 */
+  async function fillQueue(n: number) {
+    let cursor = Date.now();
+    for (let i = 0; i < n; i++) {
+      await AttendanceAttack.create({
+        // 공격하는 쪽(ATK)의 하루 한도를 건드리지 않게 다른 사람 이름으로 채운다
+        attackerId: THIRD,
+        targetId: TGT,
+        workDate: today(),
+        kind: 'chaos',
+        startsAt: new Date(cursor),
+        expiresAt: new Date(cursor + 60_000),
+      });
+      cursor += 60_000;
+    }
+  }
+
+  it(`${ATTACK_MAX_STACK}개까지 쌓이고, 그다음은 거절한다 — 포인트도 빠지지 않는다`, async () => {
+    await grant(ATK, 5000);
+    await startWorking(TGT);
+    await fillQueue(ATTACK_MAX_STACK - 1);
+
+    expect((await attack(atkCookie, TGT)).status).toBe(200);
+    const over = await attack(atkCookie, TGT);
+    expect(over.status).toBe(409);
+    expect(await balanceOf(ATK)).toBe(5000 - ATTACK_DEFAULTS.cost);
+  });
+
+  it('두 사람이 잇달아 걸어도 줄이 겹치지 않는다', async () => {
+    // (SQLite 는 요청을 줄 세우므로 여기서 잠금을 검증하지는 못한다 — 이어 붙이는 계산을 본다.
+    //  잠금은 대상의 잔액 행을 먼저 잡는 구조가 지킨다.)
     await grant(ATK, 5000);
     await grant(THIRD, 5000);
     await startWorking(TGT);
 
-    const results = await Promise.all([attack(atkCookie, TGT), attack(thirdCookie, TGT)]);
-    expect(results.filter(r => r.status === 200)).toHaveLength(1);
-
-    const live = await AttendanceAttack.count({
-      where: { targetId: TGT, kind: 'chaos', defendedAt: null },
-    });
-    expect(live).toBe(1);
+    await Promise.all([attack(atkCookie, TGT), attack(thirdCookie, TGT)]);
+    const queue = (await state(tgtCookie)).body.data.queue as Array<{
+      startsAt: string;
+      expiresAt: string;
+    }>;
+    expect(queue).toHaveLength(2);
+    expect(new Date(queue[1].startsAt).getTime()).toBe(new Date(queue[0].expiresAt).getTime());
   });
 
-  it('한 번 방어하면 나에게 걸린 방해가 남지 않는다', async () => {
+  it('방어권 한 장에 맨 앞 하나만 풀리고, 다음 것이 곧바로 시작된다', async () => {
     await grant(ATK, 5000);
     await grant(THIRD, 5000);
     await grant(TGT, 5000);
     await startWorking(TGT);
+    const first = await attack(atkCookie, TGT);
+    const second = await attack(thirdCookie, TGT);
+    const plannedStart = new Date(second.body.data.startsAt).getTime();
 
-    const results = await Promise.all([attack(atkCookie, TGT), attack(thirdCookie, TGT)]);
-    const made = results.find(r => r.status === 200)!;
-
-    expect((await defend(tgtCookie, made.body.data.id)).status).toBe(200);
-
-    // 값은 한 번만 치르고, 살아 있는 방해는 하나도 남지 않아야 한다
+    const res = await defend(tgtCookie, first.body.data.id);
+    expect(res.status).toBe(200);
+    expect(res.body.data.remaining).toBe(1);
     expect(await balanceOf(TGT)).toBe(5000 - ATTACK_DEFAULTS.defendCost);
-    const seen = await state(tgtCookie);
-    expect(seen.body.data.incoming).toBeNull();
+
+    const seen = (await state(tgtCookie)).body.data;
+    expect(seen.queue).toHaveLength(1);
+    expect(seen.incoming.id).toBe(second.body.data.id);
+    // 앞 공격이 원래 끝났을 시각까지 기다리지 않는다 — 지금 시작하고, 길이는 그대로다
+    const start = new Date(seen.incoming.startsAt).getTime();
+    expect(start).toBeLessThan(plannedStart);
+    expect(Math.abs(start - Date.now())).toBeLessThan(5_000);
+    expect(new Date(seen.incoming.expiresAt).getTime() - start).toBe(
+      ATTACK_DEFAULTS.blockSeconds * 1000
+    );
+    await expectLedgerConsistent(TGT);
+  });
+
+  it('맨 앞이 아닌 공격은 방어할 수 없다 — 값도 빠지지 않는다', async () => {
+    // 뒤의 것을 먼저 풀어 봐야 지금 걸린 공격은 그대로라 값만 나간다
+    await grant(ATK, 5000);
+    await grant(THIRD, 5000);
+    await grant(TGT, 5000);
+    await startWorking(TGT);
+    await attack(atkCookie, TGT);
+    const second = await attack(thirdCookie, TGT);
+
+    expect((await defend(tgtCookie, second.body.data.id)).status).toBe(409);
+    expect(await balanceOf(TGT)).toBe(5000);
+  });
+
+  it('쌓인 수만큼 알림에 적는다', async () => {
+    await grant(ATK, 5000);
+    await grant(THIRD, 5000);
+    await startWorking(TGT);
+    await Notification.destroy({ where: {}, truncate: true });
+
+    await attack(atkCookie, TGT);
+    await attack(thirdCookie, TGT);
+    let rows: Notification[] = [];
+    for (let i = 0; i < 20 && rows.length < 2; i++) {
+      rows = await Notification.findAll({
+        where: { userId: TGT, type: 'ATTACK' },
+        order: [['id', 'ASC']],
+      });
+      if (rows.length < 2) await new Promise(r => setTimeout(r, 25));
+    }
+    expect(rows[1].message).toContain('쌓인 공격 2개');
   });
 });
 

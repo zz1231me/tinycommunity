@@ -31,7 +31,8 @@ const USER_LIMIT = 500;
  * 그냥 없는 사람처럼 보여서, 알아챌 길이 서버 로그밖에 없다.
  */
 function warnIfUserListTruncated(count: number, where: string): void {
-  if (count < USER_LIMIT) return;
+  // 하나 더 읽어서(USER_LIMIT + 1) 넘을 때만 경고한다. 정확히 500명이면 아무도 빠지지 않았다.
+  if (count <= USER_LIMIT) return;
   logWarning(`${where}: 명단이 ${USER_LIMIT}명에서 잘렸습니다 — 이름순 뒤쪽 인원이 빠집니다.`, {
     limit: USER_LIMIT,
   });
@@ -413,12 +414,13 @@ export class AttendanceService extends BaseService {
         where: { isActive: true },
         attributes: ['id', 'name'],
         order: [['name', 'ASC']],
-        limit: USER_LIMIT,
+        limit: USER_LIMIT + 1,
       }),
       // 어제 것도 함께 읽는다. 자정을 넘겨 일하는 사람이 '미출근' 으로 잡힌다.
       AttendanceRecord.findAll({ where: { workDate: { [Op.in]: [workDate, yesterday] } } }),
     ]);
     warnIfUserListTruncated(users.length, '오늘 출근 현황');
+    users.splice(USER_LIMIT);
 
     // 오늘 것이 우선이고, 없을 때만 어제 안 닫힌 건을 쓴다 (퇴근이 닫는 대상과 같다).
     const todays = new Map(records.filter(r => r.workDate === workDate).map(r => [r.UserId, r]));
@@ -473,7 +475,7 @@ export class AttendanceService extends BaseService {
         where: { isActive: true },
         attributes: ['id', 'name'],
         order: [['name', 'ASC']],
-        limit: USER_LIMIT,
+        limit: USER_LIMIT + 1,
       }),
       // 집계에 쓰는 칸만 읽는다. 확인 항목 스냅샷까지 끌어오면 기간이 길수록 무겁다.
       AttendanceRecord.findAll({
@@ -482,6 +484,7 @@ export class AttendanceService extends BaseService {
       }),
     ]);
     warnIfUserListTruncated(users.length, '출퇴근 집계');
+    users.splice(USER_LIMIT);
 
     const grouped = new Map<string, AttendanceRecord[]>();
     for (const r of records) {

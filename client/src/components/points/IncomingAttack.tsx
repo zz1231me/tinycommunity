@@ -23,13 +23,15 @@ import {
 import { attendanceKeys } from '../../api/queryKeys';
 import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
-import { secondsLeft, useCountdown } from '../../hooks/useCountdown';
+import { formatLeft, liveOnly, secondsLeft, useCountdown } from '../../hooks/useCountdown';
 import { useNotificationArrival } from '../../hooks/useNotificationArrival';
 
 /** 방해받는 중임을 알리고, 방어권을 살 기회를 준다 */
 export function AttackBanner({
   incoming,
   totalSeconds,
+  waiting = 0,
+  endsAt,
   defendCost,
   balance,
   defending,
@@ -42,6 +44,10 @@ export function AttackBanner({
    * 주지 않으면 처음 그릴 때 남아 있던 시간을 기준으로 삼는다.
    */
   totalSeconds?: number;
+  /** 이 공격 뒤에 쌓여 기다리는 공격 수 */
+  waiting?: number;
+  /** 쌓인 공격이 전부 풀리는 시각 (없으면 이 공격이 끝나는 시각) */
+  endsAt?: string;
   defendCost: number;
   balance: number;
   defending: boolean;
@@ -49,6 +55,7 @@ export function AttackBanner({
   onExpire: () => void;
 }) {
   const left = useCountdown(incoming.expiresAt, onExpire);
+  const totalLeft = useCountdown(endsAt ?? incoming.expiresAt);
   const affordable = balance >= defendCost;
   const [total] = useState(() => Math.max(1, totalSeconds ?? secondsLeft(incoming.expiresAt)));
   const percent = Math.min(100, Math.round((left / total) * 100));
@@ -68,6 +75,11 @@ export function AttackBanner({
       >
         {ATTACK_FACE[incoming.kind]}
       </span>
+      {waiting > 0 && (
+        <span className="-ml-2 rounded-full bg-rose-600 px-1.5 text-2xs font-bold tabular-nums text-white">
+          ×{waiting + 1}
+        </span>
+      )}
       <p className="min-w-[12rem] flex-1 text-sm text-rose-800 dark:text-rose-300">
         <span className="font-semibold">{incoming.attackerName}</span>님이 공격권을 사용했습니다!
         <span className="ml-1.5 tabular-nums">
@@ -81,6 +93,12 @@ export function AttackBanner({
             '곧 풀립니다.'
           )}
         </span>
+        {waiting > 0 && (
+          <span className="mt-0.5 block text-xs tabular-nums text-rose-700/80 dark:text-rose-300/80">
+            뒤에 {waiting}개 더 대기 · 전부 풀리기까지 {formatLeft(totalLeft)} · 방어권 한 장에
+            하나씩 풀립니다
+          </span>
+        )}
       </p>
       <button
         type="button"
@@ -125,7 +143,14 @@ export function AttackBanner({
  * 값을 치르고 공격을 푼 순간이 이 기능에서 제일 통쾌해야 할 때라, 토스트 한 줄로
  * 지나가지 않게 경고 띠가 있던 자리에서 초록으로 바꿔 보여 준다.
  */
-export function DefendedBanner({ attackerName }: { attackerName: string }) {
+export function DefendedBanner({
+  attackerName,
+  remaining = 0,
+}: {
+  attackerName: string;
+  /** 방어하고도 뒤에 남은 공격 수 — 있으면 퇴근 버튼은 아직 돌아오지 않았다 */
+  remaining?: number;
+}) {
   return (
     <div
       role="status"
@@ -139,11 +164,28 @@ export function DefendedBanner({ attackerName }: { attackerName: string }) {
         <Shield className="animate-shieldPop relative h-6 w-6 text-emerald-600 dark:text-emerald-400" />
       </span>
       <p className="text-sm text-emerald-800 dark:text-emerald-300">
-        <span className="font-semibold">방어 성공!</span> {attackerName}님의 공격을 막았습니다. 퇴근
-        버튼이 돌아왔습니다.
+        <span className="font-semibold">방어 성공!</span> {attackerName}님의 공격을 막았습니다.{' '}
+        {remaining > 0 ? `남은 공격 ${remaining}개가 이어집니다.` : '퇴근 버튼이 돌아왔습니다.'}
       </p>
     </div>
   );
+}
+
+/**
+ * 맨 앞이 풀린 뒤의 줄을 지금부터 다시 이어 붙인다 — 각자 길이는 그대로(서버 defend 와 같은 계산).
+ */
+function shiftQueue(rest: IncomingAttackData[], now = Date.now()): IncomingAttackData[] {
+  let cursor = now;
+  return rest.map(q => {
+    const length = new Date(q.expiresAt).getTime() - new Date(q.startsAt).getTime();
+    const shifted = {
+      ...q,
+      startsAt: new Date(cursor).toISOString(),
+      expiresAt: new Date(cursor + length).toISOString(),
+    };
+    cursor += length;
+    return shifted;
+  });
 }
 
 /**
@@ -168,7 +210,9 @@ export function IncomingAttack({ onSpent }: { onSpent?: () => void }) {
   });
 
   // 방어에 성공하면 경고 띠 자리에 잠깐 초록 띠를 띄운다(누구의 공격을 막았는지)
-  const [defendedFrom, setDefendedFrom] = useState<string | null>(null);
+  const [defendedFrom, setDefendedFrom] = useState<{ name: string; remaining: number } | null>(
+    null
+  );
   useEffect(() => {
     if (!defendedFrom) return;
     const id = window.setTimeout(() => setDefendedFrom(null), 2600);
@@ -181,11 +225,22 @@ export function IncomingAttack({ onSpent }: { onSpent?: () => void }) {
       // 다시 읽어 오기 전에 캐시에서 먼저 공격을 지운다. 기다리는 동안 경고 띠와 살아 있는
       // 방어 버튼이 남아, 한 번 더 누르면 '이미 방어했습니다' 가 방어 성공 옆에 떴다.
       // 같은 캐시를 쓰는 출근 화면의 퇴근 버튼 효과도 이 순간 함께 풀린다.
-      queryClient.setQueryData<AttackState>(attendanceKeys.attack, prev =>
-        prev ? { ...prev, incoming: null, balance: prev.balance - prev.rules.defendCost } : prev
-      );
+      // 뒤에 쌓인 것은 서버와 같은 계산으로 지금부터 이어 붙인다 — 출근 화면의 효과도 이 순간
+      // 다음 공격으로 넘어간다.
+      let remaining = 0;
+      queryClient.setQueryData<AttackState>(attendanceKeys.attack, prev => {
+        if (!prev) return prev;
+        const rest = shiftQueue(liveOnly(prev.queue ?? []).slice(1));
+        remaining = rest.length;
+        return {
+          ...prev,
+          queue: rest,
+          incoming: rest[0] ?? null,
+          balance: prev.balance - prev.rules.defendCost,
+        };
+      });
       void refresh();
-      setDefendedFrom(attackerName);
+      setDefendedFrom({ name: attackerName, remaining });
       onSpent?.();
     },
     onError: err => toast.error(getApiErrorMessage(err, '방어하지 못했습니다.')),
@@ -193,6 +248,8 @@ export function IncomingAttack({ onSpent }: { onSpent?: () => void }) {
 
   const state = attack.data;
   const incoming = state?.incoming ?? null;
+  const queue = liveOnly(state?.queue ?? []);
+  const endsAt = queue[queue.length - 1]?.expiresAt;
   // 서버가 준 만료 시각으로 직접 판단한다 — 이미 지난 공격을 아직 다시 받아 오지 않았을 수 있다
   const live = Boolean(incoming && new Date(incoming.expiresAt).getTime() > Date.now());
 
@@ -200,15 +257,20 @@ export function IncomingAttack({ onSpent }: { onSpent?: () => void }) {
 
   return (
     <div>
-      {defendedFrom && <DefendedBanner attackerName={defendedFrom} />}
+      {defendedFrom && (
+        <DefendedBanner attackerName={defendedFrom.name} remaining={defendedFrom.remaining} />
+      )}
       {incoming && live && state && (
         <AttackBanner
           // 새 공격이면 새로 그린다 — 등장 연출과 남은 시간 막대의 기준이 공격마다 다르다
           key={incoming.id}
           incoming={incoming}
-          totalSeconds={
-            incoming.kind === 'hide' ? state.rules.hideSeconds : state.rules.blockSeconds
-          }
+          // 이 공격 자신의 길이 — 줄이 당겨지거나 설정이 바뀌어도 막대가 맞다
+          totalSeconds={Math.round(
+            (new Date(incoming.expiresAt).getTime() - new Date(incoming.startsAt).getTime()) / 1000
+          )}
+          waiting={Math.max(0, queue.length - 1)}
+          endsAt={endsAt}
           defendCost={state.rules.defendCost}
           balance={state.balance}
           defending={defend.isPending}

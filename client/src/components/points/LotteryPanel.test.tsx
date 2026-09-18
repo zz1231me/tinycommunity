@@ -271,3 +271,43 @@ describe('같은 화면의 다른 판에 알린다', () => {
     expect(onSpent).not.toHaveBeenCalled();
   });
 });
+
+describe('여러 번 다시 읽을 때', () => {
+  it('늦게 도착한 옛 응답이 새 잔액을 덮지 않는다', async () => {
+    // 먼저 떠난 요청이 늦게 도착해 뽑기 전 잔액·남은 횟수로 되돌리면,
+    // 남은 횟수가 없는데도 버튼이 열린다
+    let resolveOld: (s: PointStatus) => void = () => {};
+    fetchPointStatus
+      .mockImplementationOnce(() => new Promise<PointStatus>(r => (resolveOld = r)))
+      .mockResolvedValueOnce(status({ balance: 3300 }));
+    const { rerender } = render(<LotteryPanel refreshSignal={0} />);
+    rerender(<LotteryPanel refreshSignal={1} />);
+
+    expect(await screen.findByText('3,300')).toBeInTheDocument();
+    resolveOld(status({ balance: 1200 }));
+    await new Promise(r => setTimeout(r, 30));
+    expect(screen.getByText('3,300')).toBeInTheDocument();
+    expect(screen.queryByText('1,200')).not.toBeInTheDocument();
+  });
+});
+
+describe('다시 읽기 둘이 뒤바뀌어 도착할 때', () => {
+  it('나중에 보낸 쪽의 잔액이 남는다', async () => {
+    let resolveSlow: (s: PointStatus) => void = () => {};
+    fetchPointStatus
+      .mockResolvedValueOnce(status()) // 첫 로딩
+      .mockImplementationOnce(() => new Promise<PointStatus>(r => (resolveSlow = r))) // 신호 1 — 늦다
+      .mockResolvedValueOnce(status({ balance: 3300 })); // 신호 2 — 먼저 온다
+    const { rerender } = render(<LotteryPanel refreshSignal={0} />);
+    await screen.findByText('1,200');
+
+    rerender(<LotteryPanel refreshSignal={1} />);
+    rerender(<LotteryPanel refreshSignal={2} />);
+    expect(await screen.findByText('3,300')).toBeInTheDocument();
+
+    resolveSlow(status({ balance: 900 }));
+    await new Promise(r => setTimeout(r, 30));
+    expect(screen.getByText('3,300')).toBeInTheDocument();
+    expect(screen.queryByText('900')).not.toBeInTheDocument();
+  });
+});

@@ -12,8 +12,21 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { prefersReducedMotion } from '../../utils/animations';
 
-/** 연출 한 가지가 유지되는 시간 */
+/** 연출 한 가지가 유지되는 시간 — 공격이 하나일 때. 쌓일수록 짧아진다(switchMs). */
 const SWITCH_MS = 1200;
+
+/**
+ * 쌓인 공격 수(level)에 따른 사나움. level 1 이 기본값이고 그대로다.
+ *  - 연출이 더 자주 바뀐다: 1.2초 → 한 개 쌓일 때마다 0.08초씩, 최소 0.45초
+ *  - 마우스를 대도 안 달아나는 비율이 준다: 25% → 한 개마다 2%씩, 최소 10%
+ *    (0 으로는 내리지 않는다 — 끈질기면 잡혀야 '못 누르게' 가 되지 않는다)
+ */
+function switchMs(level: number): number {
+  return Math.max(450, SWITCH_MS - 80 * (level - 1));
+}
+function fleeMiss(level: number): number {
+  return Math.max(0.1, FLEE_MISS - 0.02 * (level - 1));
+}
 
 type Effect = 'calm' | 'dodge' | 'shake' | 'vanish' | 'blackout';
 
@@ -78,7 +91,16 @@ function randomOffset() {
   };
 }
 
-export function ChaosButton({ active, children }: { active: boolean; children: ReactNode }) {
+export function ChaosButton({
+  active,
+  level = 1,
+  children,
+}: {
+  active: boolean;
+  /** 쌓인 공격 수(1~10) */
+  level?: number;
+  children: ReactNode;
+}) {
   const [effect, setEffect] = useState<Effect>('calm');
   const [offset, setOffset] = useState<Offset>({ x: 0, y: 0 });
   // 버튼의 원래 자리. 움직이지 않는 바깥 껍데기라 여기서 재면 늘 제자리가 나온다.
@@ -102,22 +124,22 @@ export function ChaosButton({ active, children }: { active: boolean; children: R
       );
     };
     pick();
-    const id = window.setInterval(pick, SWITCH_MS);
+    const id = window.setInterval(pick, switchMs(level));
     return () => window.clearInterval(id);
-  }, [calm]);
+  }, [calm, level]);
 
   // 다가가면 달아난다 — 연출 중에서도 이게 제일 약 오른다
   // 달아날 때는 후보 셋 중 지금 자리에서 가장 먼 곳으로 간다 — 바로 옆으로 비키면 다시 잡힌다.
   const flee = useCallback(() => {
     if (calm) return;
-    if (Math.random() < FLEE_MISS) return;
+    if (Math.random() < fleeMiss(level)) return;
     setEffect('dodge');
     setOffset(prev => {
       const candidates = [0, 1, 2].map(() => pointInBounds(homeRef.current) ?? randomOffset());
       const far = (o: Offset) => (o.x - prev.x) ** 2 + (o.y - prev.y) ** 2;
       return candidates.reduce((best, o) => (far(o) > far(best) ? o : best));
     });
-  }, [calm]);
+  }, [calm, level]);
 
   if (calm) return <>{children}</>;
 

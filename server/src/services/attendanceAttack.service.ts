@@ -10,7 +10,7 @@
 // 남이 내 근무 기록의 시각을 늦출 수 있게 되는 순간, 이 기능은 장난이 아니라
 // 근태 분쟁거리가 된다. 그 선을 넘지 않는 것이 이 설계의 전부다.
 
-import { Op } from 'sequelize';
+import { Op, type Transaction } from 'sequelize';
 import { sequelize } from '../config/sequelize';
 import AttendanceAttackModel, { AttendanceAttack } from '../models/AttendanceAttack';
 import { AttendanceRecord } from '../models/AttendanceRecord';
@@ -25,7 +25,7 @@ import {
   today,
   withLockRetry,
 } from './point.service';
-import { isAttackKind, type AttackKind } from '../config/attendanceAttack';
+import { ATTACK_MAX_STACK, isAttackKind, type AttackKind } from '../config/attendanceAttack';
 import { getAttackSettings } from '../utils/settingsCache';
 import { notificationService } from './notification.service';
 import { logError } from '../utils/logger';
@@ -37,22 +37,39 @@ function nameOf(row: AttendanceAttackModel): string {
   return joined.attacker?.name ?? row.attackerId;
 }
 
+/** 이 공격이 시작되는(된) 시각 — startsAt 칸이 생기기 전의 행은 만든 시각이 시작이다 */
+function startOf(row: AttendanceAttackModel): number {
+  return (row.startsAt ?? row.createdAt).getTime();
+}
+
 /**
- * 지금 이 사람에게 걸려 있는 살아 있는 공격.
+ * 이 사람에게 걸려 있는 살아 있는 공격들 — 차례대로. 맨 앞이 지금 걸려 있는 것이다.
  *
- * 종류를 가리지 않는다 — 방해든 숨기기든 한 번에 하나만 걸린다. 종류별로 따로 두면
- * 둘이 겹쳐 걸려, 받는 쪽은 방어권을 두 번 사야 한다.
+ * 공격은 줄을 선다. 새 공격은 줄 맨 끝 공격이 끝나야 시작하고, 방어권은 맨 앞 하나를 푼다.
+ * 줄은 길어야 ATTACK_MAX_STACK 개라 정렬은 여기서 한다(startsAt 이 빈 옛 행 때문이기도 하다).
  */
-async function liveAttackAgainst(targetId: string): Promise<AttendanceAttackModel | null> {
-  return AttendanceAttack.findOne({
+async function liveQueue(targetId: string, t?: Transaction): Promise<AttendanceAttackModel[]> {
+  const rows = await AttendanceAttack.findAll({
     where: {
       targetId,
       defendedAt: null,
       expiresAt: { [Op.gt]: new Date() },
     },
     include: [withAttacker],
-    order: [['id', 'DESC']],
+    transaction: t,
   });
+  return rows.sort((a, b) => startOf(a) - startOf(b) || a.id - b.id);
+}
+
+function queueView(row: AttendanceAttackModel) {
+  return {
+    id: row.id,
+    attackerId: row.attackerId,
+    attackerName: nameOf(row),
+    kind: row.kind,
+    startsAt: new Date(startOf(row)),
+    expiresAt: row.expiresAt,
+  };
 }
 
 /**
@@ -103,8 +120,8 @@ export const attendanceAttackService = {
   /** 출근 화면이 물어보는 것 — 나에게 걸린 공격과 내가 남은 횟수 */
   async state(userId: string) {
     const rules = getAttackSettings();
-    const [live, balanceRow, usedToday] = await Promise.all([
-      liveAttackAgainst(userId),
+    const [queue, balanceRow, usedToday] = await Promise.all([
+      liveQueue(userId),
       UserPoint.findByPk(userId, { attributes: ['UserId', 'balance'] }),
       AttendanceAttack.count({ where: { attackerId: userId, workDate: today() } }),
     ]);
@@ -117,22 +134,17 @@ export const attendanceAttackService = {
         blockSeconds: rules.blockSeconds,
         hideSeconds: rules.hideSeconds,
         dailyLimit: rules.dailyLimitPerAttacker,
+        maxStack: ATTACK_MAX_STACK,
       },
       balance: balanceRow?.balance ?? 0,
       /**
-       * 나에게 걸린 공격 (없으면 null).
+       * 지금 나에게 걸려 있는 공격 — 줄의 맨 앞 (없으면 null).
        *
        * kind 를 함께 준다 — 받는 화면이 버튼을 흔들지, 잠깐 감출지를 이것으로 가른다.
        */
-      incoming: live
-        ? {
-            id: live.id,
-            attackerId: live.attackerId,
-            attackerName: nameOf(live),
-            kind: live.kind,
-            expiresAt: live.expiresAt,
-          }
-        : null,
+      incoming: queue[0] ? queueView(queue[0]) : null,
+      /** 쌓여 있는 공격 전부, 차례대로. 길이가 곧 퇴근 버튼이 얼마나 사나운지다. */
+      queue: queue.map(queueView),
       usedToday,
       remainingToday: Math.max(0, rules.dailyLimitPerAttacker - usedToday),
     };
@@ -169,7 +181,7 @@ export const attendanceAttackService = {
     await ensureBalanceRow(targetId);
     const cost = kind === 'hide' ? rules.hideCost : rules.cost;
 
-    const created = await withLockRetry(() =>
+    const result = await withLockRetry(() =>
       sequelize.transaction(async t => {
         const day = today();
 
@@ -193,17 +205,12 @@ export const attendanceAttackService = {
           throw new AppError(429, `오늘은 ${rules.dailyLimitPerAttacker}번을 모두 사용했습니다.`);
         }
 
-        // 공격은 종류를 가리지 않고 겹쳐 걸 수 없다. 겹치면 받는 쪽은 하나를 풀어도
-        // 곧바로 다음 것이 떠서 방어권 값을 두 번 내게 된다.
-        const already = await AttendanceAttack.count({
-          where: {
-            targetId,
-            defendedAt: null,
-            expiresAt: { [Op.gt]: new Date() },
-          },
-          transaction: t,
-        });
-        if (already > 0) throw new AppError(409, '이미 방해받고 있는 사람입니다.');
+        // 공격은 쌓인다 — 줄을 서서 차례로 걸리고, 상한을 넘으면 받지 않는다.
+        // 대상의 잔액 행을 위에서 잠갔으므로 두 공격자가 같은 순간에 걸어도 줄이 꼬이지 않는다.
+        const queue = await liveQueue(targetId, t);
+        if (queue.length >= ATTACK_MAX_STACK) {
+          throw new AppError(409, `이미 공격이 ${ATTACK_MAX_STACK}개 쌓여 있습니다.`);
+        }
 
         const row = rows[attackerId];
         if (row.balance < cost) {
@@ -220,44 +227,63 @@ export const attendanceAttackService = {
           t
         );
 
-        // 숨기기는 그동안 정말로 누를 수 없으므로 훨씬 짧다(기본 10초).
+        // 숨기기는 그동안 정말로 누를 수 없으므로 훨씬 짧다.
         const lifeMs = (kind === 'hide' ? rules.hideSeconds : rules.blockSeconds) * 1000;
+        // 줄 맨 끝 공격이 끝난 뒤에 시작한다. 줄이 비었으면 지금.
+        const last = queue[queue.length - 1];
+        const startsAt = new Date(Math.max(Date.now(), last ? last.expiresAt.getTime() : 0));
 
-        return AttendanceAttack.create(
+        const made = await AttendanceAttack.create(
           {
             attackerId,
             targetId,
             workDate: day,
             kind,
-            expiresAt: new Date(Date.now() + lifeMs),
+            startsAt,
+            expiresAt: new Date(startsAt.getTime() + lifeMs),
           },
           { transaction: t }
         );
+        return { made, stack: queue.length + 1 };
       })
     );
 
+    const { made: created, stack } = result;
     const attacker = await User.findByPk(attackerId, { attributes: ['id', 'name'] });
     const who = attacker?.name ?? attackerId;
     notify(
       targetId,
-      kind === 'hide'
+      (kind === 'hide'
         ? `${who}님이 퇴근 버튼을 잠깐 숨겼습니다!`
-        : `${who}님이 퇴근 방해를 걸었습니다!`,
+        : `${who}님이 퇴근 방해를 걸었습니다!`) + (stack > 1 ? ` (쌓인 공격 ${stack}개)` : ''),
       created.id,
       // 방어권은 포인트 탭에서 산다 — 출근 화면에는 효과와 안내 한 줄만 있다
       '/profile?tab=points'
     );
 
-    return { id: created.id, targetId, kind, expiresAt: created.expiresAt };
+    return {
+      id: created.id,
+      targetId,
+      kind,
+      startsAt: created.startsAt,
+      expiresAt: created.expiresAt,
+      stack,
+    };
   },
 
-  /** 방어권을 사서 지금 걸린 방해를 푼다 */
+  /**
+   * 방어권 한 장으로 맨 앞의 공격 하나를 푼다. 뒤에 쌓인 공격은 곧바로 앞으로 당겨진다.
+   */
   async defend(userId: string, attackId: number) {
     const rules = getAttackSettings();
     await ensureBalanceRow(userId);
 
     const defended = await withLockRetry(() =>
       sequelize.transaction(async t => {
+        // 잔액 행을 먼저 잠근다 — 공격(attack)과 같은 차례다. 아래에서 줄의 다른 행들을
+        // 고치므로, 순서가 엇갈리면 공격과 방어가 서로의 잠금을 기다리며 멈출 수 있다.
+        const balance = await lockBalance(userId, t);
+
         const row = await AttendanceAttack.findByPk(attackId, {
           transaction: t,
           lock: t.LOCK.UPDATE,
@@ -270,7 +296,12 @@ export const attendanceAttackService = {
           throw new AppError(409, '이미 풀린 공격입니다.');
         }
 
-        const balance = await lockBalance(userId, t);
+        // 맨 앞부터 푼다. 뒤의 것을 먼저 풀어 봐야 지금 걸린 공격은 그대로라 값만 나간다.
+        const queue = await liveQueue(userId, t);
+        if (queue[0]?.id !== row.id) {
+          throw new AppError(409, '지금 걸려 있는 공격부터 풀 수 있습니다.');
+        }
+
         if (balance.balance < rules.defendCost) {
           throw new AppError(
             400,
@@ -279,20 +310,21 @@ export const attendanceAttackService = {
         }
         await apply(balance, -rules.defendCost, 'defend_cost', '퇴근 방어권', t);
 
-        // 값을 한 번 치렀으면 나에게 걸린 살아 있는 공격을 종류와 관계없이 전부 푼다.
-        // 어떤 이유로든 둘 이상 남아 있을 때 하나씩 돈을 내게 하지 않는다.
-        await AttendanceAttack.update(
-          { defendedAt: new Date() },
-          {
-            where: {
-              targetId: userId,
-              defendedAt: null,
-              expiresAt: { [Op.gt]: new Date() },
-            },
-            transaction: t,
-          }
-        );
-        return row;
+        const now = Date.now();
+        row.defendedAt = new Date(now);
+        await row.save({ transaction: t });
+
+        // 뒤에 쌓인 공격을 지금부터 다시 이어 붙인다 — 각자 길이는 그대로.
+        // 그대로 두면 앞 공격이 원래 끝났을 시각까지 아무 공격도 없는 빈 틈이 생긴다.
+        let cursor = now;
+        for (const next of queue.slice(1)) {
+          const length = next.expiresAt.getTime() - startOf(next);
+          next.startsAt = new Date(cursor);
+          next.expiresAt = new Date(cursor + length);
+          cursor += length;
+          await next.save({ transaction: t });
+        }
+        return { row, remaining: queue.length - 1 };
       })
     );
 
@@ -300,12 +332,12 @@ export const attendanceAttackService = {
     // 공격한 사람에게는 출근 화면이 아니라 공격권이 있는 포인트 탭이 맞다.
     // 그 사람의 출근 화면에는 자기가 건 공격에 대한 것이 아무것도 없다.
     notify(
-      defended.attackerId,
+      defended.row.attackerId,
       `${me?.name ?? userId}님이 방어권을 사용했습니다.`,
-      defended.id,
+      defended.row.id,
       '/profile?tab=points'
     );
 
-    return { id: defended.id };
+    return { id: defended.row.id, remaining: defended.remaining };
   },
 };

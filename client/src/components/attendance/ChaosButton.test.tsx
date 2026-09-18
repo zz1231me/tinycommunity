@@ -310,3 +310,42 @@ describe('카드 안 어디로든 달아난다', () => {
     expect(at()).toEqual({ x: 0, y: 0 });
   });
 });
+
+describe('쌓인 만큼 사나워진다', () => {
+  // 마우스를 대도 안 달아나는 비율: 하나일 때 25%, 쌓일수록 줄어 최소 10%.
+  // 달아나는지는 Math.random() < 그 비율 이면 봐준다.
+  function renderAt(level: number) {
+    const { container } = render(
+      <ChaosButton active level={level}>
+        <Target />
+      </ChaosButton>
+    );
+    const { mover } = parts(container);
+    return { mover: mover!, moved: () => (mover?.style.transform ?? '') !== 'translate(0px, 0px)' };
+  }
+
+  /** 달아날지 정하는 값만 따로 준다 — 그 뒤 자리는 다른 값으로 뽑아야 달아났는지가 보인다 */
+  function hoverWith(mover: HTMLElement, missRoll: number) {
+    vi.spyOn(Math, 'random').mockReturnValueOnce(missRoll).mockReturnValue(0.9);
+    fireEvent.mouseEnter(mover);
+  }
+
+  it('하나일 때 봐주던 경우도, 열 개 쌓이면 달아난다', () => {
+    forceEffect(PICK.calm); // 제자리에서 시작한다
+    const one = renderAt(1);
+    hoverWith(one.mover, 0.2); // 0.2 < 25% — 봐준다
+    expect(one.moved()).toBe(false);
+
+    forceEffect(PICK.calm);
+    const ten = renderAt(10);
+    hoverWith(ten.mover, 0.2); // 0.2 ≥ 10% — 달아난다
+    expect(ten.moved()).toBe(true);
+  });
+
+  it('열 개가 쌓여도 가끔은 달아나지 않는다 — 끈질기면 잡힌다', () => {
+    forceEffect(PICK.calm);
+    const ten = renderAt(10);
+    hoverWith(ten.mover, 0.05); // 0.05 < 10% — 봐준다
+    expect(ten.moved()).toBe(false);
+  });
+});

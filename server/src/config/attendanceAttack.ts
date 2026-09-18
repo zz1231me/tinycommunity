@@ -28,6 +28,17 @@ export type AttackKind = 'chaos' | 'hide';
 
 export const ATTACK_KINDS = ['chaos', 'hide'] as const;
 
+/**
+ * 한 사람에게 한꺼번에 쌓일 수 있는 공격 수.
+ *
+ * 쌓인 공격은 줄을 서서 차례로 걸리고(시간이 이어 붙는다), 쌓인 수만큼 퇴근 버튼이 더
+ * 사나워진다. 방어권 한 장은 맨 앞 하나를 푼다.
+ *
+ * 숨기기는 그동안 정말로 누를 수 없으므로 상한이 곧 최악의 시간이다 — 기본 20초 × 10 =
+ * 3분 20초. 퇴근 기록 시각은 어느 쪽이든 실제로 누른 순간 그대로다.
+ */
+export const ATTACK_MAX_STACK = 10;
+
 export const ATTACK_DEFAULTS = {
   /** 방해 공격 한 장 값 */
   cost: 300,

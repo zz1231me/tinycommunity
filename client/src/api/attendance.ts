@@ -52,6 +52,8 @@ export interface AttackRules {
   /** 퇴근 버튼이 보이지 않는 시간(초) — hide */
   hideSeconds: number;
   dailyLimit: number;
+  /** 한 사람에게 한꺼번에 쌓일 수 있는 공격 수 */
+  maxStack: number;
 }
 
 export interface IncomingAttack {
@@ -60,14 +62,18 @@ export interface IncomingAttack {
   attackerName: string;
   /** 흔들지, 감출지를 이것으로 가른다 */
   kind: AttackKind;
+  /** 이 공격이 시작되는(된) 시각 — 쌓인 공격은 앞 것이 끝나야 시작한다 */
+  startsAt: string;
   expiresAt: string;
 }
 
 export interface AttackState {
   rules: AttackRules;
   balance: number;
-  /** 지금 나에게 걸린 공격 (없으면 null) */
+  /** 지금 나에게 걸린 공격 — 줄의 맨 앞 (없으면 null) */
   incoming: IncomingAttack | null;
+  /** 쌓여 있는 공격 전부, 차례대로. 길이가 곧 퇴근 버튼이 얼마나 사나운지다. */
+  queue: IncomingAttack[];
   usedToday: number;
   remainingToday: number;
 }

@@ -127,7 +127,8 @@ export function AttackPanel({
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             근무 중인 사람의 퇴근 버튼을 {rules.blockSeconds}초 동안 성가시게 하거나{' '}
             {rules.hideSeconds}초 동안 감춥니다. 기록되는 퇴근 시각은 어느 쪽이든 실제로 누른 순간
-            그대로입니다. 오늘 {state.remainingToday}/{rules.dailyLimit}번 남았습니다.
+            그대로입니다. 한 사람에게 최대 {rules.maxStack}개까지 쌓이고, 쌓인 만큼 이어지며 더
+            사나워집니다. 오늘 {state.remainingToday}/{rules.dailyLimit}번 남았습니다.
           </p>
 
           <div className="mt-3 flex gap-1.5">

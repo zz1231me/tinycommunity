@@ -14,7 +14,13 @@ export const loginSchema = z.object({
   password: z.string().min(1, '비밀번호는 필수입니다.').max(100),
   // 로그인 기록(LOGIN_SUCCESS)에 남기는 기기 식별값. 빠져 있어서 z.object 가 조용히 버렸고,
   // 컨트롤러는 늘 undefined 를 받아 보안 기록에 기기가 한 번도 남지 않았다.
-  fingerprint: z.string().max(200).optional(),
+  // null 도 받는다(없음으로 본다). 예전에는 이 키를 버렸으므로 어떤 값이 와도 로그인이 됐다 —
+  // 검사를 새로 붙이면서 null 을 보내는 클라이언트가 로그인을 못 하게 되면 안 된다.
+  fingerprint: z
+    .string()
+    .max(200)
+    .nullish()
+    .transform(v => v ?? undefined),
 });
 
 export const registerSchema = z.object({

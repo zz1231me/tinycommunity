@@ -33,6 +33,7 @@ const incoming = (over: Partial<IncomingAttack> = {}): IncomingAttack => ({
   attackerId: 'bully',
   attackerName: '공격자',
   kind: 'chaos',
+  startsAt: new Date().toISOString(),
   expiresAt: new Date(Date.now() + 45_000).toISOString(),
   ...over,
 });
@@ -238,13 +239,14 @@ describe('포인트 탭 맨 위의 받은 공격', () => {
     },
     balance: 1000,
     incoming: incoming(),
+    queue: [incoming()],
     usedToday: 0,
     remainingToday: 5,
     ...over,
   });
 
   it('걸린 공격이 없으면 아무것도 그리지 않는다', async () => {
-    fetchAttackState.mockResolvedValue(state({ incoming: null }));
+    fetchAttackState.mockResolvedValue(state({ incoming: null, queue: [] }));
     const { container } = renderWithQuery(<IncomingAttackCard />);
     await waitFor(() => expect(fetchAttackState).toHaveBeenCalled());
     expect(container).toBeEmptyDOMElement();
@@ -272,5 +274,62 @@ describe('포인트 탭 맨 위의 받은 공격', () => {
       incoming: null,
       balance: 800,
     });
+  });
+});
+
+describe('쌓인 공격 — 포인트 탭', () => {
+  const at = (s: number) => new Date(Date.now() + s * 1000).toISOString();
+  const stacked = () => {
+    const q = [
+      incoming({ id: 1, startsAt: at(-5), expiresAt: at(55) }),
+      incoming({ id: 2, attackerName: '이영희', startsAt: at(55), expiresAt: at(115) }),
+      incoming({ id: 3, attackerName: '박민수', startsAt: at(115), expiresAt: at(175) }),
+    ];
+    return {
+      rules: {
+        cost: 300,
+        hideCost: 300,
+        defendCost: 200,
+        blockSeconds: 60,
+        hideSeconds: 20,
+        dailyLimit: 5,
+        maxStack: 10,
+      },
+      balance: 1000,
+      incoming: q[0],
+      queue: q,
+      usedToday: 0,
+      remainingToday: 5,
+    };
+  };
+
+  it('뒤에 몇 개가 기다리는지와 전부 풀리기까지를 알린다', async () => {
+    fetchAttackState.mockResolvedValue(stacked());
+    renderWithQuery(<IncomingAttackCard />);
+    expect(await screen.findByText(/뒤에 2개 더 대기/)).toBeInTheDocument();
+    expect(screen.getByText('×3')).toBeInTheDocument();
+  });
+
+  it('방어하면 맨 앞만 풀리고, 다음 공격이 곧바로 앞으로 당겨진다', async () => {
+    fetchAttackState.mockResolvedValueOnce(stacked());
+    fetchAttackState.mockImplementation(() => new Promise(() => {})); // 다시 읽기는 느리다
+    sendDefend.mockResolvedValue({ id: 1, remaining: 2 });
+    const { queryClient } = renderWithQuery(<IncomingAttackCard />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /방어권 구매/ }));
+
+    expect(await screen.findByText(/남은 공격 2개가 이어집니다/)).toBeInTheDocument();
+    const cached = queryClient.getQueryData<{
+      incoming: { id: number; startsAt: string; expiresAt: string };
+      queue: unknown[];
+    }>(attendanceKeys.attack)!;
+    expect(cached.queue).toHaveLength(2);
+    expect(cached.incoming.id).toBe(2);
+    // 원래는 55초 뒤에 시작할 공격이 지금 시작한다 — 길이(60초)는 그대로
+    const start = new Date(cached.incoming.startsAt).getTime();
+    expect(Math.abs(start - Date.now())).toBeLessThan(2000);
+    expect(new Date(cached.incoming.expiresAt).getTime() - start).toBe(60_000);
+    // 다음 공격의 경고 띠가 바로 뜬다
+    expect(await screen.findByText(/이영희/)).toBeInTheDocument();
   });
 });

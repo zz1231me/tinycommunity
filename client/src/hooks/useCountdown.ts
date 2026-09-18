@@ -9,6 +9,22 @@ export function secondsLeft(expiresAt: string): number {
   return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000));
 }
 
+/** 남은 초를 읽기 좋게 — 쌓인 공격은 몇 분이 되기도 한다 */
+export function formatLeft(seconds: number): string {
+  if (seconds < 60) return `${seconds}초`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s === 0 ? `${m}분` : `${m}분 ${s}초`;
+}
+
+/**
+ * 줄에서 아직 끝나지 않은 공격 — 서버에서 받은 뒤 시간이 흘러 끝난 것은 뺀다.
+ * 다시 받아 오기 전에도 쌓인 수와 전체 남은 시간이 거짓말을 하지 않게.
+ */
+export function liveOnly<T extends { expiresAt: string }>(queue: T[], now = Date.now()): T[] {
+  return queue.filter(q => new Date(q.expiresAt).getTime() > now);
+}
+
 export function useCountdown(expiresAt: string, onDone?: () => void): number {
   const [left, setLeft] = useState(() => secondsLeft(expiresAt));
   // onDone 이 매 렌더 새 함수여도 타이머를 다시 깔지 않는다 — 기준은 시각이다

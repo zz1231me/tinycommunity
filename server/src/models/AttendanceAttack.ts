@@ -36,6 +36,11 @@ class AttendanceAttackModel extends Model<
    * 칸을 지우는 쪽이 더 위험해서 그대로 둔다(항상 null 로 들어간다).
    */
   declare public message: CreationOptional<string | null>;
+  /**
+   * 이 공격이 시작되는 시각. 한 사람에게 공격이 쌓이면 줄을 서서 차례로 걸린다 —
+   * 앞 공격이 끝나야 이 공격이 시작된다. 이 칸이 생기기 전의 행은 null 이고 createdAt 이 시작이다.
+   */
+  declare public startsAt: CreationOptional<Date | null>;
   /** 이 시각이 지나면 방해가 끝난다 */
   declare public expiresAt: Date;
   /** 방어권을 써서 일찍 풀었으면 그 시각 */
@@ -66,6 +71,8 @@ AttendanceAttackModel.init(
     workDate: { type: DataTypes.STRING(10), allowNull: false },
     kind: { type: DataTypes.STRING(10), allowNull: false, defaultValue: 'chaos' },
     message: { type: DataTypes.STRING(60), allowNull: true },
+    // 기존 DB 에는 기동 시 ensureAllModelColumns 가 칸을 더한다(기존 행은 null)
+    startsAt: { type: DataTypes.DATE, allowNull: true },
     expiresAt: { type: DataTypes.DATE, allowNull: false },
     defendedAt: { type: DataTypes.DATE, allowNull: true },
     seenAt: { type: DataTypes.DATE, allowNull: true },

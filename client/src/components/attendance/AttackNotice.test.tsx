@@ -14,6 +14,7 @@ const incoming = (over: Partial<IncomingAttack> = {}): IncomingAttack => ({
   attackerId: 'kim',
   attackerName: '김철수',
   kind: 'chaos',
+  startsAt: new Date().toISOString(),
   expiresAt: new Date(Date.now() + 42_000).toISOString(),
   ...over,
 });
@@ -51,5 +52,26 @@ describe('출근 화면의 공격 안내', () => {
   it('시간이 다 되면 곧 풀린다고 한다', () => {
     show({ expiresAt: new Date(Date.now() - 1000).toISOString() });
     expect(screen.getByRole('status')).toHaveTextContent('곧 풀립니다');
+  });
+});
+
+describe('쌓인 공격', () => {
+  it('쌓인 수와 대기 수, 전부 풀리기까지의 시간을 알린다', () => {
+    const now = Date.now();
+    const at = (s: number) => new Date(now + s * 1000).toISOString();
+    const queue = [
+      incoming({ id: 1, startsAt: at(-10), expiresAt: at(50) }),
+      incoming({ id: 2, attackerName: '이영희', startsAt: at(50), expiresAt: at(110) }),
+      incoming({ id: 3, kind: 'hide', startsAt: at(110), expiresAt: at(130) }),
+    ];
+    render(
+      <MemoryRouter>
+        <AttackNotice incoming={queue[0]} queue={queue} onExpire={vi.fn()} />
+      </MemoryRouter>
+    );
+    const line = screen.getByRole('status');
+    expect(line).toHaveTextContent('×3');
+    expect(line).toHaveTextContent('2개 대기');
+    expect(line).toHaveTextContent('전체 2분 10초 남음');
   });
 });

@@ -20,3 +20,11 @@ describe('로그인 입력 검증', () => {
     ).toThrow();
   });
 });
+
+describe('로그인 입력 검증 — 예전 요청과의 호환', () => {
+  it('기기 식별값이 null 이어도 로그인할 수 있다 — 없음으로 본다', () => {
+    // 예전에는 이 키를 버렸으므로 어떤 값이 와도 로그인이 됐다
+    const parsed = loginSchema.parse({ id: 'user1', password: 'pw', fingerprint: null });
+    expect(parsed.fingerprint).toBeUndefined();
+  });
+});

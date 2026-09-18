@@ -131,18 +131,29 @@ export function LotteryPanel({
     []
   );
 
+  // 다시 읽는 길이 여럿이다(첫 로딩·뽑은 뒤·다른 판의 신호). 응답은 보낸 순서대로 오지
+  // 않으므로 가장 나중에 보낸 요청의 응답만 둔다. 그러지 않으면 먼저 떠난 요청이 늦게 도착해
+  // 뽑기 전 잔액·남은 횟수로 되돌리고, 남은 횟수가 없는데 버튼이 열린다.
+  const requestSeq = useRef(0);
   const reload = useCallback(async () => {
+    const mine = ++requestSeq.current;
     const [s, h] = await Promise.all([fetchPointStatus(), fetchPointHistory(1)]);
+    if (mine !== requestSeq.current) return;
     setStatus(s);
     setEntries(h.entries);
+    // 나중에 보낸 요청이 먼저 성공하면 그것으로 로딩·실패 화면을 끝낸다 — 첫 로딩이 늦거나
+    // 실패했다고 계속 빈 화면·오류 화면에 머물지 않게
+    setFailed(false);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
     let alive = true;
     (async () => {
+      const mine = ++requestSeq.current;
       try {
         const [s, h] = await Promise.all([fetchPointStatus(), fetchPointHistory(1)]);
-        if (!alive) return;
+        if (!alive || mine !== requestSeq.current) return;
         setStatus(s);
         setEntries(h.entries);
       } catch {

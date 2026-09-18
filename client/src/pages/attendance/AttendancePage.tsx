@@ -26,6 +26,7 @@ import { toast } from '../../utils/toast';
 import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { useFeature } from '../../store/features';
 import { useNotificationArrival } from '../../hooks/useNotificationArrival';
+import { liveOnly } from '../../hooks/useCountdown';
 import {
   formatClock,
   formatDay,
@@ -133,6 +134,8 @@ export default function AttendancePage() {
   const incoming = attack.data?.incoming ?? null;
   // 서버가 준 만료 시각으로 직접 판단한다 — 이미 지난 공격을 아직 받아 오지 않았을 수 있다
   const underAttack = Boolean(incoming && new Date(incoming.expiresAt).getTime() > Date.now());
+  // 쌓인 공격 — 수만큼 퇴근 버튼이 사나워진다
+  const attackQueue = liveOnly(attack.data?.queue ?? []);
 
   const record = status.data?.record ?? null;
   const openPrevious = status.data?.openPrevious ?? null;
@@ -173,7 +176,12 @@ export default function AttendancePage() {
           {/* 출근은 업무 화면이라 방어권 구매(포인트)는 포인트 탭에 있다. 여기에는 버튼이
               왜 이상한지와 언제 풀리는지, 방어하러 갈 길만 한 줄로 둔다. */}
           {attackEnabled && incoming && underAttack && (
-            <AttackNotice key={incoming.id} incoming={incoming} onExpire={refreshAttack} />
+            <AttackNotice
+              key={incoming.id}
+              incoming={incoming}
+              queue={attackQueue}
+              onExpire={refreshAttack}
+            />
           )}
 
           <TodayHero
@@ -188,6 +196,7 @@ export default function AttendancePage() {
             canCheckOut={Boolean(live && !live.checkOutAt)}
             attackKind={attackEnabled && underAttack && incoming ? incoming.kind : null}
             attackExpiresAt={attackEnabled && underAttack && incoming ? incoming.expiresAt : null}
+            attackLevel={attackEnabled && underAttack ? Math.max(1, attackQueue.length) : 0}
             checkingOut={checkOutMutation.isPending}
             onCheckIn={() => setDialogOpen(true)}
             onCheckOut={() => runCheckOut(() => checkOutMutation.mutateAsync().catch(() => {}))}

@@ -498,3 +498,98 @@ describe('잔액 신호', () => {
     await waitFor(() => expect(fetchDuels.mock.calls.length).toBe(before + 1));
   });
 });
+
+describe('오류와 회복', () => {
+  it('첫 로딩이 실패해도 나중에 읽히면 오류 화면에서 벗어난다', async () => {
+    fetchDuels.mockRejectedValueOnce(new Error('잠깐 끊김')).mockResolvedValue(board());
+    const { rerender } = render(<DuelPanel myId={ME} refreshSignal={0} />);
+    expect(await screen.findByText(/불러오지 못했습니다/)).toBeInTheDocument();
+
+    rerender(<DuelPanel myId={ME} refreshSignal={1} />);
+    expect(await screen.findByRole('button', { name: /대결 신청/ })).toBeInTheDocument();
+    expect(screen.queryByText(/불러오지 못했습니다/)).not.toBeInTheDocument();
+  });
+
+  it('못 읽은 것을 사라진 대결이라고 하지 않는다', async () => {
+    // 그렇게 말하면 살아 있는 도전장을 사람이 찾지 않게 된다
+    fetchDuels.mockResolvedValueOnce(board()).mockRejectedValueOnce(new Error('끊김'));
+    render(<DuelPanel myId={ME} focusDuelId={7} focusKey="k1" />);
+
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(expect.stringMatching(/불러오지 못했습니다/))
+    );
+    expect(toastInfo).not.toHaveBeenCalledWith(expect.stringMatching(/사라진 대결/));
+  });
+});
+
+describe('포커스', () => {
+  const won = duel({
+    id: 21,
+    status: 'done',
+    result: 'opponent',
+    challengerHand: 'scissors',
+    opponentHand: 'rock',
+  });
+
+  it('받은 대결에 답하면 그 판(최근 결과 줄)으로 포커스가 간다 — 맨 위로 떨어지지 않는다', async () => {
+    fetchDuels
+      .mockResolvedValueOnce(board({ incoming: [duel({ id: 21 })] }))
+      .mockResolvedValue(board({ recent: [won] }));
+    acceptDuel.mockResolvedValue(won);
+    render(<DuelPanel myId={ME} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /바위 내고 .*대결 받기/ }));
+    await waitFor(() => expect(document.activeElement).toBe(document.getElementById('duel-21')));
+  });
+
+  it('한마디 남기기를 누르면 그 칸으로 커서가 간다 — 대조', async () => {
+    fetchDuels.mockResolvedValue(board({ recent: [won] }));
+    render(<DuelPanel myId={ME} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /한마디 남기기/ }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByLabelText('이긴 판에 남길 한마디'))
+    );
+  });
+
+  it('강조 중에 같은 알림을 다시 누르면 다시 찾아간다', async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    fetchDuels.mockResolvedValue(board({ incoming: [duel({ id: 7 })] }));
+    const { rerender } = render(<DuelPanel myId={ME} focusDuelId={7} focusKey="k1" />);
+    await waitFor(() => expect(scroll).toHaveBeenCalledTimes(1));
+
+    rerender(<DuelPanel myId={ME} focusDuelId={7} focusKey="k2" />);
+    await waitFor(() => expect(scroll).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe('한마디 칸이 늦게 떠도', () => {
+  it('다른 칸에 쓰던 커서를 빼앗지 않는다', async () => {
+    // 이긴 직후 목록 갱신이 한 박자 늦으면, 한마디 칸은 나중에(주기·알림·다른 판의 신호로)
+    // 뜬다. 그때 사람은 이미 다른 칸에 쓰고 있을 수 있다.
+    const won = duel({
+      id: 21,
+      status: 'done',
+      result: 'opponent',
+      challengerHand: 'scissors',
+      opponentHand: 'rock',
+    });
+    fetchDuels
+      .mockResolvedValueOnce(board({ incoming: [duel({ id: 21 })] }))
+      .mockResolvedValueOnce(board()) // 이긴 직후 — 아직 최근 결과에 없다
+      .mockResolvedValue(board({ recent: [won] }));
+    acceptDuel.mockResolvedValue(won);
+    const { rerender } = render(<DuelPanel myId={ME} refreshSignal={0} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /바위 내고 .*대결 받기/ }));
+    await waitFor(() => expect(acceptDuel).toHaveBeenCalled());
+    const stake = screen.getByLabelText('걸 포인트');
+    stake.focus();
+
+    rerender(<DuelPanel myId={ME} refreshSignal={1} />);
+    await screen.findByLabelText('이긴 판에 남길 한마디');
+    await new Promise(r => setTimeout(r, 30));
+    expect(document.activeElement).toBe(stake);
+  });
+});

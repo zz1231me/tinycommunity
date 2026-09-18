@@ -226,3 +226,31 @@ describe('가짜 버튼은 진짜 버튼을 가리지 않는다', () => {
     vi.restoreAllMocks();
   });
 });
+
+describe('쌓인 숨기기', () => {
+  const hideAt = (level: number) =>
+    render(
+      <TodayHero
+        workDate="2026-09-18"
+        record={null}
+        standardWorkMinutes={480}
+        canCheckIn
+        canCheckOut
+        checkingOut={false}
+        attackKind="hide"
+        attackLevel={level}
+        onCheckIn={vi.fn()}
+        onCheckOut={vi.fn()}
+      />
+    );
+
+  it('쌓인 만큼 가짜가 늘어난다', () => {
+    hideAt(3);
+    expect(screen.getAllByTestId('decoy')).toHaveLength(5);
+  });
+
+  it('열 개가 쌓여도 여덟 개까지다 — 카드를 가짜로 덮지 않는다', () => {
+    hideAt(10);
+    expect(screen.getAllByTestId('decoy')).toHaveLength(8);
+  });
+});
