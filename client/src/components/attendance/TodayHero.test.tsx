@@ -9,10 +9,14 @@
 // 그래서 '보이는가' 가 아니라 '누를 수 있는가' 로 건다. 역할(role)로 찾으면
 // aria-hidden 은 걸러지므로, 안 보이게만 해 둔 버튼은 여기서 걸린다.
 
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { TodayHero } from './TodayHero';
 import type { AttackKind } from '../../api/attendance';
+
+// 크기·난수를 가짜로 바꾸는 테스트가 있다. 그 테스트가 중간에 실패해도 가짜가 뒤 테스트로
+// 새지 않게 매번 되돌린다(새면 실패 하나가 엉뚱한 테스트들의 실패로 번진다).
+afterEach(() => vi.restoreAllMocks());
 
 const show = (attackKind: AttackKind | null) =>
   render(
@@ -119,7 +123,7 @@ describe('숨기기 — 숨바꼭질', () => {
 
   it('가짜 퇴근 버튼이 여럿 뜬다', () => {
     hide();
-    expect(screen.getAllByTestId('decoy')).toHaveLength(3);
+    expect(screen.getAllByTestId('decoy')).toHaveLength(8);
   });
 
   it('가짜를 누르면 속았다고 하고 그 가짜는 사라진다', () => {
@@ -139,7 +143,7 @@ describe('숨기기 — 숨바꼭질', () => {
     );
     fireEvent.click(screen.getAllByTestId('decoy')[0]);
     expect(screen.getByText('속았지롱 🙈')).toBeInTheDocument();
-    expect(screen.getAllByTestId('decoy')).toHaveLength(2);
+    expect(screen.getAllByTestId('decoy')).toHaveLength(7);
     // 가짜는 기록을 건드리지 않는다
     expect(onCheckOut).not.toHaveBeenCalled();
   });
@@ -245,12 +249,157 @@ describe('쌓인 숨기기', () => {
     );
 
   it('쌓인 만큼 가짜가 늘어난다', () => {
-    hideAt(3);
-    expect(screen.getAllByTestId('decoy')).toHaveLength(5);
+    hideAt(2);
+    expect(screen.getAllByTestId('decoy')).toHaveLength(9);
   });
 
-  it('열 개가 쌓여도 여덟 개까지다 — 카드를 가짜로 덮지 않는다', () => {
+  it('열 개가 쌓여도 열 개까지다 — 카드를 가짜로 덮지 않는다', () => {
     hideAt(10);
-    expect(screen.getAllByTestId('decoy')).toHaveLength(8);
+    expect(screen.getAllByTestId('decoy')).toHaveLength(10);
+  });
+});
+
+describe('가짜는 생겼다 사라진다', () => {
+  const hideAt = (level = 1) =>
+    render(
+      <TodayHero
+        workDate="2026-09-18"
+        record={null}
+        standardWorkMinutes={480}
+        canCheckIn
+        canCheckOut
+        checkingOut={false}
+        attackKind="hide"
+        attackLevel={level}
+        onCheckIn={vi.fn()}
+        onCheckOut={vi.fn()}
+      />
+    );
+  const setReducedMotion = (reduce: boolean) =>
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: (query: string) => ({
+        matches: query.includes('prefers-reduced-motion') ? reduce : false,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+        onchange: null,
+      }),
+    });
+
+  it('하나가 흩어지고 다른 자리에 새로 뜬다 — 가만히 있지 않는다', () => {
+    vi.useFakeTimers();
+    try {
+      setReducedMotion(false);
+      hideAt(1);
+      const first = screen.getAllByTestId('decoy');
+      act(() => {
+        vi.advanceTimersByTime(950);
+      });
+      // 처음 것 중 하나가 흩어지는 중이다
+      expect(first.some(el => el.className.includes('animate-poof'))).toBe(true);
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+      // 흩어진 것은 지워지고, 새로 뜬 것이 있다 — 수는 그대로 여덟
+      const now = screen.getAllByTestId('decoy');
+      expect(first.some(el => !el.isConnected)).toBe(true);
+      expect(now.some(el => !first.includes(el))).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('쌓일수록 더 빨리 바뀐다', () => {
+    vi.useFakeTimers();
+    try {
+      setReducedMotion(false);
+      hideAt(10); // 0.35초마다
+      const first = screen.getAllByTestId('decoy');
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+      expect(first.some(el => el.className.includes('animate-poof'))).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('움직임을 줄여 달라고 한 사람에게는 자리를 지킨다', () => {
+    vi.useFakeTimers();
+    try {
+      setReducedMotion(true);
+      hideAt(1);
+      const first = screen.getAllByTestId('decoy');
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      expect(first.every(el => el.isConnected && !el.className.includes('animate-poof'))).toBe(
+        true
+      );
+    } finally {
+      setReducedMotion(false);
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('좁은 카드에서도 멈추지 않는다', () => {
+  // 목표 수만큼 놓을 자리가 없으면 목표보다 적게 찬다. 예전에는 '다 찼을 때만' 하나를
+  // 흩어서, 그때부터 흩지도 새로 띄우지도 못하고 그대로 멈춰 있었다.
+  const box = (l: number, t: number, r: number, b: number) =>
+    ({
+      left: l,
+      top: t,
+      right: r,
+      bottom: b,
+      x: l,
+      y: t,
+      width: r - l,
+      height: b - t,
+      toJSON: () => ({}),
+    }) as DOMRect;
+
+  it('자리가 모자라도 계속 흩어지고 새로 뜬다', () => {
+    vi.useFakeTimers();
+    try {
+      Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        configurable: true,
+        value: () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }),
+      });
+      // 가짜 두세 개가 겨우 들어가는 카드. 다른 요소는 크기 0 이라 피할 것이 없다.
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+        this: HTMLElement
+      ) {
+        return this.hasAttribute('data-chaos-bounds') ? box(0, 0, 260, 110) : box(0, 0, 0, 0);
+      });
+      render(
+        <TodayHero
+          workDate="2026-09-18"
+          record={null}
+          standardWorkMinutes={480}
+          canCheckIn
+          canCheckOut
+          checkingOut={false}
+          attackKind="hide"
+          onCheckIn={vi.fn()}
+          onCheckOut={vi.fn()}
+        />
+      );
+      const first = screen.getAllByTestId('decoy');
+      expect(first.length).toBeLessThan(8); // 목표(8)만큼은 못 놓는다
+
+      act(() => {
+        vi.advanceTimersByTime(950 * 3);
+      });
+      expect(first.some(el => !el.isConnected || el.className.includes('animate-poof'))).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -9,6 +9,7 @@ import { LogIn, LogOut } from 'lucide-react';
 import type { AttendanceRecord } from '../../types/attendance.types';
 import type { AttackKind } from '../../api/attendance';
 import { ChaosButton } from './ChaosButton';
+import { prefersReducedMotion } from '../../utils/animations';
 import { formatClock, formatDay, formatMinutes, minutesBetween } from '../../utils/attendance';
 
 interface Props {
@@ -102,7 +103,7 @@ function HiddenSlot({ expiresAt }: { expiresAt: string | null }) {
 }
 
 /**
- * 숨기기 동안 카드 여기저기에 뜨는 가짜 퇴근 버튼.
+ * 숨기기 동안 카드 여기저기에서 생겼다 사라지는 가짜 퇴근 버튼.
  *
  * 누르면 "속았지롱 🙈" 하고 터져 사라진다. 기록은 아무것도 남지 않는다 — onClick 은
  * 화면 안의 장난일 뿐 서버를 부르지 않는다.
@@ -110,26 +111,33 @@ function HiddenSlot({ expiresAt }: { expiresAt: string | null }) {
  * 화면 낭독기·키보드 사용자는 속이지 않는다: aria-hidden 이고 Tab 으로 잡히지 않는
  * span 이다. 그 사람들에게는 경고 띠가 '버튼이 보이지 않습니다' 라고 말한다.
  */
-type Spot = { left: string; top: string };
+type Rect = { l: number; t: number; r: number; b: number };
+type Decoy = { key: number; left: string; top: string; leaving: boolean };
 
 /** 가짜 버튼 하나의 대략적인 크기(px) — 겹침을 피할 때만 쓴다 */
 const DECOY_W = 84;
 const DECOY_H = 38;
+const MARGIN = 8;
+
+/** 가짜의 수 — 하나일 때 여덟, 쌓이면 열까지 */
+function decoyCount(level: number): number {
+  return Math.min(10, 8 + Math.max(0, level - 1));
+}
+
+/** 하나가 사라지고 다른 자리에 새로 뜨는 간격 — 쌓일수록 빨라진다(0.9초 → 최소 0.35초) */
+function blinkMs(level: number): number {
+  return Math.max(350, 900 - 60 * (level - 1));
+}
 
 /**
- * 카드 안에서 진짜 조작 요소를 피한 자리 셋.
+ * 카드 안에서 가려서는 안 되는 것들 — 진짜 버튼·링크, 진행 막대, 숨은 자리(🙈 와 남은 초).
  *
  * 가짜가 진짜 버튼 위에 얹히면 그 버튼을 누를 수 없다. 퇴근이 숨은 동안에도 출근
  * (어제 기록이 안 닫힌 채 오늘 출근 전인 사람)은 살아 있어야 한다 — 장난이 다른 기능을
- * 막으면 선을 넘는다. 그래서 카드 안의 버튼·링크를 재서 그 자리를 비켜 고른다.
- *
- * 잴 수 없으면(크기 0 — 테스트 환경 등) null.
+ * 막으면 선을 넘는다.
  */
-function measuredSpots(card: HTMLElement, count: number): Spot[] | null {
-  const box = card.getBoundingClientRect();
-  if (box.width < DECOY_W * 2 || box.height < DECOY_H * 2) return null;
-  // 숨은 자리(🙈 와 남은 초)도 피한다 — 가리면 언제 돌아오는지 안 보인다
-  const blocked = [
+function blockedIn(card: HTMLElement, box: DOMRect): Rect[] {
+  return [
     ...card.querySelectorAll<HTMLElement>(
       'button, a, input, [role="progressbar"], [data-testid="checkout-slot"]'
     ),
@@ -141,62 +149,126 @@ function measuredSpots(card: HTMLElement, count: number): Spot[] | null {
       r: r.right - box.left,
       b: r.bottom - box.top,
     }));
+}
 
-  const MARGIN = 8;
-  const hits = (x: number, y: number, rects: typeof blocked) =>
-    rects.some(
-      r =>
-        x < r.r + MARGIN &&
-        x + DECOY_W > r.l - MARGIN &&
-        y < r.b + MARGIN &&
-        y + DECOY_H > r.t - MARGIN
-    );
+function hits(x: number, y: number, rects: Rect[]): boolean {
+  return rects.some(
+    r =>
+      x < r.r + MARGIN &&
+      x + DECOY_W > r.l - MARGIN &&
+      y < r.b + MARGIN &&
+      y + DECOY_H > r.t - MARGIN
+  );
+}
 
-  const spots: Spot[] = [];
-  const taken: typeof blocked = [];
-  for (let i = 0; i < count; i++) {
-    // 카드를 여러 칸으로 나눠 한 칸에 하나씩 — 한쪽에 몰리면 가짜인 게 바로 보인다
-    const lane = (box.width - DECOY_W) / count;
-    for (let attempt = 0; attempt < 30; attempt++) {
-      const x = Math.round(lane * i + Math.random() * lane);
-      const y = Math.round(8 + Math.random() * (box.height - DECOY_H - 16));
-      if (hits(x, y, blocked) || hits(x, y, taken)) continue;
-      spots.push({ left: `${x}px`, top: `${y}px` });
-      taken.push({ l: x, t: y, r: x + DECOY_W, b: y + DECOY_H });
-      break;
-    }
+/** 이미 떠 있는 가짜(px 자리)들 — 서로 겹치지 않게 */
+function takenBy(decoys: Decoy[]): Rect[] {
+  return decoys
+    .filter(d => !d.leaving && d.left.endsWith('px'))
+    .map(d => {
+      const x = parseFloat(d.left);
+      const y = parseFloat(d.top);
+      return { l: x, t: y, r: x + DECOY_W, b: y + DECOY_H };
+    });
+}
+
+/**
+ * 새 가짜 하나의 자리. 카드를 재서 가리면 안 되는 것과 다른 가짜를 피한다.
+ *
+ * 'none' 이면 빈자리가 없다(좁은 화면에 많이 떠 있을 때) — 이번에는 띄우지 않는다.
+ * null 이면 잴 수 없다(크기 0 — 테스트 환경 등) — 비율로 흩어 둔다.
+ */
+function pickSpot(
+  card: HTMLElement | null,
+  current: Decoy[]
+): { left: string; top: string } | 'none' | null {
+  if (!card) return null;
+  const box = card.getBoundingClientRect();
+  if (box.width < DECOY_W * 2 || box.height < DECOY_H * 2) return null;
+  const avoid = [...blockedIn(card, box), ...takenBy(current)];
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const x = Math.round(Math.random() * (box.width - DECOY_W));
+    const y = Math.round(8 + Math.random() * (box.height - DECOY_H - 16));
+    if (!hits(x, y, avoid)) return { left: `${x}px`, top: `${y}px` };
   }
-  return spots;
+  return 'none';
 }
 
-/** 잴 수 없을 때의 자리 — 비율로 흩어 둔다 */
-function roughSpots(count: number): Spot[] {
-  const lane = 90 / count;
-  return Array.from({ length: count }, (_, i) => ({
-    left: `${4 + i * lane + Math.random() * (lane * 0.5)}%`,
-    top: `${10 + Math.random() * 55}%`,
-  }));
+function roughSpot(): { left: string; top: string } {
+  return { left: `${4 + Math.random() * 80}%`, top: `${8 + Math.random() * 60}%` };
 }
 
-/** 쌓인 수만큼 가짜가 늘어난다 — 하나일 때 셋, 최대 여덟 */
-function decoyCount(level: number): number {
-  return Math.min(8, 3 + Math.max(0, level - 1));
-}
-
-function Decoys({ count = 3 }: { count?: number }) {
-  // 숨기기 한 번에 자리를 한 번 정한다(부모가 공격마다 key 로 새로 그린다).
-  // 자리를 재려면 그려진 뒤여야 하므로 첫 그림은 비워 두고, 그리기 직전(layout effect)에 정한다 —
-  // 화면에는 자리 잡은 뒤의 모습만 나온다.
+function Decoys({ count = 8, level = 1 }: { count?: number; level?: number }) {
   const anchorRef = useRef<HTMLSpanElement>(null);
-  const [spots, setSpots] = useState<Spot[]>([]);
+  const [decoys, setDecoys] = useState<Decoy[]>([]);
+  // 주기마다 무엇을 없애고 띄울지는 상태 갱신 함수 밖에서 정한다. 갱신 함수 안에서 타이머를
+  // 걸거나 다른 상태를 바꾸면, 개발 모드(StrictMode)가 그 함수를 두 번 불러 둘씩 사라진다.
+  const current = useRef<Decoy[]>([]);
+  useEffect(() => {
+    current.current = decoys;
+  }, [decoys]);
+  const nextKey = useRef(0);
+  const timers = useRef<number[]>([]);
+
+  const spawn = (current: Decoy[]): Decoy | null => {
+    const card = anchorRef.current?.closest<HTMLElement>('[data-chaos-bounds]') ?? null;
+    const spot = pickSpot(card, current);
+    if (spot === 'none') return null;
+    return { key: ++nextKey.current, ...(spot ?? roughSpot()), leaving: false };
+  };
+
+  /** 떠나는 가짜는 연기로 흩어진 뒤 지운다 */
+  const leave = (key: number) => {
+    setDecoys(prev => prev.map(d => (d.key === key ? { ...d, leaving: true } : d)));
+    timers.current.push(
+      window.setTimeout(() => setDecoys(prev => prev.filter(d => d.key !== key)), 450)
+    );
+  };
+
+  // 처음 한 번 채운다. 자리를 재려면 그려진 뒤여야 하므로 첫 그림은 비워 두고,
+  // 그리기 직전(layout effect)에 정한다 — 화면에는 자리 잡은 뒤의 모습만 나온다.
   useLayoutEffect(() => {
-    const card = anchorRef.current?.closest<HTMLElement>('[data-chaos-bounds]');
-    setSpots((card && measuredSpots(card, count)) ?? roughSpots(count));
-    // 숨기기 한 번에 한 번 정한다(부모가 공격마다 key 로 새로 그린다)
+    const list: Decoy[] = [];
+    for (let i = 0; i < count; i++) {
+      const d = spawn(list);
+      if (d) list.push(d);
+    }
+    setDecoys(list);
+    // 숨기기 한 번에 한 번 채운다(부모가 공격마다 key 로 새로 그린다)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [popped, setPopped] = useState<number[]>([]);
-  const [fooled, setFooled] = useState<{ at: number; key: number } | null>(null);
+
+  // 가만히 있으면 금방 어느 것이 가짜인지 안다. 하나씩 사라지고 다른 자리에 새로 뜬다.
+  // 움직임을 줄여 달라고 한 사람에게는 자리를 지킨다.
+  useEffect(() => {
+    if (prefersReducedMotion()) return;
+    const id = window.setInterval(() => {
+      const alive = current.current.filter(d => !d.leaving);
+      // 모자라면 먼저 새로 띄워 본다
+      if (alive.length < count) {
+        const born = spawn(alive);
+        if (born) {
+          setDecoys(prev => [...prev, born]);
+          return;
+        }
+      }
+      // 다 찼거나 빈자리가 없으면 하나를 흩어 그 자리를 비우고 새로 띄운다.
+      // (예전에는 '다 찼을 때만' 흩었다. 좁은 카드에서 자리가 모자라 목표보다 적게 차면
+      //  흩지도 띄우지도 못하고 그대로 멈춰 있었다 — 375px 에서 실제로 멈춰 있었다.)
+      if (alive.length === 0) return;
+      const out = alive[Math.floor(Math.random() * alive.length)];
+      leave(out.key);
+      const born = spawn(alive.filter(d => d.key !== out.key));
+      if (born) setDecoys(prev => [...prev, born]);
+    }, blinkMs(level));
+    const pending = timers.current;
+    return () => {
+      window.clearInterval(id);
+      pending.forEach(t => window.clearTimeout(t));
+    };
+  }, [count, level]);
+
+  const [fooled, setFooled] = useState<{ left: string; top: string; key: number } | null>(null);
   useEffect(() => {
     if (!fooled) return;
     const id = window.setTimeout(() => setFooled(null), 1500);
@@ -206,30 +278,31 @@ function Decoys({ count = 3 }: { count?: number }) {
   return (
     <>
       <span ref={anchorRef} hidden />
-      {spots.map((spot, i) =>
-        popped.includes(i) ? null : (
-          <span
-            key={i}
-            aria-hidden
-            data-testid="decoy"
-            onClick={() => {
-              setPopped(prev => [...prev, i]);
-              setFooled({ at: i, key: Date.now() });
-            }}
-            className="btn-secondary animate-popIn absolute z-10 cursor-pointer select-none"
-            style={{ left: spot.left, top: spot.top, animationDelay: `${i * 120}ms` }}
-          >
-            <LogOut className="h-4 w-4" />
-            퇴근
-          </span>
-        )
-      )}
+      {decoys.map(d => (
+        <span
+          key={d.key}
+          aria-hidden
+          data-testid="decoy"
+          onClick={() => {
+            if (d.leaving) return;
+            setDecoys(prev => prev.filter(x => x.key !== d.key));
+            setFooled({ left: d.left, top: d.top, key: d.key });
+          }}
+          className={`btn-secondary absolute z-10 select-none ${
+            d.leaving ? 'animate-poof pointer-events-none' : 'animate-popIn cursor-pointer'
+          }`}
+          style={{ left: d.left, top: d.top }}
+        >
+          <LogOut className="h-4 w-4" />
+          퇴근
+        </span>
+      ))}
       {fooled && (
         <span
           key={fooled.key}
           aria-hidden
           className="animate-popIn pointer-events-none absolute z-20 whitespace-nowrap rounded-full bg-slate-900 px-3 py-1 text-sm font-medium text-white shadow-lg dark:bg-white dark:text-slate-900"
-          style={{ left: spots[fooled.at].left, top: spots[fooled.at].top }}
+          style={{ left: fooled.left, top: fooled.top }}
         >
           속았지롱 🙈
         </span>
@@ -309,7 +382,11 @@ export function TodayHero({
     // relative: 숨기기 동안 카드 여기저기에 가짜 퇴근 버튼을 띄운다(Decoys).
     <section data-chaos-bounds className="card relative overflow-hidden">
       {attackKind === 'hide' && (
-        <Decoys key={attackExpiresAt ?? 'hide'} count={decoyCount(attackLevel)} />
+        <Decoys
+          key={attackExpiresAt ?? 'hide'}
+          count={decoyCount(attackLevel)}
+          level={attackLevel}
+        />
       )}
       <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">

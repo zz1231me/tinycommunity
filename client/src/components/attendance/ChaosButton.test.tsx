@@ -13,7 +13,7 @@
 // 연출은 무작위로 돌아가므로 Math.random 을 고정해 원하는 연출을 집어서 본다.
 
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ChaosButton } from './ChaosButton';
 
 function setReducedMotion(reduce: boolean) {
@@ -49,11 +49,12 @@ const Target = ({ onClick }: { onClick?: () => void }) => (
   </button>
 );
 
-/** 바깥 껍데기 / 움직이는 껍데기 / 암막 */
+/** 바깥 껍데기(원래 자리) / 움직이는 껍데기 / 암막(움직이는 껍데기 안 — 버튼을 따라간다) */
 function parts(container: HTMLElement) {
   const outer = container.firstElementChild as HTMLElement | null;
   const mover = outer?.firstElementChild as HTMLElement | null;
-  const overlay = outer?.children?.[1] as HTMLElement | undefined;
+  const overlay = (mover?.querySelector(':scope > [aria-hidden]') ?? undefined) as
+    HTMLElement | undefined;
   return { outer, mover, overlay };
 }
 
@@ -347,5 +348,61 @@ describe('쌓인 만큼 사나워진다', () => {
     const ten = renderAt(10);
     hoverWith(ten.mover, 0.05); // 0.05 < 10% — 봐준다
     expect(ten.moved()).toBe(false);
+  });
+});
+
+describe('달아난 자리에 머문다', () => {
+  // 연출은 1.2초마다 바뀐다. 예전에는 '도망' 이 아닌 연출로 바뀔 때마다 제자리로 되돌려,
+  // 멀리 달아났던 버튼이 곧 원래 자리로 순간이동해 돌아와 있었다 — 그 자리만 노리면 됐다.
+  it('다른 연출로 바뀌어도 제자리로 돌아가지 않는다', () => {
+    vi.useFakeTimers();
+    try {
+      forceEffect(PICK.dodge);
+      const { container } = render(
+        <ChaosButton active>
+          <Target />
+        </ChaosButton>
+      );
+      const fled = parts(container).mover!.style.transform;
+      expect(fled).not.toBe('translate(0px, 0px)');
+
+      // 다음 연출은 평온 — 자리는 그대로여야 한다
+      vi.spyOn(Math, 'random').mockReturnValue(PICK.calm);
+      act(() => {
+        vi.advanceTimersByTime(1300);
+      });
+      expect(parts(container).mover!.style.transform).toBe(fled);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('공격이 끝나면 제자리로 돌아간다 — 대조', () => {
+    forceEffect(PICK.dodge);
+    const { container, rerender } = render(
+      <ChaosButton active>
+        <Target />
+      </ChaosButton>
+    );
+    expect(parts(container).mover!.style.transform).not.toBe('translate(0px, 0px)');
+    rerender(
+      <ChaosButton active={false}>
+        <Target />
+      </ChaosButton>
+    );
+    // 연출이 풀리면 버튼만 남는다(감싸는 껍데기가 없다)
+    expect(container.firstElementChild?.tagName).toBe('BUTTON');
+  });
+
+  it('암막은 버튼을 따라간다 — 달아난 버튼을 가린다', () => {
+    // 암막이 원래 자리에 붙어 있으면, 버튼이 달아나 있을 때 빈자리만 까맣게 가렸다
+    forceEffect(PICK.blackout);
+    const { container } = render(
+      <ChaosButton active>
+        <Target />
+      </ChaosButton>
+    );
+    const { mover, overlay } = parts(container);
+    expect(overlay?.parentElement).toBe(mover);
   });
 });

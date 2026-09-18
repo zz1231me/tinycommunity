@@ -119,9 +119,10 @@ export function ChaosButton({
     const pick = () => {
       const next = EFFECTS[Math.floor(Math.random() * EFFECTS.length)];
       setEffect(next);
-      setOffset(
-        next === 'dodge' ? (pointInBounds(homeRef.current) ?? randomOffset()) : { x: 0, y: 0 }
-      );
+      // 자리는 '도망' 때만 바꾼다. 다른 연출(평온·떨기·사라지기·암전)로 바뀔 때마다 제자리로
+      // 되돌렸더니, 멀리 달아났던 버튼이 1.2초마다 원래 자리로 순간이동해 돌아와 있었다 —
+      // 그 자리만 노리면 되니 누르기가 오히려 쉬웠다. 제자리는 공격이 끝날 때 돌아간다.
+      if (next === 'dodge') setOffset(pointInBounds(homeRef.current) ?? randomOffset());
     };
     pick();
     const id = window.setInterval(pick, switchMs(level));
@@ -161,15 +162,17 @@ export function ChaosButton({
         }}
       >
         {children}
+        {effect === 'blackout' && (
+          // 눈만 가린다. 클릭은 그대로 통과한다.
+          //
+          // 버튼과 함께 움직이는 껍데기 안에 둔다. 바깥(원래 자리)에 두었을 때는 버튼이 달아나
+          // 있으면 빈자리만 까맣게 가리고 버튼은 멀쩡히 보여, 이 연출이 아무 일도 하지 않았다.
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -inset-3 rounded-xl bg-slate-900/95"
+          />
+        )}
       </span>
-
-      {effect === 'blackout' && (
-        // 눈만 가린다. 클릭은 그대로 통과한다.
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -inset-3 rounded-xl bg-slate-900/95"
-        />
-      )}
     </span>
   );
 }
