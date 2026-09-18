@@ -121,9 +121,7 @@ export const EncryptedPostView: React.FC<EncryptedPostViewProps> = ({
                 transition={{ delay: 0.18 }}
                 className="text-center mb-6"
               >
-                <p className="card-title">
-                  암호화된 내용
-                </p>
+                <p className="card-title">암호화된 내용</p>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                   비밀번호를 입력하면 브라우저에서 직접 복호화됩니다
                 </p>

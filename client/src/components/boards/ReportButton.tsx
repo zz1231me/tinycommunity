@@ -105,9 +105,7 @@ export function ReportButton({ targetType, targetId, className = '' }: ReportBut
                     />
                   </svg>
                 </div>
-                <h2 className="card-title">
-                  {targetType === 'post' ? '게시글' : '댓글'} 신고
-                </h2>
+                <h2 className="card-title">{targetType === 'post' ? '게시글' : '댓글'} 신고</h2>
               </div>
               <button
                 ref={closeBtnRef}
@@ -214,10 +212,7 @@ export function ReportButton({ targetType, targetId, className = '' }: ReportBut
                   )}
 
                   <div className="flex gap-2 justify-end">
-                    <button
-                      onClick={handleClose}
-                      className="btn-secondary"
-                    >
+                    <button onClick={handleClose} className="btn-secondary">
                       취소
                     </button>
                     <button

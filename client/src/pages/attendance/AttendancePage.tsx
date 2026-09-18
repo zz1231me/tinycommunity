@@ -21,9 +21,7 @@ import {
   fetchMyAttendanceHistory,
   sendDefend,
 } from '../../api/attendance';
-import {
-  AttackBanner,
-} from '../../components/attendance/AttendanceAttack';
+import { AttackBanner } from '../../components/attendance/AttendanceAttack';
 import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
 import { useSubmitLock } from '../../hooks/useSubmitLock';

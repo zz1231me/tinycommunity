@@ -569,12 +569,7 @@ export const WikiEditor: React.FC<WikiEditorProps> = ({
             )}
             {isSaving ? '저장 중...' : page ? '저장' : '페이지 생성'}
           </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isSaving}
-            className="btn-secondary"
-          >
+          <button type="button" onClick={onCancel} disabled={isSaving} className="btn-secondary">
             취소
           </button>
         </div>

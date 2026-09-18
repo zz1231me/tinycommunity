@@ -127,11 +127,7 @@ export default function LoginTwoFactor() {
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="btn-secondary w-full"
-            >
+            <button type="button" onClick={handleCancel} className="btn-secondary w-full">
               취소
             </button>
           </form>

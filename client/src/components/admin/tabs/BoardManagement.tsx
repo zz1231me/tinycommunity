@@ -216,10 +216,7 @@ function SortableBoardRow({
             <button onClick={() => onSaveEdit(board.id)} className="btn-primary btn-sm">
               저장
             </button>
-            <button
-              onClick={onCancelEdit}
-              className="btn-secondary btn-sm"
-            >
+            <button onClick={onCancelEdit} className="btn-secondary btn-sm">
               취소
             </button>
           </div>

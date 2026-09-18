@@ -110,11 +110,7 @@ export const MemoEditor: React.FC<MemoEditorProps> = ({
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-secondary"
-            >
+            <button type="button" onClick={onClose} className="btn-secondary">
               취소
             </button>
             <button type="submit" disabled={isSaving} className="btn-primary">

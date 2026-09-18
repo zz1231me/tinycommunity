@@ -282,10 +282,7 @@ export const FileManagement = React.memo(() => {
             ref={confirmPanelRef}
             className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm p-6"
           >
-            <h3
-              id="delete-file-title"
-              className="card-title mb-2"
-            >
+            <h3 id="delete-file-title" className="card-title mb-2">
               파일 삭제 확인
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
@@ -298,10 +295,7 @@ export const FileManagement = React.memo(() => {
               ⚠️ 게시글에서 참조 중인 파일일 수 있습니다. 삭제 후 복구할 수 없습니다.
             </p>
             <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setConfirmDelete(null)}
-                className="btn-secondary"
-              >
+              <button onClick={() => setConfirmDelete(null)} className="btn-secondary">
                 취소
               </button>
               <button

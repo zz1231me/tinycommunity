@@ -186,10 +186,7 @@ const TagManagement = () => {
                     태그
                   </h3>
                   {!isCreating && !editingTag && (
-                    <button
-                      onClick={startCreate}
-                      className="btn-primary px-3 py-1.5"
-                    >
+                    <button onClick={startCreate} className="btn-primary px-3 py-1.5">
                       + 새 태그
                     </button>
                   )}
@@ -266,18 +263,10 @@ const TagManagement = () => {
                       />
                     </div>
                     <div className="flex gap-2">
-                      <button
-                        type="submit"
-                        disabled={isSaving}
-                        className="btn-primary btn-sm"
-                      >
+                      <button type="submit" disabled={isSaving} className="btn-primary btn-sm">
                         {isSaving ? '저장 중...' : editingTag ? '수정' : '추가'}
                       </button>
-                      <button
-                        type="button"
-                        onClick={cancelForm}
-                        className="btn-secondary btn-sm"
-                      >
+                      <button type="button" onClick={cancelForm} className="btn-secondary btn-sm">
                         취소
                       </button>
                     </div>

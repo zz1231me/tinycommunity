@@ -65,10 +65,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             transition={{ duration: 0.15 }}
             onClick={e => e.stopPropagation()}
           >
-            <h3
-              id="confirmation-modal-title"
-              className="card-title mb-2"
-            >
+            <h3 id="confirmation-modal-title" className="card-title mb-2">
               {title}
             </h3>
             {message && (

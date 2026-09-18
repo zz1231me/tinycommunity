@@ -334,9 +334,7 @@ export function BoardManagePanel({
       >
         {/* 헤더 */}
         <div className="sticky top-0 bg-white dark:bg-slate-800 px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <h2 className="card-title">
-            게시판 관리
-          </h2>
+          <h2 className="card-title">게시판 관리</h2>
           <button
             ref={closeBtnRef}
             onClick={onClose}

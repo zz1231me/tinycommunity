@@ -269,10 +269,7 @@ export const ReportManagement = React.memo(() => {
             ref={reviewPanelRef}
             className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6"
           >
-            <h3
-              id="review-report-title"
-              className="card-title mb-4"
-            >
+            <h3 id="review-report-title" className="card-title mb-4">
               신고 처리
             </h3>
 
@@ -316,10 +313,7 @@ export const ReportManagement = React.memo(() => {
             </div>
 
             <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setReviewTarget(null)}
-                className="btn-secondary"
-              >
+              <button onClick={() => setReviewTarget(null)} className="btn-secondary">
                 취소
               </button>
               <button

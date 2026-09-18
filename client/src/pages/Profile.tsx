@@ -646,10 +646,7 @@ export default function Profile() {
                 <LotteryPanel refreshSignal={pointsVersion} />
                 {duelEnabled && <DuelPanel myId={user.id} />}
                 {attackEnabled && (
-                  <AttackPanel
-                    myId={user.id}
-                    onSpent={() => setPointsVersion(v => v + 1)}
-                  />
+                  <AttackPanel myId={user.id} onSpent={() => setPointsVersion(v => v + 1)} />
                 )}
                 <PointRanking />
               </div>

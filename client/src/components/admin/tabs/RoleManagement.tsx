@@ -194,10 +194,7 @@ export const RoleManagement = () => {
                           >
                             저장
                           </button>
-                          <button
-                            onClick={cancelEdit}
-                            className="btn-secondary btn-sm"
-                          >
+                          <button onClick={cancelEdit} className="btn-secondary btn-sm">
                             취소
                           </button>
                         </div>

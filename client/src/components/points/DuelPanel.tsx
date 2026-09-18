@@ -173,7 +173,8 @@ export function DuelPanel({ myId }: { myId: string }) {
       const settled = await acceptDuel(duel.id, myHand);
       const mine = outcomeOf(settled, myId);
       if (mine === '승') toast.success(`이겼습니다! ${(duel.stake * 2).toLocaleString()}P 획득`);
-      else if (mine === '패') toast.info(`졌습니다. ${duel.stake.toLocaleString()}P 를 잃었습니다.`);
+      else if (mine === '패')
+        toast.info(`졌습니다. ${duel.stake.toLocaleString()}P 를 잃었습니다.`);
       else toast.info('비겼습니다. 건 포인트를 돌려받았습니다.');
     }, '대결에 응하지 못했습니다.');
   };
@@ -216,9 +217,7 @@ export function DuelPanel({ myId }: { myId: string }) {
               >
                 <p className="text-sm text-slate-800 dark:text-slate-100">
                   <span className="font-semibold">{duel.challengerName}</span>님이{' '}
-                  <span className="font-semibold tabular-nums">
-                    {duel.stake.toLocaleString()}P
-                  </span>{' '}
+                  <span className="font-semibold tabular-nums">{duel.stake.toLocaleString()}P</span>{' '}
                   를 걸었습니다
                   <span className="ml-1.5 text-xs text-slate-500 dark:text-slate-400">
                     · {minutesLeft(duel.expiresAt)}분 남음
@@ -254,9 +253,7 @@ export function DuelPanel({ myId }: { myId: string }) {
 
       {/* ── 신청 ── */}
       <section className="mt-4">
-        <h4 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
-          대결 신청
-        </h4>
+        <h4 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">대결 신청</h4>
         <UserPicker
           selected={picked}
           onChange={setPicked}
@@ -314,9 +311,7 @@ export function DuelPanel({ myId }: { myId: string }) {
               >
                 <span className="min-w-0 truncate text-slate-700 dark:text-slate-300">
                   {duel.opponentName}님에게{' '}
-                  <span className="font-semibold tabular-nums">
-                    {duel.stake.toLocaleString()}P
-                  </span>
+                  <span className="font-semibold tabular-nums">{duel.stake.toLocaleString()}P</span>
                   {duel.challengerHand && (
                     <span className="ml-1.5 text-xs text-slate-400">
                       내 손 {HAND_FACE[duel.challengerHand]}
