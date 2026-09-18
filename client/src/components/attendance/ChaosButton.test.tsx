@@ -53,7 +53,7 @@ const Target = ({ onClick }: { onClick?: () => void }) => (
 function parts(container: HTMLElement) {
   const outer = container.firstElementChild as HTMLElement | null;
   const mover = outer?.firstElementChild as HTMLElement | null;
-  const overlay = (mover?.querySelector(':scope > [aria-hidden]') ?? undefined) as
+  const overlay = (mover?.querySelector(':scope > [data-chaos-blackout]') ?? undefined) as
     HTMLElement | undefined;
   return { outer, mover, overlay };
 }
@@ -313,7 +313,7 @@ describe('카드 안 어디로든 달아난다', () => {
 });
 
 describe('쌓인 만큼 사나워진다', () => {
-  // 마우스를 대도 안 달아나는 비율: 하나일 때 25%, 쌓일수록 줄어 최소 10%.
+  // 마우스를 대도 안 달아나는 비율: 하나일 때 15%, 쌓일수록 줄어 최소 6%.
   // 달아나는지는 Math.random() < 그 비율 이면 봐준다.
   function renderAt(level: number) {
     const { container } = render(
@@ -334,25 +334,25 @@ describe('쌓인 만큼 사나워진다', () => {
   it('하나일 때 봐주던 경우도, 열 개 쌓이면 달아난다', () => {
     forceEffect(PICK.calm); // 제자리에서 시작한다
     const one = renderAt(1);
-    hoverWith(one.mover, 0.2); // 0.2 < 25% — 봐준다
+    hoverWith(one.mover, 0.08); // 0.08 < 15% — 봐준다
     expect(one.moved()).toBe(false);
 
     forceEffect(PICK.calm);
     const ten = renderAt(10);
-    hoverWith(ten.mover, 0.2); // 0.2 ≥ 10% — 달아난다
+    hoverWith(ten.mover, 0.08); // 0.08 ≥ 6% — 달아난다
     expect(ten.moved()).toBe(true);
   });
 
   it('열 개가 쌓여도 가끔은 달아나지 않는다 — 끈질기면 잡힌다', () => {
     forceEffect(PICK.calm);
     const ten = renderAt(10);
-    hoverWith(ten.mover, 0.05); // 0.05 < 10% — 봐준다
+    hoverWith(ten.mover, 0.05); // 0.05 < 6% — 봐준다
     expect(ten.moved()).toBe(false);
   });
 });
 
 describe('달아난 자리에 머문다', () => {
-  // 연출은 1.2초마다 바뀐다. 예전에는 '도망' 이 아닌 연출로 바뀔 때마다 제자리로 되돌려,
+  // 연출은 0.7초마다 바뀐다. 예전에는 '도망' 이 아닌 연출로 바뀔 때마다 제자리로 되돌려,
   // 멀리 달아났던 버튼이 곧 원래 자리로 순간이동해 돌아와 있었다 — 그 자리만 노리면 됐다.
   it('다른 연출로 바뀌어도 제자리로 돌아가지 않는다', () => {
     vi.useFakeTimers();
@@ -369,7 +369,7 @@ describe('달아난 자리에 머문다', () => {
       // 다음 연출은 평온 — 자리는 그대로여야 한다
       vi.spyOn(Math, 'random').mockReturnValue(PICK.calm);
       act(() => {
-        vi.advanceTimersByTime(1300);
+        vi.advanceTimersByTime(750);
       });
       expect(parts(container).mover!.style.transform).toBe(fled);
     } finally {
@@ -404,5 +404,57 @@ describe('달아난 자리에 머문다', () => {
     );
     const { mover, overlay } = parts(container);
     expect(overlay?.parentElement).toBe(mover);
+  });
+});
+
+describe('버튼에 닿기 전에 달아난다', () => {
+  it('버튼 둘레에 보이지 않는 감지 영역이 있다 — 움직이는 껍데기 안, 버튼보다 아래층', () => {
+    // 감지 영역이 껍데기 안에 있어야 거기 마우스가 들어올 때 껍데기에 들어온 것으로 친다.
+    // 버튼보다 위에 있으면 버튼 클릭을 가로챈다 — '성가시게' 가 '못 누르게' 가 된다.
+    forceEffect(PICK.calm);
+    const { container } = render(
+      <ChaosButton active>
+        <Target />
+      </ChaosButton>
+    );
+    const { mover } = parts(container);
+    const halo = mover!.querySelector(':scope > [data-chaos-halo]') as HTMLElement;
+    expect(halo).toBeTruthy();
+    expect(halo).toHaveAttribute('aria-hidden', 'true');
+    expect(halo.className).toContain('-z-10');
+    expect(halo.className).toContain('-inset-5');
+  });
+});
+
+describe('연출이 바뀌는 빠르기', () => {
+  // 하나일 때 0.7초, 열 개면 0.3초. 1.2초일 때는 느긋하게 노려 누를 수 있었다.
+  function blackedOutAfter(level: number, ms: number) {
+    vi.useFakeTimers();
+    try {
+      forceEffect(PICK.calm);
+      const { container, unmount } = render(
+        <ChaosButton active level={level}>
+          <Target />
+        </ChaosButton>
+      );
+      vi.spyOn(Math, 'random').mockReturnValue(PICK.blackout);
+      act(() => {
+        vi.advanceTimersByTime(ms);
+      });
+      const shown = parts(container).overlay !== undefined;
+      unmount();
+      return shown;
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+
+  it('하나일 때 0.75초 안에 바뀐다', () => {
+    expect(blackedOutAfter(1, 750)).toBe(true);
+  });
+
+  it('열 개 쌓이면 0.35초 안에 바뀐다 — 하나일 때는 아직 그대로다 (대조)', () => {
+    expect(blackedOutAfter(10, 350)).toBe(true);
+    expect(blackedOutAfter(1, 350)).toBe(false);
   });
 });

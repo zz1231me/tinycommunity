@@ -162,9 +162,12 @@ function decoyCount(level: number): number {
   return Math.min(10, 8 + Math.max(0, level - 1));
 }
 
-/** 하나가 사라지고 다른 자리에 새로 뜨는 간격 — 쌓일수록 빨라진다(0.9초 → 최소 0.35초) */
+/**
+ * 하나가 사라지고 다른 자리에 새로 뜨는 간격 — 쌓일수록 빨라진다(0.5초 → 최소 0.22초).
+ * (0.9초였을 때는 진짜가 어디 있을지 차분히 훑어볼 여유가 있었다.)
+ */
 function blinkMs(level: number): number {
-  return Math.max(350, 900 - 60 * (level - 1));
+  return Math.max(220, 500 - 30 * (level - 1));
 }
 
 /**

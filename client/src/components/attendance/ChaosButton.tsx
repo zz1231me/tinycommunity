@@ -12,20 +12,23 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { prefersReducedMotion } from '../../utils/animations';
 
-/** 연출 한 가지가 유지되는 시간 — 공격이 하나일 때. 쌓일수록 짧아진다(switchMs). */
-const SWITCH_MS = 1200;
+/**
+ * 연출 한 가지가 유지되는 시간 — 공격이 하나일 때. 쌓일수록 짧아진다(switchMs).
+ * (1.2초였을 때는 사람이 느긋하게 노려 누를 수 있었다.)
+ */
+const SWITCH_MS = 700;
 
 /**
- * 쌓인 공격 수(level)에 따른 사나움. level 1 이 기본값이고 그대로다.
- *  - 연출이 더 자주 바뀐다: 1.2초 → 한 개 쌓일 때마다 0.08초씩, 최소 0.45초
- *  - 마우스를 대도 안 달아나는 비율이 준다: 25% → 한 개마다 2%씩, 최소 10%
+ * 쌓인 공격 수(level)에 따른 사나움.
+ *  - 연출이 더 자주 바뀐다: 0.7초 → 한 개 쌓일 때마다 0.045초씩, 최소 0.3초
+ *  - 마우스를 대도 안 달아나는 비율이 준다: 15% → 한 개마다 1%씩, 최소 6%
  *    (0 으로는 내리지 않는다 — 끈질기면 잡혀야 '못 누르게' 가 되지 않는다)
  */
 function switchMs(level: number): number {
-  return Math.max(450, SWITCH_MS - 80 * (level - 1));
+  return Math.max(300, SWITCH_MS - 45 * (level - 1));
 }
 function fleeMiss(level: number): number {
-  return Math.max(0.1, FLEE_MISS - 0.02 * (level - 1));
+  return Math.max(0.06, FLEE_MISS - 0.01 * (level - 1));
 }
 
 type Effect = 'calm' | 'dodge' | 'shake' | 'vanish' | 'blackout';
@@ -44,7 +47,7 @@ const EDGE = 12;
  * 카드 전체를 쓰게 되면서 매번 달아나면 마우스로는 영영 누를 수 없다. 그러면
  * '성가시게' 가 '못 누르게' 가 된다 — 끈질기게 노리면 잡혀야 한다.
  */
-const FLEE_MISS = 0.25;
+const FLEE_MISS = 0.15;
 
 type Offset = { x: number; y: number };
 
@@ -120,7 +123,7 @@ export function ChaosButton({
       const next = EFFECTS[Math.floor(Math.random() * EFFECTS.length)];
       setEffect(next);
       // 자리는 '도망' 때만 바꾼다. 다른 연출(평온·떨기·사라지기·암전)로 바뀔 때마다 제자리로
-      // 되돌렸더니, 멀리 달아났던 버튼이 1.2초마다 원래 자리로 순간이동해 돌아와 있었다 —
+      // 되돌렸더니, 멀리 달아났던 버튼이 몇 초마다 원래 자리로 순간이동해 돌아와 있었다 —
       // 그 자리만 노리면 되니 누르기가 오히려 쉬웠다. 제자리는 공격이 끝날 때 돌아간다.
       if (next === 'dodge') setOffset(pointInBounds(homeRef.current) ?? randomOffset());
     };
@@ -156,11 +159,17 @@ export function ChaosButton({
           zIndex: 10,
           transform: `translate(${offset.x}px, ${offset.y}px)`,
           // 멀리 가므로 조금 길게. 같은 시간이면 순간이동처럼 보여 따라갈 맛이 없다.
-          transition: 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 160ms linear',
+          transition: 'transform 140ms cubic-bezier(0.22, 1, 0.36, 1), opacity 120ms linear',
           // 사라져도 자리는 지킨다. 레이아웃이 들썩이면 옆 버튼까지 같이 흔들린다.
           opacity: effect === 'vanish' ? 0 : 1,
         }}
       >
+        {/* 감지 영역 — 버튼 둘레 20px. 여기에 마우스가 들어오면 버튼에 닿기 전에 달아난다.
+            버튼에 정확히 닿아야 달아나던 때는 '빠르게 휙 가서 누르기' 가 통했다.
+            보이지 않고, 버튼보다 아래층(-z-10)에 깔려 버튼 자체의 클릭은 가리지 않는다.
+            (위치를 준 요소는 일반 요소보다 위에 그려지므로 z 를 내리지 않으면 버튼을 덮는다.
+             움직이는 껍데기가 자체 쌓임 맥락(zIndex 10)이라 이 음수 z 는 그 안에서만 통한다.) */}
+        <span data-chaos-halo aria-hidden className="absolute -inset-5 -z-10 rounded-2xl" />
         {children}
         {effect === 'blackout' && (
           // 눈만 가린다. 클릭은 그대로 통과한다.
@@ -168,6 +177,7 @@ export function ChaosButton({
           // 버튼과 함께 움직이는 껍데기 안에 둔다. 바깥(원래 자리)에 두었을 때는 버튼이 달아나
           // 있으면 빈자리만 까맣게 가리고 버튼은 멀쩡히 보여, 이 연출이 아무 일도 하지 않았다.
           <span
+            data-chaos-blackout
             aria-hidden
             className="pointer-events-none absolute -inset-3 rounded-xl bg-slate-900/95"
           />

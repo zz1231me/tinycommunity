@@ -298,7 +298,7 @@ describe('가짜는 생겼다 사라진다', () => {
       hideAt(1);
       const first = screen.getAllByTestId('decoy');
       act(() => {
-        vi.advanceTimersByTime(950);
+        vi.advanceTimersByTime(700); // 0.5초에 하나가 흩어지기 시작해 0.45초 동안 흩어진다
       });
       // 처음 것 중 하나가 흩어지는 중이다
       expect(first.some(el => el.className.includes('animate-poof'))).toBe(true);
@@ -318,10 +318,10 @@ describe('가짜는 생겼다 사라진다', () => {
     vi.useFakeTimers();
     try {
       setReducedMotion(false);
-      hideAt(10); // 0.35초마다
+      hideAt(10); // 0.23초마다 (하나일 때는 0.5초)
       const first = screen.getAllByTestId('decoy');
       act(() => {
-        vi.advanceTimersByTime(400);
+        vi.advanceTimersByTime(300);
       });
       expect(first.some(el => el.className.includes('animate-poof'))).toBe(true);
     } finally {
