@@ -12,6 +12,7 @@ import { Trophy } from 'lucide-react';
 import { fetchPointRanking, type PointRanking as Ranking } from '../../api/points';
 import { ListState } from '../common/ListState';
 import { LoadingSpinner } from '../common/LoadingStates';
+import { Avatar } from '../Avatar';
 
 /** 1~3 등만 색을 준다 — 전부 칠하면 순위가 눈에 안 들어온다 */
 function medal(rank: number): string {
@@ -23,12 +24,16 @@ function medal(rank: number): string {
 
 function Row({
   rank,
+  userId,
   name,
+  avatar,
   balance,
   mine,
 }: {
   rank: number;
+  userId: string;
   name: string;
+  avatar?: string | null;
   balance: number;
   mine: boolean;
 }) {
@@ -41,6 +46,8 @@ function Row({
       <span className={`w-6 shrink-0 text-center text-sm font-bold tabular-nums ${medal(rank)}`}>
         {rank}
       </span>
+      {/* 사진이 없으면 Avatar 가 이니셜·무늬로 대신 그린다 */}
+      <Avatar user={{ id: userId, name, avatar }} size="sm" className="shrink-0" />
       <span className="min-w-0 flex-1 truncate text-sm text-slate-700 dark:text-slate-300">
         {name}
         {mine && <span className="ml-1.5 text-xs text-primary-600 dark:text-primary-400">나</span>}
@@ -98,7 +105,9 @@ export function PointRanking() {
               <Row
                 key={entry.userId}
                 rank={entry.rank}
+                userId={entry.userId}
                 name={entry.name}
+                avatar={entry.avatar}
                 balance={entry.balance}
                 mine={entry.userId === data.me?.userId}
               />
@@ -110,7 +119,14 @@ export function PointRanking() {
             <>
               <p className="mt-2 text-center text-xs text-slate-400">⋯</p>
               <ul className="mt-1">
-                <Row rank={data.me.rank} name={data.me.name} balance={data.me.balance} mine />
+                <Row
+                  rank={data.me.rank}
+                  userId={data.me.userId}
+                  name={data.me.name}
+                  avatar={data.me.avatar}
+                  balance={data.me.balance}
+                  mine
+                />
               </ul>
             </>
           )}

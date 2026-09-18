@@ -521,3 +521,104 @@ describe('기록되는 시각', () => {
     expect(row?.workMinutes).toBe(gap / 60_000);
   });
 });
+
+describe('퇴근 취소', () => {
+  // 잘못 눌렀을 때를 위한 것이다. 제한이 없으면 '퇴근 → 취소 → 나중에 다시 퇴근' 으로
+  // 근무 시간을 원하는 만큼 늘릴 수 있으므로, 누른 뒤 10분 안에만 된다.
+  const U = 'attundo';
+  let cookie: string;
+  const undo = () =>
+    request(app)
+      .post('/api/attendance/check-out/undo')
+      .set(CSRF_HEADER)
+      .set('Cookie', cookie)
+      .send({});
+  const status = () => request(app).get('/api/attendance/me').set('Cookie', cookie);
+  const answers = () => ({
+    responses: [
+      { itemId: requiredItem.id, checked: true },
+      { itemId: optionalItem.id, checked: false },
+    ],
+  });
+
+  beforeAll(async () => {
+    if (!(await User.findByPk(U))) {
+      await User.create({
+        id: U,
+        password: PASSWORD,
+        name: '취소직원',
+        email: `${U}@test.com`,
+        roleId: 'user',
+        isActive: true,
+      });
+    }
+    cookie = await loginAs(U, PASSWORD);
+  });
+  beforeEach(async () => {
+    await AttendanceRecord.destroy({ where: { UserId: U } });
+  });
+
+  it('방금 누른 퇴근을 취소하면 다시 근무 중이 된다 — 출근 시각은 그대로', async () => {
+    expect((await checkIn(cookie, answers())).status).toBe(201);
+    const inAt = (await AttendanceRecord.findOne({ where: { UserId: U } }))!.checkInAt.getTime();
+    expect((await checkOut(cookie)).status).toBe(200);
+    expect((await status()).body.data.undoCheckOutUntil).not.toBeNull();
+
+    const res = await undo();
+    expect(res.status).toBe(200);
+
+    const row = await AttendanceRecord.findOne({ where: { UserId: U } });
+    expect(row?.checkOutAt).toBeNull();
+    expect(row?.workMinutes).toBeNull();
+    expect(row?.checkInAt.getTime()).toBe(inAt);
+    expect((await status()).body.data.undoCheckOutUntil).toBeNull();
+  });
+
+  it('10분이 지나면 취소할 수 없다', async () => {
+    await checkIn(cookie, answers());
+    await checkOut(cookie);
+    await AttendanceRecord.update(
+      { checkOutAt: new Date(Date.now() - 12 * 60_000) },
+      { where: { UserId: U } }
+    );
+
+    expect((await undo()).status).toBe(409);
+    expect((await AttendanceRecord.findOne({ where: { UserId: U } }))?.checkOutAt).not.toBeNull();
+    expect((await status()).body.data.undoCheckOutUntil).toBeNull();
+  });
+
+  it('두 번 취소할 수는 없다', async () => {
+    await checkIn(cookie, answers());
+    await checkOut(cookie);
+    expect((await undo()).status).toBe(200);
+    expect((await undo()).status).toBe(409);
+  });
+
+  it('퇴근한 적이 없으면 취소할 것이 없다', async () => {
+    await checkIn(cookie, answers());
+    expect((await undo()).status).toBe(409);
+  });
+
+  it('새로 열린 기록이 있으면 예전 퇴근은 되돌리지 않는다', async () => {
+    // 어제 기록을 닫고 오늘 새로 출근한 뒤 어제 퇴근을 되돌리면 열린 기록이 둘이 된다.
+    // 퇴근은 오늘 것만 닫으므로 어제 것은 영영 열린 채 남는다.
+    const d = new Date(Date.now() - 86_400_000);
+    const yesterday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    await AttendanceRecord.create({
+      UserId: U,
+      workDate: yesterday,
+      checkInAt: new Date(Date.now() - 20 * 60 * 60_000),
+      checkOutAt: new Date(Date.now() - 3 * 60_000),
+      workMinutes: 1197,
+    });
+    await AttendanceRecord.create({
+      UserId: U,
+      workDate: (await status()).body.data.workDate,
+      checkInAt: new Date(Date.now() - 60_000),
+    });
+
+    expect((await undo()).status).toBe(409);
+    const closed = await AttendanceRecord.findOne({ where: { UserId: U, workDate: yesterday } });
+    expect(closed?.checkOutAt).not.toBeNull();
+  });
+});

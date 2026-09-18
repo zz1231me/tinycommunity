@@ -25,6 +25,15 @@ const MAX_DESCRIPTION = 500;
 const USER_LIMIT = 500;
 
 /**
+ * 퇴근을 눌렀다가 되돌릴 수 있는 시간(분).
+ *
+ * 잘못 눌렀을 때를 위한 것이다. 제한이 없으면 '퇴근 → 취소 → 나중에 다시 퇴근' 으로 근무
+ * 시간을 원하는 만큼 늘릴 수 있다. 퇴근 시각은 분 단위로 잘려 저장되므로(atMinute) 그 1분을
+ * 더 쳐 준다 — 18:00:59 에 눌러도 실제로 10분은 남게.
+ */
+export const CHECKOUT_UNDO_MINUTES = 10;
+
+/**
  * 명단이 상한에서 잘렸으면 알린다.
  *
  * 잘리는 순간부터 이름순 뒤쪽 사람들이 현황판과 집계에서 통째로 빠진다. 화면에는
@@ -238,6 +247,7 @@ export class AttendanceService extends BaseService {
     openPrevious: RecordView | null;
     checklist: ChecklistItemView[];
     policy: PolicyView;
+    undoCheckOutUntil: string | null;
   }> {
     const workDate = today();
     const [record, items, policy] = await Promise.all([
@@ -250,12 +260,16 @@ export class AttendanceService extends BaseService {
     // 어제 것은 내보내지 않는다 — 어느 쪽이 닫히는지 알 수 없어진다.
     const openPrevious = record ? null : await findOpenPreviousDay(userId, workDate);
 
+    const undoable = await findUndoableCheckOut(userId);
+
     return {
       workDate,
       record: record ? toRecordView(record) : null,
       openPrevious: openPrevious ? toRecordView(openPrevious) : null,
       checklist: items.map(toItemView),
       policy: toPolicyView(policy),
+      /** 방금 누른 퇴근을 이 시각까지 되돌릴 수 있다 (없으면 null) */
+      undoCheckOutUntil: undoable ? undoDeadline(undoable).toISOString() : null,
     };
   }
 
@@ -326,6 +340,30 @@ export class AttendanceService extends BaseService {
     );
     if (affected === 0) throw new AppError(409, '오늘 퇴근은 이미 기록되어 있습니다.');
 
+    await record.reload();
+    return toRecordView(record);
+  }
+
+  /**
+   * 방금 누른 퇴근을 되돌린다 — 다시 근무 중이 된다. 출근 시각은 그대로다.
+   *
+   * 가장 최근에 닫은 내 기록 하나만, 누른 뒤 CHECKOUT_UNDO_MINUTES 분 안에만 된다.
+   */
+  async undoCheckOut(userId: string): Promise<RecordView> {
+    const record = await findUndoableCheckOut(userId);
+    if (!record) {
+      throw new AppError(
+        409,
+        `퇴근은 누른 뒤 ${CHECKOUT_UNDO_MINUTES}분 안에만 취소할 수 있습니다.`
+      );
+    }
+    // 두 창에서 동시에 누르거나, 그 사이 다른 변경이 있었으면 한 번만 되돌린다
+    const [affected] = await AttendanceRecord.update(
+      { checkOutAt: null, workMinutes: null },
+      { where: { id: record.id, checkOutAt: record.checkOutAt } }
+    );
+    if (affected === 0)
+      throw new AppError(409, '이미 바뀐 기록입니다. 새로고침 후 다시 시도해주세요.');
     await record.reload();
     return toRecordView(record);
   }
@@ -671,6 +709,33 @@ function shiftDay(day: string, delta: number): string {
  *
  * 하루 전까지만 본다. 더 거슬러 올라가면 잊고 있던 기록이 엉뚱한 시각으로 마감된다.
  */
+/** 퇴근 취소 마감 — 잘린 1분을 더 쳐 준다(CHECKOUT_UNDO_MINUTES 설명) */
+function undoDeadline(record: AttendanceRecord): Date {
+  return new Date(record.checkOutAt!.getTime() + (CHECKOUT_UNDO_MINUTES + 1) * 60_000);
+}
+
+/**
+ * 되돌릴 수 있는 퇴근 — 가장 최근에 닫은 내 기록이 마감 안이고, 지금 열린 기록이 없을 때.
+ *
+ * 열린 기록이 있으면 막는다. 어제 기록을 닫고 오늘 새로 출근한 뒤 어제 퇴근을 되돌리면
+ * 열린 기록이 둘이 되는데, 퇴근은 오늘 것만 닫으므로 어제 것은 영영 열린 채 남는다.
+ */
+async function findUndoableCheckOut(userId: string): Promise<AttendanceRecord | null> {
+  const last = await AttendanceRecord.findOne({
+    where: { UserId: userId, checkOutAt: { [Op.ne]: null } },
+    order: [
+      ['checkOutAt', 'DESC'],
+      ['id', 'DESC'],
+    ],
+  });
+  if (!last || undoDeadline(last).getTime() <= Date.now()) return null;
+  const open = await AttendanceRecord.findOne({
+    where: { UserId: userId, checkOutAt: null },
+    attributes: ['id'],
+  });
+  return open ? null : last;
+}
+
 async function findOpenPreviousDay(userId: string, workDate: string) {
   return AttendanceRecord.findOne({
     where: { UserId: userId, workDate: shiftDay(workDate, -1), checkOutAt: null },

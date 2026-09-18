@@ -27,6 +27,10 @@ export const checkIn = async (payload: {
 export const checkOut = async (): Promise<AttendanceRecord> =>
   unwrap(await api.post('/attendance/check-out'));
 
+/** 방금 누른 퇴근을 되돌린다 — 누른 뒤 10분 안에만 된다 */
+export const undoCheckOut = async (): Promise<AttendanceRecord> =>
+  unwrap(await api.post('/attendance/check-out/undo'));
+
 // ── 퇴근 공격권·방어권 ─────────────────────────────────────────────────────
 //
 // 공격은 화면의 버튼만 잠근다. 기록되는 퇴근 시각은 실제로 누른 순간 그대로다 —

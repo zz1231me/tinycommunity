@@ -47,6 +47,8 @@ export interface AttendanceStatus {
   openPrevious: AttendanceRecord | null;
   checklist: ChecklistItem[];
   policy: AttendancePolicy;
+  /** 방금 누른 퇴근을 이 시각까지 되돌릴 수 있다 (없으면 null) */
+  undoCheckOutUntil: string | null;
 }
 
 export interface AttendanceSummary {

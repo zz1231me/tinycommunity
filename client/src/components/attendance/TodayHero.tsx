@@ -5,11 +5,12 @@
 // 함께 다시 그려진다.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { LogIn, LogOut } from 'lucide-react';
+import { LogIn, LogOut, RotateCcw } from 'lucide-react';
 import type { AttendanceRecord } from '../../types/attendance.types';
 import type { AttackKind } from '../../api/attendance';
 import { ChaosButton } from './ChaosButton';
 import { prefersReducedMotion } from '../../utils/animations';
+import { useCountdown } from '../../hooks/useCountdown';
 import { formatClock, formatDay, formatMinutes, minutesBetween } from '../../utils/attendance';
 
 interface Props {
@@ -34,6 +35,43 @@ interface Props {
   attackLevel?: number;
   onCheckIn: () => void;
   onCheckOut: () => void;
+  /** 방금 누른 퇴근을 이 시각까지 되돌릴 수 있다 (없으면 null) */
+  undoCheckOutUntil?: string | null;
+  undoingCheckOut?: boolean;
+  onUndoCheckOut?: () => void;
+}
+
+/**
+ * 방금 누른 퇴근을 되돌리는 단추 — 잘못 눌렀을 때를 위한 것이다.
+ *
+ * 마감(서버가 정한 시각)까지 남은 분을 함께 보여 주고, 지나면 저절로 사라진다.
+ * 눌러도 되는지는 서버가 다시 확인한다(시간이 지났거나 새로 열린 기록이 있으면 거절).
+ */
+function UndoCheckOut({
+  until,
+  busy,
+  onUndo,
+}: {
+  until: string;
+  busy: boolean;
+  onUndo: () => void;
+}) {
+  const left = useCountdown(until);
+  if (left <= 0) return null;
+  return (
+    <button
+      type="button"
+      onClick={onUndo}
+      disabled={busy}
+      className="btn-secondary inline-flex items-center gap-1.5 text-slate-600 disabled:opacity-50 dark:text-slate-300"
+    >
+      <RotateCcw className="h-4 w-4" />
+      퇴근 취소
+      <span className="text-xs font-normal tabular-nums text-slate-400">
+        · {Math.ceil(left / 60)}분 남음
+      </span>
+    </button>
+  );
 }
 
 function secondsUntil(at: string | null): number | null {
@@ -336,6 +374,9 @@ export function TodayHero({
   attackLevel = 1,
   onCheckIn,
   onCheckOut,
+  undoCheckOutUntil = null,
+  undoingCheckOut = false,
+  onUndoCheckOut,
 }: Props) {
   const working = Boolean(record && !record.checkOutAt);
 
@@ -422,7 +463,7 @@ export function TodayHero({
           </p>
         </div>
 
-        <div className="flex flex-shrink-0 gap-2">
+        <div className="flex flex-shrink-0 flex-wrap gap-2">
           <button
             type="button"
             onClick={onCheckIn}
@@ -459,6 +500,14 @@ export function TodayHero({
                 </button>
               </ChaosButton>
             </span>
+          )}
+          {undoCheckOutUntil && onUndoCheckOut && (
+            <UndoCheckOut
+              key={undoCheckOutUntil}
+              until={undoCheckOutUntil}
+              busy={undoingCheckOut}
+              onUndo={onUndoCheckOut}
+            />
           )}
         </div>
       </div>

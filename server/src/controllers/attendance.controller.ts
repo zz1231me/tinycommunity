@@ -96,6 +96,14 @@ export const checkOut = async (req: AuthRequest, res: Response): Promise<void> =
   });
 };
 
+export const undoCheckOut = async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  await run(res, '퇴근 취소', { userId }, async () => {
+    sendSuccess(res, await attendanceService.undoCheckOut(userId), '퇴근을 취소했습니다.');
+  });
+};
+
 export const getMyAttendanceHistory = async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = requireUser(req, res);
   if (!userId) return;

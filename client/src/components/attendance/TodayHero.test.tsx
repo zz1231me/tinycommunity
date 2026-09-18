@@ -403,3 +403,49 @@ describe('좁은 카드에서도 멈추지 않는다', () => {
     }
   });
 });
+
+describe('퇴근 취소', () => {
+  const done = (until: string | null, onUndo = vi.fn()) =>
+    render(
+      <TodayHero
+        workDate="2026-09-18"
+        record={{
+          id: 1,
+          userId: 'me',
+          workDate: '2026-09-18',
+          checkInAt: new Date(Date.now() - 9 * 3600e3).toISOString(),
+          checkOutAt: new Date().toISOString(),
+          workMinutes: 540,
+          note: '',
+          checklist: [],
+        }}
+        standardWorkMinutes={480}
+        canCheckIn={false}
+        canCheckOut={false}
+        checkingOut={false}
+        undoCheckOutUntil={until}
+        onUndoCheckOut={onUndo}
+        onCheckIn={vi.fn()}
+        onCheckOut={vi.fn()}
+      />
+    );
+
+  it('퇴근 직후에는 취소 단추가 남은 분과 함께 보이고, 누르면 취소를 요청한다', () => {
+    const onUndo = vi.fn();
+    done(new Date(Date.now() + 9 * 60_000 + 30_000).toISOString(), onUndo);
+    const btn = screen.getByRole('button', { name: /퇴근 취소/ });
+    expect(btn).toHaveTextContent('10분 남음');
+    fireEvent.click(btn);
+    expect(onUndo).toHaveBeenCalledTimes(1);
+  });
+
+  it('마감이 지났으면 보이지 않는다', () => {
+    done(new Date(Date.now() - 1000).toISOString());
+    expect(screen.queryByRole('button', { name: /퇴근 취소/ })).not.toBeInTheDocument();
+  });
+
+  it('취소할 퇴근이 없으면 보이지 않는다 — 대조', () => {
+    done(null);
+    expect(screen.queryByRole('button', { name: /퇴근 취소/ })).not.toBeInTheDocument();
+  });
+});

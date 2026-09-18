@@ -16,6 +16,7 @@ import { attendanceKeys } from '../../api/queryKeys';
 import {
   checkIn as requestCheckIn,
   checkOut as requestCheckOut,
+  undoCheckOut as requestUndoCheckOut,
   fetchAttackState,
   fetchMyAttendance,
   fetchMyAttendanceHistory,
@@ -100,6 +101,21 @@ export default function AttendancePage() {
       );
     },
     onError: err => toast.error(getApiErrorMessage(err, '퇴근을 기록하지 못했습니다.')),
+  });
+
+  // 잘못 누른 퇴근을 되돌린다 — 누른 뒤 10분 안에만. 되돌리면 다시 근무 중이다.
+  const runUndo = useSubmitLock();
+  const undoMutation = useMutation({
+    mutationFn: requestUndoCheckOut,
+    onSuccess: () => {
+      refresh();
+      toast.success('퇴근을 취소했습니다. 다시 근무 중입니다.');
+    },
+    onError: err => {
+      // 마감이 지났거나 그 사이 바뀌었다 — 단추를 거두도록 상태를 다시 읽는다
+      refresh();
+      toast.error(getApiErrorMessage(err, '퇴근을 취소하지 못했습니다.'));
+    },
   });
 
   // ── 퇴근 공격 ──
@@ -194,6 +210,9 @@ export default function AttendancePage() {
             checkingOut={checkOutMutation.isPending}
             onCheckIn={() => setDialogOpen(true)}
             onCheckOut={() => runCheckOut(() => checkOutMutation.mutateAsync().catch(() => {}))}
+            undoCheckOutUntil={status.data?.undoCheckOutUntil ?? null}
+            undoingCheckOut={undoMutation.isPending}
+            onUndoCheckOut={() => runUndo(() => undoMutation.mutateAsync().catch(() => {}))}
           />
 
           {live && live.checklist.length > 0 && (

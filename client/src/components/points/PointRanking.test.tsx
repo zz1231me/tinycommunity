@@ -85,3 +85,28 @@ describe('보여주는 것', () => {
     expect(screen.getAllByText('바비')).toHaveLength(1);
   });
 });
+
+describe('프로필 사진', () => {
+  it('사진이 있는 사람은 그 사진을 보여 준다', async () => {
+    mockFetchRanking.mockResolvedValue(
+      data({
+        top: [
+          { ...entry(1, 'alice', '앨리스', 900), avatar: '/uploads/avatars/alice.png' },
+          { ...entry(2, 'bobby', '바비', 500), avatar: null },
+        ],
+      })
+    );
+    render(<PointRanking />);
+
+    const img = await screen.findByAltText('앨리스님의 프로필');
+    expect(img.getAttribute('src')).toContain('alice.png');
+  });
+
+  it('사진이 없으면 사진 대신 다른 표시를 쓴다 — 깨진 그림을 띄우지 않는다', async () => {
+    mockFetchRanking.mockResolvedValue(data());
+    render(<PointRanking />);
+
+    await screen.findByText('앨리스');
+    expect(screen.queryByAltText('앨리스님의 프로필')).not.toBeInTheDocument();
+  });
+});

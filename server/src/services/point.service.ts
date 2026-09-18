@@ -335,12 +335,15 @@ export const pointService = {
     const visible = {
       model: User,
       as: 'user',
-      attributes: ['id', 'name'],
+      // 사진도 함께 — 순위표에 이름만 있으면 누가 누군지 한눈에 들어오지 않는다
+      attributes: ['id', 'name', 'avatar'],
       required: true,
       where: { isActive: true, isDeleted: false },
     };
+    type Joined = { user?: { name?: string; avatar?: string | null } };
     const nameOf = (row: UserPointModel, fallback: string) =>
-      (row as unknown as { user?: { name?: string } }).user?.name ?? fallback;
+      (row as unknown as Joined).user?.name ?? fallback;
+    const avatarOf = (row: UserPointModel) => (row as unknown as Joined).user?.avatar ?? null;
 
     const rows = await UserPoint.findAll({
       include: [visible],
@@ -356,6 +359,7 @@ export const pointService = {
       rank: i + 1,
       userId: row.UserId,
       name: nameOf(row, row.UserId),
+      avatar: avatarOf(row),
       balance: row.balance,
     }));
 
@@ -379,7 +383,13 @@ export const pointService = {
 
     return {
       top,
-      me: { rank: above + 1, userId, name: nameOf(mine, userId), balance: mine.balance },
+      me: {
+        rank: above + 1,
+        userId,
+        name: nameOf(mine, userId),
+        avatar: avatarOf(mine),
+        balance: mine.balance,
+      },
     };
   },
 };

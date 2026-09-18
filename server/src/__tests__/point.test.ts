@@ -380,6 +380,17 @@ describe('포인트 순위', () => {
     expect(res.body.data.top[0].name).toBe('일등');
   });
 
+  it('프로필 사진 주소를 함께 준다 — 없으면 null', async () => {
+    await User.update({ avatar: '/uploads/avatars/top.png' }, { where: { id: 'ranktop' } });
+    await User.update({ avatar: null }, { where: { id: 'rankmid' } });
+    await UserPoint.upsert({ UserId: 'ranktop', balance: 900 });
+    await UserPoint.upsert({ UserId: 'rankmid', balance: 500 });
+
+    const top = (await ranking()).body.data.top as Array<{ userId: string; avatar: string | null }>;
+    expect(top.find(t => t.userId === 'ranktop')?.avatar).toBe('/uploads/avatars/top.png');
+    expect(top.find(t => t.userId === 'rankmid')?.avatar).toBeNull();
+  });
+
   it('비활성 계정은 오르지 않는다 — 잔액이 제일 많아도', async () => {
     await UserPoint.upsert({ UserId: 'rankoff', balance: 9999 });
     await UserPoint.upsert({ UserId: USER, balance: 10 });

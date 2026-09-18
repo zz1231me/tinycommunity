@@ -126,6 +126,8 @@ export interface RankingEntry {
   rank: number;
   userId: string;
   name: string;
+  /** 프로필 사진 주소 (없으면 null — Avatar 가 이니셜로 대신 그린다) */
+  avatar?: string | null;
   balance: number;
 }
 

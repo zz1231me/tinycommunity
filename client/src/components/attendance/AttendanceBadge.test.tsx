@@ -35,6 +35,7 @@ const status = (over: Partial<AttendanceStatus> = {}): AttendanceStatus => ({
   workDate: '2026-09-17',
   record: null,
   openPrevious: null,
+  undoCheckOutUntil: null,
   checklist: [],
   policy: {
     standardWorkMinutes: 480,

@@ -5,6 +5,7 @@ import {
   getMyAttendanceHistory,
   checkIn,
   checkOut,
+  undoCheckOut,
 } from '../controllers/attendance.controller';
 import { getAttackState, useAttack, useDefend } from '../controllers/attendanceAttack.controller';
 import { authenticate } from '../middlewares/auth.middleware';
@@ -98,6 +99,22 @@ router.post(
 router.post(
   '/check-out',
   asyncHandler((req, res) => checkOut(req as AuthRequest, res))
+);
+
+/**
+ * @swagger
+ * /api/attendance/check-out/undo:
+ *   post:
+ *     summary: 방금 누른 퇴근 취소 (누른 뒤 10분 안)
+ *     tags: [Attendance]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: 다시 근무 중이 된 기록 }
+ *       409: { description: 취소할 수 있는 퇴근이 없음(시간이 지났거나 열린 기록이 있음) }
+ */
+router.post(
+  '/check-out/undo',
+  asyncHandler((req, res) => undoCheckOut(req as AuthRequest, res))
 );
 
 // ── 퇴근 공격권·방어권 ──────────────────────────────────────────────────────
