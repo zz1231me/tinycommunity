@@ -1132,8 +1132,8 @@ export const SiteSettingsManagement = () => {
             unit="초"
           />
           <NumberInput
-            label="임시저장 복원 유효시간"
-            description="저장된 임시 초안을 복원 제안하는 최대 경과 시간"
+            label="오래된 임시저장 기준"
+            description="이보다 오래 손대지 않은 초안은 임시저장 목록에 '오래됨' 으로 표시됩니다. 자동으로 지우지는 않습니다."
             min={10}
             max={1440}
             value={settings.draftExpiryMinutes}

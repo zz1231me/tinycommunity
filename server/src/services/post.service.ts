@@ -376,9 +376,12 @@ export class PostService extends BaseService {
           ],
           ...isReadAttribute,
         ],
+        // 마지막 id 가 동점을 가른다. isPinned·createdAt 은 둘 다 겹칠 수 있다 — 고정되지
+        // 않은 글은 모두 isPinned=false 라, 사실상 createdAt 하나로 정렬하는 것과 같다.
         order: [
           ['isPinned', 'DESC'],
           ['createdAt', 'DESC'],
+          ['id', 'DESC'],
         ],
         limit,
         offset,

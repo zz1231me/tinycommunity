@@ -67,7 +67,7 @@ export interface SiteSettings {
   passwordResetTokenHours: number;
   /** PostEditor 자동저장 주기 (초) */
   autoSaveIntervalSeconds: number;
-  /** PostEditor 임시저장 복원 유효시간 (분) */
+  /** 이보다 오래된 초안을 임시저장 목록에서 '오래됨' 으로 표시한다 (분). 자동 삭제는 하지 않는다. */
   draftExpiryMinutes: number;
   /** 사용자당 최대 메모 개수 */
   memoMaxPerUser: number;

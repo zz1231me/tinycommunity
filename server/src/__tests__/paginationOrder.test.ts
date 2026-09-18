@@ -83,10 +83,13 @@ describe('offset 페이지네이션 정렬', () => {
           offenders.push(`${rel}:${line} — order 없음`);
           continue;
         }
-        // 키가 둘 이상이면 동점이 갈린다.
-        // 하나뿐이어도 그것이 유일 컬럼(id)이면 순서가 하나로 정해진다.
-        const single = keys.length === 1 && /'id'|"id"/.test(keys[0]);
-        if (keys.length < 2 && !single) {
+        // 마지막 키가 유일 컬럼(id)이어야 순서가 하나로 정해진다.
+        //
+        // 예전에는 '키가 둘 이상이면 통과' 였다. 그 규칙으로 게시글 목록
+        // (isPinned, createdAt)이 빠져나갔다 — 키가 둘이어도 둘 다 겹칠 수 있으면
+        // 동점은 그대로 남는다. 세어야 할 것은 키의 개수가 아니라 유일한 키가 있는지다.
+        const last = keys[keys.length - 1] ?? '';
+        if (!/'id'|"id"/.test(last)) {
           offenders.push(`${rel}:${line} — 순서가 정해지지 않음: ${keys.join(' ').slice(0, 60)}`);
         }
       }
