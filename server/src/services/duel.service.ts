@@ -14,13 +14,19 @@
 //     맡기고·돌려주고·지급하는 모든 움직임이 point.service 의 apply 를 지나가므로,
 //     원장에 줄을 남기지 않고 잔액만 바뀌는 경로가 없다.
 
-import { Op, Transaction } from 'sequelize';
+import { Op } from 'sequelize';
 import { sequelize } from '../config/sequelize';
 import PointDuelModel, { PointDuel, type DuelHand } from '../models/PointDuel';
 import UserPointModel from '../models/UserPoint';
 import { User } from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
-import { apply, ensureBalanceRow, lockBalance, withLockRetry } from './point.service';
+import {
+  apply,
+  ensureBalanceRow,
+  lockBalance,
+  lockBothBalances,
+  withLockRetry,
+} from './point.service';
 import { judge } from '../config/duel';
 import { getDuelSettings } from '../utils/settingsCache';
 import { notificationService } from './notification.service';
@@ -69,23 +75,6 @@ function view(duel: PointDuelModel, viewerId: string) {
 }
 
 export type DuelView = ReturnType<typeof view>;
-
-/**
- * 두 사람의 잔액을 늘 같은 차례로 잠근다.
- *
- * A→B 와 B→A 두 판이 동시에 정산되면, 서로 상대가 쥔 잠금을 기다리며 멈춘다(교착).
- * 아이디 순으로 고정하면 그런 짝이 아예 생기지 않는다.
- */
-async function lockBoth(
-  a: string,
-  b: string,
-  t: Transaction
-): Promise<Record<string, UserPointModel>> {
-  const [first, second] = a < b ? [a, b] : [b, a];
-  const firstRow = await lockBalance(first, t);
-  const secondRow = await lockBalance(second, t);
-  return { [first]: firstRow, [second]: secondRow };
-}
 
 /**
  * 아직 기다리는 판을 닫고 신청자에게 돌려준다. 거절·취소·시간 초과가 모두 이리로 온다.
@@ -280,6 +269,14 @@ export const duelService = {
 
     const created = await withLockRetry(() =>
       sequelize.transaction(async t => {
+        // 세기 전에 먼저 잠근다.
+        //
+        // 세는 것만으로는 아무도 막히지 않는다. 잠그지 않은 채 세면 같은 순간의 두
+        // 요청이 같은 open 값을 읽고 둘 다 통과해, 걸어 둘 수 있는 판 수 상한이 넘친다.
+        // (SQLite 는 쓰기를 통째로 줄 세우므로 드러나지 않는다. MySQL/PG 에서 드러난다.)
+        // 이 사람이 판을 만드는 모든 길이 이 잔액 행을 지나므로, 여기서 잠그면 직렬화된다.
+        const row = await lockBalance(challengerId, t);
+
         const open = await PointDuel.count({
           where: { challengerId, status: 'waiting' },
           transaction: t,
@@ -299,7 +296,6 @@ export const duelService = {
           throw new AppError(409, '이 사람에게 신청한 대결이 아직 남아 있습니다.');
         }
 
-        const row = await lockBalance(challengerId, t);
         if (row.balance < stake) {
           throw new AppError(400, `포인트가 모자랍니다 (보유 ${row.balance.toLocaleString()}P).`);
         }
@@ -345,7 +341,7 @@ export const duelService = {
           throw new AppError(410, '시간이 지난 대결입니다. 건 포인트는 곧 돌려드립니다.');
         }
 
-        const rows = await lockBoth(duel.challengerId, opponentId, t);
+        const rows = await lockBothBalances(duel.challengerId, opponentId, t);
         const mine = rows[opponentId];
         if (mine.balance < duel.stake) {
           throw new AppError(

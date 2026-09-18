@@ -191,6 +191,31 @@ function createSequelizeConfig(): SequelizeOptions {
 // Sequelize 인스턴스 생성
 export const sequelize = new Sequelize(createSequelizeConfig());
 
+/**
+ * 연결의 시간대와 프로세스의 시간대가 어긋나면 알린다.
+ *
+ * MySQL/PG 연결은 위에서 +09:00 으로 못박혀 있는데, '오늘' 을 정하는 쪽
+ * (point.service 의 today, 그리고 그것을 쓰는 출퇴근의 workDate)은 프로세스의
+ * 로컬 시간을 본다. 호스트가 UTC 면 둘이 아홉 시간 어긋나서, 한국 시간으로 오전
+ * 아홉 시 전에 찍은 출근이 어제 날짜로 들어가고 뽑기 하루 한도도 그때 초기화된다.
+ *
+ * 코드로 조용히 맞추지 않는다. 날짜의 뜻을 바꾸는 일이라 이미 쌓인 기록의 해석까지
+ * 달라진다. 고칠 자리는 배포의 TZ 설정이다.
+ */
+function warnIfTimezoneMismatch(): void {
+  if (env.DB_TYPE === 'sqlite') return;
+  // getTimezoneOffset 은 UTC 기준 분 차이를 부호 반대로 준다 — KST(+09:00)는 -540.
+  const processOffsetMinutes = -new Date().getTimezoneOffset();
+  if (processOffsetMinutes === 540) return;
+
+  logWarning('DB 연결은 +09:00 인데 서버 프로세스는 다른 시간대입니다.', {
+    dbTimezone: '+09:00',
+    processOffsetMinutes,
+    impact: '출퇴근 날짜와 포인트 하루 한도의 경계가 한국 시간과 어긋납니다.',
+    fix: '프로세스에 TZ=Asia/Seoul 을 설정하세요.',
+  });
+}
+
 // 데이터베이스 연결 테스트
 export async function testDatabaseConnection(): Promise<boolean> {
   try {
@@ -199,6 +224,7 @@ export async function testDatabaseConnection(): Promise<boolean> {
 
     await sequelize.authenticate();
     logSuccess(`${env.DB_TYPE.toUpperCase()} 데이터베이스 연결 성공`);
+    warnIfTimezoneMismatch();
 
     // 연결 풀 상태 확인
     if (env.NODE_ENV === 'development') {

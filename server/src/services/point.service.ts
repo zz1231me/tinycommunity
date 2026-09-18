@@ -78,6 +78,31 @@ async function lockBalance(userId: string, t: Transaction): Promise<UserPointMod
 }
 
 /**
+ * 두 사람의 잔액을 늘 같은 차례로 잠근다.
+ *
+ * A→B 와 B→A 두 건이 같은 순간에 처리되면, 서로 상대가 쥔 잠금을 기다리며 멈춘다(교착).
+ * 아이디 순으로 고정하면 그런 짝이 아예 생기지 않는다.
+ *
+ * 포인트가 움직이지 않는 쪽도 함께 잠그는 쓰임이 있다. 퇴근 공격은 대상의 포인트를
+ * 건드리지 않지만, '이 사람에게 이미 걸린 공격이 있는가' 를 세는 동안 다른 공격자가
+ * 끼어들지 못하게 하려면 잠금이 대상 쪽에도 있어야 한다 — 세는 것만으로는 아무도
+ * 막히지 않는다. 잔액 행은 그 사람을 가리키는, 이미 있는 유일한 잠금 지점이다.
+ *
+ * 두 사람 모두 ensureBalanceRow 로 행이 만들어져 있어야 한다. 없으면 lockBalance 가
+ * 500 을 던진다.
+ */
+async function lockBothBalances(
+  a: string,
+  b: string,
+  t: Transaction
+): Promise<Record<string, UserPointModel>> {
+  const [first, second] = a < b ? [a, b] : [b, a];
+  const firstRow = await lockBalance(first, t);
+  const secondRow = await lockBalance(second, t);
+  return { [first]: firstRow, [second]: secondRow };
+}
+
+/**
  * 쓰기 잠금이 겹쳤을 때만 잠깐 쉬었다 다시 한다.
  *
  * SQLite 는 잠금이 잡혀 있으면 기다리지 않고 SQLITE_BUSY 로 실패한다(MySQL/PG 는
@@ -122,12 +147,14 @@ async function apply(
 }
 
 /**
- * 포인트를 움직이는 다른 서비스(대결)가 같은 잠금 규칙을 그대로 쓰도록 내보낸다.
+ * 포인트를 움직이는 다른 서비스(대결·퇴근 공격)가 같은 잠금 규칙을 그대로 쓰도록 내보낸다.
  *
  * 복사해서 두 벌로 두면 한쪽만 고쳐졌을 때 잔액과 원장이 어긋난다 —
  * 그 어긋남은 테스트가 아니라 사용자의 잔액에서 처음 발견된다.
+ * (lockBothBalances 가 실제로 그렇게 갈라져 있었다. 대결에만 사적으로 있어서,
+ *  공격은 잠금 없이 세기만 하고 있었다.)
  */
-export { ensureBalanceRow, lockBalance, apply, withLockRetry };
+export { ensureBalanceRow, lockBalance, lockBothBalances, apply, withLockRetry };
 
 export const pointService = {
   /** 화면에 필요한 현재 상태 */

@@ -14,6 +14,7 @@ import { AttendancePolicy } from '../models/AttendancePolicy';
 import User from '../models/User';
 import { BaseService } from './base.service';
 import { AppError } from '../middlewares/error.middleware';
+import { logWarning } from '../utils/logger';
 // 하루의 경계는 출석 포인트와 같아야 한다 — 같은 함수를 쓴다.
 import { today } from './point.service';
 
@@ -22,6 +23,19 @@ const MAX_LABEL = 200;
 const MAX_DESCRIPTION = 500;
 /** 명단에 올릴 사용자 수 상한 */
 const USER_LIMIT = 500;
+
+/**
+ * 명단이 상한에서 잘렸으면 알린다.
+ *
+ * 잘리는 순간부터 이름순 뒤쪽 사람들이 현황판과 집계에서 통째로 빠진다. 화면에는
+ * 그냥 없는 사람처럼 보여서, 알아챌 길이 서버 로그밖에 없다.
+ */
+function warnIfUserListTruncated(count: number, where: string): void {
+  if (count < USER_LIMIT) return;
+  logWarning(`${where}: 명단이 ${USER_LIMIT}명에서 잘렸습니다 — 이름순 뒤쪽 인원이 빠집니다.`, {
+    limit: USER_LIMIT,
+  });
+}
 /**
  * 집계 기간 상한.
  *
@@ -404,6 +418,7 @@ export class AttendanceService extends BaseService {
       // 어제 것도 함께 읽는다. 자정을 넘겨 일하는 사람이 '미출근' 으로 잡힌다.
       AttendanceRecord.findAll({ where: { workDate: { [Op.in]: [workDate, yesterday] } } }),
     ]);
+    warnIfUserListTruncated(users.length, '오늘 출근 현황');
 
     // 오늘 것이 우선이고, 없을 때만 어제 안 닫힌 건을 쓴다 (퇴근이 닫는 대상과 같다).
     const todays = new Map(records.filter(r => r.workDate === workDate).map(r => [r.UserId, r]));
@@ -466,6 +481,7 @@ export class AttendanceService extends BaseService {
         attributes: ['UserId', 'workDate', 'workMinutes'],
       }),
     ]);
+    warnIfUserListTruncated(users.length, '출퇴근 집계');
 
     const grouped = new Map<string, AttendanceRecord[]>();
     for (const r of records) {

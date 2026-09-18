@@ -293,7 +293,7 @@ docker-compose down               # 중지 (down -v = 데이터 포함 삭제)
 ## 보안
 
 - HttpOnly 쿠키 JWT + 2FA(TOTP), 로그아웃/비밀번호 변경 시 `tokenVersion`으로 기존 세션 즉시 무효화
-- 무차별 대입 방지(비밀글 비밀번호 5분 5회, 2FA 5분 10회 — 비밀을 맞혀 보는 요청만 제한), IP 화이트리스트(Nginx + 앱)
+- 무차별 대입 방지(로그인 15분 50회 — 성공한 로그인은 세지 않음 · 회원가입 1시간 10회 · 비밀글 비밀번호 5분 5회 · 2FA 5분 10회), IP 화이트리스트(Nginx + 앱)
 - XSS 방지(클라 DOMPurify + 서버 sanitize-html), SQL Injection 방지(ORM 바인딩 + Zod), Helmet 보안 헤더, CSRF(X-Requested-With)
 - **파일 업로드 하드닝**: 위험 확장자 절대 차단(정규화 우회 방지), 확장자 제거·무작위 파일명 저장, 실행 권한 제거(chmod 644), 첨부는 인가된 다운로드 경로에서 `attachment` + `nosniff`로만 제공(정적 서빙 우회 차단), 인라인 이미지 경로는 매직넘버 검증으로 저장형 XSS 방어
 - 비밀번호 재설정 토큰 SHA-256 해싱, bcrypt 비밀번호 해싱, 프로덕션 시크릿 검증(약한 값 부팅 차단), 보안 이벤트 로깅
@@ -303,7 +303,12 @@ docker-compose down               # 중지 (down -v = 데이터 포함 삭제)
   (`server/src/__tests__/authorizationBoundary.test.ts`).
 - 널 바이트가 섞인 주소는 입구에서 400으로 거절합니다. DB까지 내려가면 500이 되어 오류 로그를 채웁니다.
 
-**배포 전 체크리스트**: `.env` 커밋 금지 · `JWT_SECRET`/`ADMIN_DEFAULT_PASSWORD` 강한 값으로 변경 · HTTPS 적용 · `ALLOWED_ADMIN_IPS` 설정 · 정기 `npm audit`.
+**배포 전 체크리스트**: `.env` 커밋 금지 · `JWT_SECRET`/`ADMIN_DEFAULT_PASSWORD` 강한 값으로 변경 · HTTPS 적용 · `ALLOWED_ADMIN_IPS` 설정 · `TZ=Asia/Seoul` 설정 · 정기 `npm audit`.
+
+> **`TZ` 를 반드시 맞추세요.** MySQL/PostgreSQL 연결은 `+09:00` 으로 고정돼 있는데, '오늘'을
+> 정하는 쪽(출퇴근의 근무일, 포인트 하루 한도)은 서버 프로세스의 로컬 시간을 봅니다. 호스트가
+> UTC 면 둘이 아홉 시간 어긋나, 한국 시간 오전 아홉 시 전에 찍은 출근이 어제 날짜로 들어갑니다.
+> 어긋나 있으면 기동할 때 경고가 뜹니다(SQLite 는 해당 없음).
 
 ---
 
@@ -313,7 +318,7 @@ docker-compose down               # 중지 (down -v = 데이터 포함 삭제)
 
 ```bash
 cd server && npm run typecheck && npm run lint && npm run format:check && npm test
-cd client && npm run typecheck && npm run lint && npm run format:check && npm run build
+cd client && npm run typecheck && npm run lint && npm run format:check && npm test && npm run build
 ```
 
 **주요 스크립트**

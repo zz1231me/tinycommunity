@@ -17,7 +17,14 @@ import { AttendanceRecord } from '../models/AttendanceRecord';
 import { UserPoint } from '../models/UserPoint';
 import { User } from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
-import { apply, ensureBalanceRow, lockBalance, today, withLockRetry } from './point.service';
+import {
+  apply,
+  ensureBalanceRow,
+  lockBalance,
+  lockBothBalances,
+  today,
+  withLockRetry,
+} from './point.service';
 import { isAttackKind, type AttackKind } from '../config/attendanceAttack';
 import { getAttackSettings } from '../utils/settingsCache';
 import { notificationService } from './notification.service';
@@ -138,12 +145,28 @@ export const attendanceAttackService = {
     if (!(await isWorking(targetId))) {
       throw new AppError(400, '지금 근무 중인 사람에게만 쓸 수 있습니다.');
     }
+    // 대상의 잔액 행도 미리 만들어 둔다. 대상의 포인트를 건드리지는 않지만 아래에서
+    // 그 행을 잠금 지점으로 쓴다 — 행이 없으면 lockBalance 가 500 을 던진다.
     await ensureBalanceRow(attackerId);
+    await ensureBalanceRow(targetId);
     const cost = kind === 'hide' ? rules.hideCost : rules.cost;
 
     const created = await withLockRetry(() =>
       sequelize.transaction(async t => {
         const day = today();
+
+        // 무엇이든 세기 전에 두 사람을 먼저 잠근다 — 공격자와 대상 둘 다.
+        //
+        // 아래 두 번의 count 는 그 자체로는 아무도 막지 못한다. 트랜잭션 안에 두는
+        // 것만으로 부족하다: 같은 순간의 다른 트랜잭션도 똑같이 0 을 읽는다.
+        // 실제로 줄을 세우는 것은 잠금뿐이다.
+        //   - 공격자 쪽 잠금: 하루 한도가 넘치는 것을 막는다.
+        //   - 대상 쪽 잠금: 서로 다른 두 공격자가 한 사람에게 동시에 거는 것을 막는다.
+        //     이것이 없어서, 먼저 건 사람이 값을 치르고도 state() 에는 나중 것만
+        //     보이는 일이 생길 수 있었다(state 는 가장 최근 하나만 준다).
+        // 아이디 순으로 고정하므로 A↔B 가 서로 맞물려 멈추는 짝은 생기지 않는다.
+        const rows = await lockBothBalances(attackerId, targetId, t);
+
         const used = await AttendanceAttack.count({
           where: { attackerId, workDate: day },
           transaction: t,
@@ -152,10 +175,7 @@ export const attendanceAttackService = {
           throw new AppError(429, `오늘은 ${rules.dailyLimitPerAttacker}번을 모두 사용했습니다.`);
         }
 
-        // 공격은 종류를 가리지 않고 겹쳐 걸 수 없다.
-        //
-        // 이 확인은 트랜잭션 안에 있어야 한다. 밖에서만 보면 두 사람이 같은 순간에
-        // 걸었을 때 둘 다 통과해 살아 있는 공격이 둘이 되고, 받는 쪽은 하나를 풀어도
+        // 공격은 종류를 가리지 않고 겹쳐 걸 수 없다. 겹치면 받는 쪽은 하나를 풀어도
         // 곧바로 다음 것이 떠서 방어권 값을 두 번 내게 된다.
         const already = await AttendanceAttack.count({
           where: {
@@ -167,7 +187,7 @@ export const attendanceAttackService = {
         });
         if (already > 0) throw new AppError(409, '이미 방해받고 있는 사람입니다.');
 
-        const row = await lockBalance(attackerId, t);
+        const row = rows[attackerId];
         if (row.balance < cost) {
           throw new AppError(
             400,
