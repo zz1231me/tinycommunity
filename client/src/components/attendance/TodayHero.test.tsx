@@ -436,7 +436,7 @@ describe('퇴근 취소', () => {
     const onUndo = vi.fn();
     done(new Date(Date.now() + 9 * 60_000 + 30_000).toISOString(), onUndo);
     const btn = screen.getByRole('button', { name: /퇴근 취소/ });
-    expect(btn).toHaveTextContent('10분 남음');
+    expect(btn).toHaveTextContent('9:30');
     fireEvent.click(btn);
     expect(onUndo).toHaveBeenCalledTimes(1);
   });
@@ -463,5 +463,172 @@ describe('퇴근 취소', () => {
   it('취소할 퇴근이 없으면 보이지 않는다 — 대조', () => {
     done(null);
     expect(screen.queryByRole('button', { name: /퇴근 취소/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('퇴근 취소는 퇴근 단추 자리에 대신 선다', () => {
+  const at = (until: string | null) =>
+    render(
+      <TodayHero
+        workDate="2026-09-18"
+        record={{
+          id: 1,
+          userId: 'me',
+          workDate: '2026-09-18',
+          checkInAt: new Date(Date.now() - 9 * 3600e3).toISOString(),
+          checkOutAt: new Date().toISOString(),
+          workMinutes: 540,
+          note: '',
+          checklist: [],
+        }}
+        standardWorkMinutes={480}
+        canCheckIn={false}
+        canCheckOut={false}
+        checkingOut={false}
+        undoCheckOutUntil={until}
+        onUndoCheckOut={vi.fn()}
+        onCheckIn={vi.fn()}
+        onCheckOut={vi.fn()}
+      />
+    );
+
+  it('취소할 수 있는 동안에는 흐린 퇴근 단추가 없다', () => {
+    at(new Date(Date.now() + 5 * 60_000).toISOString());
+    expect(screen.getByRole('button', { name: /퇴근 취소/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '퇴근' })).not.toBeInTheDocument();
+  });
+
+  it('마감이 지나면 퇴근 단추가 돌아온다', () => {
+    vi.useFakeTimers();
+    try {
+      at(new Date(Date.now() + 2000).toISOString());
+      expect(screen.queryByRole('button', { name: '퇴근' })).not.toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      expect(screen.queryByRole('button', { name: /퇴근 취소/ })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '퇴근' })).toBeDisabled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('문제 내기 공격', () => {
+  const working = (attackKind: AttackKind | null, onCheckOut = vi.fn(), attackLevel = 1) =>
+    render(
+      <TodayHero
+        workDate="2026-09-18"
+        record={{
+          id: 1,
+          userId: 'me',
+          workDate: '2026-09-18',
+          checkInAt: new Date(Date.now() - 3600e3).toISOString(),
+          checkOutAt: null,
+          workMinutes: null,
+          note: '',
+          checklist: [],
+        }}
+        standardWorkMinutes={480}
+        canCheckIn={false}
+        canCheckOut
+        checkingOut={false}
+        attackKind={attackKind}
+        attackLevel={attackLevel}
+        onCheckIn={vi.fn()}
+        onCheckOut={onCheckOut}
+      />
+    );
+
+  /** 화면에 뜬 문제를 읽어 답을 낸다 */
+  const solve = (right = true) => {
+    const text = screen.getByTestId('quiz-question').textContent!.replace('=', '');
+    const answer = Function(`return ${text.replace(/×/g, '*').replace(/−/g, '-')}`)() as number;
+    fireEvent.change(screen.getByRole('textbox', { name: '답' }), {
+      target: { value: String(right ? answer : answer + 1) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '확인' }));
+  };
+
+  it('퇴근을 누르면 바로 찍히지 않고 문제가 나온다', () => {
+    const onCheckOut = vi.fn();
+    working('quiz', onCheckOut);
+    fireEvent.click(screen.getByRole('button', { name: /퇴근/ }));
+    expect(screen.getByRole('dialog', { name: '퇴근 계산 문제' })).toBeInTheDocument();
+    expect(onCheckOut).not.toHaveBeenCalled();
+  });
+
+  it('틀리면 새 문제, 맞히면 퇴근이 찍힌다', () => {
+    const onCheckOut = vi.fn();
+    working('quiz', onCheckOut);
+    fireEvent.click(screen.getByRole('button', { name: /퇴근/ }));
+    solve(false);
+    expect(onCheckOut).not.toHaveBeenCalled();
+    expect(screen.getByText(/땡!/)).toBeInTheDocument();
+    solve(true);
+    expect(onCheckOut).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('쌓이면 연달아 여러 번 맞혀야 한다', () => {
+    const onCheckOut = vi.fn();
+    working('quiz', onCheckOut, 5); // 두 번
+    fireEvent.click(screen.getByRole('button', { name: /퇴근/ }));
+    solve(true);
+    expect(onCheckOut).not.toHaveBeenCalled();
+    solve(true);
+    expect(onCheckOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('연달아 맞히다 틀리면 처음부터다', () => {
+    const onCheckOut = vi.fn();
+    working('quiz', onCheckOut, 5); // 두 번
+    fireEvent.click(screen.getByRole('button', { name: /퇴근/ }));
+    solve(true);
+    solve(false);
+    solve(true);
+    expect(onCheckOut).not.toHaveBeenCalled();
+    solve(true);
+    expect(onCheckOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('공격이 없으면 누르는 즉시 찍힌다 — 대조', () => {
+    const onCheckOut = vi.fn();
+    working(null, onCheckOut);
+    fireEvent.click(screen.getByRole('button', { name: '퇴근' }));
+    expect(onCheckOut).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('공격이 끝나면 문제가 닫히고, 다음 공격이 와도 저절로 열리지 않는다', () => {
+    const view = working('quiz');
+    fireEvent.click(screen.getByRole('button', { name: /퇴근/ }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    const props = (kind: AttackKind | null) => (
+      <TodayHero
+        workDate="2026-09-18"
+        record={{
+          id: 1,
+          userId: 'me',
+          workDate: '2026-09-18',
+          checkInAt: new Date(Date.now() - 3600e3).toISOString(),
+          checkOutAt: null,
+          workMinutes: null,
+          note: '',
+          checklist: [],
+        }}
+        standardWorkMinutes={480}
+        canCheckIn={false}
+        canCheckOut
+        checkingOut={false}
+        attackKind={kind}
+        onCheckIn={vi.fn()}
+        onCheckOut={vi.fn()}
+      />
+    );
+    view.rerender(props(null));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    view.rerender(props('quiz'));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

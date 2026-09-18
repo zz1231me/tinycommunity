@@ -24,6 +24,7 @@ import {
 import { attendanceKeys } from '../../api/queryKeys';
 import { UserPicker } from '../common/UserPicker';
 import type { UserSuggestion } from '../../api/users';
+import { PointsSection } from './PointsSection';
 import { ListState } from '../common/ListState';
 import { LoadingSpinner } from '../common/LoadingStates';
 import { getApiErrorMessage } from '../../api/utils';
@@ -42,6 +43,12 @@ const KINDS: Array<{ kind: AttackKind; face: string; label: string; hint: string
     face: ATTACK_FACE.hide,
     label: ATTACK_LABEL.hide,
     hint: '퇴근 버튼이 숨고 가짜 버튼이 나타납니다',
+  },
+  {
+    kind: 'quiz',
+    face: ATTACK_FACE.quiz,
+    label: ATTACK_LABEL.quiz,
+    hint: '퇴근을 누르면 계산 문제를 맞혀야 합니다. 틀리면 새 문제',
   },
 ];
 
@@ -111,50 +118,63 @@ export function AttackPanel({
   const chosen = KINDS.find(k => k.kind === kind);
 
   return (
-    <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
-      <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
-        {/* 대결(⚔️)과 같은 아이콘을 쓰면 옆 판과 구분되지 않는다 */}
-        <Zap className="h-4 w-4 text-rose-500" />
-        퇴근 공격권
-      </h3>
-
+    // 대결(⚔️)과 같은 아이콘을 쓰면 옆 판과 구분되지 않는다
+    <PointsSection
+      icon={<Zap className="h-5 w-5" />}
+      tone="rose"
+      title="퇴근 공격권"
+      badge={
+        state && rules ? (
+          <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
+            오늘 {state.remainingToday}/{rules.dailyLimit}
+          </span>
+        ) : undefined
+      }
+    >
       {loading ? (
         <LoadingSpinner size="sm" message="공격권을 불러오는 중..." />
       ) : failed || !state || !rules ? (
         <ListState>공격권 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</ListState>
       ) : (
         <>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            근무 중인 사람의 퇴근 버튼을 {rules.blockSeconds}초 동안 성가시게 하거나{' '}
+          <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            근무 중인 사람의 퇴근 버튼을 {rules.blockSeconds}초 동안 성가시게 하거나(방해·문제 내기){' '}
             {rules.hideSeconds}초 동안 감춥니다. 기록되는 퇴근 시각은 어느 쪽이든 실제로 누른 순간
             그대로입니다. 한 사람에게 최대 {rules.maxStack}개까지 쌓이고, 쌓인 만큼 이어지며 더
-            사나워집니다. 오늘 {state.remainingToday}/{rules.dailyLimit}번 남았습니다.
+            사나워집니다.
           </p>
 
-          <div className="mt-3 flex gap-1.5">
+          <div className="mt-4 grid grid-cols-3 gap-2">
             {KINDS.map(option => (
               <button
                 key={option.kind}
                 type="button"
                 onClick={() => setKind(option.kind)}
                 aria-pressed={kind === option.kind}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                className={`flex flex-col items-center gap-1 rounded-xl border-2 px-2 py-3 text-sm transition-all ${
                   kind === option.kind
-                    ? 'border-rose-500 bg-rose-50 font-semibold text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
-                    : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'
+                    ? 'border-rose-500 bg-rose-50 font-semibold text-rose-700 shadow-sm shadow-rose-500/20 dark:bg-rose-900/30 dark:text-rose-300'
+                    : 'border-slate-200 text-slate-700 hover:-translate-y-0.5 hover:border-rose-200 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800'
                 }`}
               >
-                <span aria-hidden className="mr-1">
+                <span
+                  aria-hidden
+                  className={`text-2xl transition-transform ${kind === option.kind ? 'scale-110' : ''}`}
+                >
                   {option.face}
                 </span>
                 {option.label}
-                <span className="ml-1 text-xs font-normal text-slate-400">
+                <span className="text-xs font-normal tabular-nums text-slate-400">
                   {(option.kind === 'hide' ? rules.hideCost : rules.cost).toLocaleString()}P
                 </span>
               </button>
             ))}
           </div>
-          {chosen && <p className="mt-1.5 text-xs text-slate-500">{chosen.hint}</p>}
+          {chosen && (
+            <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              {chosen.hint}
+            </p>
+          )}
 
           <div className="mt-3">
             <UserPicker
@@ -193,12 +213,18 @@ export function AttackPanel({
               </span>
               {hit.name}님에게 명중!
               <span className="text-xs font-normal text-rose-500 dark:text-rose-400">
-                {hit.kind === 'hide' ? '퇴근 버튼이 사라졌습니다' : '퇴근 버튼이 날뛰기 시작합니다'}
+                {
+                  {
+                    chaos: '퇴근 버튼이 날뛰기 시작합니다',
+                    hide: '퇴근 버튼이 사라졌습니다',
+                    quiz: '퇴근하려면 문제를 풀어야 합니다',
+                  }[hit.kind]
+                }
               </span>
             </p>
           )}
         </>
       )}
-    </div>
+    </PointsSection>
   );
 }

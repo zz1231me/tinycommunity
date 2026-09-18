@@ -1,7 +1,7 @@
 // client/src/components/points/LotteryPanel.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Gift, Loader2, TicketCheck } from 'lucide-react';
+import { Coins, Gift, Loader2, TicketCheck } from 'lucide-react';
 import {
   drawLottery,
   fetchPointHistory,
@@ -12,6 +12,7 @@ import {
 import { toast } from '../../utils/toast';
 import { LoadingSpinner } from '../common/LoadingStates';
 import { ListState } from '../common/ListState';
+import { PointsSection } from './PointsSection';
 import { prefersReducedMotion } from '../../utils/animations';
 
 const REASON_LABEL: Record<PointEntry['reason'], string> = {
@@ -316,53 +317,66 @@ export function LotteryPanel({
     </div>
   );
 
+  // 확률표 막대의 기준 — 가장 흔한 것이 가득 찬다
+  const maxWeight = Math.max(1, status.blankWeight, ...status.prizes.map(p => p.weight));
+
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-        <div>
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">보유 포인트</p>
-          <p className="mt-0.5 text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
-            {shownBalance.toLocaleString()}
-            <span className="ml-1 text-base font-semibold text-slate-500 dark:text-slate-400">
-              P
+    <div className="space-y-6">
+      {/* 지갑 — 탭을 열면 가장 먼저 보이는 숫자라 가장 크게 둔다 */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600 via-violet-600 to-fuchsia-600 p-5 text-white shadow-lg shadow-primary-600/20 sm:p-6">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-white/10"
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -bottom-16 right-24 h-36 w-36 rounded-full bg-white/5"
+        />
+        <p className="relative flex items-center gap-1.5 text-xs font-medium text-white/75">
+          <Coins className="h-3.5 w-3.5" />
+          보유 포인트
+        </p>
+        <p className="relative mt-1 text-4xl font-extrabold tabular-nums tracking-tight">
+          {shownBalance.toLocaleString()}
+          <span className="ml-1 text-xl font-semibold text-white/70">P</span>
+        </p>
+        <div className="relative mt-4 flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-white/15 px-2.5 py-1 font-medium tabular-nums backdrop-blur-sm">
+            🎟️ 오늘 남은 뽑기 {status.drawsLeft}/{status.dailyLimit}
+          </span>
+          {status.drawCost > 0 && (
+            <span className="rounded-full bg-white/15 px-2.5 py-1 font-medium tabular-nums backdrop-blur-sm">
+              1회 참가비 −{status.drawCost.toLocaleString()}P
             </span>
-          </p>
+          )}
+          <span className="rounded-full bg-white/15 px-2.5 py-1 font-medium tabular-nums backdrop-blur-sm">
+            {status.attendanceClaimedToday ? '✅' : '📅'} 오늘 출석 +
+            {status.attendanceBonus.toLocaleString()}P
+          </span>
         </div>
-        <div className="text-right">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">오늘 남은 횟수</p>
-          <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-700 dark:text-slate-200">
-            {status.drawsLeft}
-            <span className="text-slate-400"> / {status.dailyLimit}</span>
-          </p>
-        </div>
-
-        {status.drawCost > 0 && (
-          <div className="text-right">
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">1회 참가비</p>
-            <p className="mt-0.5 text-lg font-semibold tabular-nums text-amber-600 dark:text-amber-400">
-              −{status.drawCost.toLocaleString()}
-              <span className="ml-1 text-base font-semibold text-slate-400">P</span>
-            </p>
-          </div>
-        )}
       </div>
 
-      {/* 추첨 표시창.
-          누르면 숫자가 섞이고(서버를 기다리는 동안), 답이 오면 그 자리에 결과가 바로 뜬다.
-          자리를 늘 차지하게 둬서, 결과가 나올 때 아래 내용이 밀리지 않는다. */}
-      <div className="relative">
-        {board}
-        {celebrate > 0 && !last?.isBlank && <WinPulse key={celebrate} />}
-      </div>
+      <PointsSection
+        icon={<Gift className="h-5 w-5" />}
+        tone="amber"
+        title="행운 뽑기"
+        description={`접속하면 하루 한 번 출석 포인트 ${status.attendanceBonus.toLocaleString()}P 가 자동으로 쌓입니다.`}
+      >
+        {/* 추첨 표시창.
+            누르면 숫자가 섞이고(서버를 기다리는 동안), 답이 오면 그 자리에 결과가 바로 뜬다.
+            자리를 늘 차지하게 둬서, 결과가 나올 때 아래 내용이 밀리지 않는다. */}
+        <div className="relative">
+          {board}
+          {celebrate > 0 && !last?.isBlank && <WinPulse key={celebrate} />}
+        </div>
 
-      <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={() => void handleDraw()}
           disabled={drawing || soldOut || !status.canAfford}
-          className="btn-primary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-3 text-base font-bold text-white shadow-md shadow-amber-500/30 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 active:translate-y-0 disabled:cursor-not-allowed disabled:from-slate-300 disabled:to-slate-400 disabled:shadow-none disabled:hover:translate-y-0 dark:focus-visible:ring-offset-slate-900 sm:w-auto"
         >
-          {drawing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
+          {drawing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Gift className="h-5 w-5" />}
           {soldOut
             ? '오늘은 모두 사용했어요'
             : !status.canAfford
@@ -371,46 +385,80 @@ export function LotteryPanel({
                 ? `뽑기 (−${status.drawCost.toLocaleString()}P)`
                 : '뽑기'}
         </button>
-      </div>
 
-      <div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">당첨 확률</h3>
-        <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-700/60 dark:border-slate-700">
+        <h4 className="mb-2 mt-6 text-sm font-semibold text-slate-700 dark:text-slate-200">
+          당첨 확률
+        </h4>
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {status.prizes.map(p => (
-            <li key={p.amount} className="flex items-center justify-between px-3 py-2 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-200">
-                {p.amount.toLocaleString()}P
-              </span>
-              <span className="tabular-nums text-slate-500 dark:text-slate-400">{p.weight}%</span>
+            <li
+              key={p.amount}
+              className="rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2.5 dark:border-amber-500/20 dark:bg-amber-500/5"
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-bold tabular-nums text-amber-700 dark:text-amber-300">
+                  {p.amount.toLocaleString()}P
+                </span>
+                <span className="text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                  {p.weight}%
+                </span>
+              </div>
+              <div
+                aria-hidden
+                className="mt-1.5 h-1 overflow-hidden rounded-full bg-amber-100 dark:bg-amber-500/10"
+              >
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500"
+                  style={{ width: `${(p.weight / maxWeight) * 100}%` }}
+                />
+              </div>
             </li>
           ))}
           {status.blankWeight > 0 && (
-            <li className="flex items-center justify-between px-3 py-2 text-sm">
-              <span className="text-slate-500 dark:text-slate-400">미당첨</span>
-              <span className="tabular-nums text-slate-500 dark:text-slate-400">
-                {status.blankWeight}%
-              </span>
+            <li className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/60">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-medium text-slate-500 dark:text-slate-400">미당첨</span>
+                <span className="text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                  {status.blankWeight}%
+                </span>
+              </div>
+              <div
+                aria-hidden
+                className="mt-1.5 h-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+              >
+                <div
+                  className="h-full rounded-full bg-slate-400"
+                  style={{ width: `${(status.blankWeight / maxWeight) * 100}%` }}
+                />
+              </div>
             </li>
           )}
         </ul>
-        <p className="mt-2 text-xs text-slate-400">
-          접속하면 하루 한 번 출석 포인트 {status.attendanceBonus.toLocaleString()}P 가 자동으로
-          쌓입니다.
-        </p>
-      </div>
+      </PointsSection>
 
-      <div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">최근 내역</h3>
+      <PointsSection
+        icon={<TicketCheck className="h-5 w-5" />}
+        tone="slate"
+        title="포인트 내역"
+        description="최근 8건입니다."
+      >
         {entries.length === 0 ? (
-          <div className="rounded-lg border border-slate-200 dark:border-slate-700">
-            <ListState>아직 내역이 없습니다.</ListState>
-          </div>
+          <ListState>아직 내역이 없습니다.</ListState>
         ) : (
-          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-700/60 dark:border-slate-700">
+          <ul className="-my-2 divide-y divide-slate-100 dark:divide-slate-700/60">
             {entries.slice(0, 8).map(e => (
-              <li key={e.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                <span className="flex min-w-0 items-center gap-2">
-                  <TicketCheck className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+              <li key={e.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <span
+                    aria-hidden
+                    className={`grid h-7 w-7 flex-shrink-0 place-items-center rounded-full text-xs font-bold ${
+                      e.amount > 0
+                        ? 'bg-secondary-100 text-secondary-600 dark:bg-secondary-500/15 dark:text-secondary-400'
+                        : 'bg-slate-100 text-slate-400 dark:bg-slate-700'
+                    }`}
+                  >
+                    {e.amount > 0 ? '+' : '−'}
+                  </span>
                   <span className="truncate text-slate-600 dark:text-slate-300">
                     {e.memo ?? REASON_LABEL[e.reason]}
                   </span>
@@ -426,7 +474,7 @@ export function LotteryPanel({
             ))}
           </ul>
         )}
-      </div>
+      </PointsSection>
     </div>
   );
 }

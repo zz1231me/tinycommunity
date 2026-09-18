@@ -87,7 +87,14 @@ export function AttackBanner({
           {left > 0 ? (
             <>
               {left}초 동안 퇴근 버튼이{' '}
-              {incoming.kind === 'hide' ? '보이지 않습니다' : '말을 안 듣습니다'}.
+              {
+                {
+                  chaos: '말을 안 듣습니다',
+                  hide: '보이지 않습니다',
+                  quiz: '계산 문제를 내놓습니다',
+                }[incoming.kind]
+              }
+              .
             </>
           ) : (
             '곧 풀립니다.'

@@ -6,10 +6,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createElement } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { NotificationBell } from './NotificationBell';
 import { useUIOverlays } from '../../store/uiOverlays';
+import { useNotificationStore } from '../../store/notifications';
 
 // framer-motion 의 애니메이션은 happy-dom 에서 취소될 때 잡히지 않는 AbortError 를 남기고,
 // vitest 는 테스트가 모두 통과해도 그 때문에 실패로 끝난다(LotteryPanel.test 와 같은 처리).
@@ -123,5 +124,80 @@ describe('알림 목록 — 키보드', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     await waitFor(() => expect(bell()).toHaveAttribute('aria-expanded', 'false'));
     expect(document.activeElement).toBe(bell());
+  });
+});
+
+describe('알림 목록 — 거르기·묶기·새로 온 것', () => {
+  const at = (hoursAgo: number) => new Date(Date.now() - hoursAgo * 3600_000).toISOString();
+  const item = (id: number, isRead: boolean, createdAt: string, message: string) => ({
+    id,
+    type: 'COMMENT',
+    message,
+    link: null,
+    relatedId: null,
+    isRead,
+    createdAt,
+  });
+
+  const renderOpen = async () => {
+    render(
+      <MemoryRouter>
+        <NotificationBell />
+      </MemoryRouter>
+    );
+    fireEvent.click(bell());
+    await screen.findByRole('dialog', { name: '알림 목록' });
+  };
+
+  it('안 읽음만 골라 본다', async () => {
+    getNotifications.mockResolvedValue({
+      notifications: [item(2, false, at(0), '안 읽은 댓글'), item(1, true, at(0), '읽은 댓글')],
+      unreadCount: 1,
+      nextCursor: null,
+    });
+    await renderOpen();
+    expect(await screen.findByText('읽은 댓글')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /안 읽음/ }));
+    expect(screen.getByText('안 읽은 댓글')).toBeInTheDocument();
+    expect(screen.queryByText('읽은 댓글')).not.toBeInTheDocument();
+  });
+
+  it('오늘 · 이전 으로 묶어 보여 준다', async () => {
+    getNotifications.mockResolvedValue({
+      notifications: [item(2, false, at(0), '방금 것'), item(1, true, at(24 * 5), '오래된 것')],
+      unreadCount: 1,
+      nextCursor: null,
+    });
+    await renderOpen();
+    await screen.findByText('방금 것');
+    expect(screen.getByText('오늘')).toBeInTheDocument();
+    expect(screen.getByText('이전')).toBeInTheDocument();
+  });
+
+  it('열어 둔 동안 새 알림이 오면 닫지 않아도 맨 위에 붙는다', async () => {
+    getNotifications.mockResolvedValue({
+      notifications: [item(1, false, at(0), '처음 것')],
+      unreadCount: 1,
+      nextCursor: null,
+    });
+    await renderOpen();
+    await screen.findByText('처음 것');
+
+    getNotifications.mockResolvedValue({
+      notifications: [item(2, false, at(0), '새로 온 것'), item(1, false, at(0), '처음 것')],
+      unreadCount: 2,
+      nextCursor: null,
+    });
+    act(() => {
+      useNotificationStore.setState(s => ({
+        arrivals: { ...s.arrivals, COMMENT: (s.arrivals.COMMENT ?? 0) + 1 },
+      }));
+    });
+
+    expect(await screen.findByText('새로 온 것')).toBeInTheDocument();
+    const rows = screen.getAllByRole('button', { name: /것/ });
+    expect(rows[0]).toHaveTextContent('새로 온 것');
+    expect(screen.getAllByText('처음 것')).toHaveLength(1);
   });
 });

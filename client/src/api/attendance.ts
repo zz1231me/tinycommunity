@@ -40,12 +40,17 @@ export const undoCheckOut = async (): Promise<AttendanceRecord> =>
  * 공격의 종류.
  *  · chaos — 잠깐 동안 퇴근 버튼이 도망다니고 깜빡인다 (막지는 않는다)
  *  · hide  — 잠깐 동안 퇴근 버튼이 아예 보이지 않는다 (그동안은 누를 수 없다)
+ *  · quiz  — 잠깐 동안 퇴근 버튼을 누르면 계산 문제를 맞혀야 한다 (막지는 않는다)
  */
-export type AttackKind = 'chaos' | 'hide';
+export type AttackKind = 'chaos' | 'hide' | 'quiz';
 
 /** 공격 종류의 얼굴과 이름 — 출근 화면의 안내 줄·포인트 탭의 경고 띠·공격 패널이 함께 쓴다 */
-export const ATTACK_FACE: Record<AttackKind, string> = { chaos: '🌀', hide: '🙈' };
-export const ATTACK_LABEL: Record<AttackKind, string> = { chaos: '퇴근 방해', hide: '버튼 숨기기' };
+export const ATTACK_FACE: Record<AttackKind, string> = { chaos: '🌀', hide: '🙈', quiz: '🧮' };
+export const ATTACK_LABEL: Record<AttackKind, string> = {
+  chaos: '퇴근 방해',
+  hide: '버튼 숨기기',
+  quiz: '문제 내기',
+};
 
 export interface AttackRules {
   cost: number;

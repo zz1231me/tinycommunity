@@ -13,6 +13,7 @@ import { fetchPointRanking, type PointRanking as Ranking } from '../../api/point
 import { ListState } from '../common/ListState';
 import { LoadingSpinner } from '../common/LoadingStates';
 import { Avatar } from '../Avatar';
+import { PointsSection } from './PointsSection';
 
 /**
  * 1~3 등 시상대의 색 — 금·은·동. 등수(rank)로 고른다: 공동 1등이 둘이면 둘 다 금이다.
@@ -54,7 +55,7 @@ type Entry = Ranking['top'][number];
 
 function Podium({ entries, myId }: { entries: Entry[]; myId?: string }) {
   return (
-    <ol data-testid="podium" className="mt-4 flex items-end justify-center gap-2 sm:gap-4">
+    <ol data-testid="podium" className="mt-1 flex items-end justify-center gap-2 sm:gap-4">
       {entries.map((e, i) => {
         const slot = SLOT[i];
         const medal = MEDAL[Math.min(3, Math.max(1, e.rank)) as 1 | 2 | 3];
@@ -171,12 +172,12 @@ export function PointRanking() {
   const inTop = Boolean(data?.me) && data!.top.some(t => t.userId === data!.me?.userId);
 
   return (
-    <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
-      <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
-        <Trophy className="h-4 w-4 text-amber-500" />
-        포인트 순위
-      </h3>
-
+    <PointsSection
+      icon={<Trophy className="h-5 w-5" />}
+      tone="gold"
+      title="포인트 순위"
+      description="보유 포인트가 많은 순서입니다."
+    >
       {loading ? (
         <LoadingSpinner size="sm" message="순위를 불러오는 중..." />
       ) : failed ? (
@@ -221,6 +222,6 @@ export function PointRanking() {
           )}
         </>
       )}
-    </div>
+    </PointsSection>
   );
 }

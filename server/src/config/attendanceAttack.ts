@@ -10,6 +10,8 @@
 // 종류에 따라 방해하는 방식이 다르다.
 //  · chaos 는 버튼을 잠그지 않는다 — 도망다니고 깜빡일 뿐, 끝내 누르면 눌린다.
 //  · hide 는 잠깐 동안 버튼을 아예 감춘다. 그 사이에는 누를 수 없다.
+//  · quiz 는 버튼을 누르면 계산 문제가 나온다. 맞히면 그대로 퇴근이 찍힌다 — 틀리면 새 문제.
+//    답을 못 내 막히는 일은 없다(초등 사칙연산, 정답이 늘 정수).
 //
 // hide 를 짧게(기본 10초) 둔 이유가 여기에 있다. 감추는 시간이 길어지면 '누르기
 // 성가시다' 가 아니라 '퇴근을 못 한다' 가 되고, 그 순간 위의 선을 넘는다.
@@ -23,10 +25,31 @@
  * 공격의 종류.
  *  · chaos — 잠깐 동안 퇴근 버튼이 도망다니고, 사라졌다 나타나고, 화면이 가려진다
  *  · hide  — 잠깐 동안 퇴근 버튼이 아예 보이지 않는다
+ *  · quiz  — 잠깐 동안 퇴근 버튼을 누르면 계산 문제를 풀어야 한다
  */
-export type AttackKind = 'chaos' | 'hide';
+export const ATTACK_KINDS = ['chaos', 'hide', 'quiz'] as const;
 
-export const ATTACK_KINDS = ['chaos', 'hide'] as const;
+export type AttackKind = (typeof ATTACK_KINDS)[number];
+
+/**
+ * 종류별 값·시간·이름.
+ * 문제 내기는 방해와 같은 값·시간을 쓴다 — 둘 다 '성가시지만 끝내 누를 수 있는' 쪽이다.
+ * (숨기기만 정말로 누를 수 없어 따로 짧다.) 따로 값을 매기려면 관리자 설정에 칸을 더한다.
+ */
+export function attackCost(kind: AttackKind, rules: { cost: number; hideCost: number }): number {
+  return kind === 'hide' ? rules.hideCost : rules.cost;
+}
+export function attackSeconds(
+  kind: AttackKind,
+  rules: { blockSeconds: number; hideSeconds: number }
+): number {
+  return kind === 'hide' ? rules.hideSeconds : rules.blockSeconds;
+}
+export const ATTACK_NAME: Record<AttackKind, string> = {
+  chaos: '퇴근 방해',
+  hide: '퇴근 버튼 숨기기',
+  quiz: '퇴근 문제 내기',
+};
 
 /**
  * 한 사람에게 한꺼번에 쌓일 수 있는 공격 수.

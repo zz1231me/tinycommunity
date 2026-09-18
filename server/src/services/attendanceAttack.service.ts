@@ -25,7 +25,14 @@ import {
   today,
   withLockRetry,
 } from './point.service';
-import { ATTACK_MAX_STACK, isAttackKind, type AttackKind } from '../config/attendanceAttack';
+import {
+  ATTACK_MAX_STACK,
+  ATTACK_NAME,
+  attackCost,
+  attackSeconds,
+  isAttackKind,
+  type AttackKind,
+} from '../config/attendanceAttack';
 import { getAttackSettings } from '../utils/settingsCache';
 import { notificationService } from './notification.service';
 import { logError } from '../utils/logger';
@@ -179,7 +186,7 @@ export const attendanceAttackService = {
     // 그 행을 잠금 지점으로 쓴다 — 행이 없으면 lockBalance 가 500 을 던진다.
     await ensureBalanceRow(attackerId);
     await ensureBalanceRow(targetId);
-    const cost = kind === 'hide' ? rules.hideCost : rules.cost;
+    const cost = attackCost(kind, rules);
 
     const result = await withLockRetry(() =>
       sequelize.transaction(async t => {
@@ -219,16 +226,10 @@ export const attendanceAttackService = {
             `포인트가 모자랍니다. ${cost.toLocaleString()}P 가 필요합니다 (보유 ${row.balance.toLocaleString()}P).`
           );
         }
-        await apply(
-          row,
-          -cost,
-          'attack_cost',
-          kind === 'hide' ? '퇴근 버튼 숨기기' : '퇴근 방해',
-          t
-        );
+        await apply(row, -cost, 'attack_cost', ATTACK_NAME[kind], t);
 
         // 숨기기는 그동안 정말로 누를 수 없으므로 훨씬 짧다.
-        const lifeMs = (kind === 'hide' ? rules.hideSeconds : rules.blockSeconds) * 1000;
+        const lifeMs = attackSeconds(kind, rules) * 1000;
         // 줄 맨 끝 공격이 끝난 뒤에 시작한다. 줄이 비었으면 지금.
         const last = queue[queue.length - 1];
         const startsAt = new Date(Math.max(Date.now(), last ? last.expiresAt.getTime() : 0));
@@ -253,9 +254,11 @@ export const attendanceAttackService = {
     const who = attacker?.name ?? attackerId;
     notify(
       targetId,
-      (kind === 'hide'
-        ? `${who}님이 퇴근 버튼을 잠깐 숨겼습니다!`
-        : `${who}님이 퇴근 방해를 걸었습니다!`) + (stack > 1 ? ` (쌓인 공격 ${stack}개)` : ''),
+      {
+        chaos: `${who}님이 퇴근 방해를 걸었습니다!`,
+        hide: `${who}님이 퇴근 버튼을 잠깐 숨겼습니다!`,
+        quiz: `${who}님이 퇴근 버튼에 계산 문제를 걸었습니다! 풀어야 퇴근할 수 있어요`,
+      }[kind] + (stack > 1 ? ` (쌓인 공격 ${stack}개)` : ''),
       created.id,
       // 공격받은 자리(출근 화면)로 — 퇴근 버튼 효과와 방어권이 거기 있다
       '/attendance'

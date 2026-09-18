@@ -216,6 +216,27 @@ describe('퇴근 공격 값도 관리자 설정에서 온다', () => {
     expect(seconds).toBeLessThan(60);
   });
 
+  it('문제 내기는 방해와 같은 값·시간이고, 종류가 그대로 저장된다', async () => {
+    // 숨기기 쪽 값을 멀리 떨어뜨려, 문제 내기가 엉뚱하게 숨기기 값을 따라가면 걸리게 한다
+    await setRules({
+      attackCost: 321,
+      attackHideCost: 9,
+      attackBlockSeconds: 300,
+      attackHideSeconds: 15,
+    });
+    await grant(A, 5000);
+    await startWorking(B);
+
+    const made = await attack({ targetId: B, kind: 'quiz' });
+    expect(made.status).toBe(200);
+    expect(made.body.data.kind).toBe('quiz');
+    expect(await balanceOf(A)).toBe(5000 - 321);
+    const row = await AttendanceAttack.findByPk(made.body.data.id);
+    expect(row!.kind).toBe('quiz');
+    const seconds = Math.round((row!.expiresAt.getTime() - Date.now()) / 1000);
+    expect(seconds).toBeGreaterThan(250);
+  });
+
   it('방해 시간을 바꾸면 그 시간만큼 걸린다', async () => {
     await setRules({ attackBlockSeconds: 300 });
     await grant(A, 5000);

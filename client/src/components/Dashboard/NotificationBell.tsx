@@ -2,13 +2,14 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Bell, X } from 'lucide-react';
+import { Bell, BellOff, CheckCheck, ChevronRight, Trash2, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { stagger, listItem, scaleIn } from '../../utils/animations';
 import { useUIOverlays } from '../../store/uiOverlays';
 import { useNotificationStore } from '../../store/notifications';
 import { toast } from '../../utils/toast';
-import { kindOf } from '../common/notificationKinds';
+import { kindOf, NOTIFICATION_KIND } from '../common/notificationKinds';
+import { useNotificationArrival } from '../../hooks/useNotificationArrival';
 import {
   getNotifications,
   markAsRead,
@@ -33,6 +34,25 @@ interface Notification {
   link?: string | null;
   isRead: boolean;
   createdAt: string;
+}
+
+const ALL_TYPES = Object.keys(NOTIFICATION_KIND) as Array<keyof typeof NOTIFICATION_KIND>;
+
+/** 오늘 · 어제 · 이전 으로 묶는다 — 받은 순서(최신 먼저)는 그대로 둔다 */
+function groupByDay<T extends { createdAt: string }>(items: T[]) {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const today = start.getTime();
+  const yesterday = today - 24 * 3600_000;
+  const groups: Array<{ label: string; items: T[] }> = [];
+  for (const item of items) {
+    const at = new Date(item.createdAt).getTime();
+    const label = at >= today ? '오늘' : at >= yesterday ? '어제' : '이전';
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(item);
+    else groups.push({ label, items: [item] });
+  }
+  return groups;
 }
 
 export function NotificationBell() {
@@ -61,6 +81,8 @@ export function NotificationBell() {
   const [fetchError, setFetchError] = useState(false);
   // 전체 삭제 2단계 확인(실수 클릭 방지) + 진행 상태
   const [confirmClear, setConfirmClear] = useState(false);
+  // 전체 / 안 읽은 것만 — 쌓인 알림 사이에서 아직 안 본 것만 골라 보게
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [clearing, setClearing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null); // 벨 버튼 래퍼(앵커)
   const dropdownRef = useRef<HTMLDivElement>(null); // body로 포털된 드롭다운
@@ -93,6 +115,26 @@ export function NotificationBell() {
       if (reqGenRef.current === gen) setLoading(false);
     }
   }, [setStoreUnread]);
+
+  // 패널을 열어 둔 동안 새 알림이 오면 맨 위에 붙인다. 예전에는 종 숫자만 오르고 목록은
+  // 닫았다 다시 열어야 보였다. 첫 페이지만 다시 받아 이미 가진 것보다 새것만 앞에 붙인다 —
+  // 통째로 바꾸면 '더 보기' 로 불러 둔 뒤쪽 알림과 스크롤 위치가 날아간다.
+  useNotificationArrival(ALL_TYPES, () => {
+    if (!open) return;
+    void getNotifications(undefined, 20)
+      .then(data => {
+        const fresh: Notification[] = Array.isArray(data?.notifications) ? data.notifications : [];
+        setNotifications(prev => {
+          const newest = prev.reduce((max, x) => Math.max(max, x.id), 0);
+          const added = fresh.filter(x => x.id > newest);
+          return added.length > 0 ? [...added, ...prev] : prev;
+        });
+        setStoreUnread(data?.unreadCount ?? 0);
+      })
+      .catch(() => {
+        /* 다음에 열 때 다시 받는다 */
+      });
+  });
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
@@ -248,6 +290,9 @@ export function NotificationBell() {
     }
   };
 
+  const visible = filter === 'unread' ? notifications.filter(n => !n.isRead) : notifications;
+  const groups = groupByDay(visible);
+
   const formatTime = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
     const m = Math.floor(diff / 60000);
@@ -303,53 +348,84 @@ export function NotificationBell() {
               className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-[70] overflow-hidden"
             >
               {/* 헤더 */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-                <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
-                  알림
-                  {unreadCount > 0 && (
-                    <span className="badge badge-red ml-2 px-1.5 font-bold">{unreadCount}</span>
-                  )}
-                </h3>
-                <div className="flex items-center gap-2">
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={handleMarkAll}
-                      className="text-xs text-primary-600 dark:text-primary-400 hover:underline font-medium"
-                    >
-                      모두 읽음
-                    </button>
-                  )}
-                  {notifications.length > 0 &&
-                    !loading &&
-                    !fetchError &&
-                    (confirmClear ? (
-                      <span className="flex items-center gap-1.5">
-                        <span className="text-xs text-slate-500 dark:text-slate-400">
-                          전체 삭제?
-                        </span>
-                        <button
-                          onClick={handleClearAll}
-                          disabled={clearing}
-                          className="text-xs text-red-600 dark:text-red-400 hover:underline font-medium disabled:opacity-50"
-                        >
-                          {clearing ? '삭제 중...' : '삭제'}
-                        </button>
-                        <button
-                          onClick={() => setConfirmClear(false)}
-                          className="text-xs text-slate-500 dark:text-slate-400 hover:underline font-medium"
-                        >
-                          취소
-                        </button>
+              <div className="border-b border-slate-100 bg-gradient-to-b from-slate-50 to-white px-4 pb-2.5 pt-3 dark:border-slate-700 dark:from-slate-800 dark:to-slate-800">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    알림
+                    {unreadCount > 0 && (
+                      <span className="rounded-full bg-red-500 px-1.5 py-px text-2xs font-bold tabular-nums text-white">
+                        {unreadCount}
                       </span>
-                    ) : (
+                    )}
+                  </h3>
+                  <div className="flex items-center gap-1">
+                    {unreadCount > 0 && (
                       <button
-                        onClick={() => setConfirmClear(true)}
-                        className="text-xs text-red-500 dark:text-red-400 hover:underline font-medium"
+                        onClick={handleMarkAll}
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-500/10"
                       >
-                        전체 삭제
+                        <CheckCheck className="h-3.5 w-3.5" />
+                        모두 읽음
+                      </button>
+                    )}
+                    {notifications.length > 0 &&
+                      !loading &&
+                      !fetchError &&
+                      (confirmClear ? (
+                        <span className="flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 dark:bg-red-500/10">
+                          <span className="text-xs text-red-700 dark:text-red-300">전체 삭제?</span>
+                          <button
+                            onClick={handleClearAll}
+                            disabled={clearing}
+                            className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-50 dark:text-red-400"
+                          >
+                            {clearing ? '삭제 중...' : '삭제'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmClear(false)}
+                            className="text-xs font-medium text-slate-500 hover:underline dark:text-slate-400"
+                          >
+                            취소
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmClear(true)}
+                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          전체 삭제
+                        </button>
+                      ))}
+                  </div>
+                </div>
+                {notifications.length > 0 && !loading && !fetchError && (
+                  <div role="group" aria-label="알림 거르기" className="mt-2 flex gap-1">
+                    {(
+                      [
+                        ['all', '전체'],
+                        ['unread', '안 읽음'],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setFilter(key)}
+                        aria-pressed={filter === key}
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                          filter === key
+                            ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                            : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        {label}
+                        {key === 'unread' && unreadCount > 0 && (
+                          <span className="ml-1 tabular-nums opacity-70">{unreadCount}</span>
+                        )}
                       </button>
                     ))}
-                </div>
+                  </div>
+                )}
               </div>
 
               {/* 목록 */}
@@ -370,71 +446,110 @@ export function NotificationBell() {
                     다시 시도
                   </button>
                 </div>
-              ) : notifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-slate-400">
-                  <Bell className="w-10 h-10 mb-3 opacity-40" />
-                  <p className="text-sm">새 알림이 없습니다</p>
+              ) : visible.length === 0 ? (
+                <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
+                  <span className="mb-3 grid h-14 w-14 place-items-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-700/60">
+                    <BellOff className="h-6 w-6" />
+                  </span>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                    {filter === 'unread' && notifications.length > 0
+                      ? '안 읽은 알림이 없습니다'
+                      : '새 알림이 없습니다'}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-400">
+                    {filter === 'unread' && notifications.length > 0
+                      ? '모두 확인했어요 👍'
+                      : '댓글·멘션·대결 소식이 여기에 모입니다'}
+                  </p>
                 </div>
               ) : (
                 <motion.div
                   variants={stagger}
                   initial="hidden"
                   animate="visible"
-                  className="max-h-96 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700"
+                  className="max-h-[26rem] overflow-y-auto"
                 >
-                  {notifications.map(n => {
-                    const typeInfo = kindOf(n.type);
-                    return (
-                      <motion.div
-                        key={n.id}
-                        variants={listItem}
-                        onClick={() => handleRead(n)}
-                        // 클릭만 받던 행이라 키보드로는 알림을 열 수 없었다
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={e => {
-                          // 안쪽 삭제 단추에서 올라온 키는 그 단추의 몫이다
-                          if (e.target !== e.currentTarget) return;
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            void handleRead(n);
-                          }
-                        }}
-                        className={`group flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 ${
-                          !n.isRead ? 'bg-primary-50/60 dark:bg-primary-900/10' : ''
-                        }`}
-                      >
-                        {/* 타입 아이콘 */}
-                        <span
-                          className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 ${typeInfo.bg} ${typeInfo.color}`}
-                        >
-                          {typeInfo.icon}
-                        </span>
+                  {groups.map(group => (
+                    <div key={group.label}>
+                      <p className="sticky top-0 z-10 border-b border-slate-100 bg-white/95 px-4 py-1.5 text-2xs font-semibold uppercase tracking-wide text-slate-400 backdrop-blur dark:border-slate-700 dark:bg-slate-800/95">
+                        {group.label}
+                      </p>
+                      <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                        {group.items.map(n => {
+                          const typeInfo = kindOf(n.type);
+                          return (
+                            <motion.div
+                              key={n.id}
+                              variants={listItem}
+                              onClick={() => handleRead(n)}
+                              // 클릭만 받던 행이라 키보드로는 알림을 열 수 없었다
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={e => {
+                                // 안쪽 삭제 단추에서 올라온 키는 그 단추의 몫이다
+                                if (e.target !== e.currentTarget) return;
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  void handleRead(n);
+                                }
+                              }}
+                              className={`group relative flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none dark:hover:bg-slate-700/50 dark:focus-visible:bg-slate-700/50 ${
+                                !n.isRead ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''
+                              }`}
+                            >
+                              {/* 안 읽은 것은 왼쪽에 종류 색 띠 */}
+                              {!n.isRead && (
+                                <span
+                                  aria-hidden
+                                  className={`absolute inset-y-2 left-0 w-0.5 rounded-r ${typeInfo.accent}`}
+                                />
+                              )}
+                              {/* 타입 아이콘 */}
+                              <span
+                                className={`mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${typeInfo.bg} ${typeInfo.color}`}
+                              >
+                                {typeInfo.icon}
+                              </span>
 
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className={`text-sm leading-snug ${!n.isRead ? 'text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-600 dark:text-slate-400'}`}
-                          >
-                            {n.message}
-                          </p>
-                          <p className="text-xs text-slate-400 mt-0.5">{formatTime(n.createdAt)}</p>
-                        </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="flex items-center gap-1.5 text-2xs">
+                                  <span className={`font-semibold ${typeInfo.color}`}>
+                                    {typeInfo.title}
+                                  </span>
+                                  <span className="text-slate-300 dark:text-slate-600">·</span>
+                                  <span className="text-slate-400">{formatTime(n.createdAt)}</span>
+                                </p>
+                                <p
+                                  className={`mt-0.5 line-clamp-2 text-sm leading-snug ${!n.isRead ? 'font-medium text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-400'}`}
+                                >
+                                  {n.message}
+                                </p>
+                              </div>
 
-                        <div className="flex items-center gap-1.5 flex-shrink-0 ml-1">
-                          {!n.isRead && (
-                            <span className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0" />
-                          )}
-                          <button
-                            onClick={e => handleDelete(e, n.id)}
-                            className="min-w-[36px] min-h-[36px] p-2 inline-flex items-center justify-center text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
-                            aria-label="알림 삭제"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
+                              <div className="ml-1 flex flex-shrink-0 items-center gap-1">
+                                {!n.isRead && (
+                                  <span className="h-2 w-2 flex-shrink-0 rounded-full bg-primary-500" />
+                                )}
+                                {n.link && (
+                                  <ChevronRight
+                                    aria-hidden
+                                    className="hidden h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-0.5 sm:block"
+                                  />
+                                )}
+                                <button
+                                  onClick={e => handleDelete(e, n.id)}
+                                  className="min-w-[36px] min-h-[36px] p-2 inline-flex items-center justify-center text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+                                  aria-label="알림 삭제"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </motion.div>
               )}
 

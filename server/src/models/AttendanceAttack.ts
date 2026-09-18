@@ -29,7 +29,7 @@ class AttendanceAttackModel extends Model<
   declare public targetId: ForeignKey<string>;
   /** 근무일 (YYYY-MM-DD, 서버 기준) — 하루 몇 번 썼는지를 센다 */
   declare public workDate: string;
-  /** 'chaos'(버튼이 도망다닌다) 또는 'hide'(버튼이 잠깐 사라진다) */
+  /** 'chaos'(버튼이 도망다닌다) · 'hide'(버튼이 잠깐 사라진다) · 'quiz'(누르면 계산 문제) */
   declare public kind: CreationOptional<string>;
   /**
    * 더 이상 쓰지 않는다 — 쪽지 공격을 없애면서 남은 칸.

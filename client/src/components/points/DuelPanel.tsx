@@ -28,6 +28,7 @@ import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
 import { UserPicker } from '../common/UserPicker';
 import type { UserSuggestion } from '../../api/users';
+import { PointsSection } from './PointsSection';
 import { ListState } from '../common/ListState';
 import { LoadingSpinner } from '../common/LoadingStates';
 import { useNotificationArrival } from '../../hooks/useNotificationArrival';
@@ -364,21 +365,24 @@ export function DuelPanel({
   const canSubmit = picked.length > 0 && hand !== null && stake.trim() !== '' && !busy;
 
   return (
-    <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
-      <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
-        <Swords className="h-4 w-4 text-violet-500" />
-        포인트 대결
-        {board.incoming.length > 0 && (
-          <span className="ml-1 rounded-full bg-violet-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+    <PointsSection
+      icon={<Swords className="h-5 w-5" />}
+      tone="violet"
+      title="포인트 대결"
+      badge={
+        board.incoming.length > 0 && (
+          <span className="animate-popIn rounded-full bg-violet-600 px-2 py-0.5 text-[11px] font-semibold text-white">
             도전장 {board.incoming.length}
           </span>
-        )}
-      </h3>
-      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-        건 포인트는 신청하는 순간 맡겨지고, 이긴 쪽이 두 배를 가져갑니다. {rules.expireMinutes}분
-        안에 답이 없으면 무효가 되어 돌려받습니다.
-      </p>
-
+        )
+      }
+      description={
+        <>
+          가위바위보로 겨룹니다. 건 포인트는 신청하는 순간 맡겨지고, 이긴 쪽이 두 배를 가져갑니다.{' '}
+          {rules.expireMinutes}분 안에 답이 없으면 무효가 되어 돌려받습니다.
+        </>
+      }
+    >
       {/* ── 받은 대결 ── 가장 먼저 보여 준다. 시간이 지나면 무효가 되기 때문이다. */}
       {board.incoming.length > 0 && (
         <section className="mt-4">
@@ -717,6 +721,6 @@ export function DuelPanel({
           </ul>
         )}
       </section>
-    </div>
+    </PointsSection>
   );
 }

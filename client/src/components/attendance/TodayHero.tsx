@@ -9,6 +9,10 @@ import { LogIn, LogOut, RotateCcw } from 'lucide-react';
 import type { AttendanceRecord } from '../../types/attendance.types';
 import type { AttackKind } from '../../api/attendance';
 import { ChaosButton } from './ChaosButton';
+import { QuizGate } from './QuizGate';
+
+/** 퇴근 취소 마감이 없을 때 세는 시각 — 늘 지난 시각이라 남은 시간이 0 이다 */
+const NEVER = new Date(0).toISOString();
 import { prefersReducedMotion } from '../../utils/animations';
 import { useCountdown } from '../../hooks/useCountdown';
 import { formatClock, formatDay, formatMinutes, minutesBetween } from '../../utils/attendance';
@@ -47,29 +51,35 @@ interface Props {
  * 마감(서버가 정한 시각)까지 남은 분을 함께 보여 주고, 지나면 저절로 사라진다.
  * 눌러도 되는지는 서버가 다시 확인한다(시간이 지났거나 새로 열린 기록이 있으면 거절).
  */
-function UndoCheckOut({
-  until,
-  busy,
-  onUndo,
-}: {
-  until: string;
-  busy: boolean;
-  onUndo: () => void;
-}) {
-  const left = useCountdown(until);
-  if (left <= 0) return null;
+/** 퇴근 취소 창의 길이(초) — 남은 막대의 기준. 서버는 마감 시각만 주고 길이는 CHECKOUT_UNDO_MINUTES(10분)다. */
+const UNDO_WINDOW_SECONDS = 600;
+
+/**
+ * 방금 누른 퇴근을 되돌리는 단추 — 퇴근 단추 자리에 대신 선다.
+ *
+ * 예전에는 흐린(눌리지 않는) 퇴근 단추 옆에 작은 회색 단추로 붙어 있어 눈에 잘 띄지 않았다.
+ * 잘못 누른 사람이 곧바로 찾도록 색을 달리하고, 남은 시간을 분:초와 줄어드는 막대로 보인다.
+ */
+function UndoCheckOut({ left, busy, onUndo }: { left: number; busy: boolean; onUndo: () => void }) {
+  const m = Math.floor(left / 60);
+  const ss = String(left % 60).padStart(2, '0');
   return (
     <button
       type="button"
       onClick={onUndo}
       disabled={busy}
-      className="btn-secondary inline-flex items-center gap-1.5 text-slate-600 disabled:opacity-50 dark:text-slate-300"
+      className="animate-popIn group relative inline-flex items-center gap-2 overflow-hidden rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
     >
-      <RotateCcw className="h-4 w-4" />
+      <RotateCcw className="h-4 w-4 transition-transform group-hover:-rotate-45" />
       퇴근 취소
-      <span className="text-xs font-normal tabular-nums text-slate-400">
-        · {Math.ceil(left / 60)}분 남음
+      <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-xs font-medium tabular-nums text-amber-700 dark:bg-slate-900/40 dark:text-amber-300">
+        {m}:{ss}
       </span>
+      <span
+        aria-hidden
+        className="absolute bottom-0 left-0 h-0.5 bg-amber-400 transition-[width] duration-1000 ease-linear"
+        style={{ width: `${Math.min(100, (left / UNDO_WINDOW_SECONDS) * 100)}%` }}
+      />
     </button>
   );
 }
@@ -387,6 +397,18 @@ export function TodayHero({
   // 를 덮어 눌리지 않았다. (취소해 다시 근무 중이 되면 남은 공격이 다시 걸린다.)
   const attackKind = canCheckOut ? incomingKind : null;
 
+  // 문제 내기 — 퇴근을 누르면 문제가 열린다. 공격이 끝나면 저절로 닫힌다(열려 있어도 무시).
+  const [quizOpen, setQuizOpen] = useState(false);
+  const showQuiz = quizOpen && attackKind === 'quiz';
+  // 공격이 끝나면 접어 둔다 — 남겨 두면 다음 문제 내기 공격이 오자마자 스스로 열린다
+  useEffect(() => {
+    if (attackKind !== 'quiz') setQuizOpen(false);
+  }, [attackKind]);
+
+  // 퇴근 취소가 남아 있는 동안은 퇴근 단추 대신 취소 단추가 선다. 마감이 지나면 퇴근 단추로 돌아온다.
+  const undoLeft = useCountdown(undoCheckOutUntil ?? NEVER);
+  const canUndo = Boolean(undoCheckOutUntil && onUndoCheckOut) && undoLeft > 0;
+
   // 숨기기가 풀려 버튼이 돌아오는 순간에만 톡 튀어나오게 한다. 처음 그릴 때나
   // 방해가 풀릴 때는 움직이지 않는다 — 버튼이 괜히 들썩이면 그것도 방해다.
   const [popKey, setPopKey] = useState(0);
@@ -480,7 +502,9 @@ export function TodayHero({
             <LogIn className="h-4 w-4" />
             출근
           </button>
-          {attackKind === 'hide' ? (
+          {canUndo ? (
+            <UndoCheckOut left={undoLeft} busy={undoingCheckOut} onUndo={onUndoCheckOut!} />
+          ) : attackKind === 'hide' ? (
             // 숨기기 공격 — 잠깐 동안 버튼 자체가 없다.
             //
             // 자리는 그대로 남긴다(같은 크기의 투명한 자리). 버튼이 빠지면 줄이
@@ -498,26 +522,31 @@ export function TodayHero({
               <ChaosButton active={attackKind === 'chaos'} level={attackLevel}>
                 <button
                   type="button"
-                  onClick={onCheckOut}
+                  onClick={attackKind === 'quiz' ? () => setQuizOpen(true) : onCheckOut}
                   disabled={!canCheckOut || checkingOut}
+                  aria-expanded={attackKind === 'quiz' ? showQuiz : undefined}
                   className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <LogOut className="h-4 w-4" />
                   퇴근
+                  {attackKind === 'quiz' && <span aria-hidden>🧮</span>}
                 </button>
               </ChaosButton>
             </span>
           )}
-          {undoCheckOutUntil && onUndoCheckOut && (
-            <UndoCheckOut
-              key={undoCheckOutUntil}
-              until={undoCheckOutUntil}
-              busy={undoingCheckOut}
-              onUndo={onUndoCheckOut}
-            />
-          )}
         </div>
       </div>
+
+      {showQuiz && (
+        <QuizGate
+          level={attackLevel}
+          onSolved={() => {
+            setQuizOpen(false);
+            onCheckOut();
+          }}
+          onClose={() => setQuizOpen(false)}
+        />
+      )}
 
       {record && (
         <div className="px-5 pb-5">

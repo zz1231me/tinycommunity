@@ -93,8 +93,7 @@ describe('보여주는 값', () => {
   it('잔액과 남은 횟수를 서버 값 그대로 쓴다', async () => {
     render(<LotteryPanel />);
     expect(await screen.findByText('1,200')).toBeInTheDocument();
-    expect(screen.getByText('8')).toBeInTheDocument();
-    expect(screen.getByText('/ 10')).toBeInTheDocument();
+    expect(screen.getByText(/오늘 남은 뽑기 8\/10/)).toBeInTheDocument();
   });
 
   it('확률표를 그대로 보여주고, 남는 몫은 미당첨으로 적는다', async () => {
