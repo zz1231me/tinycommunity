@@ -20,7 +20,7 @@ import {
   fetchMyAttendance,
   fetchMyAttendanceHistory,
 } from '../../api/attendance';
-import { AttackNotice } from '../../components/attendance/AttackNotice';
+import { IncomingAttack } from '../../components/attendance/IncomingAttack';
 import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
 import { useSubmitLock } from '../../hooks/useSubmitLock';
@@ -173,16 +173,10 @@ export default function AttendancePage() {
             </div>
           )}
 
-          {/* 출근은 업무 화면이라 방어권 구매(포인트)는 포인트 탭에 있다. 여기에는 버튼이
-              왜 이상한지와 언제 풀리는지, 방어하러 갈 길만 한 줄로 둔다. */}
-          {attackEnabled && incoming && underAttack && (
-            <AttackNotice
-              key={incoming.id}
-              incoming={incoming}
-              queue={attackQueue}
-              onExpire={refreshAttack}
-            />
-          )}
+          {/* 공격받은 자리에서 바로 방어한다 — 경고 띠·남은 시간·방어권 구매. 방어권을 포인트
+              탭에 두었더니, 퇴근 버튼이 도망다니는 그 순간에 다른 화면으로 가야 해서 불편했다.
+              공격권을 '사는' 일은 여전히 포인트 탭에만 있다. */}
+          {attackEnabled && <IncomingAttack />}
 
           <TodayHero
             workDate={serverToday}

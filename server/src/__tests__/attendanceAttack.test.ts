@@ -508,15 +508,14 @@ describe('알림이 데려가는 곳', () => {
     expect(rows[0].link).toBe('/profile?tab=points');
   });
 
-  it('공격받은 사람도 포인트 탭으로 간다 — 방어권은 거기서 산다', async () => {
-    // 출근은 업무 화면이라 포인트를 쓰는 일(방어권)은 포인트 탭에 모았다
+  it('공격받은 사람은 출근 화면으로 간다 — 퇴근 버튼 효과와 방어권이 거기 있다', async () => {
     await grant(ATK, 1000);
     await startWorking(TGT);
     await attack(atkCookie, TGT);
 
     const rows = await attackNotices(TGT);
     expect(rows).toHaveLength(1);
-    expect(rows[0].link).toBe('/profile?tab=points');
+    expect(rows[0].link).toBe('/attendance');
   });
 });
 

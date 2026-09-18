@@ -257,8 +257,8 @@ export const attendanceAttackService = {
         ? `${who}님이 퇴근 버튼을 잠깐 숨겼습니다!`
         : `${who}님이 퇴근 방해를 걸었습니다!`) + (stack > 1 ? ` (쌓인 공격 ${stack}개)` : ''),
       created.id,
-      // 방어권은 포인트 탭에서 산다 — 출근 화면에는 효과와 안내 한 줄만 있다
-      '/profile?tab=points'
+      // 공격받은 자리(출근 화면)로 — 퇴근 버튼 효과와 방어권이 거기 있다
+      '/attendance'
     );
 
     return {

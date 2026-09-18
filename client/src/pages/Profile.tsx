@@ -23,7 +23,6 @@ import { LotteryPanel } from '../components/points/LotteryPanel';
 import { PointRanking } from '../components/points/PointRanking';
 import { DuelPanel } from '../components/points/DuelPanel';
 import { AttackPanel } from '../components/points/AttackPanel';
-import { IncomingAttack } from '../components/points/IncomingAttack';
 import { useFeature, type FeatureKey } from '../store/features';
 import { useAuth } from '../store/auth';
 import { useSiteSettings } from '../store/siteSettings';
@@ -665,12 +664,9 @@ export default function Profile() {
             {/* 5. 계정설정 탭 */}
             {activeTab === 'points' && lotteryEnabled && (
               <div className="space-y-6">
-                {/* 나에게 걸린 퇴근 공격 — 맨 위. 알림을 누르면 여기로 온다. 출근 화면에는
-                    효과와 안내 한 줄만 있고, 방어권(포인트를 쓰는 일)은 여기서 산다. */}
                 {/* 포인트가 움직이는 판마다 onSpent 로 알리고, 모든 판이 refreshSignal 로 다시
                     읽는다. 예전에는 공격권만 알려서, 뽑기·대결 뒤에는 다른 판들이 옛 잔액으로
                     버튼을 막거나 열어 두었다. (공격 두 판은 같은 쿼리 캐시를 함께 쓴다.) */}
-                {attackEnabled && <IncomingAttack onSpent={bumpPoints} />}
                 <LotteryPanel refreshSignal={pointsVersion} onSpent={bumpPoints} />
                 {duelEnabled && (
                   <DuelPanel
