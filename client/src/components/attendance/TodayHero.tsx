@@ -4,7 +4,7 @@
 // 경과 시간은 이 안에서만 센다. 부모에서 세면 시간이 바뀔 때마다 아래 표까지
 // 함께 다시 그려진다.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { LogIn, LogOut } from 'lucide-react';
 import type { AttendanceRecord } from '../../types/attendance.types';
 import type { AttackKind } from '../../api/attendance';
@@ -27,8 +27,205 @@ interface Props {
    *  · hide  — 버튼이 잠깐 사라진다. 그동안은 정말로 누를 수 없다.
    */
   attackKind?: AttackKind | null;
+  /** 걸린 공격이 풀리는 시각 — 숨기기의 남은 초를 센다 */
+  attackExpiresAt?: string | null;
   onCheckIn: () => void;
   onCheckOut: () => void;
+}
+
+function secondsUntil(at: string | null): number | null {
+  if (!at) return null;
+  return Math.max(0, Math.ceil((new Date(at).getTime() - Date.now()) / 1000));
+}
+
+/**
+ * 숨은 퇴근 버튼의 자리 — 연기(💨)가 흩어지고 🙈 와 남은 초가 앉는다.
+ *
+ * 누르면 흔들리며 "아직 숨어 있어요". 그래도 눌리지는 않는다 — 숨기기는 그 짧은 동안
+ * 정말로 누를 수 없는 공격이다. 화면 낭독기에는 감춘다(경고 띠가 같은 말을 한다).
+ */
+function HiddenSlot({ expiresAt }: { expiresAt: string | null }) {
+  const [left, setLeft] = useState(() => secondsUntil(expiresAt));
+  useEffect(() => {
+    setLeft(secondsUntil(expiresAt));
+    if (!expiresAt) return;
+    const id = window.setInterval(() => setLeft(secondsUntil(expiresAt)), 1000);
+    return () => window.clearInterval(id);
+  }, [expiresAt]);
+
+  const [teased, setTeased] = useState(0);
+  useEffect(() => {
+    if (teased === 0) return;
+    const id = window.setTimeout(() => setTeased(0), 1400);
+    return () => window.clearTimeout(id);
+  }, [teased]);
+
+  return (
+    // 자리는 그대로 남긴다(같은 크기). 버튼이 빠지면 줄이 줄어들어 옆의 출근 버튼까지 움직인다.
+    // disabled 버튼이 아니라 span 이다. Tab 으로도 잡히지 않아야 감춘 것이 된다.
+    <span
+      aria-hidden
+      data-testid="checkout-slot"
+      onClick={() => setTeased(k => k + 1)}
+      className="relative inline-flex cursor-pointer select-none items-center gap-2 rounded-lg border-2 border-dashed border-slate-300 px-4 py-2 text-sm dark:border-slate-600"
+    >
+      <span className="inline-flex items-center gap-2 opacity-0">
+        <LogOut className="h-4 w-4" />
+        퇴근
+      </span>
+      <span className="animate-poof absolute inset-0 flex items-center justify-center text-xl">
+        💨
+      </span>
+      <span
+        key={teased}
+        className={`absolute inset-0 flex items-center justify-center gap-1 text-sm font-semibold tabular-nums text-slate-500 dark:text-slate-400 ${
+          teased > 0 ? 'animate-chaosShake' : 'animate-fadeInLate'
+        }`}
+        style={teased > 0 ? { animationIterationCount: 2 } : undefined}
+      >
+        <span className="text-lg">🙈</span>
+        {left !== null && left > 0 && <span>{left}</span>}
+      </span>
+      {teased > 0 && (
+        // 위치 잡기(가운데 정렬 translate)와 튀어나오기(scale)를 한 요소에 두면
+        // 애니메이션의 transform 이 translate 를 덮어 말풍선이 옆으로 밀린다 — 둘로 나눈다.
+        <span className="pointer-events-none absolute -top-9 left-1/2 z-20 -translate-x-1/2">
+          <span className="animate-popIn block whitespace-nowrap rounded-full bg-slate-900 px-2.5 py-1 text-xs font-medium text-white shadow-lg dark:bg-white dark:text-slate-900">
+            아직 숨어 있어요
+          </span>
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * 숨기기 동안 카드 여기저기에 뜨는 가짜 퇴근 버튼.
+ *
+ * 누르면 "속았지롱 🙈" 하고 터져 사라진다. 기록은 아무것도 남지 않는다 — onClick 은
+ * 화면 안의 장난일 뿐 서버를 부르지 않는다.
+ *
+ * 화면 낭독기·키보드 사용자는 속이지 않는다: aria-hidden 이고 Tab 으로 잡히지 않는
+ * span 이다. 그 사람들에게는 경고 띠가 '버튼이 보이지 않습니다' 라고 말한다.
+ */
+type Spot = { left: string; top: string };
+
+/** 가짜 버튼 하나의 대략적인 크기(px) — 겹침을 피할 때만 쓴다 */
+const DECOY_W = 84;
+const DECOY_H = 38;
+
+/**
+ * 카드 안에서 진짜 조작 요소를 피한 자리 셋.
+ *
+ * 가짜가 진짜 버튼 위에 얹히면 그 버튼을 누를 수 없다. 퇴근이 숨은 동안에도 출근
+ * (어제 기록이 안 닫힌 채 오늘 출근 전인 사람)은 살아 있어야 한다 — 장난이 다른 기능을
+ * 막으면 선을 넘는다. 그래서 카드 안의 버튼·링크를 재서 그 자리를 비켜 고른다.
+ *
+ * 잴 수 없으면(크기 0 — 테스트 환경 등) null.
+ */
+function measuredSpots(card: HTMLElement): Spot[] | null {
+  const box = card.getBoundingClientRect();
+  if (box.width < DECOY_W * 2 || box.height < DECOY_H * 2) return null;
+  // 숨은 자리(🙈 와 남은 초)도 피한다 — 가리면 언제 돌아오는지 안 보인다
+  const blocked = [
+    ...card.querySelectorAll<HTMLElement>(
+      'button, a, input, [role="progressbar"], [data-testid="checkout-slot"]'
+    ),
+  ]
+    .map(el => el.getBoundingClientRect())
+    .map(r => ({
+      l: r.left - box.left,
+      t: r.top - box.top,
+      r: r.right - box.left,
+      b: r.bottom - box.top,
+    }));
+
+  const MARGIN = 8;
+  const hits = (x: number, y: number, rects: typeof blocked) =>
+    rects.some(
+      r =>
+        x < r.r + MARGIN &&
+        x + DECOY_W > r.l - MARGIN &&
+        y < r.b + MARGIN &&
+        y + DECOY_H > r.t - MARGIN
+    );
+
+  const spots: Spot[] = [];
+  const taken: typeof blocked = [];
+  for (let i = 0; i < 3; i++) {
+    // 카드를 세 칸으로 나눠 한 칸에 하나씩 — 한쪽에 몰리면 가짜인 게 바로 보인다
+    const lane = (box.width - DECOY_W) / 3;
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const x = Math.round(lane * i + Math.random() * lane);
+      const y = Math.round(8 + Math.random() * (box.height - DECOY_H - 16));
+      if (hits(x, y, blocked) || hits(x, y, taken)) continue;
+      spots.push({ left: `${x}px`, top: `${y}px` });
+      taken.push({ l: x, t: y, r: x + DECOY_W, b: y + DECOY_H });
+      break;
+    }
+  }
+  return spots;
+}
+
+/** 잴 수 없을 때의 자리 — 비율로 흩어 둔다 */
+function roughSpots(): Spot[] {
+  return [0, 1, 2].map(i => ({
+    left: `${4 + i * 30 + Math.random() * 16}%`,
+    top: `${10 + Math.random() * 55}%`,
+  }));
+}
+
+function Decoys() {
+  // 숨기기 한 번에 자리를 한 번 정한다(부모가 공격마다 key 로 새로 그린다).
+  // 자리를 재려면 그려진 뒤여야 하므로 첫 그림은 비워 두고, 그리기 직전(layout effect)에 정한다 —
+  // 화면에는 자리 잡은 뒤의 모습만 나온다.
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const [spots, setSpots] = useState<Spot[]>([]);
+  useLayoutEffect(() => {
+    const card = anchorRef.current?.closest<HTMLElement>('[data-chaos-bounds]');
+    setSpots((card && measuredSpots(card)) ?? roughSpots());
+  }, []);
+  const [popped, setPopped] = useState<number[]>([]);
+  const [fooled, setFooled] = useState<{ at: number; key: number } | null>(null);
+  useEffect(() => {
+    if (!fooled) return;
+    const id = window.setTimeout(() => setFooled(null), 1500);
+    return () => window.clearTimeout(id);
+  }, [fooled]);
+
+  return (
+    <>
+      <span ref={anchorRef} hidden />
+      {spots.map((spot, i) =>
+        popped.includes(i) ? null : (
+          <span
+            key={i}
+            aria-hidden
+            data-testid="decoy"
+            onClick={() => {
+              setPopped(prev => [...prev, i]);
+              setFooled({ at: i, key: Date.now() });
+            }}
+            className="btn-secondary animate-popIn absolute z-10 cursor-pointer select-none"
+            style={{ left: spot.left, top: spot.top, animationDelay: `${i * 120}ms` }}
+          >
+            <LogOut className="h-4 w-4" />
+            퇴근
+          </span>
+        )
+      )}
+      {fooled && (
+        <span
+          key={fooled.key}
+          aria-hidden
+          className="animate-popIn pointer-events-none absolute z-20 whitespace-nowrap rounded-full bg-slate-900 px-3 py-1 text-sm font-medium text-white shadow-lg dark:bg-white dark:text-slate-900"
+          style={{ left: spots[fooled.at].left, top: spots[fooled.at].top }}
+        >
+          속았지롱 🙈
+        </span>
+      )}
+    </>
+  );
 }
 
 /** 분 단위로만 쓰므로 15초면 충분하다 */
@@ -52,6 +249,7 @@ export function TodayHero({
   canCheckOut,
   checkingOut,
   attackKind = null,
+  attackExpiresAt = null,
   onCheckIn,
   onCheckOut,
 }: Props) {
@@ -96,7 +294,10 @@ export function TodayHero({
   const carried = record && record.workDate !== workDate ? record.workDate : null;
 
   return (
-    <section className="card overflow-hidden">
+    // data-chaos-bounds: 방해받는 퇴근 버튼이 이 카드 안 어디로든 달아난다(ChaosButton).
+    // relative: 숨기기 동안 카드 여기저기에 가짜 퇴근 버튼을 띄운다(Decoys).
+    <section data-chaos-bounds className="card relative overflow-hidden">
+      {attackKind === 'hide' && <Decoys key={attackExpiresAt ?? 'hide'} />}
       <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -152,21 +353,7 @@ export function TodayHero({
             //
             // 사라진 자리에는 점선 흔적을 남기고 연기(💨)가 흩어진 뒤 🙈 가 앉는다.
             // 그냥 비워 두면 버튼이 고장 난 건지 숨겨진 건지 알 수 없다.
-            <span
-              aria-hidden
-              className="pointer-events-none relative inline-flex select-none items-center gap-2 rounded-lg border-2 border-dashed border-slate-300 px-4 py-2 text-sm dark:border-slate-600"
-            >
-              <span className="inline-flex items-center gap-2 opacity-0">
-                <LogOut className="h-4 w-4" />
-                퇴근
-              </span>
-              <span className="animate-poof absolute inset-0 flex items-center justify-center text-xl">
-                💨
-              </span>
-              <span className="animate-fadeInLate absolute inset-0 flex items-center justify-center text-lg">
-                🙈
-              </span>
-            </span>
+            <HiddenSlot expiresAt={attackExpiresAt} />
           ) : (
             /* 방해를 받는 중에도 버튼은 살아 있다 — 성가실 뿐 끝내 눌린다 */
             <span key={popKey} className={`inline-flex ${popKey > 0 ? 'animate-popIn' : ''}`}>

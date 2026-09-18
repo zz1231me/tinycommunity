@@ -47,6 +47,7 @@ const reset = () =>
     toast: null,
     lastSeenId: null,
     isLive: false,
+    lastArrived: null,
     _timer: null,
     _source: null,
     _subscribers: 0,
@@ -188,5 +189,39 @@ describe('폴링 폴백 주기', () => {
 
     await vi.advanceTimersByTimeAsync(30_000 * 6); // 누적 5분
     expect(mockGetNotifications).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('도착 신호 (lastArrived)', () => {
+  // 알림이 오면 관련 화면이 스스로 다시 읽는 데 쓰는 신호다(useNotificationArrival).
+  // SSE 와 폴링 어느 쪽으로 오든 남아야 한다.
+  it('SSE 로 온 알림을 도착 신호로 남긴다', () => {
+    useNotificationStore.getState().start();
+    FakeEventSource.last!.emit('notification', { id: 11, type: 'ATTACK', message: '공격' });
+    expect(useNotificationStore.getState().lastArrived).toMatchObject({ id: 11, type: 'ATTACK' });
+  });
+
+  it('폴링으로 새로 알게 된 알림도 남긴다 — 이미 읽은 알림이어도', async () => {
+    // 읽은 알림은 토스트를 띄우지 않는다. 토스트를 신호로 썼다면 여기서 신호가 빠진다.
+    useNotificationStore.setState({ lastSeenId: 10 });
+    mockGetNotifications.mockResolvedValue({
+      notifications: [{ id: 12, type: 'DUEL', message: '도전장', isRead: true }],
+      unreadCount: 0,
+    });
+    await useNotificationStore.getState().poll();
+
+    const s = useNotificationStore.getState();
+    expect(s.toast).toBeNull();
+    expect(s.lastArrived).toMatchObject({ id: 12, type: 'DUEL' });
+  });
+
+  it('이미 본 알림은 새로 도착한 것으로 치지 않는다 — 음성 대조', async () => {
+    useNotificationStore.setState({ lastSeenId: 20 });
+    mockGetNotifications.mockResolvedValue({
+      notifications: [{ id: 20, type: 'DUEL', message: '예전 것', isRead: false }],
+      unreadCount: 1,
+    });
+    await useNotificationStore.getState().poll();
+    expect(useNotificationStore.getState().lastArrived).toBeNull();
   });
 });

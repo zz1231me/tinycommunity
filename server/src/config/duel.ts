@@ -40,6 +40,28 @@ export const DUEL_DEFAULTS = {
  */
 export const DUEL_STAKE_HARD_MAX = 1_000_000;
 
+/** 신청하며 남길 수 있는 말의 길이 */
+export const DUEL_MESSAGE_MAX = 40;
+/** 이긴 사람이 남길 수 있는 한마디의 길이 */
+export const DUEL_TAUNT_MAX = 30;
+
+/**
+ * 한 줄 말로 다듬는다 — 제어 문자를 지우고, 줄바꿈·연속 공백을 한 칸으로 줄이고, 자른다.
+ *
+ * 화면(React)과 알림은 이 값을 글자로만 그리므로 HTML 을 걷어 낼 필요는 없다.
+ * 줄바꿈을 남기면 알림 한 줄·도전장 말풍선이 제멋대로 늘어난다.
+ * 비면 null — '말 없음' 과 '빈 말' 을 가르지 않는다.
+ */
+export function cleanLine(text: unknown, max: number): string | null {
+  if (typeof text !== 'string') return null;
+  const line = text
+    .replace(/[\u0000-\u001F\u007F]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
+  return line || null;
+}
+
 /** 이 손이 이기는 상대 */
 const BEATS: Record<DuelHand, DuelHand> = {
   rock: 'scissors',

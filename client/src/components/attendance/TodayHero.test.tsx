@@ -10,7 +10,7 @@
 // aria-hidden 은 걸러지므로, 안 보이게만 해 둔 버튼은 여기서 걸린다.
 
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { TodayHero } from './TodayHero';
 import type { AttackKind } from '../../api/attendance';
 
@@ -41,7 +41,8 @@ describe('숨기기 공격을 받는 동안', () => {
     // 버튼이 빠지면서 줄이 줄어들면 옆의 출근 버튼까지 움직인다.
     // 누를 수는 없지만 자리를 지키는 것이 남아 있어야 한다.
     show('hide');
-    expect(screen.getByText('퇴근')).toBeInTheDocument();
+    // 글자로 찾지 않는다 — 숨기는 동안에는 가짜 퇴근 버튼들도 '퇴근' 이라고 적혀 있다
+    expect(screen.getByTestId('checkout-slot')).toHaveTextContent('퇴근');
   });
 
   it('출근 버튼은 그대로다', () => {
@@ -96,5 +97,132 @@ describe('숨겼던 버튼이 돌아올 때', () => {
     rerender(hero('chaos'));
     rerender(hero(null));
     expect(popped()).toBeNull();
+  });
+});
+
+describe('숨기기 — 숨바꼭질', () => {
+  const hide = (expiresAt: string | null = null) =>
+    render(
+      <TodayHero
+        workDate="2026-09-18"
+        record={null}
+        standardWorkMinutes={480}
+        canCheckIn
+        canCheckOut
+        checkingOut={false}
+        attackKind="hide"
+        attackExpiresAt={expiresAt}
+        onCheckIn={vi.fn()}
+        onCheckOut={vi.fn()}
+      />
+    );
+
+  it('가짜 퇴근 버튼이 여럿 뜬다', () => {
+    hide();
+    expect(screen.getAllByTestId('decoy')).toHaveLength(3);
+  });
+
+  it('가짜를 누르면 속았다고 하고 그 가짜는 사라진다', () => {
+    const onCheckOut = vi.fn();
+    render(
+      <TodayHero
+        workDate="2026-09-18"
+        record={null}
+        standardWorkMinutes={480}
+        canCheckIn
+        canCheckOut
+        checkingOut={false}
+        attackKind="hide"
+        onCheckIn={vi.fn()}
+        onCheckOut={onCheckOut}
+      />
+    );
+    fireEvent.click(screen.getAllByTestId('decoy')[0]);
+    expect(screen.getByText('속았지롱 🙈')).toBeInTheDocument();
+    expect(screen.getAllByTestId('decoy')).toHaveLength(2);
+    // 가짜는 기록을 건드리지 않는다
+    expect(onCheckOut).not.toHaveBeenCalled();
+  });
+
+  it('가짜는 화면 낭독기·키보드에는 보이지 않는다 — 그 사람들은 속이지 않는다', () => {
+    hide();
+    for (const decoy of screen.getAllByTestId('decoy')) {
+      expect(decoy).toHaveAttribute('aria-hidden', 'true');
+      expect(decoy.tagName).not.toBe('BUTTON');
+      expect(decoy).not.toHaveAttribute('tabindex');
+    }
+  });
+
+  it('숨은 자리에 남은 초를 보여 준다', () => {
+    hide(new Date(Date.now() + 15_000).toISOString());
+    expect(screen.getByTestId('checkout-slot')).toHaveTextContent('15');
+  });
+
+  it('숨은 자리를 누르면 아직 숨어 있다고 한다', () => {
+    hide();
+    fireEvent.click(screen.getByTestId('checkout-slot'));
+    expect(screen.getByText('아직 숨어 있어요')).toBeInTheDocument();
+  });
+
+  it('숨기기가 아니면 가짜는 없다 — 음성 대조', () => {
+    show('chaos');
+    expect(screen.queryAllByTestId('decoy')).toHaveLength(0);
+  });
+});
+
+describe('가짜 버튼은 진짜 버튼을 가리지 않는다', () => {
+  // 퇴근이 숨은 동안에도 출근(어제 기록이 안 닫힌 채 오늘 출근 전)은 살아 있어야 한다.
+  // 가짜가 그 위에 얹히면 장난이 다른 기능을 막게 된다.
+  const box = (l: number, t: number, r: number, b: number) =>
+    ({
+      left: l,
+      top: t,
+      right: r,
+      bottom: b,
+      x: l,
+      y: t,
+      width: r - l,
+      height: b - t,
+      toJSON: () => ({}),
+    }) as DOMRect;
+  // 진짜 출근 버튼이 카드 위쪽 절반을 다 차지한다고 둔다
+  const CHECK_IN = { l: 0, t: 0, r: 720, b: 150 };
+
+  it('겹치는 자리가 먼저 뽑혀도 비켜 간다', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement
+    ) {
+      if (this.hasAttribute('data-chaos-bounds')) return box(0, 0, 720, 300);
+      if (this.tagName === 'BUTTON' && this.textContent?.includes('출근'))
+        return box(CHECK_IN.l, CHECK_IN.t, CHECK_IN.r, CHECK_IN.b);
+      return box(0, 0, 0, 0);
+    });
+    // 뽑는 순서: x, y. 매번 첫 y 는 출근 버튼과 겹치는 값(0.05), 다음 y 는 비어 있는 값(0.9)
+    const seq = [0.1, 0.05, 0.1, 0.9];
+    let n = 0;
+    vi.spyOn(Math, 'random').mockImplementation(() => seq[n++ % seq.length]);
+
+    render(
+      <TodayHero
+        workDate="2026-09-18"
+        record={null}
+        standardWorkMinutes={480}
+        canCheckIn
+        canCheckOut
+        checkingOut={false}
+        attackKind="hide"
+        onCheckIn={vi.fn()}
+        onCheckOut={vi.fn()}
+      />
+    );
+
+    const decoys = screen.getAllByTestId('decoy');
+    expect(decoys.length).toBeGreaterThan(0);
+    for (const decoy of decoys) {
+      const top = parseFloat(decoy.style.top);
+      // 가짜(높이 38)의 윗변이 출근 버튼 아래(150)+여백(8)보다 아래에 있어야 한다
+      expect(top).toBeGreaterThanOrEqual(CHECK_IN.b + 8);
+    }
+    vi.restoreAllMocks();
   });
 });

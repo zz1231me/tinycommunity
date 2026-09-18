@@ -13,12 +13,16 @@ const createDuel = vi.hoisted(() => vi.fn());
 const acceptDuel = vi.hoisted(() => vi.fn());
 const declineDuel = vi.hoisted(() => vi.fn());
 const cancelDuel = vi.hoisted(() => vi.fn());
+const tauntDuel = vi.hoisted(() => vi.fn());
 vi.mock('../../api/points', () => ({
   fetchDuels,
   createDuel,
   acceptDuel,
   declineDuel,
   cancelDuel,
+  tauntDuel,
+  DUEL_MESSAGE_MAX: 40,
+  DUEL_TAUNT_MAX: 30,
 }));
 
 const toastError = vi.hoisted(() => vi.fn());
@@ -60,6 +64,8 @@ const duel = (over: Partial<Duel> = {}): Duel => ({
   expiresAt: new Date(Date.now() + 9 * 60_000).toISOString(),
   settledAt: null,
   createdAt: new Date().toISOString(),
+  message: null,
+  taunt: null,
   ...over,
 });
 
@@ -313,5 +319,109 @@ describe('알림에서 넘어온 판', () => {
     render(<DuelPanel myId={ME} focusDuelId={5} focusKey="k1" />);
 
     await waitFor(() => expect(document.getElementById('duel-5')).toHaveClass('animate-duelPulse'));
+  });
+});
+
+describe('신청 메시지', () => {
+  it('적은 말을 함께 보낸다', async () => {
+    createDuel.mockResolvedValue(duel());
+    render(<DuelPanel myId={ME} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '상대 고르기' }));
+    fireEvent.change(screen.getByLabelText('걸 포인트'), { target: { value: '300' } });
+    fireEvent.change(screen.getByLabelText('신청 메시지'), { target: { value: '각오해라' } });
+    fireEvent.click(screen.getByRole('button', { name: '바위' }));
+    fireEvent.click(screen.getByRole('button', { name: /대결 신청/ }));
+
+    await waitFor(() =>
+      expect(createDuel).toHaveBeenCalledWith(expect.objectContaining({ message: '각오해라' }))
+    );
+  });
+
+  it('비워 두면 말 없이 보낸다', async () => {
+    createDuel.mockResolvedValue(duel());
+    render(<DuelPanel myId={ME} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '상대 고르기' }));
+    fireEvent.change(screen.getByLabelText('걸 포인트'), { target: { value: '300' } });
+    fireEvent.change(screen.getByLabelText('신청 메시지'), { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: '바위' }));
+    fireEvent.click(screen.getByRole('button', { name: /대결 신청/ }));
+
+    await waitFor(() => expect(createDuel).toHaveBeenCalled());
+    expect(createDuel.mock.calls[0][0].message).toBeUndefined();
+  });
+
+  it('받은 도전장에 그 말이 보인다', async () => {
+    fetchDuels.mockResolvedValue(board({ incoming: [duel({ message: '각오해라' })] }));
+    render(<DuelPanel myId={ME} />);
+    expect(await screen.findByText('“각오해라”')).toBeInTheDocument();
+  });
+});
+
+describe('이긴 판의 한마디', () => {
+  // 나는 받은 쪽(opponent)이므로 result=opponent 가 내 승리다
+  const won = (over: Partial<Duel> = {}) =>
+    duel({
+      id: 21,
+      status: 'done',
+      result: 'opponent',
+      challengerHand: 'scissors',
+      opponentHand: 'rock',
+      ...over,
+    });
+  const lost = (over: Partial<Duel> = {}) =>
+    duel({
+      id: 22,
+      status: 'done',
+      result: 'challenger',
+      challengerHand: 'rock',
+      opponentHand: 'scissors',
+      ...over,
+    });
+
+  it('이긴 판에서 한마디를 써서 보낸다', async () => {
+    fetchDuels.mockResolvedValue(board({ recent: [won()] }));
+    tauntDuel.mockResolvedValue(won({ taunt: '다음에 또 와' }));
+    render(<DuelPanel myId={ME} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /한마디 남기기/ }));
+    fireEvent.change(screen.getByLabelText('이긴 판에 남길 한마디'), {
+      target: { value: '다음에 또 와' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '보내기' }));
+
+    await waitFor(() => expect(tauntDuel).toHaveBeenCalledWith(21, '다음에 또 와'));
+  });
+
+  it('진 판에는 한마디 버튼이 없다 — 음성 대조', async () => {
+    fetchDuels.mockResolvedValue(board({ recent: [lost()] }));
+    render(<DuelPanel myId={ME} />);
+    await screen.findByText('패');
+    expect(screen.queryByRole('button', { name: /한마디 남기기/ })).not.toBeInTheDocument();
+  });
+
+  it('이미 남긴 판에는 다시 남길 수 없다', async () => {
+    fetchDuels.mockResolvedValue(board({ recent: [won({ taunt: '벌써 씀' })] }));
+    render(<DuelPanel myId={ME} />);
+    expect(await screen.findByText(/벌써 씀/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /한마디 남기기/ })).not.toBeInTheDocument();
+  });
+
+  it('진 쪽은 이긴 사람이 남긴 말을 누가 했는지와 함께 본다', async () => {
+    fetchDuels.mockResolvedValue(board({ recent: [lost({ taunt: '약하네' })] }));
+    render(<DuelPanel myId={ME} />);
+    expect(await screen.findByText('💬 브라보: “약하네”')).toBeInTheDocument();
+  });
+
+  it('받은 대결에서 이기면 한마디 칸이 바로 열린다', async () => {
+    fetchDuels
+      .mockResolvedValueOnce(board({ incoming: [duel({ id: 21 })] }))
+      .mockResolvedValue(board({ recent: [won()] }));
+    acceptDuel.mockResolvedValue(won());
+    render(<DuelPanel myId={ME} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /바위 내고 .*대결 받기/ }));
+    expect(await screen.findByLabelText('이긴 판에 남길 한마디')).toBeInTheDocument();
   });
 });

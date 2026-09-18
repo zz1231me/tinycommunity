@@ -40,6 +40,15 @@ interface NotificationStoreState {
   lastSeenId: number | null;
   /** SSE 스트림이 연결된 상태인지 */
   isLive: boolean;
+  /**
+   * 가장 최근에 새로 도착한 알림 (SSE·폴링 어느 쪽으로 왔든).
+   *
+   * 알림이 오면 그와 관련된 화면이 스스로 다시 읽게 하려는 것이다(useNotificationArrival).
+   * 이것이 없어서, 공격을 받거나 도전장이 와도 종 숫자만 바뀌고 화면은 새로고침을
+   * 해야 바뀌었다. toast 와 따로 두는 이유: toast 는 읽은 알림이면 비워 두고, 화면이
+   * 띄운 뒤 지운다 — 그 값을 신호로 쓰면 신호가 빠진다.
+   */
+  lastArrived: Notification | null;
   _timer: ReturnType<typeof setInterval> | null;
   _source: EventSource | null;
   _subscribers: number;
@@ -57,6 +66,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   toast: null,
   lastSeenId: null,
   isLive: false,
+  lastArrived: null,
   _timer: null,
   _source: null,
   _subscribers: 0,
@@ -78,7 +88,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
         return;
       }
       if (latest.id > lastSeenId) {
-        set({ lastSeenId: latest.id });
+        set({ lastSeenId: latest.id, lastArrived: latest });
         if (!latest.isRead) set({ toast: latest });
       }
     } catch {
@@ -113,7 +123,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
           const n = parseEvent<Notification>(evt);
           if (!n) return;
           const { lastSeenId } = get();
-          set(prev => ({ unreadCount: prev.unreadCount + 1 }));
+          set(prev => ({ unreadCount: prev.unreadCount + 1, lastArrived: n }));
           // 기준선이 아직 없으면(초기 폴링 전) 토스트를 띄우지 않고 기준선만 세운다.
           if (lastSeenId !== null && n.id > lastSeenId) set({ toast: n });
           set({ lastSeenId: Math.max(lastSeenId ?? 0, n.id) });
@@ -155,6 +165,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       _source: null,
       isLive: false,
       lastSeenId: null,
+      lastArrived: null,
       toast: null,
       unreadCount: 0,
     });

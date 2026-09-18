@@ -17,6 +17,9 @@ import {
   createDuel,
   declineDuel,
   fetchDuels,
+  tauntDuel,
+  DUEL_MESSAGE_MAX,
+  DUEL_TAUNT_MAX,
   type Duel,
   type DuelBoard,
   type DuelHand,
@@ -27,6 +30,7 @@ import { UserPicker } from '../common/UserPicker';
 import type { UserSuggestion } from '../../api/users';
 import { ListState } from '../common/ListState';
 import { LoadingSpinner } from '../common/LoadingStates';
+import { useNotificationArrival } from '../../hooks/useNotificationArrival';
 
 const HANDS: DuelHand[] = ['rock', 'paper', 'scissors'];
 const HAND_LABEL: Record<DuelHand, string> = { rock: '바위', paper: '보', scissors: '가위' };
@@ -125,6 +129,11 @@ export function DuelPanel({
   const [picked, setPicked] = useState<UserSuggestion[]>([]);
   const [stake, setStake] = useState('');
   const [hand, setHand] = useState<DuelHand | null>(null);
+  const [message, setMessage] = useState('');
+
+  // 이긴 판에 남길 한마디 — 어느 판에 쓰는 중인지
+  const [tauntFor, setTauntFor] = useState<number | null>(null);
+  const [tauntText, setTauntText] = useState('');
 
   const reload = useCallback(async () => {
     const next = await fetchDuels();
@@ -160,6 +169,12 @@ export function DuelPanel({
     }, 15_000);
     return () => window.clearInterval(id);
   }, [waitingCount, reload]);
+
+  // 도전장·결과·한마디 알림이 오면 바로 다시 읽는다. 위의 주기적 확인은 기다리는 판이
+  // 있을 때만 돌아서, 아무것도 없을 때 온 도전장은 새로고침을 해야 보였다.
+  useNotificationArrival(['DUEL'], () => {
+    void reload().catch(() => {});
+  });
 
   // ── 알림에서 넘어온 판 찾아가기 ──
   //
@@ -239,11 +254,17 @@ export function DuelPanel({
       return;
     }
     await run(async () => {
-      await createDuel({ opponentId: opponent.id, stake: amount, hand });
+      await createDuel({
+        opponentId: opponent.id,
+        stake: amount,
+        hand,
+        message: message.trim() || undefined,
+      });
       toast.success(`${opponent.name}님에게 ${amount.toLocaleString()}P 대결을 신청했습니다.`);
       setPicked([]);
       setStake('');
       setHand(null);
+      setMessage('');
     }, '대결을 신청하지 못했습니다.');
   };
 
@@ -251,11 +272,26 @@ export function DuelPanel({
     await run(async () => {
       const settled = await acceptDuel(duel.id, myHand);
       const mine = outcomeOf(settled, myId);
-      if (mine === '승') toast.success(`이겼습니다! ${(duel.stake * 2).toLocaleString()}P 획득`);
-      else if (mine === '패')
+      if (mine === '승') {
+        toast.success(`이겼습니다! ${(duel.stake * 2).toLocaleString()}P 획득`);
+        // 이긴 김에 한마디 — 최근 결과에 그 판의 입력칸을 바로 열어 둔다
+        setTauntFor(duel.id);
+        setTauntText('');
+      } else if (mine === '패')
         toast.info(`졌습니다. ${duel.stake.toLocaleString()}P 를 잃었습니다.`);
       else toast.info('비겼습니다. 건 포인트를 돌려받았습니다.');
     }, '대결에 응하지 못했습니다.');
+  };
+
+  const sendTaunt = async (duelId: number) => {
+    const text = tauntText.trim();
+    if (!text) return;
+    await run(async () => {
+      await tauntDuel(duelId, text);
+      toast.success('한마디를 보냈습니다.');
+      setTauntFor(null);
+      setTauntText('');
+    }, '한마디를 보내지 못했습니다.');
   };
 
   if (loading) return <LoadingSpinner size="sm" message="대결 정보를 불러오는 중..." />;
@@ -320,6 +356,11 @@ export function DuelPanel({
                         </span>
                         님이 대결을 신청했습니다
                       </p>
+                      {duel.message && (
+                        <p className="mt-2 inline-block max-w-full break-words rounded-xl rounded-tl-sm bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm ring-1 ring-violet-100 dark:bg-slate-800 dark:text-slate-200 dark:ring-violet-500/20">
+                          “{duel.message}”
+                        </p>
+                      )}
                     </div>
                     <span
                       className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
@@ -399,6 +440,22 @@ export function DuelPanel({
             {board.balance.toLocaleString()}P
           </span>
         </div>
+        <label className="relative mt-2 block">
+          <input
+            value={message}
+            onChange={e => setMessage(e.target.value.slice(0, DUEL_MESSAGE_MAX))}
+            maxLength={DUEL_MESSAGE_MAX}
+            placeholder="도전장에 한마디 (선택)"
+            aria-label="신청 메시지"
+            className="input input-sm w-full pr-14"
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs tabular-nums text-slate-400"
+          >
+            {message.length}/{DUEL_MESSAGE_MAX}
+          </span>
+        </label>
         <div className="mt-2">
           <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">
             낼 손 (상대에게는 승부가 날 때까지 보이지 않습니다)
@@ -442,6 +499,9 @@ export function DuelPanel({
                       내 손 {HAND_FACE[duel.challengerHand]}
                     </span>
                   )}
+                  {duel.message && (
+                    <span className="ml-1.5 text-xs text-slate-400">“{duel.message}”</span>
+                  )}
                   <span className="ml-1.5 text-xs text-slate-400">
                     · {minutesLeft(duel.expiresAt)}분 남음
                   </span>
@@ -475,37 +535,109 @@ export function DuelPanel({
                   key={duel.id}
                   id={`duel-${duel.id}`}
                   tabIndex={-1}
-                  className={`flex items-center justify-between gap-3 px-3 py-2 text-sm ${
+                  className={`px-3 py-2 text-sm ${
                     highlightId === duel.id
                       ? 'animate-duelPulse bg-violet-50 dark:bg-violet-500/10'
                       : ''
                   }`}
                 >
-                  <span className="min-w-0 truncate text-slate-600 dark:text-slate-300">
-                    {other}
-                    {duel.status === 'canceled' ? (
-                      <span className="ml-1.5 text-xs text-slate-400">무효</span>
-                    ) : (
-                      duel.challengerHand &&
-                      duel.opponentHand && (
-                        <span className="ml-1.5 text-xs text-slate-400">
-                          {HAND_FACE[duel.challengerHand]} vs {HAND_FACE[duel.opponentHand]}
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate text-slate-600 dark:text-slate-300">
+                      {other}
+                      {duel.status === 'canceled' ? (
+                        <span className="ml-1.5 text-xs text-slate-400">무효</span>
+                      ) : (
+                        duel.challengerHand &&
+                        duel.opponentHand && (
+                          <span className="ml-1.5 text-xs text-slate-400">
+                            {HAND_FACE[duel.challengerHand]} vs {HAND_FACE[duel.opponentHand]}
+                          </span>
+                        )
+                      )}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      {mine === '승' && !duel.taunt && tauntFor !== duel.id && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTauntFor(duel.id);
+                            setTauntText('');
+                          }}
+                          className="text-xs text-rose-600 hover:underline dark:text-rose-400"
+                        >
+                          🔥 한마디 남기기
+                        </button>
+                      )}
+                      <span
+                        className={`font-semibold tabular-nums ${
+                          mine === '승'
+                            ? 'text-secondary-600 dark:text-secondary-400'
+                            : mine === '패'
+                              ? 'text-red-500'
+                              : 'text-slate-400'
+                        }`}
+                      >
+                        {mine ?? '—'}{' '}
+                        <span className="text-xs font-medium">{duel.stake.toLocaleString()}P</span>
+                      </span>
+                    </span>
+                  </div>
+
+                  {/* 이긴 사람이 남긴 한마디. 진 쪽에서는 약 오르라고 분홍 말풍선으로 */}
+                  {duel.taunt && (
+                    <p
+                      className={`mt-1.5 inline-block max-w-full break-words rounded-xl px-2.5 py-1 text-xs ${
+                        mine === '패'
+                          ? 'rounded-tl-sm bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
+                          : 'rounded-tr-sm bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                      }`}
+                    >
+                      {mine === '패' ? `💬 ${other}: ` : '내 한마디: '}“{duel.taunt}”
+                    </p>
+                  )}
+
+                  {mine === '승' && !duel.taunt && tauntFor === duel.id && (
+                    <form
+                      className="mt-2 flex items-center gap-1.5"
+                      onSubmit={e => {
+                        e.preventDefault();
+                        void sendTaunt(duel.id);
+                      }}
+                    >
+                      <label className="relative min-w-0 flex-1">
+                        <input
+                          // 방금 이긴 판에서 열리므로 바로 쓸 수 있게 둔다
+                          autoFocus
+                          value={tauntText}
+                          onChange={e => setTauntText(e.target.value.slice(0, DUEL_TAUNT_MAX))}
+                          maxLength={DUEL_TAUNT_MAX}
+                          placeholder={`${other}님에게 한마디`}
+                          aria-label="이긴 판에 남길 한마디"
+                          className="input input-sm w-full pr-12"
+                        />
+                        <span
+                          aria-hidden
+                          className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs tabular-nums text-slate-400"
+                        >
+                          {tauntText.length}/{DUEL_TAUNT_MAX}
                         </span>
-                      )
-                    )}
-                  </span>
-                  <span
-                    className={`shrink-0 font-semibold tabular-nums ${
-                      mine === '승'
-                        ? 'text-secondary-600 dark:text-secondary-400'
-                        : mine === '패'
-                          ? 'text-red-500'
-                          : 'text-slate-400'
-                    }`}
-                  >
-                    {mine ?? '—'}{' '}
-                    <span className="text-xs font-medium">{duel.stake.toLocaleString()}P</span>
-                  </span>
+                      </label>
+                      <button
+                        type="submit"
+                        disabled={busy || tauntText.trim() === ''}
+                        className="btn-primary btn-sm disabled:opacity-50"
+                      >
+                        보내기
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTauntFor(null)}
+                        className="btn-secondary btn-sm"
+                      >
+                        닫기
+                      </button>
+                    </form>
+                  )}
                 </li>
               );
             })}

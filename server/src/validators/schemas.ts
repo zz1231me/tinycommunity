@@ -4,7 +4,7 @@
 //    Zod 스키마에서는 구조(non-empty) 검사만 수행하고 실제 길이/복잡도 검사는 컨트롤러에서 처리
 
 import { z } from 'zod';
-import { DUEL_HANDS, DUEL_STAKE_HARD_MAX } from '../config/duel';
+import { DUEL_HANDS, DUEL_MESSAGE_MAX, DUEL_STAKE_HARD_MAX, DUEL_TAUNT_MAX } from '../config/duel';
 import { ATTACK_KINDS } from '../config/attendanceAttack';
 
 // ─── 인증 ─────────────────────────────────────────────────
@@ -152,10 +152,24 @@ export const duelCreateSchema = z.object({
     .min(1, '1P 이상을 걸어주세요.')
     .max(DUEL_STAKE_HARD_MAX),
   hand: z.enum(DUEL_HANDS),
+  message: z
+    .string()
+    .trim()
+    .max(DUEL_MESSAGE_MAX, `신청 메시지는 ${DUEL_MESSAGE_MAX}자까지입니다.`)
+    .optional(),
 });
 
 export const duelAcceptSchema = z.object({
   hand: z.enum(DUEL_HANDS),
+});
+
+/** 이긴 사람의 한마디 */
+export const duelTauntSchema = z.object({
+  message: z
+    .string()
+    .trim()
+    .min(1, '한마디를 입력해주세요.')
+    .max(DUEL_TAUNT_MAX, `한마디는 ${DUEL_TAUNT_MAX}자까지입니다.`),
 });
 
 /**

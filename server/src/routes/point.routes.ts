@@ -13,11 +13,12 @@ import {
   acceptDuel,
   declineDuel,
   cancelDuel,
+  tauntDuel,
 } from '../controllers/duel.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { requireFeature } from '../middlewares/featureGate.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
-import { duelAcceptSchema, duelCreateSchema } from '../validators/schemas';
+import { duelAcceptSchema, duelCreateSchema, duelTauntSchema } from '../validators/schemas';
 import { AuthRequest } from '../types/auth-request';
 
 const router = Router();
@@ -191,6 +192,13 @@ duels.post(
  *     responses:
  *       200: { description: 취소됨 }
  */
+// 이긴 사람의 한마디 — 한 판에 한 번. 누가 이겼는지·이미 남겼는지는 서비스가 본다.
+duels.post(
+  '/:id/taunt',
+  validateBody(duelTauntSchema),
+  asyncHandler((req, res) => tauntDuel(req as AuthRequest, res))
+);
+
 duels.delete(
   '/:id',
   asyncHandler((req, res) => cancelDuel(req as AuthRequest, res))

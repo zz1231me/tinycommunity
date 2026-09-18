@@ -58,6 +58,16 @@ export const declineDuel = async (req: AuthRequest, res: Response): Promise<void
   }
 };
 
+/** POST /api/points/duels/:id/taunt — 이긴 사람의 한마디 (한 판에 한 번) */
+export const tauntDuel = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const duel = await duelService.taunt(req.user.id, duelId(req.params.id), req.body.message);
+    sendSuccess(res, duel, '한마디를 보냈습니다.');
+  } catch (err) {
+    fail(res, err, '한마디를 보내지 못했습니다.', { userId: req.user.id, id: req.params.id });
+  }
+};
+
 /** DELETE /api/points/duels/:id — 신청자가 거둬들인다 */
 export const cancelDuel = async (req: AuthRequest, res: Response): Promise<void> => {
   try {

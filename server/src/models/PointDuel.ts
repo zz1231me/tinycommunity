@@ -56,6 +56,10 @@ class PointDuelModel extends Model<
   /** 이 시각이 지나면 무효 — 걸어 둔 포인트를 돌려준다 */
   declare public expiresAt: Date;
   declare public settledAt: CreationOptional<Date | null>;
+  /** 신청하며 남긴 말 (없으면 null) */
+  declare public message: CreationOptional<string | null>;
+  /** 이긴 사람이 진 사람에게 남긴 한마디 — 한 판에 한 번 (없으면 null) */
+  declare public taunt: CreationOptional<string | null>;
   declare public readonly createdAt: CreationOptional<Date>;
   declare public readonly updatedAt: CreationOptional<Date>;
 }
@@ -84,6 +88,10 @@ PointDuelModel.init(
     result: { type: DataTypes.STRING(12), allowNull: true },
     expiresAt: { type: DataTypes.DATE, allowNull: false },
     settledAt: { type: DataTypes.DATE, allowNull: true },
+    // 길이 상한은 config/duel 의 DUEL_MESSAGE_MAX·DUEL_TAUNT_MAX 와 같다.
+    // 기존 DB 에는 기동 시 ensureAllModelColumns 가 칸을 더한다.
+    message: { type: DataTypes.STRING(40), allowNull: true },
+    taunt: { type: DataTypes.STRING(30), allowNull: true },
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE,
   },

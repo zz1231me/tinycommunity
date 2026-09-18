@@ -26,6 +26,7 @@ import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
 import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { useFeature } from '../../store/features';
+import { useNotificationArrival } from '../../hooks/useNotificationArrival';
 import {
   formatClock,
   formatDay,
@@ -109,13 +110,23 @@ export default function AttendancePage() {
     enabled: attackEnabled,
     // 걸린 공격은 1분이면 저절로 풀리니 짧은 주기로 물어봐야 한다. 다만 근무 중일
     // 때만 묻는다 — 출근 전이거나 이미 퇴근했으면 방해받을 버튼 자체가 없다.
+    // (공격을 받는 순간은 아래 알림 연결이 바로 잡는다. 이 주기는 알림이 끊겼을 때의 대비다.)
     refetchInterval: () => {
       const live = status.data?.record ?? status.data?.openPrevious ?? null;
-      return live && !live.checkOutAt ? 20_000 : false;
+      return live && !live.checkOutAt ? 10_000 : false;
     },
+    // 앱 전체 기본값은 창으로 돌아와도 다시 읽지 않는다. 다른 탭에 있다 돌아오면
+    // 그 사이 걸린 공격이 안 보이므로 여기서만 켠다.
+    refetchOnWindowFocus: true,
   });
 
   const refreshAttack = () => queryClient.invalidateQueries({ queryKey: attendanceKeys.attack });
+
+  // 공격 알림이 오면 바로 다시 읽는다. 알림(SSE)은 즉시 오는데 이 화면은 따로 물어서,
+  // 종 숫자만 바뀌고 공격은 새로고침을 해야 보였다.
+  useNotificationArrival(['ATTACK'], () => {
+    void refreshAttack();
+  });
 
   // 방어에 성공하면 경고 띠 자리에 잠깐 초록 띠를 띄운다(누구의 공격을 막았는지).
   // 토스트는 띄우지 않는다 — 같은 말을 두 곳에서 하면 소음이다.
@@ -208,6 +219,7 @@ export default function AttendancePage() {
             // 막아 버리면 남이 내 퇴근 기록 시각을 늦출 수 있게 된다.
             canCheckOut={Boolean(live && !live.checkOutAt)}
             attackKind={attackEnabled && underAttack && incoming ? incoming.kind : null}
+            attackExpiresAt={attackEnabled && underAttack && incoming ? incoming.expiresAt : null}
             checkingOut={checkOutMutation.isPending}
             onCheckIn={() => setDialogOpen(true)}
             onCheckOut={() => runOnce(() => checkOutMutation.mutateAsync().catch(() => {}))}

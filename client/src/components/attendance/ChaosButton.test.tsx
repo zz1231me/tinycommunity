@@ -224,3 +224,89 @@ describe('부르르 떨기', () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('카드 안 어디로든 달아난다', () => {
+  // 예전에는 왼쪽 96px·위아래 18px 안에서만 움직여 누르기가 너무 쉬웠다.
+  // 이제 카드([data-chaos-bounds])와 버튼의 원래 자리를 재서 카드 안 전체를 쓴다.
+  type Box = { left: number; top: number; right: number; bottom: number };
+  const rect = ({ left, top, right, bottom }: Box) =>
+    ({
+      left,
+      top,
+      right,
+      bottom,
+      x: left,
+      y: top,
+      width: right - left,
+      height: bottom - top,
+      toJSON: () => ({}),
+    }) as DOMRect;
+
+  /** 카드와 버튼 자리를 정해 둔다 — happy-dom 은 크기를 계산하지 않는다 */
+  function layout(card: Box, home: Box) {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement
+    ) {
+      return rect(this.hasAttribute('data-chaos-bounds') ? card : home);
+    });
+  }
+
+  const CARD = { left: 0, top: 0, right: 800, bottom: 300 };
+  function renderInCard() {
+    const { container } = render(
+      <div data-chaos-bounds>
+        <ChaosButton active>
+          <Target />
+        </ChaosButton>
+      </div>
+    );
+    const home = container.firstElementChild!.firstElementChild as HTMLElement;
+    const mover = home.firstElementChild as HTMLElement;
+    const at = () => {
+      const m = (mover.style.transform ?? '').match(/translate\((-?\d+)px, (-?\d+)px\)/);
+      return m ? { x: Number(m[1]), y: Number(m[2]) } : { x: 0, y: 0 };
+    };
+    return { mover, at };
+  }
+
+  it('예전 범위(왼쪽 96px)보다 훨씬 멀리 간다', () => {
+    // 데스크톱: 버튼이 카드 오른쪽 끝에 있다
+    layout(CARD, { left: 700, top: 200, right: 780, bottom: 236 });
+    forceEffect(PICK.dodge);
+    const { at } = renderInCard();
+    expect(at().x).toBeLessThan(-400);
+  });
+
+  it('그래도 카드 밖으로는 나가지 않는다 — 가장자리 12px 안쪽에 멈춘다', () => {
+    layout(CARD, { left: 700, top: 200, right: 780, bottom: 236 });
+    forceEffect(0.999);
+    const { mover, at } = renderInCard();
+    fireEvent.mouseEnter(mover);
+    const { x, y } = at();
+    // 버튼(80×36)이 카드(800×300) 안에 온전히 남는 범위
+    expect(700 + x).toBeGreaterThanOrEqual(12);
+    expect(780 + x).toBeLessThanOrEqual(800 - 12);
+    expect(200 + y).toBeGreaterThanOrEqual(12);
+    expect(236 + y).toBeLessThanOrEqual(300 - 12);
+  });
+
+  it('오른쪽에 자리가 있으면 오른쪽으로도 간다 — 휴대폰에서는 버튼이 왼쪽에 있다', () => {
+    layout(
+      { left: 0, top: 0, right: 375, bottom: 300 },
+      { left: 20, top: 200, right: 100, bottom: 236 }
+    );
+    forceEffect(0.999);
+    const { mover, at } = renderInCard();
+    fireEvent.mouseEnter(mover);
+    expect(at().x).toBeGreaterThan(100);
+  });
+
+  it('마우스를 대도 가끔은 달아나지 않는다 — 끈질기면 잡힌다', () => {
+    // 매번 달아나면 마우스로는 영영 못 누른다. 그러면 '성가시게' 가 '못 누르게' 가 된다.
+    layout(CARD, { left: 700, top: 200, right: 780, bottom: 236 });
+    forceEffect(0.1); // calm 으로 시작하고, 달아날지 고르는 값도 0.1 (< 0.25)
+    const { mover, at } = renderInCard();
+    fireEvent.mouseEnter(mover);
+    expect(at()).toEqual({ x: 0, y: 0 });
+  });
+});

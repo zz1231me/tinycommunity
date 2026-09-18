@@ -77,7 +77,15 @@ export interface Duel {
   expiresAt: string;
   settledAt: string | null;
   createdAt: string;
+  /** 신청하며 남긴 말 (없으면 null) */
+  message: string | null;
+  /** 이긴 사람이 남긴 한마디 — 한 판에 한 번 (없으면 null) */
+  taunt: string | null;
 }
+
+/** 서버(config/duel)의 상한과 같다 */
+export const DUEL_MESSAGE_MAX = 40;
+export const DUEL_TAUNT_MAX = 30;
 
 export interface DuelBoard {
   balance: number;
@@ -96,7 +104,12 @@ export const createDuel = async (body: {
   opponentId: string;
   stake: number;
   hand: DuelHand;
+  message?: string;
 }): Promise<Duel> => unwrap(await api.post('/points/duels', body));
+
+/** 이긴 사람의 한마디 — 한 판에 한 번 */
+export const tauntDuel = async (id: number, message: string): Promise<Duel> =>
+  unwrap(await api.post(`/points/duels/${id}/taunt`, { message }));
 
 export const acceptDuel = async (id: number, hand: DuelHand): Promise<Duel> =>
   unwrap(await api.post(`/points/duels/${id}/accept`, { hand }));

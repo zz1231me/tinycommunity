@@ -456,3 +456,146 @@ describe('알림은 사람을 이름으로 부른다', () => {
     expect(rows).toHaveLength(0);
   });
 });
+
+describe('신청 메시지', () => {
+  async function duelNotices(userId: string) {
+    for (let i = 0; i < 20; i++) {
+      const rows = await Notification.findAll({ where: { userId, type: 'DUEL' } });
+      if (rows.length > 0) return rows;
+      await new Promise(r => setTimeout(r, 25));
+    }
+    return Notification.findAll({ where: { userId, type: 'DUEL' } });
+  }
+
+  beforeEach(async () => {
+    await Notification.destroy({ where: {}, truncate: true });
+  });
+
+  it('상대가 받은 대결에서 메시지를 본다', async () => {
+    await grant(A, 1000);
+    await create(aCookie, { opponentId: B, stake: 100, hand: 'rock', message: '각오해라' });
+
+    const res = await list(bCookie);
+    expect(res.body.data.incoming[0].message).toBe('각오해라');
+  });
+
+  it('알림에도 메시지가 실린다', async () => {
+    await grant(A, 1000);
+    await create(aCookie, { opponentId: B, stake: 100, hand: 'rock', message: '각오해라' });
+
+    const rows = await duelNotices(B);
+    expect(rows[0].message).toContain('"각오해라"');
+  });
+
+  it('메시지 없이도 신청된다', async () => {
+    await grant(A, 1000);
+    const res = await create(aCookie, { opponentId: B, stake: 100, hand: 'rock' });
+    expect(res.status).toBe(200);
+    expect(res.body.data.message).toBeNull();
+  });
+
+  it('40자를 넘으면 거절하고 포인트도 빠지지 않는다', async () => {
+    await grant(A, 1000);
+    const res = await create(aCookie, {
+      opponentId: B,
+      stake: 100,
+      hand: 'rock',
+      message: '가'.repeat(41),
+    });
+    expect(res.status).toBe(400);
+    expect(await balanceOf(A)).toBe(1000);
+  });
+
+  it('줄바꿈과 겹친 공백은 한 칸으로 줄여 한 줄로 남긴다', async () => {
+    // 줄바꿈이 남으면 알림 한 줄과 도전장 말풍선이 제멋대로 늘어난다
+    await grant(A, 1000);
+    const res = await create(aCookie, {
+      opponentId: B,
+      stake: 100,
+      hand: 'rock',
+      message: '  덤벼\n\n  보시지  ',
+    });
+    expect(res.body.data.message).toBe('덤벼 보시지');
+  });
+});
+
+describe('이긴 사람의 한마디', () => {
+  const taunt = (cookie: string, id: number, message: string) =>
+    request(app)
+      .post(`/api/points/duels/${id}/taunt`)
+      .set(CSRF_HEADER)
+      .set('Cookie', cookie)
+      .send({ message });
+
+  /** A 가 바위, B 가 가위 — A(신청자)가 이긴 판을 만든다 */
+  async function aWins(): Promise<number> {
+    await grant(A, 1000);
+    await grant(B, 1000);
+    const made = await create(aCookie, { opponentId: B, stake: 100, hand: 'rock' });
+    const id = made.body.data.id as number;
+    expect((await accept(bCookie, id, 'scissors')).status).toBe(200);
+    return id;
+  }
+
+  beforeEach(async () => {
+    await Notification.destroy({ where: {}, truncate: true });
+  });
+
+  it('이긴 사람이 남기면 진 사람에게 알림이 가고 목록에도 보인다', async () => {
+    const id = await aWins();
+    await Notification.destroy({ where: {}, truncate: true });
+
+    const res = await taunt(aCookie, id, '다음에 또 와');
+    expect(res.status).toBe(200);
+    expect(res.body.data.taunt).toBe('다음에 또 와');
+
+    const seen = await list(bCookie);
+    expect(seen.body.data.recent[0].taunt).toBe('다음에 또 와');
+
+    let rows: Notification[] = [];
+    for (let i = 0; i < 20 && rows.length === 0; i++) {
+      rows = await Notification.findAll({ where: { userId: B, type: 'DUEL' } });
+      if (rows.length === 0) await new Promise(r => setTimeout(r, 25));
+    }
+    expect(rows).toHaveLength(1);
+    expect(rows[0].message).toContain('"다음에 또 와"');
+  });
+
+  it('진 사람은 남길 수 없다', async () => {
+    const id = await aWins();
+    expect((await taunt(bCookie, id, '억울하다')).status).toBe(403);
+  });
+
+  it('판에 끼지 않은 사람은 남길 수 없다', async () => {
+    const id = await aWins();
+    expect((await taunt(cCookie, id, '구경꾼')).status).toBe(403);
+  });
+
+  it('한 판에 한 번뿐이다 — 두 번째는 거절되고 처음 것이 남는다', async () => {
+    const id = await aWins();
+    expect((await taunt(aCookie, id, '첫 번째')).status).toBe(200);
+    expect((await taunt(aCookie, id, '두 번째')).status).toBe(409);
+    expect((await PointDuel.findByPk(id))?.taunt).toBe('첫 번째');
+  });
+
+  it('비긴 판에는 남길 수 없다', async () => {
+    await grant(A, 1000);
+    await grant(B, 1000);
+    const made = await create(aCookie, { opponentId: B, stake: 100, hand: 'rock' });
+    await accept(bCookie, made.body.data.id, 'rock');
+    expect((await taunt(aCookie, made.body.data.id, '비겼네')).status).toBe(409);
+  });
+
+  it('아직 끝나지 않은 판에는 남길 수 없다', async () => {
+    await grant(A, 1000);
+    const made = await create(aCookie, { opponentId: B, stake: 100, hand: 'rock' });
+    expect((await taunt(aCookie, made.body.data.id, '미리')).status).toBe(409);
+  });
+
+  it('30자를 넘거나 비어 있으면 거절한다', async () => {
+    const id = await aWins();
+    expect((await taunt(aCookie, id, '가'.repeat(31))).status).toBe(400);
+    expect((await taunt(aCookie, id, '   ')).status).toBe(400);
+    expect((await PointDuel.findByPk(id))?.taunt).toBeNull();
+  });
+});

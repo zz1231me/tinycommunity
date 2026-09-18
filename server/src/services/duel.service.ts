@@ -27,7 +27,7 @@ import {
   lockBothBalances,
   withLockRetry,
 } from './point.service';
-import { judge } from '../config/duel';
+import { DUEL_MESSAGE_MAX, DUEL_TAUNT_MAX, cleanLine, judge } from '../config/duel';
 import { getDuelSettings } from '../utils/settingsCache';
 import { notificationService } from './notification.service';
 import { logError } from '../utils/logger';
@@ -71,6 +71,9 @@ function view(duel: PointDuelModel, viewerId: string) {
     expiresAt: duel.expiresAt,
     settledAt: duel.settledAt,
     createdAt: duel.createdAt,
+    // 신청자가 남긴 말은 가리지 않는다 — 상대에게 하는 말이다
+    message: duel.message ?? null,
+    taunt: duel.taunt ?? null,
   };
 }
 
@@ -242,9 +245,10 @@ export const duelService = {
    */
   async create(
     challengerId: string,
-    input: { opponentId: string; stake: number; hand: DuelHand }
+    input: { opponentId: string; stake: number; hand: DuelHand; message?: string }
   ): Promise<DuelView> {
     const { opponentId, stake, hand } = input;
+    const message = cleanLine(input.message, DUEL_MESSAGE_MAX);
     const rules = getDuelSettings();
 
     if (opponentId === challengerId) {
@@ -308,6 +312,7 @@ export const duelService = {
             opponentId,
             stake,
             challengerHand: hand,
+            message,
             expiresAt: new Date(Date.now() + rules.expireMinutes * 60_000),
           },
           { transaction: t }
@@ -317,7 +322,8 @@ export const duelService = {
 
     notify(
       opponentId,
-      `${await displayName(challengerId)}님이 ${stake.toLocaleString()}P 를 걸고 대결을 신청했습니다.`,
+      `${await displayName(challengerId)}님이 ${stake.toLocaleString()}P 를 걸고 대결을 신청했습니다.` +
+        (message ? ` "${message}"` : ''),
       created.id
     );
 
@@ -399,6 +405,34 @@ export const duelService = {
         duelId
       );
     }
+  },
+
+  /**
+   * 이긴 사람이 진 사람에게 한마디를 남긴다. 한 판에 한 번.
+   *
+   * '한 번' 은 조건부 갱신(taunt IS NULL)이 지킨다. 읽고 확인한 뒤 저장하면
+   * 두 창에서 같은 순간에 보냈을 때 둘 다 통과해, 진 사람은 알림을 두 번 받는다.
+   */
+  async taunt(userId: string, duelId: number, text: string): Promise<DuelView> {
+    const message = cleanLine(text, DUEL_TAUNT_MAX);
+    if (!message) throw new AppError(400, '한마디를 입력해주세요.');
+
+    const duel = await findOrFail(duelId);
+    if (duel.status !== 'done' || !duel.result || duel.result === 'draw') {
+      throw new AppError(409, '이긴 판에서만 한마디를 남길 수 있습니다.');
+    }
+    const winnerId = duel.result === 'challenger' ? duel.challengerId : duel.opponentId;
+    if (winnerId !== userId) throw new AppError(403, '이긴 사람만 한마디를 남길 수 있습니다.');
+    const loserId = winnerId === duel.challengerId ? duel.opponentId : duel.challengerId;
+
+    const [affected] = await PointDuel.update(
+      { taunt: message },
+      { where: { id: duelId, taunt: null } }
+    );
+    if (affected === 0) throw new AppError(409, '이미 한마디를 남겼습니다.');
+
+    notify(loserId, `${await displayName(userId)}님의 한마디: "${message}"`, duelId);
+    return view(await findOrFail(duelId), userId);
   },
 
   /** 신청한 사람이 거둬들인다 */
