@@ -45,6 +45,7 @@ const reset = () =>
   useNotificationStore.setState({
     unreadCount: 0,
     toast: null,
+    toastMore: 0,
     lastSeenId: null,
     isLive: false,
     arrivals: {},
@@ -240,5 +241,52 @@ describe('도착 신호 (arrivals)', () => {
     });
     await useNotificationStore.getState().poll();
     expect(useNotificationStore.getState().arrivals).toEqual({});
+  });
+});
+
+describe('팝업에 묻힌 알림 수 (외 N건)', () => {
+  it('팝업이 떠 있는 동안 또 오면 앞의 것을 센다', () => {
+    useNotificationStore.getState().start();
+    useNotificationStore.setState({ lastSeenId: 10 });
+
+    FakeEventSource.last!.emit('notification', { id: 11, message: '하나' });
+    expect(useNotificationStore.getState().toastMore).toBe(0);
+    FakeEventSource.last!.emit('notification', { id: 12, message: '둘' });
+    FakeEventSource.last!.emit('notification', { id: 13, message: '셋' });
+
+    const s = useNotificationStore.getState();
+    expect(s.toast).toMatchObject({ id: 13 });
+    expect(s.toastMore).toBe(2);
+  });
+
+  it('팝업을 닫은 뒤에 온 것은 새로 센다 — 대조', () => {
+    useNotificationStore.getState().start();
+    useNotificationStore.setState({ lastSeenId: 10 });
+
+    FakeEventSource.last!.emit('notification', { id: 11, message: '하나' });
+    useNotificationStore.getState().clearToast();
+    FakeEventSource.last!.emit('notification', { id: 12, message: '둘' });
+
+    expect(useNotificationStore.getState().toastMore).toBe(0);
+  });
+
+  it('폴링으로 한 번에 여럿이 오면 안 읽은 것만 센다', async () => {
+    useNotificationStore.setState({ lastSeenId: 10 });
+    mockGetNotifications.mockResolvedValue({
+      notifications: [
+        { id: 14, isRead: false, message: 'd', type: 'COMMENT' },
+        { id: 13, isRead: true, message: 'c', type: 'COMMENT' },
+        { id: 12, isRead: false, message: 'b', type: 'COMMENT' },
+        { id: 11, isRead: false, message: 'a', type: 'COMMENT' },
+        { id: 10, isRead: false, message: 'old', type: 'COMMENT' },
+      ],
+      unreadCount: 4,
+    });
+
+    await useNotificationStore.getState().poll();
+
+    const s = useNotificationStore.getState();
+    expect(s.toast).toMatchObject({ id: 14 });
+    expect(s.toastMore).toBe(2);
   });
 });

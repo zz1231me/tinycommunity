@@ -405,7 +405,7 @@ describe('좁은 카드에서도 멈추지 않는다', () => {
 });
 
 describe('퇴근 취소', () => {
-  const done = (until: string | null, onUndo = vi.fn()) =>
+  const done = (until: string | null, onUndo = vi.fn(), attackKind: AttackKind | null = null) =>
     render(
       <TodayHero
         workDate="2026-09-18"
@@ -425,6 +425,8 @@ describe('퇴근 취소', () => {
         checkingOut={false}
         undoCheckOutUntil={until}
         onUndoCheckOut={onUndo}
+        attackKind={attackKind}
+        attackExpiresAt={attackKind ? new Date(Date.now() + 60_000).toISOString() : null}
         onCheckIn={vi.fn()}
         onCheckOut={vi.fn()}
       />
@@ -443,6 +445,20 @@ describe('퇴근 취소', () => {
     done(new Date(Date.now() - 1000).toISOString());
     expect(screen.queryByRole('button', { name: /퇴근 취소/ })).not.toBeInTheDocument();
   });
+
+  // 공격은 1분쯤 간다. 공격 중에 퇴근을 누르면 그 뒤로도 연출이 계속돼, 바로 옆 퇴근 취소
+  // 단추를 도망다니는 퇴근 버튼(과 그 둘레 감지 영역)이 덮거나 가짜 버튼들이 가렸다 —
+  // 퇴근 직후 1분 동안 취소가 안 눌렸다. 퇴근한 뒤에는 방해할 버튼이 없으니 연출도 없다.
+  it.each(['chaos', 'hide'] as const)(
+    '%s 공격 중에 퇴근했어도 연출이 멈춰 취소 단추를 가리지 않는다',
+    kind => {
+      const { container } = done(new Date(Date.now() + 10 * 60_000).toISOString(), vi.fn(), kind);
+      expect(container.querySelector('[data-chaos-halo]')).toBeNull();
+      expect(screen.queryAllByTestId('decoy')).toHaveLength(0);
+      expect(screen.queryByTestId('checkout-slot')).toBeNull();
+      expect(screen.getByRole('button', { name: /퇴근 취소/ })).toBeEnabled();
+    }
+  );
 
   it('취소할 퇴근이 없으면 보이지 않는다 — 대조', () => {
     done(null);

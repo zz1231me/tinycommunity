@@ -8,18 +8,103 @@
 // 한 화면 안에서 방식이 갈리면 로딩·실패 처리도 따로 놀게 된다.
 
 import { useEffect, useState } from 'react';
-import { Trophy } from 'lucide-react';
+import { Crown, Trophy } from 'lucide-react';
 import { fetchPointRanking, type PointRanking as Ranking } from '../../api/points';
 import { ListState } from '../common/ListState';
 import { LoadingSpinner } from '../common/LoadingStates';
 import { Avatar } from '../Avatar';
 
-/** 1~3 등만 색을 준다 — 전부 칠하면 순위가 눈에 안 들어온다 */
-function medal(rank: number): string {
-  if (rank === 1) return 'text-amber-500';
-  if (rank === 2) return 'text-slate-400';
-  if (rank === 3) return 'text-amber-700';
-  return 'text-slate-400';
+/**
+ * 1~3 등 시상대의 색 — 금·은·동. 등수(rank)로 고른다: 공동 1등이 둘이면 둘 다 금이다.
+ * ring: 사진 둘레 띠 / badge: 등수 딱지 / plinth: 받침대
+ */
+const MEDAL = {
+  1: {
+    ring: 'from-amber-200 via-yellow-400 to-amber-500 shadow-lg shadow-amber-400/40',
+    badge: 'from-yellow-400 to-amber-500',
+    plinth:
+      'from-amber-200 to-amber-50 dark:from-amber-500/40 dark:to-amber-500/5 border-amber-300 dark:border-amber-400/40',
+  },
+  2: {
+    ring: 'from-slate-100 via-slate-300 to-slate-400 shadow-md shadow-slate-400/30',
+    badge: 'from-slate-300 to-slate-500',
+    plinth:
+      'from-slate-200 to-slate-50 dark:from-slate-500/40 dark:to-slate-500/5 border-slate-300 dark:border-slate-500/40',
+  },
+  3: {
+    ring: 'from-orange-200 via-amber-600 to-amber-800 shadow-md shadow-amber-700/30',
+    badge: 'from-amber-600 to-amber-800',
+    plinth:
+      'from-orange-200 to-orange-50 dark:from-amber-700/40 dark:to-amber-700/5 border-orange-300 dark:border-amber-700/40',
+  },
+} as const;
+
+/**
+ * 자리(0,1,2 — 받은 순서)마다 놓이는 곳과 받침대 높이.
+ * 화면에는 2·1·3 순으로 놓지만(order) 문서 순서는 1·2·3 그대로 둔다 — 화면 낭독기는 1등부터 읽는다.
+ * 올라오는 시간은 3등 → 2등 → 1등 순으로 늦춘다. 1등이 마지막에 솟아야 시상식 같다.
+ */
+const SLOT = [
+  { order: 'order-2', height: 'h-20', delay: '240ms', size: 'xl' },
+  { order: 'order-1', height: 'h-14', delay: '120ms', size: 'lg' },
+  { order: 'order-3', height: 'h-10', delay: '0ms', size: 'lg' },
+] as const;
+
+type Entry = Ranking['top'][number];
+
+function Podium({ entries, myId }: { entries: Entry[]; myId?: string }) {
+  return (
+    <ol data-testid="podium" className="mt-4 flex items-end justify-center gap-2 sm:gap-4">
+      {entries.map((e, i) => {
+        const slot = SLOT[i];
+        const medal = MEDAL[Math.min(3, Math.max(1, e.rank)) as 1 | 2 | 3];
+        const mine = e.userId === myId;
+        return (
+          <li
+            key={e.userId}
+            className={`flex w-1/3 max-w-[9rem] min-w-0 flex-col items-center ${slot.order}`}
+          >
+            {/* 왕관 자리는 모두 비워 둔다 — 1등만 있으면 1등 사진이 그만큼 아래로 밀려 받침대 높이 차가 흐려진다 */}
+            <span className="flex h-6 items-end" aria-hidden>
+              {e.rank === 1 && (
+                <Crown className="h-5 w-5 fill-amber-300 text-amber-500 motion-safe:animate-crownFloat" />
+              )}
+            </span>
+            <div className={`relative rounded-[11px] bg-gradient-to-br p-[3px] ${medal.ring}`}>
+              <Avatar
+                user={{ id: e.userId, name: e.name, avatar: e.avatar }}
+                size={slot.size}
+                className="ring-2 ring-white dark:ring-slate-900"
+              />
+              <span
+                className={`absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full bg-gradient-to-br text-xs font-bold tabular-nums text-white ring-2 ring-white dark:ring-slate-900 ${medal.badge}`}
+              >
+                {e.rank}
+              </span>
+            </div>
+            <p className="mt-2 w-full truncate text-center text-sm font-semibold text-slate-800 dark:text-slate-100">
+              {e.name}
+            </p>
+            {mine && (
+              <span className="mt-0.5 rounded-full bg-primary-100 px-1.5 text-2xs font-medium text-primary-700 dark:bg-primary-500/20 dark:text-primary-300">
+                나
+              </span>
+            )}
+            <p className="mt-0.5 text-xs font-semibold tabular-nums text-slate-600 dark:text-slate-300">
+              {e.balance.toLocaleString()}
+              <span className="ml-0.5 font-medium text-slate-400">P</span>
+            </p>
+            {/* 받침대 — 꾸밈이라 낭독기에는 감춘다 */}
+            <div
+              aria-hidden
+              className={`mt-2 w-full origin-bottom rounded-t-lg border border-b-0 bg-gradient-to-b animate-podiumRise ${slot.height} ${medal.plinth}`}
+              style={{ animationDelay: slot.delay }}
+            />
+          </li>
+        );
+      })}
+    </ol>
+  );
 }
 
 function Row({
@@ -43,7 +128,7 @@ function Row({
         mine ? 'bg-primary-50 dark:bg-primary-900/20' : ''
       }`}
     >
-      <span className={`w-6 shrink-0 text-center text-sm font-bold tabular-nums ${medal(rank)}`}>
+      <span className="w-6 shrink-0 text-center text-sm font-bold tabular-nums text-slate-400">
         {rank}
       </span>
       {/* 사진이 없으면 Avatar 가 이니셜·무늬로 대신 그린다 */}
@@ -100,19 +185,23 @@ export function PointRanking() {
         <ListState>아직 순위가 없습니다.</ListState>
       ) : (
         <>
-          <ul className="mt-3 space-y-1">
-            {data.top.map(entry => (
-              <Row
-                key={entry.userId}
-                rank={entry.rank}
-                userId={entry.userId}
-                name={entry.name}
-                avatar={entry.avatar}
-                balance={entry.balance}
-                mine={entry.userId === data.me?.userId}
-              />
-            ))}
-          </ul>
+          <Podium entries={data.top.slice(0, 3)} myId={data.me?.userId} />
+
+          {data.top.length > 3 && (
+            <ul className="mt-3 space-y-1 border-t border-slate-100 pt-3 dark:border-slate-700/60">
+              {data.top.slice(3).map(entry => (
+                <Row
+                  key={entry.userId}
+                  rank={entry.rank}
+                  userId={entry.userId}
+                  name={entry.name}
+                  avatar={entry.avatar}
+                  balance={entry.balance}
+                  mine={entry.userId === data.me?.userId}
+                />
+              ))}
+            </ul>
+          )}
 
           {/* 상위 목록 밖이면 본인 자리를 따로 붙인다 */}
           {data.me && !inTop && (

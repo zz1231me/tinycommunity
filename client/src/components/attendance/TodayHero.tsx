@@ -372,7 +372,7 @@ export function TodayHero({
   canCheckIn,
   canCheckOut,
   checkingOut,
-  attackKind = null,
+  attackKind: incomingKind = null,
   attackExpiresAt = null,
   attackLevel = 1,
   onCheckIn,
@@ -382,6 +382,10 @@ export function TodayHero({
   onUndoCheckOut,
 }: Props) {
   const working = Boolean(record && !record.checkOutAt);
+  // 방해는 퇴근을 누를 수 있을 때만 — 퇴근한 뒤에는 방해할 버튼이 없다. 공격은 1분쯤 가서, 공격 중에
+  // 퇴근하면 남은 동안 도망다니는 버튼(과 둘레 감지 영역)·가짜 버튼들이 바로 옆 '퇴근 취소'
+  // 를 덮어 눌리지 않았다. (취소해 다시 근무 중이 되면 남은 공격이 다시 걸린다.)
+  const attackKind = canCheckOut ? incomingKind : null;
 
   // 숨기기가 풀려 버튼이 돌아오는 순간에만 톡 튀어나오게 한다. 처음 그릴 때나
   // 방해가 풀릴 때는 움직이지 않는다 — 버튼이 괜히 들썩이면 그것도 방해다.

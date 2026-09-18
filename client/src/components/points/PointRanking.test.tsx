@@ -8,7 +8,7 @@
 // 사람에게 순위표는 남의 이야기가 된다.
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { PointRanking } from './PointRanking';
 import type { PointRanking as Ranking } from '../../api/points';
 
@@ -108,5 +108,70 @@ describe('프로필 사진', () => {
 
     await screen.findByText('앨리스');
     expect(screen.queryByAltText('앨리스님의 프로필')).not.toBeInTheDocument();
+  });
+});
+
+describe('1~3등 시상대', () => {
+  const five = () =>
+    data({
+      top: [
+        entry(1, 'alice', '앨리스', 900),
+        entry(2, 'bobby', '바비', 500),
+        entry(3, 'carol', '캐럴', 300),
+        entry(4, 'dave', '데이브', 200),
+        entry(5, 'erin', '에린', 100),
+      ],
+    });
+
+  it('1~3등만 시상대에 서고, 4등부터는 아래 목록이다', async () => {
+    mockFetchRanking.mockResolvedValue(five());
+    render(<PointRanking />);
+
+    const podium = await screen.findByTestId('podium');
+    const onPodium = within(podium);
+    expect(onPodium.getByText('앨리스')).toBeInTheDocument();
+    expect(onPodium.getByText('바비')).toBeInTheDocument();
+    expect(onPodium.getByText('캐럴')).toBeInTheDocument();
+    expect(onPodium.queryByText('데이브')).not.toBeInTheDocument();
+    expect(screen.getByText('데이브')).toBeInTheDocument();
+    expect(screen.getByText('에린')).toBeInTheDocument();
+  });
+
+  it('화면에는 2·1·3 으로 놓되 읽는 순서는 1·2·3 이다', async () => {
+    mockFetchRanking.mockResolvedValue(five());
+    render(<PointRanking />);
+
+    const items = within(await screen.findByTestId('podium')).getAllByRole('listitem');
+    expect(items.map(li => li.textContent)).toEqual([
+      expect.stringContaining('앨리스'),
+      expect.stringContaining('바비'),
+      expect.stringContaining('캐럴'),
+    ]);
+    expect(items.map(li => li.className.match(/order-\d/)?.[0])).toEqual([
+      'order-2',
+      'order-1',
+      'order-3',
+    ]);
+  });
+
+  it('공동 1등은 둘 다 금색이다 — 자리가 아니라 등수로 칠한다', async () => {
+    mockFetchRanking.mockResolvedValue(
+      data({ top: [entry(1, 'alice', '앨리스', 900), entry(1, 'bobby', '바비', 900)] })
+    );
+    render(<PointRanking />);
+
+    const items = within(await screen.findByTestId('podium')).getAllByRole('listitem');
+    const badge = (li: HTMLElement) => within(li).getByText('1').className;
+    expect(badge(items[0])).toContain('from-yellow-400');
+    expect(badge(items[1])).toContain('from-yellow-400');
+  });
+
+  it('시상대에 선 사람이 나면 표시한다', async () => {
+    mockFetchRanking.mockResolvedValue(data({ me: entry(2, 'bobby', '바비', 500) }));
+    render(<PointRanking />);
+
+    const items = within(await screen.findByTestId('podium')).getAllByRole('listitem');
+    expect(within(items[1]).getByText('나')).toBeInTheDocument();
+    expect(within(items[0]).queryByText('나')).not.toBeInTheDocument();
   });
 });

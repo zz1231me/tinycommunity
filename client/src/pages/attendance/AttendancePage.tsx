@@ -191,8 +191,9 @@ export default function AttendancePage() {
 
           {/* 공격받은 자리에서 바로 방어한다 — 경고 띠·남은 시간·방어권 구매. 방어권을 포인트
               탭에 두었더니, 퇴근 버튼이 도망다니는 그 순간에 다른 화면으로 가야 해서 불편했다.
-              공격권을 '사는' 일은 여전히 포인트 탭에만 있다. */}
-          {attackEnabled && <IncomingAttack />}
+              공격권을 '사는' 일은 여전히 포인트 탭에만 있다.
+              퇴근한 뒤에는 거둔다 — 방해받을 버튼이 없는데 방어권을 사게 두면 포인트만 버린다. */}
+          {attackEnabled && live && !live.checkOutAt && <IncomingAttack />}
 
           <TodayHero
             workDate={serverToday}

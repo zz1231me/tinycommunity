@@ -2,12 +2,13 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Bell, BellRing, MessageSquare, Heart, AtSign, Swords, Shield, X } from 'lucide-react';
+import { Bell, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { stagger, listItem, scaleIn } from '../../utils/animations';
 import { useUIOverlays } from '../../store/uiOverlays';
 import { useNotificationStore } from '../../store/notifications';
 import { toast } from '../../utils/toast';
+import { kindOf } from '../common/notificationKinds';
 import {
   getNotifications,
   markAsRead,
@@ -33,44 +34,6 @@ interface Notification {
   isRead: boolean;
   createdAt: string;
 }
-
-const TYPE_ICON: Record<string, { icon: React.ReactNode; bg: string; color: string }> = {
-  COMMENT: {
-    icon: <MessageSquare className="w-4 h-4" />,
-    bg: 'bg-blue-100 dark:bg-blue-900/30',
-    color: 'text-blue-600 dark:text-blue-400',
-  },
-  LIKE: {
-    icon: <Heart className="w-4 h-4" />,
-    bg: 'bg-red-100 dark:bg-red-900/30',
-    color: 'text-red-500 dark:text-red-400',
-  },
-  MENTION: {
-    icon: <AtSign className="w-4 h-4" />,
-    bg: 'bg-secondary-100 dark:bg-secondary-900/30',
-    color: 'text-secondary-600 dark:text-secondary-400',
-  },
-  SUBSCRIPTION: {
-    icon: <BellRing className="w-4 h-4" />,
-    bg: 'bg-emerald-100 dark:bg-emerald-900/30',
-    color: 'text-emerald-600 dark:text-emerald-400',
-  },
-  DUEL: {
-    icon: <Swords className="w-4 h-4" />,
-    bg: 'bg-violet-100 dark:bg-violet-900/30',
-    color: 'text-violet-600 dark:text-violet-400',
-  },
-  ATTACK: {
-    icon: <Shield className="w-4 h-4" />,
-    bg: 'bg-rose-100 dark:bg-rose-900/30',
-    color: 'text-rose-600 dark:text-rose-400',
-  },
-  SYSTEM: {
-    icon: <Bell className="w-4 h-4" />,
-    bg: 'bg-amber-100 dark:bg-amber-900/30',
-    color: 'text-amber-600 dark:text-amber-400',
-  },
-};
 
 export function NotificationBell() {
   // 통합 overlay store — 다른 dropdown(userMenu/search 등)과 자동 배타.
@@ -420,7 +383,7 @@ export function NotificationBell() {
                   className="max-h-96 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700"
                 >
                   {notifications.map(n => {
-                    const typeInfo = TYPE_ICON[n.type] ?? TYPE_ICON.SYSTEM;
+                    const typeInfo = kindOf(n.type);
                     return (
                       <motion.div
                         key={n.id}

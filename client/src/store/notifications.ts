@@ -46,6 +46,12 @@ interface NotificationStoreState {
   unreadCount: number;
   /** 토스트로 띄울 신규 알림(없으면 null) */
   toast: Notification | null;
+  /**
+   * 팝업에 떠 있는 것 말고도 그사이 함께 온 새 알림 수 — '외 N건'.
+   * 팝업은 가장 최근 하나만 보여 준다. 폴링으로 한 번에 여럿이 오거나, 팝업이 떠 있는
+   * 동안 또 오면 앞의 것은 아무 표시 없이 묻혔다.
+   */
+  toastMore: number;
   /** 폴링 기준선 — 첫 폴링에서 기존 알림이 토스트로 쏟아지지 않게 함 */
   lastSeenId: number | null;
   /** SSE 스트림이 연결된 상태인지 */
@@ -77,6 +83,7 @@ interface NotificationStoreState {
 export const useNotificationStore = create<NotificationStoreState>((set, get) => ({
   unreadCount: 0,
   toast: null,
+  toastMore: 0,
   lastSeenId: null,
   isLive: false,
   arrivals: {},
@@ -104,7 +111,13 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
         // 이번에 새로 알게 된 것을 모두 센다 — 가장 최근 것만이 아니다
         const fresh = list.filter(n => n.id > lastSeenId);
         set(prev => ({ lastSeenId: latest.id, arrivals: countArrivals(prev.arrivals, fresh) }));
-        if (!latest.isRead) set({ toast: latest });
+        const unread = fresh.filter(n => !n.isRead);
+        if (!latest.isRead) {
+          set(prev => ({
+            toast: latest,
+            toastMore: unread.length - 1 + (prev.toast ? prev.toastMore + 1 : 0),
+          }));
+        }
       }
     } catch {
       // 폴링 실패는 조용히 무시 — 다음 주기 재시도
@@ -143,7 +156,9 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
             arrivals: countArrivals(prev.arrivals, [n]),
           }));
           // 기준선이 아직 없으면(초기 폴링 전) 토스트를 띄우지 않고 기준선만 세운다.
-          if (lastSeenId !== null && n.id > lastSeenId) set({ toast: n });
+          if (lastSeenId !== null && n.id > lastSeenId) {
+            set(prev => ({ toast: n, toastMore: prev.toast ? prev.toastMore + 1 : 0 }));
+          }
           set({ lastSeenId: Math.max(lastSeenId ?? 0, n.id) });
         });
 
@@ -185,11 +200,12 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       lastSeenId: null,
       arrivals: {},
       toast: null,
+      toastMore: 0,
       unreadCount: 0,
     });
   },
 
-  clearToast: () => set({ toast: null }),
+  clearToast: () => set({ toast: null, toastMore: 0 }),
   setUnreadCount: n => set({ unreadCount: Math.max(0, n) }),
   decrementUnread: () => set(s => ({ unreadCount: Math.max(0, s.unreadCount - 1) })),
 }));
