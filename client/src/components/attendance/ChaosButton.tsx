@@ -38,6 +38,9 @@ type Effect = 'calm' | 'dodge' | 'shake' | 'vanish' | 'blackout';
 // (자리 순서를 바꾸지 말 것. 테스트가 Math.random 값으로 연출을 골라 본다.)
 const EFFECTS: Effect[] = ['calm', 'dodge', 'shake', 'vanish', 'blackout'];
 
+/** 이 연출로 바뀔 때 자리를 옮긴다 */
+const MOVES = new Set<Effect>(['dodge', 'vanish', 'blackout']);
+
 /** 카드 가장자리에서 이만큼은 떨어져 멈춘다 — 딱 붙으면 모서리에 반쯤 걸쳐 보인다 */
 const EDGE = 12;
 
@@ -109,9 +112,15 @@ export function ChaosButton({
   // 버튼의 원래 자리. 움직이지 않는 바깥 껍데기라 여기서 재면 늘 제자리가 나온다.
   const homeRef = useRef<HTMLSpanElement>(null);
 
-  // 움직임을 줄여 달라고 설정한 사람에게는 연출을 걸지 않는다.
-  // 그 설정을 켠 사람에게 이건 재미가 아니라 그냥 못 쓰는 화면이다.
-  const calm = !active || prefersReducedMotion();
+  const calm = !active;
+  // 움직임을 줄여 달라고 설정한 사람에게는 '움직이는 모습' 만 뺀다 — 미끄러지듯 가는 대신
+  // 순간이동하고, 부르르 떨지 않는다. 자리는 그대로 바뀐다.
+  //
+  // 예전에는 이 설정이면 연출을 통째로 껐다. 그런데 이 설정은 윈도 '애니메이션 효과' 끄기,
+  // 성능 우선 모드, 원격 데스크톱에서도 켜진다 — 회사 PC 에 흔하다. 경고 띠는 공격받았다고
+  // 하는데 버튼은 멀쩡해서 '공격이 작동하지 않는다' 로 보였다. 순간이동은 움직임에 민감한
+  // 사람에게 문제가 되는 '움직이는 모습' 이 아니다.
+  const reduced = prefersReducedMotion();
 
   useEffect(() => {
     if (calm) {
@@ -120,17 +129,21 @@ export function ChaosButton({
       return;
     }
     const pick = () => {
-      const next = EFFECTS[Math.floor(Math.random() * EFFECTS.length)];
+      const rolled = EFFECTS[Math.floor(Math.random() * EFFECTS.length)];
+      // 떨기는 제자리에서 움직이는 모습 그 자체라, 움직임을 줄인 사람에게는 도망으로 바꾼다
+      const next = reduced && rolled === 'shake' ? 'dodge' : rolled;
       setEffect(next);
-      // 자리는 '도망' 때만 바꾼다. 다른 연출(평온·떨기·사라지기·암전)로 바뀔 때마다 제자리로
-      // 되돌렸더니, 멀리 달아났던 버튼이 몇 초마다 원래 자리로 순간이동해 돌아와 있었다 —
-      // 그 자리만 노리면 되니 누르기가 오히려 쉬웠다. 제자리는 공격이 끝날 때 돌아간다.
-      if (next === 'dodge') setOffset(pointInBounds(homeRef.current) ?? randomOffset());
+      // 도망·사라지기·암전 때 자리를 옮긴다 — 사라졌다가 다른 데서 나타나고, 가려진 채로
+      // 옮겨 간다. 예전에는 도망(다섯 중 하나) 때만 옮겨, 평균 3~4초에 한 번 움직일 뿐이라
+      // '움직이지 않는다' 로 보였다.
+      // 평온·떨기 때는 제자리를 지킨다. 제자리로 '되돌리지는' 않는다 — 되돌리면 달아났던
+      // 버튼이 원래 자리로 순간이동해, 그 자리만 노리면 됐다. 제자리는 공격이 끝날 때 돌아간다.
+      if (MOVES.has(next)) setOffset(pointInBounds(homeRef.current) ?? randomOffset());
     };
     pick();
     const id = window.setInterval(pick, switchMs(level));
     return () => window.clearInterval(id);
-  }, [calm, level]);
+  }, [calm, level, reduced]);
 
   // 다가가면 달아난다 — 연출 중에서도 이게 제일 약 오른다
   // 달아날 때는 후보 셋 중 지금 자리에서 가장 먼 곳으로 간다 — 바로 옆으로 비키면 다시 잡힌다.
@@ -151,6 +164,11 @@ export function ChaosButton({
     <span ref={homeRef} className="relative inline-flex">
       <span
         onMouseEnter={flee}
+        // 터치에는 '다가감' 이 없다 — 손가락이 닿는 순간 달아난다. 누르고 떼는 사이에 버튼이
+        // 자리를 옮겨 클릭이 성립하지 않는다. 마우스와 같은 비율로 봐주므로 끝내 눌린다.
+        onPointerDown={e => {
+          if (e.pointerType !== 'mouse') flee();
+        }}
         className={effect === 'shake' ? 'animate-chaosShake' : undefined}
         style={{
           display: 'inline-flex',
@@ -159,7 +177,9 @@ export function ChaosButton({
           zIndex: 10,
           transform: `translate(${offset.x}px, ${offset.y}px)`,
           // 멀리 가므로 조금 길게. 같은 시간이면 순간이동처럼 보여 따라갈 맛이 없다.
-          transition: 'transform 140ms cubic-bezier(0.22, 1, 0.36, 1), opacity 120ms linear',
+          transition: reduced
+            ? 'none'
+            : 'transform 140ms cubic-bezier(0.22, 1, 0.36, 1), opacity 120ms linear',
           // 사라져도 자리는 지킨다. 레이아웃이 들썩이면 옆 버튼까지 같이 흔들린다.
           opacity: effect === 'vanish' ? 0 : 1,
         }}

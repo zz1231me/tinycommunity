@@ -197,16 +197,41 @@ describe('연출을 걸지 않아야 할 때', () => {
     expect(screen.getByRole('button', { name: '퇴근' })).toBeEnabled();
   });
 
-  it('움직임을 줄여 달라고 한 사람에게는 연출하지 않는다', () => {
+  // 예전에는 이 설정이면 연출을 통째로 껐다. 이 설정은 윈도 '애니메이션 효과' 끄기·원격
+  // 데스크톱에서도 켜져, 회사 PC 에서는 공격이 '작동하지 않는' 것으로 보였다.
+  it('움직임을 줄여 달라고 한 사람에게도 자리는 옮긴다 — 미끄러지지 않고 순간이동한다', () => {
     setReducedMotion(true);
-    const { container } = render(
-      <ChaosButton active>
-        <Target />
-      </ChaosButton>
-    );
-    // 그 설정을 켠 사람에게 이건 재미가 아니라 못 쓰는 화면이다
-    expect(container.querySelector('span')).toBeNull();
-    expect(screen.getByRole('button', { name: '퇴근' })).toBeEnabled();
+    try {
+      forceEffect(PICK.dodge);
+      const { container } = render(
+        <ChaosButton active>
+          <Target />
+        </ChaosButton>
+      );
+      const { mover } = parts(container);
+      expect(mover!.style.transform).not.toBe('translate(0px, 0px)');
+      expect(mover!.style.transition).toBe('none');
+      expect(screen.getByRole('button', { name: '퇴근' })).toBeEnabled();
+    } finally {
+      setReducedMotion(false);
+    }
+  });
+
+  it('움직임을 줄여 달라고 한 사람에게는 떨지 않는다 — 대신 자리를 옮긴다', () => {
+    setReducedMotion(true);
+    try {
+      forceEffect(PICK.shake);
+      const { container } = render(
+        <ChaosButton active>
+          <Target />
+        </ChaosButton>
+      );
+      const { mover } = parts(container);
+      expect(mover!.className).not.toContain('animate-chaosShake');
+      expect(mover!.style.transform).not.toBe('translate(0px, 0px)');
+    } finally {
+      setReducedMotion(false);
+    }
   });
 });
 
@@ -456,5 +481,61 @@ describe('연출이 바뀌는 빠르기', () => {
   it('열 개 쌓이면 0.35초 안에 바뀐다 — 하나일 때는 아직 그대로다 (대조)', () => {
     expect(blackedOutAfter(10, 350)).toBe(true);
     expect(blackedOutAfter(1, 350)).toBe(false);
+  });
+});
+
+describe('자리를 옮기는 연출', () => {
+  const at = (value: number) => {
+    forceEffect(value);
+    const { container } = render(
+      <ChaosButton active>
+        <Target />
+      </ChaosButton>
+    );
+    return parts(container).mover!.style.transform;
+  };
+
+  // 도망 때만 옮기던 때는 다섯 번에 한 번만 움직여 '작동하지 않는다' 로 보였다
+  it.each([
+    ['도망', PICK.dodge],
+    ['사라지기', PICK.vanish],
+    ['암전', PICK.blackout],
+  ])('%s 때는 자리를 옮긴다', (_name, value) => {
+    expect(at(value)).not.toBe('translate(0px, 0px)');
+  });
+
+  it.each([
+    ['평온', PICK.calm],
+    ['떨기', PICK.shake],
+  ])('%s 때는 제자리다 — 대조', (_name, value) => {
+    expect(at(value)).toBe('translate(0px, 0px)');
+  });
+});
+
+describe('터치', () => {
+  // 터치에는 마우스처럼 '다가가는' 순간이 없어, 폰에서는 버튼이 거의 가만히 있었다
+  const setup = () => {
+    forceEffect(PICK.calm);
+    const { container } = render(
+      <ChaosButton active>
+        <Target />
+      </ChaosButton>
+    );
+    const { mover } = parts(container);
+    // 봐주기 굴림(0.9 ≥ 15%)은 통과하고, 자리는 멀리
+    vi.spyOn(Math, 'random').mockReturnValue(0.9);
+    return mover!;
+  };
+
+  it('손가락이 닿으면 달아난다', () => {
+    const mover = setup();
+    fireEvent.pointerDown(mover, { pointerType: 'touch' });
+    expect(mover.style.transform).not.toBe('translate(0px, 0px)');
+  });
+
+  it('마우스로 누를 때는 누르는 순간 달아나지 않는다 — 마우스는 다가갈 때 이미 달아났다', () => {
+    const mover = setup();
+    fireEvent.pointerDown(mover, { pointerType: 'mouse' });
+    expect(mover.style.transform).toBe('translate(0px, 0px)');
   });
 });
