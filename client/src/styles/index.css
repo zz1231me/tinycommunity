@@ -316,6 +316,9 @@ body {
 }
 
 /* ── 퇴근 공격·방어 연출 ──
+ * 나타나고 튀어나오는 것은 모두 같은 곡선으로 감속한다(빠르게 들어와 부드럽게 멈춤).
+ * 연출마다 곡선이 다르면 하나하나는 괜찮아도 한 화면에서 어긋나 보인다.
+ * 제자리 떨기(linear)와 숨쉬는 빛(ease-in-out)만 성격이 달라 따로 둔다.
  * 움직임 줄이기 설정에서는 아래 전역 규칙이 길이를 0.01ms 로 줄여 사실상 꺼진다.
  * 그래서 시간이 흐르는 것을 보여 주는 표시(남은 시간 막대)에는 애니메이션을 쓰지 않는다 —
  * 꺼지는 순간 막대가 비어 '끝났다' 로 읽힌다. */
@@ -344,7 +347,7 @@ body {
   }
 }
 .animate-attackIn {
-  animation: attackIn 0.6s ease-out;
+  animation: attackIn 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* 방어권 — 눌러 달라고 은근히 빛난다 */
@@ -376,7 +379,7 @@ body {
   }
 }
 .animate-shieldPop {
-  animation: shieldPop 0.5s ease-out both;
+  animation: shieldPop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes ringBurst {
   0% {
@@ -389,7 +392,7 @@ body {
   }
 }
 .animate-ringBurst {
-  animation: ringBurst 0.9s ease-out both;
+  animation: ringBurst 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* 퇴근 방해 — 제자리에서 부르르 떤다 */
@@ -428,10 +431,10 @@ body {
   }
 }
 .animate-poof {
-  animation: poof 0.6s ease-out both;
+  animation: poof 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .animate-fadeInLate {
-  animation: fadeIn 0.3s ease-out 0.45s both;
+  animation: fadeIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) 0.45s both;
 }
 @keyframes popIn {
   0% {
@@ -447,7 +450,7 @@ body {
   }
 }
 .animate-popIn {
-  animation: popIn 0.35s ease-out both;
+  animation: popIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* 접근성: 애니메이션 감소 설정 존중 */

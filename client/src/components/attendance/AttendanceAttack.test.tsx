@@ -70,7 +70,7 @@ describe('공격 알림', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: /방어권 구매/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /방어권/ })).toBeDisabled();
   });
 });
 
@@ -124,7 +124,7 @@ describe('남은 시간 막대', () => {
 });
 
 describe('방어권 버튼의 빛', () => {
-  const glow = () => screen.getByRole('button', { name: /방어권 구매/ }).className;
+  const glow = () => screen.getByRole('button', { name: /방어권/ }).className;
 
   it('살 수 있을 때만 빛난다', () => {
     render(
@@ -160,5 +160,51 @@ describe('방어 성공', () => {
     render(<DefendedBanner attackerName="공격자" />);
     expect(screen.getByRole('status')).toHaveTextContent(/방어 성공/);
     expect(screen.getByRole('status')).toHaveTextContent(/공격자님의 공격을 막았습니다/);
+  });
+});
+
+describe('휴대폰에서도 읽히는 안내', () => {
+  it('못 사는 이유를 툴팁이 아니라 버튼 글자로 보여 준다', () => {
+    // 툴팁(title)은 휴대폰에서 볼 방법이 없다
+    render(
+      <AttackBanner
+        incoming={incoming()}
+        defendCost={200}
+        balance={50}
+        defending={false}
+        onDefend={() => {}}
+        onExpire={() => {}}
+      />
+    );
+    expect(screen.getByRole('button', { name: /방어권/ })).toHaveTextContent(/보유 50P 부족/);
+  });
+
+  it('살 수 있으면 부족하다고 하지 않는다 — 음성 대조', () => {
+    render(
+      <AttackBanner
+        incoming={incoming()}
+        defendCost={200}
+        balance={1000}
+        defending={false}
+        onDefend={() => {}}
+        onExpire={() => {}}
+      />
+    );
+    expect(screen.getByRole('button', { name: /방어권/ })).not.toHaveTextContent(/부족/);
+  });
+
+  it('시간이 다 되면 "0초 동안" 이 아니라 곧 풀린다고 한다', () => {
+    render(
+      <AttackBanner
+        incoming={incoming({ expiresAt: new Date(Date.now() - 1000).toISOString() })}
+        defendCost={200}
+        balance={1000}
+        defending={false}
+        onDefend={() => {}}
+        onExpire={() => {}}
+      />
+    );
+    expect(screen.getByText(/곧 풀립니다/)).toBeInTheDocument();
+    expect(screen.queryByText(/0초 동안/)).not.toBeInTheDocument();
   });
 });

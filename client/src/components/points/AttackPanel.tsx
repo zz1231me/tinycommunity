@@ -13,7 +13,7 @@
 // 하는 것' 이 아니다.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Swords, Loader2 } from 'lucide-react';
+import { Zap, Loader2 } from 'lucide-react';
 import {
   fetchAttackState,
   sendAttack,
@@ -27,9 +27,10 @@ import { LoadingSpinner } from '../common/LoadingStates';
 import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
 
-const KINDS: Array<{ kind: AttackKind; label: string; hint: string }> = [
-  { kind: 'chaos', label: '퇴근 방해', hint: '퇴근 버튼이 도망다니고 깜빡입니다' },
-  { kind: 'hide', label: '버튼 숨기기', hint: '퇴근 버튼이 잠깐 사라집니다' },
+// face 는 받는 쪽 경고 띠(AttendanceAttack)와 같은 얼굴이다 — 보낸 것과 받은 것이 이어져 보이게.
+const KINDS: Array<{ kind: AttackKind; face: string; label: string; hint: string }> = [
+  { kind: 'chaos', face: '🌀', label: '퇴근 방해', hint: '퇴근 버튼이 도망다니고 깜빡입니다' },
+  { kind: 'hide', face: '🙈', label: '버튼 숨기기', hint: '퇴근 버튼이 잠깐 사라집니다' },
 ];
 
 /**
@@ -103,7 +104,8 @@ export function AttackPanel({ myId, onSpent }: { myId: string; onSpent?: () => v
   return (
     <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
       <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
-        <Swords className="h-4 w-4 text-rose-500" />
+        {/* 대결(⚔️)과 같은 아이콘을 쓰면 옆 판과 구분되지 않는다 */}
+        <Zap className="h-4 w-4 text-rose-500" />
         퇴근 공격권
       </h3>
 
@@ -132,6 +134,9 @@ export function AttackPanel({ myId, onSpent }: { myId: string; onSpent?: () => v
                     : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'
                 }`}
               >
+                <span aria-hidden className="mr-1">
+                  {option.face}
+                </span>
                 {option.label}
                 <span className="ml-1 text-xs font-normal text-slate-400">
                   {(option.kind === 'hide' ? rules.hideCost : rules.cost).toLocaleString()}P
@@ -155,13 +160,11 @@ export function AttackPanel({ myId, onSpent }: { myId: string; onSpent?: () => v
             type="button"
             disabled={picked.length === 0 || sending || soldOut || !affordable}
             onClick={() => void handleSend()}
-            className="btn-secondary mt-3 inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+            // 옆 판의 '대결 신청' 과 같은 무게의 주 버튼이다. 한 화면의 핵심 버튼들이
+            // 서로 다른 무게면 어느 쪽이 중요한지 헷갈린다.
+            className="btn-primary mt-3 inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {sending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Swords className="h-4 w-4" />
-            )}
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
             {soldOut
               ? '오늘은 모두 사용했어요'
               : !affordable

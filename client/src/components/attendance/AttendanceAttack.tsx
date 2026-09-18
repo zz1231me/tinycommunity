@@ -71,32 +71,48 @@ export function AttackBanner({
   return (
     <div
       role="status"
-      className="animate-attackIn relative mb-3 flex flex-wrap items-center gap-3 overflow-hidden rounded-xl border border-rose-200 bg-rose-50 px-4 pb-4 pt-3 dark:border-rose-500/30 dark:bg-rose-500/10"
+      // 문장에 최소 폭을 준다. min-w-0 이면 문장이 한 글자 폭까지 줄어들 수 있어서, 좁은
+      // 화면에서도 버튼이 아래로 내려가지 않고 남은 시간 글자 위를 덮었다(375px 에서 확인).
+      className="animate-attackIn relative mb-3 flex flex-wrap items-center gap-x-3 gap-y-2.5 overflow-hidden rounded-xl border border-rose-200 bg-rose-50 px-4 pb-4 pt-3 dark:border-rose-500/30 dark:bg-rose-500/10"
     >
+      {/* 계속 깜빡이지 않는다. 띠 안에서 움직이는 것은 '눌러 달라' 는 방어 버튼의 빛 하나로 둔다 —
+          둘이 함께 돌면 산만하고, 깜빡이는 원은 '불러오는 중' 처럼 읽힌다. */}
       <span
         aria-hidden
-        className="flex h-9 w-9 flex-shrink-0 animate-pulse items-center justify-center rounded-full bg-rose-100 text-xl dark:bg-rose-500/20"
+        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-rose-100 text-xl dark:bg-rose-500/20"
       >
         {KIND_FACE[incoming.kind]}
       </span>
-      <p className="min-w-0 flex-1 text-sm text-rose-800 dark:text-rose-300">
+      <p className="min-w-[12rem] flex-1 text-sm text-rose-800 dark:text-rose-300">
         <span className="font-semibold">{incoming.attackerName}</span>님이 공격권을 사용했습니다!
         <span className="ml-1.5 tabular-nums">
-          {left}초 동안 퇴근 버튼이{' '}
-          {incoming.kind === 'hide' ? '보이지 않습니다' : '말을 안 듣습니다'}.
+          {/* 0초가 된 뒤 서버에서 다시 받아 오기까지 잠깐 남는다. '0초 동안' 은 어색하다. */}
+          {left > 0 ? (
+            <>
+              {left}초 동안 퇴근 버튼이{' '}
+              {incoming.kind === 'hide' ? '보이지 않습니다' : '말을 안 듣습니다'}.
+            </>
+          ) : (
+            '곧 풀립니다.'
+          )}
         </span>
       </p>
       <button
         type="button"
         onClick={onDefend}
         disabled={defending || !affordable}
-        title={affordable ? undefined : '포인트가 모자랍니다'}
-        className={`btn-primary inline-flex flex-shrink-0 items-center gap-1.5 px-3 py-1.5 text-sm disabled:opacity-50 ${
+        // 방어는 초록이다 — 방어 성공 띠와 같은 색. 사이트의 주 버튼(라이트 검정 · 다크 흰색)을
+        // 쓰면 분홍 띠 안에서 검정/흰색 버튼이 초록 빛을 두르게 된다.
+        // 좁은 화면에서는 아래 줄로 내려가 한 줄을 다 쓴다.
+        className={`inline-flex w-full flex-shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 active:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 sm:w-auto dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400 dark:disabled:bg-slate-700 dark:disabled:text-slate-400 ${
           affordable && !defending ? 'animate-shieldGlow' : ''
         }`}
       >
         {defending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
-        방어권 구매 ({defendCost.toLocaleString()}P)
+        {/* 못 사는 이유를 글자로 둔다. 툴팁은 휴대폰에서 볼 방법이 없다. */}
+        {affordable
+          ? `방어권 구매 (${defendCost.toLocaleString()}P)`
+          : `방어권 ${defendCost.toLocaleString()}P · 보유 ${balance.toLocaleString()}P 부족`}
       </button>
 
       {/* 남은 시간 — 줄어드는 막대. 애니메이션이 아니라 매초 바뀌는 폭이다

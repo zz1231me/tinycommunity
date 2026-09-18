@@ -9,6 +9,7 @@ import { FeatureFlag } from '../models/FeatureFlag';
 import { featureFlagService } from '../services/featureFlag.service';
 import { today } from '../services/point.service';
 import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
+import { Notification } from '../models/Notification';
 
 // 퇴근 공격권·방어권.
 //
@@ -402,5 +403,45 @@ describe('동시에 걸어도 방해는 하나만 산다', () => {
     expect(await balanceOf(TGT)).toBe(5000 - ATTACK_DEFAULTS.defendCost);
     const seen = await state(tgtCookie);
     expect(seen.body.data.incoming).toBeNull();
+  });
+});
+
+describe('알림이 데려가는 곳', () => {
+  /** 알림은 정산과 묶지 않고 뒤따라 만들어진다 — 잠깐 기다린다 */
+  async function attackNotices(userId: string) {
+    for (let i = 0; i < 20; i++) {
+      const rows = await Notification.findAll({ where: { userId, type: 'ATTACK' } });
+      if (rows.length > 0) return rows;
+      await new Promise(r => setTimeout(r, 25));
+    }
+    return Notification.findAll({ where: { userId, type: 'ATTACK' } });
+  }
+
+  beforeEach(async () => {
+    await Notification.destroy({ where: {}, truncate: true });
+  });
+
+  it('방어당한 공격자는 포인트 탭으로 간다', async () => {
+    // 공격한 사람의 출근 화면에는 자기가 건 공격에 대한 것이 아무것도 없다
+    await grant(ATK, 1000);
+    await grant(TGT, 1000);
+    await startWorking(TGT);
+    const made = await attack(atkCookie, TGT);
+    await defend(tgtCookie, made.body.data.id);
+
+    const rows = await attackNotices(ATK);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].link).toBe('/profile?tab=points');
+  });
+
+  it('공격받은 사람은 출근 화면으로 간다 — 대조', async () => {
+    // 방해받는 퇴근 버튼과 방어권이 그 화면에 있다
+    await grant(ATK, 1000);
+    await startWorking(TGT);
+    await attack(atkCookie, TGT);
+
+    const rows = await attackNotices(TGT);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].link).toBe('/attendance');
   });
 });

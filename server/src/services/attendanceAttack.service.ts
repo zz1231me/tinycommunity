@@ -75,13 +75,13 @@ async function isWorking(userId: string): Promise<boolean> {
 }
 
 /** 알림은 포인트 정산과 묶지 않는다 — 알림이 실패해도 포인트는 이미 옳게 움직였다 */
-function notify(userId: string, message: string, attackId: number): void {
+function notify(userId: string, message: string, attackId: number, link = '/attendance'): void {
   void notificationService
     .create({
       userId,
       type: 'ATTACK',
       message,
-      link: '/attendance',
+      link,
       relatedId: String(attackId),
     })
     .catch(err => logError('퇴근 공격 알림 생성 실패', err, { userId, attackId }));
@@ -277,7 +277,14 @@ export const attendanceAttackService = {
     );
 
     const me = await User.findByPk(userId, { attributes: ['id', 'name'] });
-    notify(defended.attackerId, `${me?.name ?? userId}님이 방어권을 사용했습니다.`, defended.id);
+    // 공격한 사람에게는 출근 화면이 아니라 공격권이 있는 포인트 탭이 맞다.
+    // 그 사람의 출근 화면에는 자기가 건 공격에 대한 것이 아무것도 없다.
+    notify(
+      defended.attackerId,
+      `${me?.name ?? userId}님이 방어권을 사용했습니다.`,
+      defended.id,
+      '/profile?tab=points'
+    );
 
     return { id: defended.id };
   },
