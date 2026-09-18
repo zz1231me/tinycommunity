@@ -139,18 +139,13 @@ export const getAttendanceSummary = async (req: AuthRequest, res: Response): Pro
 
 export const getAttendanceSettings = async (_req: AuthRequest, res: Response): Promise<void> => {
   await run(res, '출퇴근 설정 조회', {}, async () => {
+    // 필드를 여기서 손으로 다시 고르지 않는다. 그렇게 했더니 출근 시각 보정이 빠져,
+    // 관리자 화면의 입력칸이 늘 비어 보였다. 모양은 서비스의 PolicyView 한 곳이 정한다.
     const [checklist, policy] = await Promise.all([
       attendanceService.listChecklist(),
-      attendanceService.getPolicy(),
+      attendanceService.getPolicyView(),
     ]);
-    sendSuccess(res, {
-      checklist,
-      policy: {
-        standardWorkMinutes: policy.standardWorkMinutes,
-        requireChecklist: policy.requireChecklist,
-        noticeText: policy.noticeText,
-      },
-    });
+    sendSuccess(res, { checklist, policy });
   });
 };
 
@@ -202,14 +197,11 @@ export const deleteAttendanceChecklistItem = async (
 };
 
 export const updateAttendancePolicy = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { standardWorkMinutes, requireChecklist, noticeText } = req.body;
+  // 본문은 attendancePolicySchema 를 거쳐 아는 키만 남아 있다. 여기서 다시 골라 넘기면
+  // 목록이 두 벌이 되고, 한쪽에만 추가된 필드는 조용히 버려진다(출근 시각 보정이 그랬다).
   await run(res, '출퇴근 설정 저장', {}, async () => {
     const before = await attendanceService.getPolicyView();
-    const after = await attendanceService.updatePolicy({
-      standardWorkMinutes,
-      requireChecklist,
-      noticeText,
-    });
+    const after = await attendanceService.updatePolicy(req.body);
     recordSettingChange(req, '근무 설정', { before, after });
     sendSuccess(res, after, '설정이 저장되었습니다.');
   });

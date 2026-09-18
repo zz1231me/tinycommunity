@@ -13,6 +13,12 @@ interface Props {
   items: ChecklistItem[];
   /** 필수 항목을 다 체크해야 출근이 되는지 */
   requireChecklist: boolean;
+  /**
+   * 출근 시각 보정(분). 0 보다 크면 그만큼 앞당겨 기록된다는 것을 미리 알린다.
+   * 출근 알림 팝업에만 있고 이 창에는 없어서, 출근 페이지의 '출근' 버튼으로 찍는
+   * 사람은 자기 기록이 당겨진다는 것을 몰랐다.
+   */
+  graceMinutes?: number;
   submitting: boolean;
   onClose: () => void;
   onSubmit: (payload: {
@@ -21,7 +27,14 @@ interface Props {
   }) => void;
 }
 
-export function CheckInDialog({ items, requireChecklist, submitting, onClose, onSubmit }: Props) {
+export function CheckInDialog({
+  items,
+  requireChecklist,
+  graceMinutes = 0,
+  submitting,
+  onClose,
+  onSubmit,
+}: Props) {
   const [checked, setChecked] = useState<Record<number, boolean>>({});
   const [note, setNote] = useState('');
 
@@ -115,8 +128,14 @@ export function CheckInDialog({ items, requireChecklist, submitting, onClose, on
       </div>
 
       <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-3 dark:border-slate-700">
+        {/* 남은 필수 항목이 먼저다 — 지금 해야 할 일이다. 없을 때는 보정을 알린다
+            (문구는 출근 알림 팝업 CheckInReminder 와 같다). */}
         <p className="min-w-0 text-xs text-slate-500 dark:text-slate-400">
-          {blocked ? `확인하지 않은 항목 ${pending.length}개` : ''}
+          {blocked
+            ? `확인하지 않은 항목 ${pending.length}개`
+            : graceMinutes > 0
+              ? `출근 시각은 ${graceMinutes}분 앞당겨 기록됩니다.`
+              : ''}
         </p>
         <div className="flex flex-shrink-0 gap-2">
           <button type="button" onClick={onClose} className="btn-secondary">

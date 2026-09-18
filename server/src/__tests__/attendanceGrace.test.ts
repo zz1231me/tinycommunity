@@ -106,3 +106,68 @@ describe('보정값 검증', () => {
     expect(saved.checkInGraceMinutes).toBe(10);
   });
 });
+
+describe('관리자 화면에서 바꾼 보정값 — 실제 HTTP 경로', () => {
+  // 위 테스트들은 보정값을 모델이나 서비스에 직접 넣는다. 그래서 관리자가 실제로 쓰는
+  // 길(입력 검증 → 컨트롤러 → 서비스)이 보정값을 버리고 있어도 모두 초록이었다.
+  // 스키마가 모르는 키를 걷어냈고, 컨트롤러는 세 필드만 골라 넘기고, 설정 조회도 세
+  // 필드만 돌려줬다 — 관리자 화면에서는 입력칸이 늘 비어 보였고 저장도 되지 않았다.
+  let adminCookie: string;
+  beforeAll(async () => {
+    adminCookie = await loginAs('admin', 'TestAdmin123!');
+  });
+
+  const savePolicy = (body: Record<string, unknown>) =>
+    request(app)
+      .put('/api/admin/attendance/policy')
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send(body);
+  const readSettings = () =>
+    request(app).get('/api/admin/attendance/settings').set('Cookie', adminCookie);
+
+  it('저장된다', async () => {
+    const res = await savePolicy({ checkInGraceMinutes: 10 });
+    expect(res.status).toBe(200);
+    expect(res.body.data.checkInGraceMinutes).toBe(10);
+    expect((await AttendancePolicy.findByPk(1))?.checkInGraceMinutes).toBe(10);
+  });
+
+  it('설정 화면이 다시 읽을 때 그 값이 보인다', async () => {
+    await savePolicy({ checkInGraceMinutes: 15 });
+    const res = await readSettings();
+    expect(res.status).toBe(200);
+    expect(res.body.data.policy.checkInGraceMinutes).toBe(15);
+  });
+
+  it('관리자가 넣은 값이 실제 출근 기록에 적용된다', async () => {
+    await savePolicy({ checkInGraceMinutes: 10 });
+    const before = Date.now();
+    expect((await checkIn()).status).toBe(201);
+
+    const row = await AttendanceRecord.findOne({ where: { UserId: U } });
+    const shifted = (before - row!.checkInAt.getTime()) / 60_000;
+    expect(shifted).toBeGreaterThanOrEqual(10);
+    expect(shifted).toBeLessThan(11);
+  });
+
+  it('범위 밖의 값은 거절하고 저장하지 않는다', async () => {
+    await savePolicy({ checkInGraceMinutes: 10 });
+    for (const bad of [-1, 61, 1.5]) {
+      expect((await savePolicy({ checkInGraceMinutes: bad })).status).toBe(400);
+    }
+    expect((await AttendancePolicy.findByPk(1))?.checkInGraceMinutes).toBe(10);
+  });
+
+  it('다른 설정을 바꿔도 보정값은 그대로다', async () => {
+    // 부분 저장이다. 한 칸을 바꿀 때 나머지가 기본값으로 덮이면 안 된다.
+    await savePolicy({ checkInGraceMinutes: 10 });
+    const policy = await AttendancePolicy.findByPk(1);
+    const standard = policy!.standardWorkMinutes;
+
+    await savePolicy({ standardWorkMinutes: standard === 500 ? 480 : 500 });
+    expect((await AttendancePolicy.findByPk(1))?.checkInGraceMinutes).toBe(10);
+
+    await savePolicy({ standardWorkMinutes: standard });
+  });
+});

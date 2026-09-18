@@ -192,8 +192,14 @@ export const attendanceChecklistUpdateSchema = z.object({
   order: z.number().int().min(0).max(2147483647).optional(),
 });
 
+// 관리자가 바꿀 수 있는 근무 설정의 목록은 여기 한 곳이다. 컨트롤러는 이 결과를 그대로
+// 서비스로 넘긴다. z.object 는 여기 없는 키를 조용히 버리므로, 필드를 새로 만들면 반드시
+// 여기에 넣어야 한다 — checkInGraceMinutes 가 빠져 있어서 관리자가 보정을 저장해도
+// '저장되었습니다' 만 뜨고 값은 버려졌다.
 export const attendancePolicySchema = z.object({
   standardWorkMinutes: z.number().int().min(30).max(1440).optional(),
+  // 상한은 서비스(updatePolicy)와 같다. 한 시간을 넘겨 당기면 보정이 아니라 기록을 지어내는 것이다.
+  checkInGraceMinutes: z.number().int().min(0).max(60).optional(),
   requireChecklist: z.boolean().optional(),
   noticeText: z.string().max(300, '안내 문구는 300자를 넘을 수 없습니다.').optional(),
 });

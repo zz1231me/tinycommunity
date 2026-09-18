@@ -372,6 +372,7 @@ export default function AttendancePage() {
         <CheckInDialog
           items={status.data.checklist}
           requireChecklist={status.data.policy.requireChecklist}
+          graceMinutes={status.data.policy.checkInGraceMinutes}
           submitting={checkInMutation.isPending}
           onClose={() => setDialogOpen(false)}
           onSubmit={payload => runOnce(() => checkInMutation.mutateAsync(payload).catch(() => {}))}

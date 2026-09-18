@@ -111,6 +111,7 @@ export function CheckInReminder() {
       <CheckInDialog
         items={items}
         requireChecklist={requireChecklist}
+        graceMinutes={data.policy.checkInGraceMinutes}
         submitting={checkInNow.isPending}
         onClose={() => {
           setChecklistOpen(false);
