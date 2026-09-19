@@ -44,7 +44,14 @@ vi.stubGlobal('EventSource', FakeEventSource);
 // 스토어는 모듈 로드 시 생성되므로 mock 설정 뒤에 import 한다
 const { useNotificationStore } = await import('./notifications');
 
-const reset = () =>
+const reset = () => {
+  // 앞 테스트가 걸어 둔 타이머·연결·화면 손잡이를 먼저 걷는다.
+  // 스토어 모듈은 파일 전체가 함께 쓰므로, 남겨 두면 뒤 테스트에서 엉뚱하게 같이 돈다
+  // (실제로 visibilitychange 손잡이가 스물 몇 개까지 쌓여 폴링이 그만큼 돌았다).
+  const prev = useNotificationStore.getState();
+  if (prev._timer) clearInterval(prev._timer);
+  if (prev._onVisible) document.removeEventListener('visibilitychange', prev._onVisible);
+  prev._source?.close();
   useNotificationStore.setState({
     unreadCount: 0,
     toast: null,
@@ -55,9 +62,13 @@ const reset = () =>
     arrivals: {},
     _timer: null,
     _retry: 0,
+    _standDown: false,
+    _localChangeAt: 0,
     _source: null,
+    _onVisible: null,
     _subscribers: 0,
   });
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -409,5 +420,103 @@ describe('이상한 프레임', () => {
     FakeEventSource.last!.emit('notification', { id: 11, message: '정상' });
     expect(useNotificationStore.getState().lastSeenId).toBe(11);
     expect(useNotificationStore.getState().toast).toMatchObject({ id: 11 });
+  });
+});
+
+describe('한 주기에 스무 개가 넘게 쌓였을 때', () => {
+  /** id 가 from 부터 내림차순인 한 페이지 */
+  const page = (from: number, count: number, nextCursor: number | null) => ({
+    notifications: Array.from({ length: count }, (_, i) => ({
+      id: from - i,
+      isRead: false,
+      message: `알림 ${from - i}`,
+      type: 'COMMENT',
+    })),
+    unreadCount: 100,
+    nextCursor,
+  });
+
+  it('첫 장이 전부 새것이면 기준선에 닿을 때까지 이어 받는다', async () => {
+    // 스무 개만 보던 때는 스물한 번째부터가 통째로 묻혔다 — 팝업도 화면 갱신 신호도 없이.
+    useNotificationStore.setState({ lastSeenId: 50 });
+    mockGetNotifications
+      .mockResolvedValueOnce(page(80, 20, 61)) // 80~61 전부 새것
+      .mockResolvedValueOnce(page(60, 20, 41)); // 60~51 새것, 50 부터는 이미 본 것
+
+    await useNotificationStore.getState().poll();
+
+    const s = useNotificationStore.getState();
+    expect(mockGetNotifications).toHaveBeenCalledTimes(2);
+    expect(s.arrivals.COMMENT).toBe(30); // 80~51
+    expect(s.toastMore).toBe(29); // 팝업 하나 말고 나머지
+    expect(s.lastSeenId).toBe(80);
+  });
+
+  it('첫 장에서 기준선에 닿으면 더 묻지 않는다 — 대조', async () => {
+    useNotificationStore.setState({ lastSeenId: 70 });
+    mockGetNotifications.mockResolvedValue(page(75, 20, 55)); // 75~70 중 새것은 다섯
+
+    await useNotificationStore.getState().poll();
+
+    expect(mockGetNotifications).toHaveBeenCalledTimes(1);
+    expect(useNotificationStore.getState().arrivals.COMMENT).toBe(5);
+  });
+
+  it('아주 오래 비웠어도 다섯 장에서 멈춘다 — 수백 개를 한꺼번에 받지 않는다', async () => {
+    useNotificationStore.setState({ lastSeenId: 0 });
+    mockGetNotifications.mockImplementation((cursor?: number) =>
+      Promise.resolve(page(cursor ? cursor : 1000, 20, (cursor ?? 1000) - 20))
+    );
+
+    await useNotificationStore.getState().poll();
+
+    expect(mockGetNotifications).toHaveBeenCalledTimes(5);
+  });
+});
+
+describe('탭을 많이 열었을 때 (연결 자리 다툼)', () => {
+  it("서버가 'bye' 로 접으면 다시 잇지 않는다 — 서로 밀어내는 돌림이 생기지 않는다", () => {
+    useNotificationStore.getState().start();
+    const source = FakeEventSource.last!;
+
+    source.emit('bye', { reason: 'too-many-connections' });
+
+    expect(source.closed).toBe(true);
+    expect(useNotificationStore.getState().isLive).toBe(false);
+    vi.advanceTimersByTime(120_000);
+    expect(FakeEventSource.last).toBe(source); // 새 연결을 만들지 않았다
+  });
+
+  it('그 탭이 화면에 나오면 자리를 다시 잡는다 — 보고 있는 탭이 실시간을 갖는다', () => {
+    useNotificationStore.getState().start();
+    const source = FakeEventSource.last!;
+    source.emit('bye', {});
+
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(FakeEventSource.last).not.toBe(source);
+    expect(useNotificationStore.getState()._source).not.toBeNull();
+  });
+
+  it('물러난 적이 없으면 화면에 나와도 연결을 새로 만들지 않는다 — 대조', () => {
+    useNotificationStore.getState().start();
+    const source = FakeEventSource.last!;
+
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(FakeEventSource.last).toBe(source);
+  });
+
+  it('그만 볼 때(로그아웃) 화면 손잡이를 뗀다 — 떼지 않으면 로그아웃 뒤에도 서버에 묻는다', () => {
+    useNotificationStore.getState().start();
+    const source = FakeEventSource.last!;
+    source.emit('bye', {});
+    useNotificationStore.getState().stop();
+    mockGetNotifications.mockClear();
+
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(mockGetNotifications).not.toHaveBeenCalled();
+    expect(FakeEventSource.last).toBe(source);
   });
 });

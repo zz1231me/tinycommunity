@@ -15,6 +15,18 @@ import { logger } from '../utils/logger';
 // - 구독자 참조카운트(_subscribers)로 마지막 소비자가 사라지면 연결/타이머 정리
 // - 탭 숨김(document.hidden) 시 폴링 요청 생략(배터리/부하 절감)
 const POLL_INTERVAL_FALLBACK = 30_000;
+
+/** 한 번에 받아 오는 알림 수 */
+const PAGE_SIZE = 20;
+/**
+ * 폴링 한 번에 거슬러 올라갈 페이지 수.
+ *
+ * 스트림이 끊긴 동안 구독 전파 같은 것으로 한 주기에 20개가 넘게 쌓이면, 첫 페이지만 보던
+ * 때는 21번째부터가 통째로 묻혔다 — 팝업도, 그 종류를 보는 화면의 갱신 신호도 없이 지나갔다.
+ * 기준선(lastSeenId)에 닿을 때까지 이어 받되, 오래 자리를 비운 사람이 수백 개를 한꺼번에
+ * 받아 오지는 않도록 다섯 페이지에서 멈춘다(100개). 그 너머는 뱃지 숫자로만 남는다.
+ */
+const MAX_POLL_PAGES = 5;
 const POLL_INTERVAL_WITH_SSE = 5 * 60_000;
 
 /**
@@ -71,6 +83,8 @@ interface NotificationStoreState {
   _timer: ReturnType<typeof setInterval> | null;
   /** 스트림이 완전히 닫혀 다시 이을 때의 시도 횟수 — 기다리는 시간을 늘린다 */
   _retry: number;
+  /** 서버가 연결 수 상한으로 접은 상태 — 이 탭이 화면에 나올 때까지 폴링으로 지낸다 */
+  _standDown: boolean;
   /**
    * 화면에서 마지막으로 읽음·삭제를 한 시각.
    *
@@ -84,6 +98,8 @@ interface NotificationStoreState {
   poll: () => Promise<void>;
   /** SSE 연결 만들기 — start() 와 재연결이 함께 쓴다 */
   _connect: () => void;
+  /** 화면에 나올 때 도는 손잡이 — stop() 에서 떼기 위해 들고 있는다 */
+  _onVisible: (() => void) | null;
   start: () => void;
   stop: () => void;
   clearToast: () => void;
@@ -112,8 +128,10 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   arrivals: {},
   _timer: null,
   _retry: 0,
+  _standDown: false,
   _localChangeAt: 0,
   _source: null,
+  _onVisible: null,
   _subscribers: 0,
 
   poll: async () => {
@@ -123,7 +141,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     if (typeof document !== 'undefined' && document.hidden && get().lastSeenId !== null) return;
     const startedAt = Date.now();
     try {
-      const res = await getNotifications(undefined, 20);
+      const res = await getNotifications(undefined, PAGE_SIZE);
       const list: Notification[] = res?.notifications ?? [];
       // 떠난 뒤에 화면에서 읽음·삭제를 했으면 이 응답의 숫자는 낡았다 — 목록만 쓴다
       if (get()._localChangeAt <= startedAt) set({ unreadCount: res?.unreadCount ?? 0 });
@@ -137,8 +155,21 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
         return;
       }
       if (latest.id > lastSeenId) {
-        // 이번에 새로 알게 된 것을 모두 센다 — 가장 최근 것만이 아니다
+        // 이번에 새로 알게 된 것을 모두 센다 — 가장 최근 것만이 아니다.
+        // 첫 페이지가 전부 새것이면 그 너머에도 더 있다 — 기준선에 닿을 때까지 이어 받는다.
         const fresh = list.filter(n => n.id > lastSeenId);
+        let cursor = res?.nextCursor ?? null;
+        for (
+          let page = 1;
+          page < MAX_POLL_PAGES && cursor !== null && fresh.length === page * PAGE_SIZE;
+          page++
+        ) {
+          const more = await getNotifications(cursor, PAGE_SIZE);
+          const moreList: Notification[] = more?.notifications ?? [];
+          fresh.push(...moreList.filter(n => n.id > lastSeenId));
+          cursor = more?.nextCursor ?? null;
+          if (moreList.length < PAGE_SIZE) break;
+        }
         set(prev => ({ lastSeenId: latest.id, arrivals: countArrivals(prev.arrivals, fresh) }));
         const unread = fresh.filter(n => !n.isRead);
         if (!latest.isRead) {
@@ -170,10 +201,18 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     }
 
     source.addEventListener('open', () => {
-      set({ isLive: true, _retry: 0 });
+      set({ isLive: true, _retry: 0, _standDown: false });
       // 끊겼다 이어지는 동안 생긴 알림은 스트림으로 오지 않는다 — 이어지면 한 번 훑는다.
       // 이것이 없으면 그 알림들은 최대 5분 뒤 폴링 때까지 팝업도, 화면 갱신 신호도 없었다.
       void get().poll();
+    });
+
+    // 서버가 연결 수 상한 때문에 이 연결을 접었다 — 다시 이으면 다른 탭을 밀어내고, 그 탭이
+    // 또 다시 이어 끝없이 돌아간다. 조용히 물러나 폴링으로 지낸다.
+    // 이 탭이 다시 화면에 나오면 그때 자리를 잡는다(아래 visibilitychange).
+    source.addEventListener('bye', () => {
+      source.close();
+      set({ _source: null, isLive: false, _standDown: true });
     });
 
     source.addEventListener('unread-count', evt => {
@@ -230,6 +269,16 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     void get().poll(); // 마운트 즉시 1회(기준선 설정 + 초기 뱃지)
     get()._connect();
 
+    // 이 탭이 화면에 나오면: 밀린 것을 한 번 훑고, 자리가 없어 물러나 있었다면 다시 잡는다.
+    // 보고 있는 탭이 실시간을 갖는 것이 맞다 — 밀려나는 쪽은 뒤에 있는 탭이다.
+    const onVisible = () => {
+      if (document.hidden) return;
+      void get().poll();
+      if (get()._standDown && !get()._source) get()._connect();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    set({ _onVisible: onVisible });
+
     // ── 폴링 폴백 ──
     // SSE 연결 여부에 따라 주기를 바꾸므로, 매 tick 마다 현재 상태를 확인한다.
     let elapsed = 0;
@@ -252,9 +301,12 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
 
     if (s._timer) clearInterval(s._timer);
     s._source?.close();
+    if (s._onVisible) document.removeEventListener('visibilitychange', s._onVisible);
     set({
       _timer: null,
       _source: null,
+      _onVisible: null,
+      _standDown: false,
       _localChangeAt: 0,
       isLive: false,
       lastSeenId: null,

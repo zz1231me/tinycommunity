@@ -39,10 +39,21 @@ export function addConnection(userId: string, res: Response): void {
   }
 
   // 상한 초과 시 가장 오래된 연결을 닫는다(Set 은 삽입 순서를 유지한다).
+  //
+  // 닫기 전에 'bye' 를 보낸다. 그냥 끊으면 그 탭의 EventSource 가 몇 초 뒤 스스로 다시
+  // 이으면서 그다음으로 오래된 연결을 밀어내고, 그 탭이 또 다시 잇는다 — 탭이 아홉 개
+  // 넘게 열려 있으면 끝없이 돌아가며 서로를 끊었다(그때마다 안 읽은 수 질의도 함께 돈다).
+  // 'bye' 를 받은 쪽은 스스로 연결을 접고 폴링으로 지낸다(자리를 다시 잡는 것은 그 탭이
+  // 화면에 나타날 때다 — client store 의 visibilitychange).
   while (userConnections.size >= MAX_CONNECTIONS_PER_USER) {
     const oldest = userConnections.values().next().value;
     if (!oldest) break;
     userConnections.delete(oldest);
+    try {
+      write(oldest, 'bye', { reason: 'too-many-connections' });
+    } catch {
+      // 이미 끊긴 연결에 쓰면 예외가 날 수 있다 — 어차피 닫을 참이다
+    }
     oldest.end();
   }
 
