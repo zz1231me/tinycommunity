@@ -483,8 +483,10 @@ describe('탭을 많이 열었을 때 (연결 자리 다툼)', () => {
 
     expect(source.closed).toBe(true);
     expect(useNotificationStore.getState().isLive).toBe(false);
-    vi.advanceTimersByTime(120_000);
-    expect(FakeEventSource.last).toBe(source); // 새 연결을 만들지 않았다
+    // 곧바로 다시 잇지 않는다 — 몇 초 만에 다시 이으면 다음 탭을 밀어내는 돌림이 시작된다.
+    // (보고 있는 탭이라면 폴링 주기마다 한 번씩만 자리를 다시 잡아 본다 — 아래 따로 본다.)
+    vi.advanceTimersByTime(20_000);
+    expect(FakeEventSource.last).toBe(source);
   });
 
   it('그 탭이 화면에 나오면 자리를 다시 잡는다 — 보고 있는 탭이 실시간을 갖는다', () => {
@@ -518,5 +520,107 @@ describe('탭을 많이 열었을 때 (연결 자리 다툼)', () => {
 
     expect(mockGetNotifications).not.toHaveBeenCalled();
     expect(FakeEventSource.last).toBe(source);
+  });
+});
+
+describe('서버가 센 수를 그대로 쓴다', () => {
+  // 스트림이 밀어 준 수를 이미 반영한 뒤에 화면이 또 하나를 깎으면 뱃지가 실제보다 적어진다.
+  it('읽음 응답의 수를 받으면 그 값으로 맞춘다 — 또 깎지 않는다', () => {
+    useNotificationStore.getState().start();
+    useNotificationStore.setState({ unreadCount: 3 });
+
+    FakeEventSource.last!.emit('unread-count', { count: 2 }); // 서버가 먼저 밀어 준다
+    useNotificationStore.getState().markRead(100, 2); // 응답도 2 라고 한다
+
+    expect(useNotificationStore.getState().unreadCount).toBe(2);
+    expect(useNotificationStore.getState().readIds.has(100)).toBe(true);
+  });
+
+  it('서버 수가 없으면(오래된 응답·폴링만 도는 중) 하나 깎는다 — 대조', () => {
+    useNotificationStore.setState({ unreadCount: 3 });
+    useNotificationStore.getState().markRead(100);
+    expect(useNotificationStore.getState().unreadCount).toBe(2);
+  });
+});
+
+describe('이어 받는 사이에 스트림이 앞서갔을 때', () => {
+  it('기준선을 뒤로 물리지 않는다 — 물리면 같은 알림에 팝업이 두 번 뜬다', async () => {
+    useNotificationStore.setState({ lastSeenId: 50 });
+    useNotificationStore.getState().start();
+    const page = (from: number, count: number, nextCursor: number | null) => ({
+      notifications: Array.from({ length: count }, (_, i) => ({
+        id: from - i,
+        isRead: false,
+        message: `알림 ${from - i}`,
+        type: 'COMMENT',
+      })),
+      unreadCount: 10,
+      nextCursor,
+    });
+    mockGetNotifications
+      .mockResolvedValueOnce(page(80, 20, 61))
+      .mockImplementationOnce(async () => {
+        // 두 번째 장을 기다리는 사이 스트림으로 더 최근 것이 왔다
+        FakeEventSource.last!.emit('notification', { id: 500, message: '최신', type: 'COMMENT' });
+        return page(60, 20, 41);
+      });
+
+    await useNotificationStore.getState().poll();
+
+    expect(useNotificationStore.getState().lastSeenId).toBe(500);
+  });
+});
+
+describe('늦게 도착한 오류', () => {
+  it('이미 물러난 연결의 오류는 무시한다 — 다시 잇지 않는다', () => {
+    useNotificationStore.getState().start();
+    const source = FakeEventSource.last!;
+    source.emit('bye', {});
+    expect(useNotificationStore.getState()._source).toBeNull();
+
+    source.readyState = 2;
+    source.emit('error'); // 접은 뒤에 뒤늦게 도착
+
+    vi.advanceTimersByTime(20_000); // 오류가 부르는 되잇기(2초 뒤)가 돌지 않는다
+    expect(FakeEventSource.last).toBe(source);
+    expect(useNotificationStore.getState()._standDown).toBe(true);
+  });
+});
+
+describe('보고 있는 탭이 물러났을 때', () => {
+  it('화면 전환이 없어도 폴링 때 자리를 다시 잡아 본다', async () => {
+    useNotificationStore.getState().start();
+    const source = FakeEventSource.last!;
+    source.emit('bye', {});
+
+    await vi.advanceTimersByTimeAsync(30_000); // 폴링 한 바퀴
+
+    expect(FakeEventSource.last).not.toBe(source);
+  });
+});
+
+describe('뒷장 하나가 실패해도', () => {
+  it('첫 장에서 안 것은 지킨다', async () => {
+    useNotificationStore.setState({ lastSeenId: 50 });
+    const first = {
+      notifications: Array.from({ length: 20 }, (_, i) => ({
+        id: 80 - i,
+        isRead: false,
+        message: 'a',
+        type: 'COMMENT',
+      })),
+      unreadCount: 30,
+      nextCursor: 61,
+    };
+    mockGetNotifications
+      .mockResolvedValueOnce(first)
+      .mockRejectedValueOnce(new Error('두 번째 장 실패'));
+
+    await useNotificationStore.getState().poll();
+
+    const s = useNotificationStore.getState();
+    expect(s.arrivals.COMMENT).toBe(20);
+    expect(s.lastSeenId).toBe(80);
+    expect(s.toast).toMatchObject({ id: 80 });
   });
 });

@@ -26,10 +26,18 @@ export interface Notification {
 export const getNotifications = (cursor?: number, limit = 20) =>
   api.get('/notifications', { params: { cursor, limit } }).then(unwrap);
 
-export const markAsRead = (id: number) => api.put(`/notifications/${id}/read`).then(unwrap);
+/** 읽음·삭제는 서버가 센 '남은 안 읽은 수' 를 돌려준다 — 화면이 스스로 깎지 않게 */
+export interface UnreadCountResult {
+  unreadCount: number;
+}
 
-export const markAllAsRead = () => api.put('/notifications/read-all').then(unwrap);
+export const markAsRead = (id: number): Promise<UnreadCountResult> =>
+  api.put(`/notifications/${id}/read`).then(unwrap);
 
-export const deleteNotification = (id: number) => api.delete(`/notifications/${id}`).then(unwrap);
+export const markAllAsRead = (): Promise<UnreadCountResult> =>
+  api.put('/notifications/read-all').then(unwrap);
+
+export const deleteNotification = (id: number): Promise<UnreadCountResult> =>
+  api.delete(`/notifications/${id}`).then(unwrap);
 
 export const deleteAllNotifications = () => api.delete('/notifications').then(unwrap);

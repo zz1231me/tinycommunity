@@ -45,9 +45,11 @@ export const markAsRead = async (req: AuthRequest, res: Response): Promise<void>
   }
 
   try {
-    await notificationService.markAsRead(id, userId);
+    const unreadCount = await notificationService.markAsRead(id, userId);
     invalidateCache('notifications:unread', userId);
-    sendSuccess(res, null, '알림을 읽었습니다.');
+    // 서버가 센 수를 함께 준다 — 화면이 스스로 하나 깎으면, 같은 순간 스트림으로 밀어 준
+    // 수에 또 깎여 뱃지가 실제보다 적어졌다.
+    sendSuccess(res, { unreadCount }, '알림을 읽었습니다.');
   } catch (err: unknown) {
     if (err instanceof AppError && err.statusCode === 404) return sendNotFound(res, '알림');
     logError('알림 읽음 처리 실패', err, { userId, notificationId: id });
@@ -59,9 +61,9 @@ export const markAsRead = async (req: AuthRequest, res: Response): Promise<void>
 export const markAllAsRead = async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.user?.id;
   try {
-    await notificationService.markAllAsRead(userId);
+    const unreadCount = await notificationService.markAllAsRead(userId);
     invalidateCache('notifications:unread', userId);
-    sendSuccess(res, null, '모든 알림을 읽었습니다.');
+    sendSuccess(res, { unreadCount }, '모든 알림을 읽었습니다.');
   } catch (err) {
     logError('전체 알림 읽음 처리 실패', err, { userId });
     sendError(res, 500, '전체 읽음 처리 실패');
@@ -78,9 +80,9 @@ export const deleteNotification = async (req: AuthRequest, res: Response): Promi
   }
 
   try {
-    await notificationService.deleteNotification(id, userId);
+    const unreadCount = await notificationService.deleteNotification(id, userId);
     invalidateCache('notifications:unread', userId);
-    sendSuccess(res, null, '알림이 삭제되었습니다.');
+    sendSuccess(res, { unreadCount }, '알림이 삭제되었습니다.');
   } catch (err: unknown) {
     if (err instanceof AppError && err.statusCode === 404) return sendNotFound(res, '알림');
     logError('알림 삭제 실패', err, { userId, notificationId: id });

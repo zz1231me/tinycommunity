@@ -90,9 +90,9 @@ beforeEach(() => {
     unreadCount: 1,
     nextCursor: null,
   });
-  markAsRead.mockResolvedValue({});
-  markAllAsRead.mockResolvedValue({});
-  deleteNotification.mockResolvedValue({});
+  markAsRead.mockResolvedValue({ unreadCount: 0 });
+  markAllAsRead.mockResolvedValue({ unreadCount: 0 });
+  deleteNotification.mockResolvedValue({ unreadCount: 0 });
   useNotificationStore.setState({ unreadCount: 0, readIds: new Set<number>() });
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -233,24 +233,26 @@ describe('종 숫자와 목록이 어긋나지 않는다', () => {
     await screen.findByRole('dialog', { name: '알림 목록' });
   };
 
-  it('팝업에서 읽은 알림을 목록에서 또 눌러도 숫자는 한 번만 줄어든다', async () => {
-    // 팝업과 목록은 같은 알림을 따로 들고 있다. 각자 줄이면 실제보다 적게 남았다.
+  it('팝업에서 읽은 알림을 목록에서 또 눌러도 숫자가 더 줄지 않는다', async () => {
+    // 팝업과 목록은 같은 알림을 따로 들고 있다. 각자 하나씩 깎으면 실제보다 적게 남았다.
+    // 이제 둘 다 서버가 센 수를 그대로 쓴다 — 두 번 눌러도 서버가 말한 값 그대로다.
     getNotifications.mockResolvedValue({
       notifications: [item(7)],
       unreadCount: 3,
       nextCursor: null,
     });
+    markAsRead.mockResolvedValue({ unreadCount: 2 });
     await openBell();
     act(() => useNotificationStore.setState({ unreadCount: 3 }));
 
-    // 팝업이 먼저 읽었다
-    act(() => useNotificationStore.getState().markRead(7));
+    // 팝업이 먼저 읽었다(서버가 센 값 2 를 받았다)
+    act(() => useNotificationStore.getState().markRead(7, 2));
     expect(useNotificationStore.getState().unreadCount).toBe(2);
 
-    // 목록에서 같은 줄을 누른다
+    // 목록에서 같은 줄을 누른다 — 서버는 여전히 2 라고 한다
     fireEvent.click(await screen.findByRole('button', { name: /알림 7/ }));
     await waitFor(() => expect(markAsRead).toHaveBeenCalledWith(7));
-    expect(useNotificationStore.getState().unreadCount).toBe(2);
+    await waitFor(() => expect(useNotificationStore.getState().unreadCount).toBe(2));
   });
 
   it('팝업에서 읽으면 목록에서도 읽은 것으로 보인다', async () => {
@@ -346,5 +348,105 @@ describe('종 숫자와 목록이 어긋나지 않는다', () => {
 
     await waitFor(() => expect(toastError).toHaveBeenCalled());
     expect(screen.getByText('알림 7')).toBeInTheDocument();
+  });
+});
+
+describe('오는 중인 요청과 겹쳐도 화면이 멈추지 않는다', () => {
+  const item = (id: number, isRead = false) => ({
+    id,
+    type: 'COMMENT',
+    message: `알림 ${id}`,
+    link: null,
+    relatedId: null,
+    isRead,
+    createdAt: new Date().toISOString(),
+  });
+
+  it('불러오는 중에 새 알림이 와도 목록이 뜬다 — 영영 도는 상태로 멈추지 않는다', async () => {
+    // 오는 중인 요청을 모두 붙잡아 둔다 — 스토어의 첫 폴링이 목록 조회를 먼저 집어가므로
+    // 하나만 붙잡으면 정작 패널의 조회는 곧바로 끝나 이 상황이 재현되지 않는다.
+    const pending: Array<(v: unknown) => void> = [];
+    getNotifications.mockImplementation(
+      () =>
+        new Promise(res => {
+          pending.push(res);
+        })
+    );
+    render(
+      <MemoryRouter>
+        <NotificationBell />
+      </MemoryRouter>
+    );
+    fireEvent.click(bell());
+    await screen.findByRole('dialog', { name: '알림 목록' });
+    // 패널은 아직 '불러오는 중'
+    expect(screen.queryByText('알림 100')).not.toBeInTheDocument();
+
+    // 첫 장이 아직 오는 중인데 새 알림이 도착한다(세대가 올라간다)
+    act(() => {
+      useNotificationStore.setState(s => ({
+        arrivals: { ...s.arrivals, COMMENT: (s.arrivals.COMMENT ?? 0) + 1 },
+      }));
+    });
+    // 붙잡아 둔 요청들을 모두 풀어 준다(패널의 첫 조회 + 새 알림 때문에 나간 조회)
+    await act(async () => {
+      for (const res of pending) {
+        res({ notifications: [item(101), item(100)], unreadCount: 2, nextCursor: null });
+      }
+    });
+
+    expect(await screen.findByText('알림 101')).toBeInTheDocument();
+  });
+
+  it("'더 보기' 중에 하나를 지워도 다시 누를 수 있다", async () => {
+    getNotifications.mockResolvedValue({
+      notifications: [item(10), item(9)],
+      unreadCount: 2,
+      nextCursor: 8,
+    });
+    render(
+      <MemoryRouter>
+        <NotificationBell />
+      </MemoryRouter>
+    );
+    fireEvent.click(bell());
+    const more = await screen.findByRole('button', { name: '더 보기' });
+
+    let resolvePage: (v: unknown) => void = () => {};
+    getNotifications.mockReturnValueOnce(
+      new Promise(res => {
+        resolvePage = res;
+      })
+    );
+    fireEvent.click(more);
+    fireEvent.click(screen.getAllByRole('button', { name: '알림 삭제' })[0]);
+    await act(async () => {
+      resolvePage({ notifications: [item(8)], unreadCount: 2, nextCursor: null });
+    });
+
+    // '로드 중...' 인 채로 굳지 않는다
+    expect(screen.queryByRole('button', { name: '로드 중...' })).not.toBeInTheDocument();
+  });
+
+  it('읽으면 서버가 센 수를 그대로 쓴다 — 밀어 준 수에 또 깎지 않는다', async () => {
+    getNotifications.mockResolvedValue({
+      notifications: [item(7)],
+      unreadCount: 3,
+      nextCursor: null,
+    });
+    markAsRead.mockResolvedValue({ unreadCount: 2 });
+    render(
+      <MemoryRouter>
+        <NotificationBell />
+      </MemoryRouter>
+    );
+    fireEvent.click(bell());
+    await screen.findByRole('dialog', { name: '알림 목록' });
+    act(() => useNotificationStore.setState({ unreadCount: 2 })); // 스트림이 먼저 알려 준 값
+
+    fireEvent.click(await screen.findByRole('button', { name: /알림 7/ }));
+
+    await waitFor(() => expect(markAsRead).toHaveBeenCalledWith(7));
+    await waitFor(() => expect(useNotificationStore.getState().unreadCount).toBe(2));
   });
 });

@@ -71,15 +71,19 @@ function groupByDay<T extends { createdAt: string }>(items: T[]) {
 const NotificationRow = memo(function NotificationRow({
   n,
   read,
+  minuteTick,
   onRead,
   onDelete,
 }: {
   n: Notification;
   /** 팝업에서 읽은 것까지 친 '읽음' — n.isRead 만 보면 두 곳이 어긋난다 */
   read: boolean;
+  /** 1분마다 바뀐다 — 이 값이 없으면 memo 때문에 '방금 전' 이 그대로 굳는다 */
+  minuteTick: number;
   onRead: (n: Notification) => void;
   onDelete: (e: React.MouseEvent, id: number) => void;
 }) {
+  void minuteTick;
   const typeInfo = kindOf(n.type);
   return (
     <motion.div
@@ -163,7 +167,6 @@ export function NotificationBell() {
   // unreadCount는 단일 폴링 스토어에서 구독(중복 폴링 제거). 뱃지 표시 및 액션 후 동기화에 사용.
   const unreadCount = useNotificationStore(s => s.unreadCount);
   const setStoreUnread = useNotificationStore(s => s.setUnreadCount);
-  const decrementUnread = useNotificationStore(s => s.decrementUnread);
   const markRead = useNotificationStore(s => s.markRead);
   // 팝업에서 읽은 것도 여기서 읽음으로 보이게 — 두 곳이 같은 표를 본다
   const readIds = useNotificationStore(s => s.readIds);
@@ -178,6 +181,8 @@ export function NotificationBell() {
   const [confirmClear, setConfirmClear] = useState(false);
   // 전체 / 안 읽은 것만 — 쌓인 알림 사이에서 아직 안 본 것만 골라 보게
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  // 열어 둔 동안 '방금 전' 이 굳지 않게 1분마다 시간 표시를 새로 그린다(줄이 memo 라 값이 필요하다)
+  const [minuteTick, setMinuteTick] = useState(0);
   const [clearing, setClearing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null); // 벨 버튼 래퍼(앵커)
   const dropdownRef = useRef<HTMLDivElement>(null); // body로 포털된 드롭다운
@@ -187,8 +192,6 @@ export function NotificationBell() {
   // 페이지네이션 경합 가드: 패널 재오픈(fetchNotifications)이 in-flight loadMore보다 늦게
   // 도착한 stale 페이지를 append 하지 않도록 세대(generation) 번호로 무효화한다.
   const reqGenRef = useRef(0);
-  // 지금 목록 — 위 handleDelete 가 의존성 없이 읽는다
-  const listRef = useRef<Notification[]>([]);
   const navigate = useNavigate();
 
   const fetchNotifications = useCallback(async () => {
@@ -205,7 +208,9 @@ export function NotificationBell() {
     } catch {
       if (reqGenRef.current === gen) setFetchError(true);
     } finally {
-      if (reqGenRef.current === gen) setLoading(false);
+      // 깃발은 세대와 상관없이 내린다. 목록을 여는 사이 알림이 오거나 무엇을 지우면 세대가
+      // 올라가는데, 그때 내리지 않아 패널이 영영 '불러오는 중' 으로 멈춰 있었다.
+      setLoading(false);
     }
   }, [setStoreUnread]);
 
@@ -250,7 +255,8 @@ export function NotificationBell() {
       // 조용히 넘기면 '더 보기' 가 잠깐 돌다 아무것도 안 붙어, 더 없는 것과 구분되지 않는다
       toast.error('알림을 더 불러오지 못했습니다.');
     } finally {
-      if (reqGenRef.current === gen) setLoadingMore(false);
+      // 위와 같은 이유 — 내리지 않으면 '로드 중...' 인 채로 다시 누를 수 없었다
+      setLoadingMore(false);
     }
   }, [nextCursor, loadingMore]);
 
@@ -260,6 +266,12 @@ export function NotificationBell() {
     start();
     return () => stop();
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const id = window.setInterval(() => setMinuteTick(t => t + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, [open]);
 
   // 패널 열릴 때 목록 로드 + 전체삭제 확인 상태 초기화(이전에 열었을 때 남은 확인 상태 제거)
   useEffect(() => {
@@ -339,10 +351,10 @@ export function NotificationBell() {
   const handleRead = useCallback(
     async (n: Notification) => {
       try {
-        await markAsRead(n.id);
+        const res = await markAsRead(n.id);
         setNotifications(prev => prev.map(x => (x.id === n.id ? { ...x, isRead: true } : x)));
-        // 뱃지는 스토어가 줄인다 — 같은 알림을 팝업에서도 읽었으면 두 번 줄지 않는다
-        if (!n.isRead) markRead(n.id);
+        // 뱃지는 서버가 센 수를 그대로 쓴다 — 스스로 깎으면 스트림으로 밀어 준 수에 또 깎인다
+        markRead(n.id, res?.unreadCount);
       } catch {
         toast.error('알림을 읽음으로 표시하지 못했습니다.');
       }
@@ -362,9 +374,9 @@ export function NotificationBell() {
     // 세대를 올려 둔다 — 아직 오는 중인 조회가 방금 읽은 것들을 '안 읽음' 으로 되돌리지 않게
     reqGenRef.current++;
     try {
-      await markAllAsRead();
+      const res = await markAllAsRead();
       setNotifications(prev => prev.map(x => ({ ...x, isRead: true })));
-      setStoreUnread(0);
+      setStoreUnread(res?.unreadCount ?? 0);
     } catch {
       toast.error('모두 읽음으로 표시하지 못했습니다.');
     }
@@ -394,24 +406,16 @@ export function NotificationBell() {
       e.stopPropagation();
       reqGenRef.current++; // 오는 중인 조회가 지운 줄을 되살리지 않게
       try {
-        await deleteNotification(id);
-        // 목록은 ref 로 본다 — notifications 를 의존성에 넣으면 알림이 하나 바뀔 때마다
-        // 이 함수가 새로 생겨 줄들의 memo 가 풀린다
-        const deleted = listRef.current.find(x => x.id === id);
+        const res = await deleteNotification(id);
         setNotifications(prev => prev.filter(x => x.id !== id));
-        // 팝업에서 이미 읽은 것이면 뱃지는 그때 줄었다 — 또 줄이지 않는다
-        const alreadyRead = useNotificationStore.getState().readIds.has(id);
-        if (deleted && !deleted.isRead && !alreadyRead) decrementUnread();
+        // 뱃지는 서버가 센 수를 그대로 쓴다(스스로 깎으면 밀어 준 수에 또 깎인다)
+        setStoreUnread(res?.unreadCount ?? 0);
       } catch {
         toast.error('알림을 삭제하지 못했습니다.');
       }
     },
-    [decrementUnread]
+    [setStoreUnread]
   );
-
-  useEffect(() => {
-    listRef.current = notifications;
-  }, [notifications]);
 
   // 팝업에서 읽은 것(readIds)도 읽음으로 친다 — 두 곳이 다른 상태를 보이면 안 된다
   const isRead = (n: Notification) => n.isRead || readIds.has(n.id);
@@ -588,6 +592,7 @@ export function NotificationBell() {
                             key={n.id}
                             n={n}
                             read={isRead(n)}
+                            minuteTick={minuteTick}
                             onRead={handleRead}
                             onDelete={handleDelete}
                           />

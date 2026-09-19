@@ -113,7 +113,7 @@ interface NotificationStoreState {
    * (서버 읽음 처리는 두 번 다 성공한다) 뱃지가 두 번 줄어 실제보다 적게 보였다.
    * 여기 모아 두면 어느 쪽에서 읽든 한 번만 줄고, 목록도 이 표를 보고 읽음으로 그린다.
    */
-  markRead: (id: number) => void;
+  markRead: (id: number, serverCount?: number) => void;
   /** 이번 세션에서 읽은 알림 id — 팝업과 목록이 같은 상태를 보게 한다 */
   readIds: ReadonlySet<number>;
 }
@@ -144,7 +144,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       const res = await getNotifications(undefined, PAGE_SIZE);
       const list: Notification[] = res?.notifications ?? [];
       // 떠난 뒤에 화면에서 읽음·삭제를 했으면 이 응답의 숫자는 낡았다 — 목록만 쓴다
-      if (get()._localChangeAt <= startedAt) set({ unreadCount: res?.unreadCount ?? 0 });
+      if (get()._localChangeAt < startedAt) set({ unreadCount: res?.unreadCount ?? 0 });
 
       const latest = list[0]; // id DESC 정렬이라 [0]이 최신
       if (!latest) return;
@@ -164,13 +164,24 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
           page < MAX_POLL_PAGES && cursor !== null && fresh.length === page * PAGE_SIZE;
           page++
         ) {
-          const more = await getNotifications(cursor, PAGE_SIZE);
+          // 뒷장 하나가 실패해도 여기서 멈출 뿐, 첫 장에서 안 것까지 버리지는 않는다
+          let more;
+          try {
+            more = await getNotifications(cursor, PAGE_SIZE);
+          } catch {
+            break;
+          }
           const moreList: Notification[] = more?.notifications ?? [];
           fresh.push(...moreList.filter(n => n.id > lastSeenId));
           cursor = more?.nextCursor ?? null;
           if (moreList.length < PAGE_SIZE) break;
         }
-        set(prev => ({ lastSeenId: latest.id, arrivals: countArrivals(prev.arrivals, fresh) }));
+        // 이어 받는 사이에 스트림으로 더 최근 것이 왔을 수 있다 — 기준선을 뒤로 물리지 않는다.
+        // 물리면 그 알림을 다음 폴링이 '새것' 으로 다시 세어 팝업이 두 번 떴다.
+        set(prev => ({
+          lastSeenId: Math.max(prev.lastSeenId ?? 0, latest.id),
+          arrivals: countArrivals(prev.arrivals, fresh),
+        }));
         const unread = fresh.filter(n => !n.isRead);
         if (!latest.isRead) {
           set(prev => ({
@@ -244,6 +255,9 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     // 연결을 '닫고' 다시 잇지 않는다. 그대로 두면 _source 가 남아 새로고침 전까지 영영
     // 폴링으로만 돌았다 — 닫힌 것을 치우고 시간을 늘려 가며 다시 잇는다.
     source.addEventListener('error', () => {
+      // 이미 물러났거나(bye) 새 연결로 갈아탄 뒤 늦게 도착한 오류는 무시한다 —
+      // 그대로 두면 멀쩡한 새 연결의 상태를 건드리고, 연결이 둘 생기기도 한다.
+      if (get()._source !== source) return;
       set({ isLive: false });
       if (source.readyState !== EventSource.CLOSED) return;
       source.close();
@@ -288,6 +302,9 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       if (elapsed < interval) return;
       elapsed = 0;
       void get().poll();
+      // 자리가 없어 물러나 있고(bye) 지금 보고 있는 탭이면 한 번 다시 잡아 본다.
+      // 화면 전환(visibilitychange)만 기다리면, 처음부터 보고 있던 탭은 영영 물러난 채였다.
+      if (get()._standDown && !document.hidden && !get()._source) get()._connect();
     }, POLL_INTERVAL_FALLBACK);
 
     set({ _timer: timer });
@@ -307,6 +324,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       _source: null,
       _onVisible: null,
       _standDown: false,
+      _retry: 0,
       _localChangeAt: 0,
       isLive: false,
       lastSeenId: null,
@@ -319,12 +337,18 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   },
 
   clearToast: () => set({ toast: null, toastMore: 0 }),
-  markRead: id =>
+  markRead: (id, serverCount) =>
     set(s => {
-      if (s.readIds.has(id)) return s; // 이미 읽은 것 — 뱃지를 또 줄이지 않는다
-      const readIds = new Set(s.readIds);
-      readIds.add(id);
-      return { readIds, unreadCount: Math.max(0, s.unreadCount - 1), _localChangeAt: Date.now() };
+      const readIds = s.readIds.has(id) ? s.readIds : new Set(s.readIds).add(id);
+      // 서버가 센 수가 있으면 그대로 쓴다. 스스로 하나 깎으면, 같은 순간 스트림으로 밀어 준
+      // 수(이미 반영된 값)에 또 깎여 뱃지가 실제보다 적어졌다.
+      const unreadCount =
+        typeof serverCount === 'number'
+          ? Math.max(0, serverCount)
+          : s.readIds.has(id)
+            ? s.unreadCount // 이미 읽은 것 — 또 줄이지 않는다
+            : Math.max(0, s.unreadCount - 1);
+      return { readIds, unreadCount, _localChangeAt: Date.now() };
     }),
   setUnreadCount: n => set({ unreadCount: Math.max(0, n), _localChangeAt: Date.now() }),
   decrementUnread: () =>

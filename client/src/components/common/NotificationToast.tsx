@@ -50,7 +50,7 @@ function ToastCard({ n, more, onClose }: { n: Notification; more: number; onClos
     // 줄이는 일은 스토어(markRead)가 맡는다 — 같은 알림을 종 목록에서 또 읽어도 한 번만 준다.
     if (!n.isRead) {
       markAsRead(n.id)
-        .then(() => markRead(n.id))
+        .then(res => markRead(n.id, res?.unreadCount))
         .catch(() => {});
     }
     if (n.link) navigate(n.link);

@@ -1,5 +1,6 @@
 import type { Response } from 'express';
-import { seedTestData } from './helpers';
+import request from 'supertest';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import { Notification } from '../models/Notification';
 import { notificationService } from '../services/notification.service';
 import { addConnection, closeAllConnections } from '../services/sse.service';
@@ -13,13 +14,16 @@ import { addConnection, closeAllConnections } from '../services/sse.service';
 /** 프레임을 받아 두는 가짜 연결 */
 function fakeConnection() {
   const frames: string[] = [];
+  const handlers: Record<string, () => void> = {};
   const res = {
     write: (chunk: string) => {
       frames.push(chunk);
       return true;
     },
-    end: () => {},
-    on: () => {},
+    end: () => handlers.close?.(),
+    on: (event: string, cb: () => void) => {
+      handlers[event] = cb;
+    },
   } as unknown as Response;
   /** 마지막으로 알려 준 안 읽은 수 (없으면 null) */
   const lastCount = () => {
@@ -45,6 +49,51 @@ beforeEach(async () => {
 });
 
 afterAll(() => closeAllConnections());
+
+describe('응답에도 안 읽은 수를 실어 준다', () => {
+  // 화면이 스스로 하나 깎으면, 같은 순간 스트림으로 밀어 준 수에 또 깎여 뱃지가 실제보다 적어진다.
+  // 그래서 누른 화면은 서버가 센 값을 그대로 쓴다 — 응답에 그 값이 있어야 한다.
+  it('읽음 응답에 남은 안 읽은 수가 들어 있다', async () => {
+    const a = await make('하나');
+    await make('둘');
+    const cookie = await loginAs('admin', 'TestAdmin123!');
+
+    const res = await request(app)
+      .put(`/api/notifications/${a.id}/read`)
+      .set('Cookie', cookie)
+      .set(CSRF_HEADER);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ unreadCount: 1 });
+  });
+
+  it('삭제 응답에도 들어 있다', async () => {
+    const a = await make('하나');
+    await make('둘');
+    const cookie = await loginAs('admin', 'TestAdmin123!');
+
+    const res = await request(app)
+      .delete(`/api/notifications/${a.id}`)
+      .set('Cookie', cookie)
+      .set(CSRF_HEADER);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ unreadCount: 1 });
+  });
+
+  it('모두 읽음 응답은 0 이다', async () => {
+    await make('하나');
+    const cookie = await loginAs('admin', 'TestAdmin123!');
+
+    const res = await request(app)
+      .put('/api/notifications/read-all')
+      .set('Cookie', cookie)
+      .set(CSRF_HEADER);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ unreadCount: 0 });
+  });
+});
 
 describe('안 읽은 수를 열린 화면에 알린다', () => {
   it('하나를 읽으면 남은 수를 알린다', async () => {
@@ -100,6 +149,17 @@ describe('안 읽은 수를 열린 화면에 알린다', () => {
     await notificationService.deleteNotification(read.id, 'admin');
 
     expect(conn.lastCount()).toBe(1);
+  });
+
+  it('응답에도 서버가 센 수를 실어 준다 — 화면이 스스로 깎지 않게', async () => {
+    // 밀어 준 수를 받은 뒤 화면이 또 하나를 깎으면 뱃지가 실제보다 적어진다.
+    const a = await make('하나');
+    await make('둘');
+
+    const left = await notificationService.markAsRead(a.id, 'admin');
+
+    expect(left).toBe(1);
+    expect(await notificationService.markAllAsRead('admin')).toBe(0);
   });
 
   it('다른 사람의 화면에는 알리지 않는다', async () => {

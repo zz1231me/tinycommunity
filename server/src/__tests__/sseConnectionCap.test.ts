@@ -10,6 +10,7 @@ import { addConnection, closeAllConnections, getConnectionStats } from '../servi
 function fake() {
   const frames: string[] = [];
   let ended = false;
+  const handlers: Record<string, () => void> = {};
   const res = {
     write: (chunk: string) => {
       if (ended) throw new Error('already ended');
@@ -18,8 +19,12 @@ function fake() {
     },
     end: () => {
       ended = true;
+      // 실제 응답처럼 close 를 알려 준다 — 알리지 않으면 25초 하트비트 타이머가 그대로 남는다
+      handlers.close?.();
     },
-    on: () => {},
+    on: (event: string, cb: () => void) => {
+      handlers[event] = cb;
+    },
   } as unknown as Response;
   return {
     res,
