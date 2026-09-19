@@ -48,12 +48,19 @@ vi.mock('framer-motion', () => {
 
 const getNotifications = vi.hoisted(() => vi.fn());
 const markAsRead = vi.hoisted(() => vi.fn());
+const markAllAsRead = vi.hoisted(() => vi.fn());
+const deleteNotification = vi.hoisted(() => vi.fn());
 vi.mock('../../api/notifications', () => ({
   getNotifications,
   markAsRead,
-  markAllAsRead: vi.fn(),
-  deleteNotification: vi.fn(),
+  markAllAsRead,
+  deleteNotification,
   deleteAllNotifications: vi.fn(),
+}));
+
+const toastError = vi.hoisted(() => vi.fn());
+vi.mock('../../utils/toast', () => ({
+  toast: { error: toastError, success: vi.fn(), info: vi.fn(), warning: vi.fn() },
 }));
 
 const navigate = vi.hoisted(() => vi.fn());
@@ -84,6 +91,9 @@ beforeEach(() => {
     nextCursor: null,
   });
   markAsRead.mockResolvedValue({});
+  markAllAsRead.mockResolvedValue({});
+  deleteNotification.mockResolvedValue({});
+  useNotificationStore.setState({ unreadCount: 0, readIds: new Set<number>() });
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -199,5 +209,142 @@ describe('알림 목록 — 거르기·묶기·새로 온 것', () => {
     const rows = screen.getAllByRole('button', { name: /것/ });
     expect(rows[0]).toHaveTextContent('새로 온 것');
     expect(screen.getAllByText('처음 것')).toHaveLength(1);
+  });
+});
+
+describe('종 숫자와 목록이 어긋나지 않는다', () => {
+  const item = (id: number, isRead = false) => ({
+    id,
+    type: 'COMMENT',
+    message: `알림 ${id}`,
+    link: null,
+    relatedId: null,
+    isRead,
+    createdAt: new Date().toISOString(),
+  });
+
+  const openBell = async () => {
+    render(
+      <MemoryRouter>
+        <NotificationBell />
+      </MemoryRouter>
+    );
+    fireEvent.click(bell());
+    await screen.findByRole('dialog', { name: '알림 목록' });
+  };
+
+  it('팝업에서 읽은 알림을 목록에서 또 눌러도 숫자는 한 번만 줄어든다', async () => {
+    // 팝업과 목록은 같은 알림을 따로 들고 있다. 각자 줄이면 실제보다 적게 남았다.
+    getNotifications.mockResolvedValue({
+      notifications: [item(7)],
+      unreadCount: 3,
+      nextCursor: null,
+    });
+    await openBell();
+    act(() => useNotificationStore.setState({ unreadCount: 3 }));
+
+    // 팝업이 먼저 읽었다
+    act(() => useNotificationStore.getState().markRead(7));
+    expect(useNotificationStore.getState().unreadCount).toBe(2);
+
+    // 목록에서 같은 줄을 누른다
+    fireEvent.click(await screen.findByRole('button', { name: /알림 7/ }));
+    await waitFor(() => expect(markAsRead).toHaveBeenCalledWith(7));
+    expect(useNotificationStore.getState().unreadCount).toBe(2);
+  });
+
+  it('팝업에서 읽으면 목록에서도 읽은 것으로 보인다', async () => {
+    getNotifications.mockResolvedValue({
+      notifications: [item(7)],
+      unreadCount: 1,
+      nextCursor: null,
+    });
+    await openBell();
+    fireEvent.click(screen.getByRole('button', { name: /안 읽음/ }));
+    expect(await screen.findByText('알림 7')).toBeInTheDocument();
+
+    act(() => useNotificationStore.getState().markRead(7));
+
+    // '안 읽음' 으로 거른 목록에서 빠진다
+    await waitFor(() => expect(screen.queryByText('알림 7')).not.toBeInTheDocument());
+  });
+
+  it('읽는 중에 도착한 조회 결과가 방금 지운 알림을 되살리지 않는다', async () => {
+    getNotifications.mockResolvedValue({
+      notifications: [item(99), item(98)],
+      unreadCount: 2,
+      nextCursor: null,
+    });
+    await openBell();
+    await screen.findByText('알림 99');
+
+    // 새 알림이 와서 첫 페이지를 다시 받는 중 — 아직 서버는 99 를 들고 있다
+    let resolveArrival: (v: unknown) => void = () => {};
+    getNotifications.mockReturnValue(
+      new Promise(res => {
+        resolveArrival = res;
+      })
+    );
+    act(() => {
+      useNotificationStore.setState(s => ({
+        arrivals: { ...s.arrivals, COMMENT: (s.arrivals.COMMENT ?? 0) + 1 },
+      }));
+    });
+
+    // 그 사이 사용자가 99 를 지운다
+    fireEvent.click(screen.getAllByRole('button', { name: '알림 삭제' })[0]);
+    await waitFor(() => expect(screen.queryByText('알림 99')).not.toBeInTheDocument());
+
+    // 늦게 도착한 조회 결과에는 아직 99 가 들어 있다
+    await act(async () => {
+      resolveArrival({
+        notifications: [item(100), item(99), item(98)],
+        unreadCount: 3,
+        nextCursor: null,
+      });
+    });
+
+    expect(screen.queryByText('알림 99')).not.toBeInTheDocument();
+  });
+
+  it('불러오는 중에 모두 읽음을 눌러도 다시 안 읽음으로 돌아가지 않는다', async () => {
+    let resolveFirst: (v: unknown) => void = () => {};
+    getNotifications.mockReturnValue(
+      new Promise(res => {
+        resolveFirst = res;
+      })
+    );
+    render(
+      <MemoryRouter>
+        <NotificationBell />
+      </MemoryRouter>
+    );
+    act(() => useNotificationStore.setState({ unreadCount: 2 }));
+    fireEvent.click(bell());
+
+    fireEvent.click(await screen.findByRole('button', { name: /모두 읽음/ }));
+    await waitFor(() => expect(useNotificationStore.getState().unreadCount).toBe(0));
+
+    await act(async () => {
+      resolveFirst({ notifications: [item(9), item(8)], unreadCount: 2, nextCursor: null });
+    });
+
+    expect(useNotificationStore.getState().unreadCount).toBe(0);
+  });
+
+  it('삭제가 실패하면 알려 준다 — 아무 일도 없던 것처럼 두지 않는다', async () => {
+    getNotifications.mockResolvedValue({
+      notifications: [item(7)],
+      unreadCount: 1,
+      nextCursor: null,
+    });
+    deleteNotification.mockRejectedValue(new Error('끊김'));
+    await openBell();
+    await screen.findByText('알림 7');
+
+    fireEvent.click(screen.getByRole('button', { name: '알림 삭제' }));
+
+    await waitFor(() => expect(toastError).toHaveBeenCalled());
+    expect(screen.getByText('알림 7')).toBeInTheDocument();
   });
 });

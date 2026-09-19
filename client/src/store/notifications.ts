@@ -69,35 +69,64 @@ interface NotificationStoreState {
    */
   arrivals: Partial<Record<Notification['type'], number>>;
   _timer: ReturnType<typeof setInterval> | null;
+  /** 스트림이 완전히 닫혀 다시 이을 때의 시도 횟수 — 기다리는 시간을 늘린다 */
+  _retry: number;
+  /**
+   * 화면에서 마지막으로 읽음·삭제를 한 시각.
+   *
+   * 조회를 보내 둔 사이에 '모두 읽음' 을 누르면, 먼저 떠난 조회가 나중에 도착해 옛 숫자를
+   * 그대로 덮어썼다 — 0 으로 만든 뱃지가 다시 2 로 돌아왔다. 떠난 시각보다 뒤에 손을 댔으면
+   * 그 응답의 숫자는 이미 낡은 것이라 버린다.
+   */
+  _localChangeAt: number;
   _source: EventSource | null;
   _subscribers: number;
   poll: () => Promise<void>;
+  /** SSE 연결 만들기 — start() 와 재연결이 함께 쓴다 */
+  _connect: () => void;
   start: () => void;
   stop: () => void;
   clearToast: () => void;
   setUnreadCount: (n: number) => void;
   /** 읽음/삭제 시 뱃지를 1 감소 (함수형 업데이트로 빠른 연속 동작의 stale-closure 누락 방지) */
   decrementUnread: () => void;
+  /**
+   * 이 알림을 읽었다 — 뱃지는 한 번만 줄인다.
+   *
+   * 팝업과 종 목록이 같은 알림을 따로 들고 있어서, 팝업으로 열고 종 목록에서 또 누르면
+   * (서버 읽음 처리는 두 번 다 성공한다) 뱃지가 두 번 줄어 실제보다 적게 보였다.
+   * 여기 모아 두면 어느 쪽에서 읽든 한 번만 줄고, 목록도 이 표를 보고 읽음으로 그린다.
+   */
+  markRead: (id: number) => void;
+  /** 이번 세션에서 읽은 알림 id — 팝업과 목록이 같은 상태를 보게 한다 */
+  readIds: ReadonlySet<number>;
 }
 
 export const useNotificationStore = create<NotificationStoreState>((set, get) => ({
   unreadCount: 0,
   toast: null,
   toastMore: 0,
+  readIds: new Set<number>(),
   lastSeenId: null,
   isLive: false,
   arrivals: {},
   _timer: null,
+  _retry: 0,
+  _localChangeAt: 0,
   _source: null,
   _subscribers: 0,
 
   poll: async () => {
-    // 탭이 백그라운드면 요청 생략 — 다음 주기에서 갱신
-    if (typeof document !== 'undefined' && document.hidden) return;
+    // 탭이 백그라운드면 요청 생략 — 다음 주기에서 갱신.
+    // 다만 기준선(lastSeenId)이 아직 없으면 거른다. 숨은 탭에서 시작하면(세션 복원,
+    // 새 탭으로 열기) 기준선이 없는 채로 남아, 그 뒤 처음 오는 알림이 팝업 없이 지나갔다.
+    if (typeof document !== 'undefined' && document.hidden && get().lastSeenId !== null) return;
+    const startedAt = Date.now();
     try {
       const res = await getNotifications(undefined, 20);
       const list: Notification[] = res?.notifications ?? [];
-      set({ unreadCount: res?.unreadCount ?? 0 });
+      // 떠난 뒤에 화면에서 읽음·삭제를 했으면 이 응답의 숫자는 낡았다 — 목록만 쓴다
+      if (get()._localChangeAt <= startedAt) set({ unreadCount: res?.unreadCount ?? 0 });
 
       const latest = list[0]; // id DESC 정렬이라 [0]이 최신
       if (!latest) return;
@@ -124,52 +153,82 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     }
   },
 
+  /**
+   * SSE 연결 하나를 만든다 — start() 와, 완전히 닫혔을 때의 재연결이 함께 쓴다.
+   * 이미 연결이 있으면 아무것도 하지 않는다.
+   */
+  _connect: () => {
+    if (typeof EventSource === 'undefined' || get()._source) return;
+    let source: EventSource;
+    try {
+      // EventSource 는 헤더를 못 붙이지만 인증이 HttpOnly 쿠키라 자동으로 실린다.
+      // withCredentials 는 same-origin 에선 불필요하지만, 다른 오리진 배포를 위해 켠다.
+      source = new EventSource('/api/notifications/stream', { withCredentials: true });
+    } catch (err) {
+      logger.error('알림 스트림 연결 실패 — 폴링으로 동작합니다', err);
+      return;
+    }
+
+    source.addEventListener('open', () => {
+      set({ isLive: true, _retry: 0 });
+      // 끊겼다 이어지는 동안 생긴 알림은 스트림으로 오지 않는다 — 이어지면 한 번 훑는다.
+      // 이것이 없으면 그 알림들은 최대 5분 뒤 폴링 때까지 팝업도, 화면 갱신 신호도 없었다.
+      void get().poll();
+    });
+
+    source.addEventListener('unread-count', evt => {
+      const payload = parseEvent<{ count: number }>(evt);
+      if (!payload || typeof payload.count !== 'number') return;
+      set({ unreadCount: Math.max(0, payload.count) });
+    });
+
+    source.addEventListener('notification', evt => {
+      const n = parseEvent<Notification>(evt);
+      // id 가 숫자가 아니면 버린다 — NaN 이 기준선에 들어가면 그 뒤 모든 비교가 거짓이 되어
+      // 이 세션에서는 팝업이 영영 뜨지 않는다(조용히).
+      if (!n || typeof n.id !== 'number' || !Number.isFinite(n.id)) return;
+      const { lastSeenId } = get();
+      set(prev => ({
+        unreadCount: prev.unreadCount + 1,
+        arrivals: countArrivals(prev.arrivals, [n]),
+      }));
+      // 기준선이 아직 없으면(초기 폴링 전) 토스트를 띄우지 않고 기준선만 세운다.
+      if (lastSeenId !== null && n.id > lastSeenId) {
+        set(prev => ({ toast: n, toastMore: prev.toast ? prev.toastMore + 1 : 0 }));
+      }
+      set({ lastSeenId: Math.max(lastSeenId ?? 0, n.id) });
+    });
+
+    // 잠깐 끊긴 것이면 EventSource 가 스스로 다시 잇는다. 그동안은 폴링이 받아낸다.
+    //
+    // 다만 응답이 200/text-event-stream 이 아니면(배포 중 502, 세션 만료 401) 브라우저는
+    // 연결을 '닫고' 다시 잇지 않는다. 그대로 두면 _source 가 남아 새로고침 전까지 영영
+    // 폴링으로만 돌았다 — 닫힌 것을 치우고 시간을 늘려 가며 다시 잇는다.
+    source.addEventListener('error', () => {
+      set({ isLive: false });
+      if (source.readyState !== EventSource.CLOSED) return;
+      source.close();
+      const { _subscribers, _retry } = get();
+      set({ _source: null, _retry: _retry + 1 });
+      if (_subscribers <= 0) return; // 아무도 보고 있지 않으면 그만둔다
+      window.setTimeout(
+        () => {
+          if (get()._subscribers > 0) get()._connect();
+        },
+        Math.min(30_000, 2000 * 2 ** _retry)
+      );
+    });
+
+    set({ _source: source });
+  },
+
   start: () => {
     const s = get();
     set({ _subscribers: s._subscribers + 1 });
-    if (s._timer || s._source) return; // 이미 동작 중 — 연결/타이머 공유
+    if (s._timer) return; // 이미 동작 중 — 연결·타이머를 함께 쓴다
 
     void get().poll(); // 마운트 즉시 1회(기준선 설정 + 초기 뱃지)
-
-    // ── SSE 연결 ──
-    // EventSource 는 헤더를 못 붙이지만 인증이 HttpOnly 쿠키라 자동으로 실린다.
-    // withCredentials 는 same-origin 에선 불필요하지만, 다른 오리진에 배포된 경우를 위해 켠다.
-    let source: EventSource | null = null;
-    if (typeof EventSource !== 'undefined') {
-      try {
-        source = new EventSource('/api/notifications/stream', { withCredentials: true });
-
-        source.addEventListener('open', () => set({ isLive: true }));
-
-        source.addEventListener('unread-count', evt => {
-          const payload = parseEvent<{ count: number }>(evt);
-          if (!payload) return;
-          set({ unreadCount: Math.max(0, payload.count) });
-        });
-
-        source.addEventListener('notification', evt => {
-          const n = parseEvent<Notification>(evt);
-          if (!n) return;
-          const { lastSeenId } = get();
-          set(prev => ({
-            unreadCount: prev.unreadCount + 1,
-            arrivals: countArrivals(prev.arrivals, [n]),
-          }));
-          // 기준선이 아직 없으면(초기 폴링 전) 토스트를 띄우지 않고 기준선만 세운다.
-          if (lastSeenId !== null && n.id > lastSeenId) {
-            set(prev => ({ toast: n, toastMore: prev.toast ? prev.toastMore + 1 : 0 }));
-          }
-          set({ lastSeenId: Math.max(lastSeenId ?? 0, n.id) });
-        });
-
-        // EventSource 는 끊기면 스스로 재연결한다. 여기서는 상태만 내려두고,
-        // 그동안은 폴링 폴백이 알림을 받아낸다.
-        source.addEventListener('error', () => set({ isLive: false }));
-      } catch (err) {
-        logger.error('알림 스트림 연결 실패 — 폴링으로 동작합니다', err);
-        source = null;
-      }
-    }
+    get()._connect();
 
     // ── 폴링 폴백 ──
     // SSE 연결 여부에 따라 주기를 바꾸므로, 매 tick 마다 현재 상태를 확인한다.
@@ -182,7 +241,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       void get().poll();
     }, POLL_INTERVAL_FALLBACK);
 
-    set({ _timer: timer, _source: source });
+    set({ _timer: timer });
   },
 
   stop: () => {
@@ -196,16 +255,26 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     set({
       _timer: null,
       _source: null,
+      _localChangeAt: 0,
       isLive: false,
       lastSeenId: null,
       arrivals: {},
       toast: null,
       toastMore: 0,
       unreadCount: 0,
+      readIds: new Set<number>(),
     });
   },
 
   clearToast: () => set({ toast: null, toastMore: 0 }),
-  setUnreadCount: n => set({ unreadCount: Math.max(0, n) }),
-  decrementUnread: () => set(s => ({ unreadCount: Math.max(0, s.unreadCount - 1) })),
+  markRead: id =>
+    set(s => {
+      if (s.readIds.has(id)) return s; // 이미 읽은 것 — 뱃지를 또 줄이지 않는다
+      const readIds = new Set(s.readIds);
+      readIds.add(id);
+      return { readIds, unreadCount: Math.max(0, s.unreadCount - 1), _localChangeAt: Date.now() };
+    }),
+  setUnreadCount: n => set({ unreadCount: Math.max(0, n), _localChangeAt: Date.now() }),
+  decrementUnread: () =>
+    set(s => ({ unreadCount: Math.max(0, s.unreadCount - 1), _localChangeAt: Date.now() })),
 }));

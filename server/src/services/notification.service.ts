@@ -131,21 +131,41 @@ export class NotificationService {
     return Notification.count({ where: { userId, isRead: false } });
   }
 
+  /**
+   * 이 사람이 열어 둔 다른 화면들에 지금 안 읽은 수를 알린다.
+   *
+   * 읽음·삭제는 지금까지 아무것도 밀지 않아, 한 탭에서 '모두 읽음' 을 눌러도 다른 탭·다른
+   * 기기의 종 숫자는 그대로였다. 스트림이 붙어 있는 동안 폴링은 5분에 한 번이라 그만큼 오래
+   * 어긋났고, 그 사이 새 알림이 오면 틀린 숫자 위에 1 을 더해 틀린 채로 굴러갔다.
+   *
+   * 실패해도 하던 일은 그대로다 — 숫자는 다음 폴링이 맞춘다.
+   */
+  private async pushUnreadCount(userId: string): Promise<void> {
+    try {
+      pushToUser(userId, 'unread-count', { count: await this.getUnreadCount(userId) });
+    } catch {
+      /* 숫자 알리기 실패는 조용히 넘긴다 */
+    }
+  }
+
   // 특정 알림 읽음 처리 (1쿼리로 처리)
   async markAsRead(id: number, userId: string) {
     const [count] = await Notification.update({ isRead: true }, { where: { id, userId } });
     if (count === 0) throw new AppError(404, '알림을 찾을 수 없습니다.');
+    await this.pushUnreadCount(userId);
   }
 
   // 전체 읽음 처리
   async markAllAsRead(userId: string) {
     await Notification.update({ isRead: true }, { where: { userId, isRead: false } });
+    await this.pushUnreadCount(userId);
   }
 
   // 알림 삭제 (1쿼리로 처리)
   async deleteNotification(id: number, userId: string) {
     const count = await Notification.destroy({ where: { id, userId } });
     if (count === 0) throw new AppError(404, '알림을 찾을 수 없습니다.');
+    await this.pushUnreadCount(userId);
   }
 
   // 내 알림 전체 삭제 — 삭제된 개수 반환 (0건이어도 에러 아님)
@@ -166,6 +186,7 @@ export class NotificationService {
   async deleteAllNotifications(userId: string): Promise<number> {
     const count = await Notification.destroy({ where: { userId } });
     invalidateCache('notifications:unread', userId);
+    await this.pushUnreadCount(userId);
     return count;
   }
 }

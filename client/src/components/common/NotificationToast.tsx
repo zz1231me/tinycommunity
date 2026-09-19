@@ -25,7 +25,7 @@ const URGENT = new Set<Notification['type']>(['ATTACK', 'DUEL']);
 
 function ToastCard({ n, more, onClose }: { n: Notification; more: number; onClose: () => void }) {
   const navigate = useNavigate();
-  const decrementUnread = useNotificationStore(s => s.decrementUnread);
+  const markRead = useNotificationStore(s => s.markRead);
   const kind = kindOf(n.type);
   const urgent = URGENT.has(n.type);
   const life = urgent ? URGENT_TOAST_MS : TOAST_MS;
@@ -46,10 +46,11 @@ function ToastCard({ n, more, onClose }: { n: Notification; more: number; onClos
 
   const open = () => {
     onClose();
-    // 읽음 처리가 성공했을 때만 종 숫자를 줄인다 — 실패했는데 줄이면 숫자가 거짓말을 한다
+    // 읽음 처리가 성공했을 때만 종 숫자를 줄인다 — 실패했는데 줄이면 숫자가 거짓말을 한다.
+    // 줄이는 일은 스토어(markRead)가 맡는다 — 같은 알림을 종 목록에서 또 읽어도 한 번만 준다.
     if (!n.isRead) {
       markAsRead(n.id)
-        .then(() => decrementUnread())
+        .then(() => markRead(n.id))
         .catch(() => {});
     }
     if (n.link) navigate(n.link);

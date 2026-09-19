@@ -13,8 +13,11 @@ vi.mock('../api/notifications', () => ({
 /** 등록된 리스너를 테스트에서 직접 발화시킬 수 있는 최소 EventSource 대역 */
 class FakeEventSource {
   static last: FakeEventSource | null = null;
+  static readonly CLOSED = 2;
   listeners = new Map<string, Array<(e: Event) => void>>();
   closed = false;
+  /** 0 CONNECTING · 1 OPEN · 2 CLOSED — 브라우저가 스스로 다시 잇는지 가른다 */
+  readyState = 1;
 
   constructor(public url: string) {
     FakeEventSource.last = this;
@@ -46,10 +49,12 @@ const reset = () =>
     unreadCount: 0,
     toast: null,
     toastMore: 0,
+    readIds: new Set<number>(),
     lastSeenId: null,
     isLive: false,
     arrivals: {},
     _timer: null,
+    _retry: 0,
     _source: null,
     _subscribers: 0,
   });
@@ -288,5 +293,121 @@ describe('팝업에 묻힌 알림 수 (외 N건)', () => {
     const s = useNotificationStore.getState();
     expect(s.toast).toMatchObject({ id: 14 });
     expect(s.toastMore).toBe(2);
+  });
+});
+
+describe('읽음 처리는 한 번만 센다', () => {
+  // 팝업과 종 목록이 같은 알림을 따로 들고 있다. 서버 읽음 처리는 두 번 다 성공하므로,
+  // 각자 뱃지를 줄이면 실제보다 적게 남았다.
+  it('같은 알림을 두 곳에서 읽어도 뱃지는 한 번만 줄어든다', () => {
+    useNotificationStore.setState({ unreadCount: 5 });
+
+    useNotificationStore.getState().markRead(100); // 팝업에서
+    useNotificationStore.getState().markRead(100); // 종 목록에서 같은 것을
+
+    expect(useNotificationStore.getState().unreadCount).toBe(4);
+    expect(useNotificationStore.getState().readIds.has(100)).toBe(true);
+  });
+
+  it('다른 알림은 각각 줄인다 — 대조', () => {
+    useNotificationStore.setState({ unreadCount: 5 });
+
+    useNotificationStore.getState().markRead(100);
+    useNotificationStore.getState().markRead(101);
+
+    expect(useNotificationStore.getState().unreadCount).toBe(3);
+  });
+
+  it('0 아래로는 내려가지 않는다', () => {
+    useNotificationStore.setState({ unreadCount: 0 });
+    useNotificationStore.getState().markRead(1);
+    expect(useNotificationStore.getState().unreadCount).toBe(0);
+  });
+});
+
+describe('스트림이 완전히 닫혔을 때', () => {
+  it('다시 잇는다 — 닫힌 채로 두면 새로고침 전까지 폴링만 돈다', () => {
+    useNotificationStore.getState().start();
+    const first = FakeEventSource.last!;
+    first.readyState = 2; // CLOSED — 502·401 처럼 브라우저가 스스로 잇지 않는 경우
+
+    first.emit('error');
+    expect(useNotificationStore.getState().isLive).toBe(false);
+    expect(first.closed).toBe(true);
+
+    vi.advanceTimersByTime(2100);
+    expect(FakeEventSource.last).not.toBe(first);
+    expect(useNotificationStore.getState()._source).not.toBeNull();
+  });
+
+  it('잠깐 끊긴 것(스스로 다시 이음)은 건드리지 않는다 — 대조', () => {
+    useNotificationStore.getState().start();
+    const first = FakeEventSource.last!;
+    first.readyState = 0; // CONNECTING — EventSource 가 스스로 잇는 중
+
+    first.emit('error');
+
+    expect(first.closed).toBe(false);
+    vi.advanceTimersByTime(5000);
+    expect(FakeEventSource.last).toBe(first);
+  });
+
+  it('보는 사람이 없으면(로그아웃) 다시 잇지 않는다', () => {
+    useNotificationStore.getState().start();
+    const first = FakeEventSource.last!;
+    useNotificationStore.getState().stop(); // 구독자 0
+    first.readyState = 2;
+
+    first.emit('error');
+    vi.advanceTimersByTime(60_000);
+
+    expect(FakeEventSource.last).toBe(first);
+  });
+});
+
+describe('스트림이 이어지면', () => {
+  it('한 번 훑는다 — 끊긴 동안 온 알림은 스트림으로 오지 않는다', async () => {
+    useNotificationStore.setState({ lastSeenId: 10 });
+    useNotificationStore.getState().start();
+    mockGetNotifications.mockClear();
+
+    FakeEventSource.last!.emit('open');
+    await vi.waitFor(() => expect(mockGetNotifications).toHaveBeenCalled());
+  });
+});
+
+describe('숨은 탭에서 시작해도', () => {
+  it('기준선은 세운다 — 세우지 않으면 첫 알림이 팝업 없이 지나간다', async () => {
+    const spy = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+    try {
+      mockGetNotifications.mockResolvedValue({
+        notifications: [{ id: 7, isRead: false, message: 'a', type: 'COMMENT' }],
+        unreadCount: 1,
+      });
+
+      await useNotificationStore.getState().poll();
+      expect(useNotificationStore.getState().lastSeenId).toBe(7);
+
+      // 기준선이 있으면 숨은 탭에서는 더 묻지 않는다 — 대조
+      mockGetNotifications.mockClear();
+      await useNotificationStore.getState().poll();
+      expect(mockGetNotifications).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe('이상한 프레임', () => {
+  it('id 가 숫자가 아니면 버린다 — 기준선이 NaN 이 되면 팝업이 영영 안 뜬다', () => {
+    useNotificationStore.getState().start();
+    useNotificationStore.setState({ lastSeenId: 10 });
+
+    FakeEventSource.last!.emit('notification', { message: 'id 없음' });
+    expect(useNotificationStore.getState().lastSeenId).toBe(10);
+
+    FakeEventSource.last!.emit('notification', { id: 11, message: '정상' });
+    expect(useNotificationStore.getState().lastSeenId).toBe(11);
+    expect(useNotificationStore.getState().toast).toMatchObject({ id: 11 });
   });
 });

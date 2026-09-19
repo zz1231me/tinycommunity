@@ -1,5 +1,5 @@
 // client/src/components/Dashboard/NotificationBell.tsx
-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Bell, BellOff, CheckCheck, ChevronRight, Trash2, X } from 'lucide-react';
@@ -8,7 +8,7 @@ import { stagger, listItem, scaleIn } from '../../utils/animations';
 import { useUIOverlays } from '../../store/uiOverlays';
 import { useNotificationStore } from '../../store/notifications';
 import { toast } from '../../utils/toast';
-import { kindOf, NOTIFICATION_KIND } from '../common/notificationKinds';
+import { kindOf } from '../common/notificationKinds';
 import { useNotificationArrival } from '../../hooks/useNotificationArrival';
 import {
   getNotifications,
@@ -36,7 +36,15 @@ interface Notification {
   createdAt: string;
 }
 
-const ALL_TYPES = Object.keys(NOTIFICATION_KIND) as Array<keyof typeof NOTIFICATION_KIND>;
+function formatTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return '방금 전';
+  if (m < 60) return `${m}분 전`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}시간 전`;
+  return `${Math.floor(h / 24)}일 전`;
+}
 
 /** 오늘 · 어제 · 이전 으로 묶는다 — 받은 순서(최신 먼저)는 그대로 둔다 */
 function groupByDay<T extends { createdAt: string }>(items: T[]) {
@@ -55,6 +63,90 @@ function groupByDay<T extends { createdAt: string }>(items: T[]) {
   return groups;
 }
 
+/**
+ * 알림 한 줄. memo 로 감싼다 — 종 숫자 하나 바뀌거나 창 자리가 바뀔 때마다 스무 줄이 통째로
+ * 다시 그려져 한 번에 40ms 씩 걸렸다. 줄은 자기 알림이 바뀔 때만 다시 그리면 된다.
+ * (그래서 onRead·onDelete 는 부르는 쪽에서 useCallback 으로 고정한다.)
+ */
+const NotificationRow = memo(function NotificationRow({
+  n,
+  read,
+  onRead,
+  onDelete,
+}: {
+  n: Notification;
+  /** 팝업에서 읽은 것까지 친 '읽음' — n.isRead 만 보면 두 곳이 어긋난다 */
+  read: boolean;
+  onRead: (n: Notification) => void;
+  onDelete: (e: React.MouseEvent, id: number) => void;
+}) {
+  const typeInfo = kindOf(n.type);
+  return (
+    <motion.div
+      variants={listItem}
+      onClick={() => onRead(n)}
+      // 클릭만 받던 행이라 키보드로는 알림을 열 수 없었다
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => {
+        // 안쪽 삭제 단추에서 올라온 키는 그 단추의 몫이다
+        if (e.target !== e.currentTarget) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onRead(n);
+        }
+      }}
+      className={`group relative flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none dark:hover:bg-slate-700/50 dark:focus-visible:bg-slate-700/50 ${
+        !read ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''
+      }`}
+    >
+      {/* 안 읽은 것은 왼쪽에 종류 색 띠 */}
+      {!read && (
+        <span
+          aria-hidden
+          className={`absolute inset-y-2 left-0 w-0.5 rounded-r ${typeInfo.accent}`}
+        />
+      )}
+      {/* 타입 아이콘 */}
+      <span
+        className={`mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${typeInfo.bg} ${typeInfo.color}`}
+      >
+        {typeInfo.icon}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-1.5 text-2xs">
+          <span className={`font-semibold ${typeInfo.color}`}>{typeInfo.title}</span>
+          <span className="text-slate-300 dark:text-slate-600">·</span>
+          <span className="text-slate-400">{formatTime(n.createdAt)}</span>
+        </p>
+        <p
+          className={`mt-0.5 line-clamp-2 text-sm leading-snug ${!read ? 'font-medium text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-400'}`}
+        >
+          {n.message}
+        </p>
+      </div>
+
+      <div className="ml-1 flex flex-shrink-0 items-center gap-1">
+        {!read && <span className="h-2 w-2 flex-shrink-0 rounded-full bg-primary-500" />}
+        {n.link && (
+          <ChevronRight
+            aria-hidden
+            className="hidden h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-0.5 sm:block"
+          />
+        )}
+        <button
+          onClick={e => onDelete(e, n.id)}
+          className="min-w-[36px] min-h-[36px] p-2 inline-flex items-center justify-center text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+          aria-label="알림 삭제"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </motion.div>
+  );
+});
+
 export function NotificationBell() {
   // 통합 overlay store — 다른 dropdown(userMenu/search 등)과 자동 배타.
   // 모바일 사이드바가 열리면 자동으로 닫힌다.
@@ -72,6 +164,9 @@ export function NotificationBell() {
   const unreadCount = useNotificationStore(s => s.unreadCount);
   const setStoreUnread = useNotificationStore(s => s.setUnreadCount);
   const decrementUnread = useNotificationStore(s => s.decrementUnread);
+  const markRead = useNotificationStore(s => s.markRead);
+  // 팝업에서 읽은 것도 여기서 읽음으로 보이게 — 두 곳이 같은 표를 본다
+  const readIds = useNotificationStore(s => s.readIds);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -89,13 +184,11 @@ export function NotificationBell() {
   const bellRef = useRef<HTMLButtonElement>(null);
   // 포털된 드롭다운 위치 — 헤더의 backdrop-blur가 position:fixed의 containing block이 되어
   // 헤더 안에서 fixed로 두면 트랩되므로(모바일 정렬 깨짐) body로 포털하고 벨 rect 기준으로 계산한다.
-  const [pos, setPos] = useState<{ top: number; left?: number; right: number; width?: string }>({
-    top: 0,
-    right: 8,
-  });
   // 페이지네이션 경합 가드: 패널 재오픈(fetchNotifications)이 in-flight loadMore보다 늦게
   // 도착한 stale 페이지를 append 하지 않도록 세대(generation) 번호로 무효화한다.
   const reqGenRef = useRef(0);
+  // 지금 목록 — 위 handleDelete 가 의존성 없이 읽는다
+  const listRef = useRef<Notification[]>([]);
   const navigate = useNavigate();
 
   const fetchNotifications = useCallback(async () => {
@@ -119,10 +212,14 @@ export function NotificationBell() {
   // 패널을 열어 둔 동안 새 알림이 오면 맨 위에 붙인다. 예전에는 종 숫자만 오르고 목록은
   // 닫았다 다시 열어야 보였다. 첫 페이지만 다시 받아 이미 가진 것보다 새것만 앞에 붙인다 —
   // 통째로 바꾸면 '더 보기' 로 불러 둔 뒤쪽 알림과 스크롤 위치가 날아간다.
-  useNotificationArrival(ALL_TYPES, () => {
+  useNotificationArrival('all', () => {
     if (!open) return;
+    // 이 요청이 나간 뒤에 사용자가 지우거나 모두 읽으면(그 손길이 세대를 올린다) 결과를 버린다 —
+    // 그러지 않으면 방금 지운 알림이 목록에 되살아나고, 0 으로 만든 뱃지가 옛 숫자로 돌아왔다.
+    const gen = ++reqGenRef.current;
     void getNotifications(undefined, 20)
       .then(data => {
+        if (reqGenRef.current !== gen) return;
         const fresh: Notification[] = Array.isArray(data?.notifications) ? data.notifications : [];
         setNotifications(prev => {
           const newest = prev.reduce((max, x) => Math.max(max, x.id), 0);
@@ -150,7 +247,8 @@ export function NotificationBell() {
       ]);
       setNextCursor(data?.nextCursor ?? null);
     } catch {
-      /* 알림 API 에러 무시 */
+      // 조용히 넘기면 '더 보기' 가 잠깐 돌다 아무것도 안 붙어, 더 없는 것과 구분되지 않는다
+      toast.error('알림을 더 불러오지 못했습니다.');
     } finally {
       if (reqGenRef.current === gen) setLoadingMore(false);
     }
@@ -202,66 +300,79 @@ export function NotificationBell() {
     return () => document.removeEventListener('mousedown', handler);
   }, [open, setOpen]);
 
-  // 포털 드롭다운 위치 계산 — 벨 rect 기준. 열림 중 resize/scroll에 추종.
+  // 포털 드롭다운 위치 — 벨 rect 기준. 열림 중 resize/scroll 에 따라간다.
+  //
+  // 자리를 state 로 두지 않고 DOM 에 바로 쓴다. state 로 두었을 때는 스크롤 한 번마다 목록
+  // 전체가 다시 그려졌다(20줄에 30ms, 50줄이면 48ms — 스크롤 한 번에 한 프레임씩 버렸다).
+  // 자리는 화면에 보이는 위치일 뿐 목록 내용과 아무 상관이 없다.
+  const place = useCallback(() => {
+    const anchor = panelRef.current;
+    const node = dropdownRef.current;
+    if (!anchor || !node) return;
+    const r = anchor.getBoundingClientRect();
+    node.style.top = `${r.bottom + 8}px`;
+    if (window.matchMedia('(min-width: 640px)').matches) {
+      // 데스크톱: 벨 오른쪽 정렬, 24rem 폭
+      node.style.left = '';
+      node.style.right = `${Math.round(window.innerWidth - r.right)}px`;
+      node.style.width = 'min(24rem, calc(100vw - 1rem))';
+    } else {
+      // 모바일: 좌우 8px 여백 풀폭 시트
+      node.style.left = '8px';
+      node.style.right = '8px';
+      node.style.width = '';
+    }
+  }, []);
+
   useLayoutEffect(() => {
     if (!open) return;
-    const compute = () => {
-      const el = panelRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const top = r.bottom + 8;
-      if (window.matchMedia('(min-width: 640px)').matches) {
-        // 데스크톱: 벨 오른쪽 정렬, 24rem 폭
-        setPos({
-          top,
-          right: Math.round(window.innerWidth - r.right),
-          width: 'min(24rem, calc(100vw - 1rem))',
-        });
-      } else {
-        // 모바일: 좌우 8px 여백 풀폭 시트
-        setPos({ top, left: 8, right: 8 });
-      }
-    };
-    compute();
-    window.addEventListener('resize', compute);
-    window.addEventListener('scroll', compute, true);
+    place(); // 그려지기 전에 자리를 잡는다 — 첫 그림이 엉뚱한 자리에서 튀지 않게
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
     return () => {
-      window.removeEventListener('resize', compute);
-      window.removeEventListener('scroll', compute, true);
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
     };
-  }, [open]);
+  }, [open, place]);
 
-  const handleRead = async (n: Notification) => {
-    try {
-      await markAsRead(n.id);
-      setNotifications(prev => prev.map(x => (x.id === n.id ? { ...x, isRead: true } : x)));
-      // 이미 읽은 알림은 카운트를 감소시키지 않음
-      if (!n.isRead) decrementUnread();
-    } catch {
-      /* 알림 API 에러 무시 */
-    }
-    if (n.link) {
-      setOpen(false);
-      navigate(n.link);
-    }
-    // link가 없으면 "이동할 페이지 없음" — 사용자에게 무동작으로 보이지 않게 패널을 닫고
-    // 시각적으로 읽음 상태(아래 dot 사라짐 + opacity 조정)로 피드백.
-    // setOpen(false) 호출은 link 분기에만 했으므로, link 없을 때도 패널을 유지하지만
-    // 읽음 상태로 즉시 반영되도록 위에서 이미 처리됨. 추가 토스트는 노이즈가 되므로 생략.
-  };
+  // useCallback 으로 고정한다 — 줄(NotificationRow)이 memo 라 함수가 매번 새로 생기면 memo 가 헛돈다
+  const handleRead = useCallback(
+    async (n: Notification) => {
+      try {
+        await markAsRead(n.id);
+        setNotifications(prev => prev.map(x => (x.id === n.id ? { ...x, isRead: true } : x)));
+        // 뱃지는 스토어가 줄인다 — 같은 알림을 팝업에서도 읽었으면 두 번 줄지 않는다
+        if (!n.isRead) markRead(n.id);
+      } catch {
+        toast.error('알림을 읽음으로 표시하지 못했습니다.');
+      }
+      if (n.link) {
+        setOpen(false);
+        navigate(n.link);
+      }
+      // link가 없으면 "이동할 페이지 없음" — 사용자에게 무동작으로 보이지 않게 패널을 닫고
+      // 시각적으로 읽음 상태(아래 dot 사라짐 + opacity 조정)로 피드백.
+      // setOpen(false) 호출은 link 분기에만 했으므로, link 없을 때도 패널을 유지하지만
+      // 읽음 상태로 즉시 반영되도록 위에서 이미 처리됨. 추가 토스트는 노이즈가 되므로 생략.
+    },
+    [markRead, navigate, setOpen]
+  );
 
   const handleMarkAll = async () => {
+    // 세대를 올려 둔다 — 아직 오는 중인 조회가 방금 읽은 것들을 '안 읽음' 으로 되돌리지 않게
+    reqGenRef.current++;
     try {
       await markAllAsRead();
       setNotifications(prev => prev.map(x => ({ ...x, isRead: true })));
       setStoreUnread(0);
     } catch {
-      /* 알림 API 에러 무시 */
+      toast.error('모두 읽음으로 표시하지 못했습니다.');
     }
   };
 
   const handleClearAll = async () => {
     if (clearing) return;
+    reqGenRef.current++; // 위와 같은 이유 — 오는 중인 조회가 지운 목록을 되살리지 않게
     setClearing(true);
     try {
       await deleteAllNotifications();
@@ -278,30 +389,34 @@ export function NotificationBell() {
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: number) => {
-    e.stopPropagation();
-    try {
-      await deleteNotification(id);
-      setNotifications(prev => prev.filter(x => x.id !== id));
-      const deleted = notifications.find(x => x.id === id);
-      if (deleted && !deleted.isRead) decrementUnread();
-    } catch {
-      /* 알림 API 에러 무시 */
-    }
-  };
+  const handleDelete = useCallback(
+    async (e: React.MouseEvent, id: number) => {
+      e.stopPropagation();
+      reqGenRef.current++; // 오는 중인 조회가 지운 줄을 되살리지 않게
+      try {
+        await deleteNotification(id);
+        // 목록은 ref 로 본다 — notifications 를 의존성에 넣으면 알림이 하나 바뀔 때마다
+        // 이 함수가 새로 생겨 줄들의 memo 가 풀린다
+        const deleted = listRef.current.find(x => x.id === id);
+        setNotifications(prev => prev.filter(x => x.id !== id));
+        // 팝업에서 이미 읽은 것이면 뱃지는 그때 줄었다 — 또 줄이지 않는다
+        const alreadyRead = useNotificationStore.getState().readIds.has(id);
+        if (deleted && !deleted.isRead && !alreadyRead) decrementUnread();
+      } catch {
+        toast.error('알림을 삭제하지 못했습니다.');
+      }
+    },
+    [decrementUnread]
+  );
 
-  const visible = filter === 'unread' ? notifications.filter(n => !n.isRead) : notifications;
+  useEffect(() => {
+    listRef.current = notifications;
+  }, [notifications]);
+
+  // 팝업에서 읽은 것(readIds)도 읽음으로 친다 — 두 곳이 다른 상태를 보이면 안 된다
+  const isRead = (n: Notification) => n.isRead || readIds.has(n.id);
+  const visible = filter === 'unread' ? notifications.filter(n => !isRead(n)) : notifications;
   const groups = groupByDay(visible);
-
-  const formatTime = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const m = Math.floor(diff / 60000);
-    if (m < 1) return '방금 전';
-    if (m < 60) return `${m}분 전`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h}시간 전`;
-    return `${Math.floor(h / 24)}일 전`;
-  };
 
   return (
     <div ref={panelRef} className="relative">
@@ -333,15 +448,8 @@ export function NotificationBell() {
               initial="hidden"
               animate="visible"
               exit="hidden"
-              style={{
-                originX: 1,
-                originY: 0,
-                position: 'fixed',
-                top: pos.top,
-                left: pos.left,
-                right: pos.right,
-                width: pos.width,
-              }}
+              // top/left/right/width 는 place() 가 DOM 에 직접 쓴다(위 주석)
+              style={{ originX: 1, originY: 0, position: 'fixed' }}
               role="dialog"
               aria-label="알림 목록"
               tabIndex={-1}
@@ -475,78 +583,15 @@ export function NotificationBell() {
                         {group.label}
                       </p>
                       <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
-                        {group.items.map(n => {
-                          const typeInfo = kindOf(n.type);
-                          return (
-                            <motion.div
-                              key={n.id}
-                              variants={listItem}
-                              onClick={() => handleRead(n)}
-                              // 클릭만 받던 행이라 키보드로는 알림을 열 수 없었다
-                              role="button"
-                              tabIndex={0}
-                              onKeyDown={e => {
-                                // 안쪽 삭제 단추에서 올라온 키는 그 단추의 몫이다
-                                if (e.target !== e.currentTarget) return;
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  void handleRead(n);
-                                }
-                              }}
-                              className={`group relative flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none dark:hover:bg-slate-700/50 dark:focus-visible:bg-slate-700/50 ${
-                                !n.isRead ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''
-                              }`}
-                            >
-                              {/* 안 읽은 것은 왼쪽에 종류 색 띠 */}
-                              {!n.isRead && (
-                                <span
-                                  aria-hidden
-                                  className={`absolute inset-y-2 left-0 w-0.5 rounded-r ${typeInfo.accent}`}
-                                />
-                              )}
-                              {/* 타입 아이콘 */}
-                              <span
-                                className={`mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${typeInfo.bg} ${typeInfo.color}`}
-                              >
-                                {typeInfo.icon}
-                              </span>
-
-                              <div className="min-w-0 flex-1">
-                                <p className="flex items-center gap-1.5 text-2xs">
-                                  <span className={`font-semibold ${typeInfo.color}`}>
-                                    {typeInfo.title}
-                                  </span>
-                                  <span className="text-slate-300 dark:text-slate-600">·</span>
-                                  <span className="text-slate-400">{formatTime(n.createdAt)}</span>
-                                </p>
-                                <p
-                                  className={`mt-0.5 line-clamp-2 text-sm leading-snug ${!n.isRead ? 'font-medium text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-400'}`}
-                                >
-                                  {n.message}
-                                </p>
-                              </div>
-
-                              <div className="ml-1 flex flex-shrink-0 items-center gap-1">
-                                {!n.isRead && (
-                                  <span className="h-2 w-2 flex-shrink-0 rounded-full bg-primary-500" />
-                                )}
-                                {n.link && (
-                                  <ChevronRight
-                                    aria-hidden
-                                    className="hidden h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-0.5 sm:block"
-                                  />
-                                )}
-                                <button
-                                  onClick={e => handleDelete(e, n.id)}
-                                  className="min-w-[36px] min-h-[36px] p-2 inline-flex items-center justify-center text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
-                                  aria-label="알림 삭제"
-                                >
-                                  <X className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </motion.div>
-                          );
-                        })}
+                        {group.items.map(n => (
+                          <NotificationRow
+                            key={n.id}
+                            n={n}
+                            read={isRead(n)}
+                            onRead={handleRead}
+                            onDelete={handleDelete}
+                          />
+                        ))}
                       </div>
                     </div>
                   ))}

@@ -11,11 +11,16 @@ import { useNotificationStore } from '../store/notifications';
 import type { Notification } from '../api/notifications';
 
 export function useNotificationArrival(
-  types: ReadonlyArray<Notification['type']>,
+  /** 볼 종류들, 또는 'all' — 서버가 먼저 늘린 새 종류까지 빠짐없이 본다 */
+  types: ReadonlyArray<Notification['type']> | 'all',
   onArrive: () => void
 ): void {
   // 원하는 종류들의 도착 횟수 합. 이 수가 늘면 새로 온 것이 있다는 뜻이다.
-  const count = useNotificationStore(s => types.reduce((sum, t) => sum + (s.arrivals[t] ?? 0), 0));
+  const count = useNotificationStore(s =>
+    types === 'all'
+      ? Object.values(s.arrivals).reduce((sum: number, v) => sum + (v ?? 0), 0)
+      : types.reduce((sum, t) => sum + (s.arrivals[t] ?? 0), 0)
+  );
 
   // 콜백이 매 렌더 새 함수여도 도착 한 번에 한 번만 부른다
   const callback = useRef(onArrive);
