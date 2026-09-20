@@ -259,14 +259,12 @@ describe('포인트 탭 맨 위의 받은 공격', () => {
     // 다시 읽기는 느리게 온다 — 그 전에 이미 사라져 있어야 한다
     fetchAttackState.mockImplementation(() => new Promise(() => {}));
     sendDefend.mockResolvedValue({ id: 1 });
-    const onSpent = vi.fn();
-    const { queryClient } = renderWithQuery(<IncomingAttackCard onSpent={onSpent} />);
+    const { queryClient } = renderWithQuery(<IncomingAttackCard />);
 
     fireEvent.click(await screen.findByRole('button', { name: /방어권 구매/ }));
 
     expect(await screen.findByText(/방어 성공/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /방어권/ })).not.toBeInTheDocument();
-    expect(onSpent).toHaveBeenCalledTimes(1);
     // 같은 캐시를 쓰는 출근 화면의 퇴근 버튼 효과도 이 순간 풀린다
     expect(
       queryClient.getQueryData<{ incoming: unknown; balance: number }>(attendanceKeys.attack)
@@ -331,5 +329,49 @@ describe('쌓인 공격 — 포인트 탭', () => {
     expect(new Date(cached.incoming.expiresAt).getTime() - start).toBe(60_000);
     // 다음 공격의 경고 띠가 바로 뜬다
     expect(await screen.findByText(/이영희/)).toBeInTheDocument();
+  });
+
+  describe('내 시계가 어긋나 있어도', () => {
+    // 자기 시계만 믿던 때는, 몇 분 빠른 PC 에서 걸려 있는 공격이 '이미 끝난 것' 으로 보여
+    // 경고 띠도 방어 버튼도 뜨지 않았다 — 공격자의 포인트만 사라지고 받는 쪽은 멀쩡했다.
+    const payload = (expiresAt: string, serverNow: string) => ({
+      now: serverNow,
+      rules: {
+        cost: 300,
+        hideCost: 300,
+        defendCost: 200,
+        blockSeconds: 60,
+        hideSeconds: 20,
+        dailyLimit: 5,
+        maxStack: 10,
+      },
+      balance: 1000,
+      incoming: incoming({ expiresAt }),
+      queue: [incoming({ expiresAt })],
+      usedToday: 0,
+      remainingToday: 5,
+    });
+
+    it('시계가 2분 빨라도 공격이 보인다 — 서버 시각으로 센다', async () => {
+      const expiresAt = new Date(Date.now() - 60_000).toISOString(); // 내 시계로는 이미 끝났다
+      const serverNow = new Date(Date.now() - 120_000).toISOString(); // 서버는 2분 뒤처져 있다
+
+      fetchAttackState.mockResolvedValue(payload(expiresAt, serverNow));
+      renderWithQuery(<IncomingAttackCard />);
+
+      // 서버 기준으로는 아직 1분 남았다
+      expect(await screen.findByText(/공격권을 사용했습니다/)).toBeInTheDocument();
+    });
+
+    it('서버 기준으로 끝난 공격은 띠를 띄우지 않는다 — 대조', async () => {
+      const expiresAt = new Date(Date.now() + 40_000).toISOString(); // 내 시계로는 남아 있다
+      const serverNow = new Date(Date.now() + 120_000).toISOString(); // 서버는 2분 앞서 있다
+
+      fetchAttackState.mockResolvedValue(payload(expiresAt, serverNow));
+      const { container } = renderWithQuery(<IncomingAttackCard />);
+
+      await waitFor(() => expect(fetchAttackState).toHaveBeenCalled());
+      expect(container).toBeEmptyDOMElement();
+    });
   });
 });

@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronRight, X } from 'lucide-react';
 import { useRealtimeNotifications } from '../../hooks/useRealtimeNotifications';
+import { useUIOverlays } from '../../store/uiOverlays';
 import { useNotificationStore } from '../../store/notifications';
 import { markAsRead, type Notification } from '../../api/notifications';
 import { kindOf } from './notificationKinds';
@@ -130,6 +131,16 @@ function ToastCard({ n, more, onClose }: { n: Notification; more: number; onClos
 export function NotificationToast() {
   const { newNotification, clearNew } = useRealtimeNotifications();
   const more = useNotificationStore(s => s.toastMore);
+  // 종 목록을 열어 둔 동안에는 띄우지 않는다.
+  //
+  // 둘 다 헤더 오른쪽 아래에 뜨는데 팝업이 더 위층(z-toast 80 > 드롭다운 70)이라, 목록을
+  // 보고 있으면 새 알림이 목록 첫 줄을 덮었다 — 그 줄은 목록이 방금 맨 위에 붙인 바로 그
+  // 알림이다. 목록이 이미 보여 주므로 팝업은 접어 두고, 접는 김에 비워 둔다(목록을 닫은
+  // 뒤에 뒤늦게 튀어나오지 않게).
+  const panelOpen = useUIOverlays(s => s.activeDropdown === 'notifications');
+  useEffect(() => {
+    if (panelOpen && newNotification) clearNew();
+  }, [panelOpen, newNotification, clearNew]);
 
   return (
     // z-toast: 모달(z-50)보다 위. 같은 값이면 App.tsx 위쪽에서 렌더되는 탓에
@@ -141,7 +152,7 @@ export function NotificationToast() {
       className="pointer-events-none fixed inset-x-4 top-20 z-toast flex justify-end sm:left-auto"
     >
       <AnimatePresence>
-        {newNotification && (
+        {newNotification && !panelOpen && (
           // 알림마다 새 카드 — 남은 시간·멈춤 상태가 앞 알림에서 이어지지 않는다
           <ToastCard key={newNotification.id} n={newNotification} more={more} onClose={clearNew} />
         )}

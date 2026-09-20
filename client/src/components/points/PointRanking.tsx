@@ -146,13 +146,18 @@ function Row({
   );
 }
 
-export function PointRanking() {
+/**
+ * @param refreshSignal 같은 화면의 다른 판에서 포인트가 움직이면 바뀐다 — 순위·잔액을 다시 읽는다.
+ *   이것이 없어서, 뽑기·대결로 포인트가 바뀌어도 바로 아래 순위표만 옛 잔액을 보여 주었다.
+ */
+export function PointRanking({ refreshSignal = 0 }: { refreshSignal?: number }) {
   const [data, setData] = useState<Ranking | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let alive = true;
+    setFailed(false);
     fetchPointRanking()
       .then(r => {
         if (alive) setData(r);
@@ -167,7 +172,7 @@ export function PointRanking() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [refreshSignal]);
 
   const inTop = Boolean(data?.me) && data!.top.some(t => t.userId === data!.me?.userId);
 

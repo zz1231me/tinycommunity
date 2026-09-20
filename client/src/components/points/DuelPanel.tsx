@@ -196,15 +196,18 @@ export function DuelPanel({
     void reload().catch(() => {});
   }, [refreshSignal, reload]);
 
-  // 기다리는 판이 있으면 주기적으로 다시 읽는다. 상대가 답했는지, 시간이 지났는지는
-  // 이쪽에서 물어보지 않으면 알 수 없다 — 알림이 와도 이 목록은 그대로였다.
-  // 기다리는 판이 없을 때는 묻지 않는다.
+  // 주기적으로 다시 읽는다. 상대가 답했는지, 시간이 지났는지는 이쪽에서 물어보지 않으면
+  // 알 수 없다. 기다리는 판이 있으면 15초, 없으면 느리게 1분.
+  //
+  // 기다리는 판이 없을 때 아예 묻지 않던 때는, 대결 알림을 꺼 둔 사람에게 도전장이 오면
+  // 영영 보이지 않았다 — 알림을 끄면 서버가 알림 줄을 만들지 않아 도착 신호도 없는데,
+  // 하필 '아무것도 없는' 그 상태에서만 주기 확인까지 쉬고 있었다.
   const waitingCount = (board?.incoming.length ?? 0) + (board?.outgoing.length ?? 0);
   useEffect(() => {
-    if (waitingCount === 0) return;
+    const every = waitingCount > 0 ? 15_000 : 60_000;
     const id = window.setInterval(() => {
       void reload().catch(() => {});
-    }, 15_000);
+    }, every);
     return () => window.clearInterval(id);
   }, [waitingCount, reload]);
 

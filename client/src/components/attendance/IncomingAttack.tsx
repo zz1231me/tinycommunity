@@ -24,7 +24,6 @@ import { attendanceKeys } from '../../api/queryKeys';
 import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
 import { formatLeft, liveOnly, secondsLeft, useCountdown } from '../../hooks/useCountdown';
-import { useNotificationArrival } from '../../hooks/useNotificationArrival';
 
 /** 방해받는 중임을 알리고, 방어권을 살 기회를 준다 */
 export function AttackBanner({
@@ -37,6 +36,7 @@ export function AttackBanner({
   defending,
   onDefend,
   onExpire,
+  clockOffset = 0,
 }: {
   incoming: IncomingAttackData;
   /**
@@ -53,11 +53,15 @@ export function AttackBanner({
   defending: boolean;
   onDefend: () => void;
   onExpire: () => void;
+  /** 서버 시각 − 내 시계 — 어긋난 시계에서도 서버 기준으로 센다 */
+  clockOffset?: number;
 }) {
-  const left = useCountdown(incoming.expiresAt, onExpire);
-  const totalLeft = useCountdown(endsAt ?? incoming.expiresAt);
+  const left = useCountdown(incoming.expiresAt, onExpire, clockOffset);
+  const totalLeft = useCountdown(endsAt ?? incoming.expiresAt, undefined, clockOffset);
   const affordable = balance >= defendCost;
-  const [total] = useState(() => Math.max(1, totalSeconds ?? secondsLeft(incoming.expiresAt)));
+  const [total] = useState(() =>
+    Math.max(1, totalSeconds ?? secondsLeft(incoming.expiresAt, clockOffset))
+  );
   const percent = Math.min(100, Math.round((left / total) * 100));
 
   return (
@@ -196,25 +200,17 @@ function shiftQueue(rest: IncomingAttackData[], now = Date.now()): IncomingAttac
 }
 
 /**
- * 포인트 탭 맨 위 — 나에게 걸린 공격이 있을 때만 보인다.
+ * 출근 화면 맨 위 — 나에게 걸린 공격이 있을 때만 보인다.
  *
- * @param onSpent 방어권을 산 뒤 — 같은 화면의 다른 잔액 표시를 다시 불러오게 한다
+ * 다시 묻는 주기·알림 신호는 부모가 하나로 몬다(위 useQuery 주석). 이 판은 같은 캐시를 읽고,
+ * 방어에 성공하면 그 캐시를 바로 고쳐 쓴다.
  */
-export function IncomingAttack({ onSpent }: { onSpent?: () => void }) {
+export function IncomingAttack() {
   const queryClient = useQueryClient();
-  const attack = useQuery({
-    queryKey: attendanceKeys.attack,
-    queryFn: fetchAttackState,
-    // 걸린 공격은 저절로 풀린다. 걸려 있는 동안만 짧게 다시 묻는다.
-    refetchInterval: query => (query.state.data?.incoming ? 10_000 : false),
-    refetchOnWindowFocus: true,
-  });
+  // 다시 묻는 주기와 알림 도착 신호는 부모(출근 화면)가 맡는다 — 같은 캐시를 둘이 각자
+  // 몰던 때는 10초마다 요청이 두 번 나갔고, 공격 알림 하나에 요청이 둘 나가 하나는 취소됐다.
+  const attack = useQuery({ queryKey: attendanceKeys.attack, queryFn: fetchAttackState });
   const refresh = () => queryClient.invalidateQueries({ queryKey: attendanceKeys.attack });
-
-  // 공격 알림이 오면 바로 다시 읽는다 — 이 탭을 보고 있는 중에 걸린 공격도 곧바로 뜬다
-  useNotificationArrival(['ATTACK'], () => {
-    void refresh();
-  });
 
   // 방어에 성공하면 경고 띠 자리에 잠깐 초록 띠를 띄운다(누구의 공격을 막았는지)
   const [defendedFrom, setDefendedFrom] = useState<{ name: string; remaining: number } | null>(
@@ -248,17 +244,21 @@ export function IncomingAttack({ onSpent }: { onSpent?: () => void }) {
       });
       void refresh();
       setDefendedFrom({ name: attackerName, remaining });
-      onSpent?.();
     },
     onError: err => toast.error(getApiErrorMessage(err, '방어하지 못했습니다.')),
   });
 
   const state = attack.data;
   const incoming = state?.incoming ?? null;
-  const queue = liveOnly(state?.queue ?? []);
+  // 내 시계와 서버 시계의 차이 — 몇 분 빠른 PC 에서 걸려 있는 공격이 '이미 끝난 것' 으로 보였다
+  // now 가 없는 답(옛 서버·캐시에 남은 값)이면 차이를 0 으로 둔다
+  const clockOffset =
+    state?.now && attack.dataUpdatedAt ? new Date(state.now).getTime() - attack.dataUpdatedAt : 0;
+  const serverNow = Date.now() + clockOffset;
+  const queue = liveOnly(state?.queue ?? [], serverNow);
   const endsAt = queue[queue.length - 1]?.expiresAt;
   // 서버가 준 만료 시각으로 직접 판단한다 — 이미 지난 공격을 아직 다시 받아 오지 않았을 수 있다
-  const live = Boolean(incoming && new Date(incoming.expiresAt).getTime() > Date.now());
+  const live = Boolean(incoming && new Date(incoming.expiresAt).getTime() > serverNow);
 
   if (!defendedFrom && !(incoming && live && state)) return null;
 
@@ -280,6 +280,7 @@ export function IncomingAttack({ onSpent }: { onSpent?: () => void }) {
           endsAt={endsAt}
           defendCost={state.rules.defendCost}
           balance={state.balance}
+          clockOffset={clockOffset}
           defending={defend.isPending}
           onDefend={() => defend.mutate({ id: incoming.id, attackerName: incoming.attackerName })}
           onExpire={() => void refresh()}

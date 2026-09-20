@@ -51,8 +51,14 @@ interface Props {
  * 마감(서버가 정한 시각)까지 남은 분을 함께 보여 주고, 지나면 저절로 사라진다.
  * 눌러도 되는지는 서버가 다시 확인한다(시간이 지났거나 새로 열린 기록이 있으면 거절).
  */
-/** 퇴근 취소 창의 길이(초) — 남은 막대의 기준. 서버는 마감 시각만 주고 길이는 CHECKOUT_UNDO_MINUTES(10분)다. */
-const UNDO_WINDOW_SECONDS = 600;
+/**
+ * 퇴근 취소 막대의 기준 길이(초).
+ *
+ * 서버는 마감 시각만 준다. 그 마감은 '퇴근 시각 + 11분' 이다 — 퇴근 시각이 분 단위로 잘리기
+ * 때문에(초를 버린다) 잘린 만큼을 되돌려 주려고 1분을 더 얹은 값이다(CHECKOUT_UNDO_MINUTES).
+ * 600 으로 재던 때는 처음 1분 동안 막대가 가득 찬 채로 멈춰 있었다.
+ */
+const UNDO_WINDOW_SECONDS = 660;
 
 /**
  * 방금 누른 퇴근을 되돌리는 단추 — 퇴근 단추 자리에 대신 선다.
@@ -259,7 +265,6 @@ function Decoys({ count = 8, level = 1 }: { count?: number; level?: number }) {
     current.current = decoys;
   }, [decoys]);
   const nextKey = useRef(0);
-  const timers = useRef<number[]>([]);
 
   const spawn = (current: Decoy[]): Decoy | null => {
     const card = anchorRef.current?.closest<HTMLElement>('[data-chaos-bounds]') ?? null;
@@ -271,9 +276,7 @@ function Decoys({ count = 8, level = 1 }: { count?: number; level?: number }) {
   /** 떠나는 가짜는 연기로 흩어진 뒤 지운다 */
   const leave = (key: number) => {
     setDecoys(prev => prev.map(d => (d.key === key ? { ...d, leaving: true } : d)));
-    timers.current.push(
-      window.setTimeout(() => setDecoys(prev => prev.filter(d => d.key !== key)), 450)
-    );
+    window.setTimeout(() => setDecoys(prev => prev.filter(d => d.key !== key)), 450);
   };
 
   // 처음 한 번 채운다. 자리를 재려면 그려진 뒤여야 하므로 첫 그림은 비워 두고,
@@ -312,11 +315,10 @@ function Decoys({ count = 8, level = 1 }: { count?: number; level?: number }) {
       const born = spawn(alive.filter(d => d.key !== out.key));
       if (born) setDecoys(prev => [...prev, born]);
     }, blinkMs(level));
-    const pending = timers.current;
-    return () => {
-      window.clearInterval(id);
-      pending.forEach(t => window.clearTimeout(t));
-    };
+    return () => window.clearInterval(id);
+    // 흩어지는 중인 가짜를 지우는 타이머는 끊지 않는다. 끊으면 공격이 하나 더 쌓여
+    // level 이 바뀌는 순간(이 자리가 다시 도는 순간) 흩어지던 가짜가 영영 남았다.
+    // 화면이 사라진 뒤에 도는 것은 아무 일도 하지 않는다(React 가 무시한다).
   }, [count, level]);
 
   const [fooled, setFooled] = useState<{ left: string; top: string; key: number } | null>(null);
@@ -539,6 +541,8 @@ export function TodayHero({
 
       {showQuiz && (
         <QuizGate
+          // 공격이 바뀌면 맞힌 횟수를 처음부터 — 앞 공격에서 쌓아 둔 것이 넘어가지 않게
+          key={attackExpiresAt ?? 'quiz'}
           level={attackLevel}
           onSolved={() => {
             setQuizOpen(false);

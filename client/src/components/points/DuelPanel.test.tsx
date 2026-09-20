@@ -593,3 +593,44 @@ describe('한마디 칸이 늦게 떠도', () => {
     expect(document.activeElement).toBe(stake);
   });
 });
+
+describe('기다리는 판이 없을 때도 확인한다', () => {
+  // 대결 알림을 꺼 두면 서버가 알림 줄을 만들지 않아 도착 신호도 오지 않는다.
+  // 그런데 '아무것도 없는' 그 상태에서만 주기 확인까지 쉬고 있어서, 그때 온 도전장은
+  // 새로고침 전까지 영영 보이지 않았다.
+  it('아무것도 없어도 1분마다 다시 읽는다 — 알림을 꺼 둔 사람에게 온 도전장도 보인다', async () => {
+    // shouldAdvanceTime: 화면이 그려질 때까지 기다리는 동안에도 시계가 흐르게 한다
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      fetchDuels.mockResolvedValue(board()); // 받은 것도 보낸 것도 없다
+      render(<DuelPanel myId={ME} />);
+      expect(await screen.findByText(/받은 대결이 없습니다|아직/)).toBeInTheDocument();
+      fetchDuels.mockClear();
+      fetchDuels.mockResolvedValue(board({ incoming: [duel({ id: 42 })] }));
+
+      await vi.advanceTimersByTimeAsync(61_000);
+
+      expect(fetchDuels).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('기다리는 판이 있으면 더 자주 읽는다 — 대조', async () => {
+    // shouldAdvanceTime: 화면이 그려질 때까지 기다리는 동안에도 시계가 흐르게 한다
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      fetchDuels.mockResolvedValue(board({ incoming: [duel({ id: 7 })] }));
+      render(<DuelPanel myId={ME} />);
+      // 목록이 그려질 때까지 기다린다 — 그래야 '기다리는 판이 있는' 주기(15초)로 바뀐다
+      expect(await screen.findByText('브라보')).toBeInTheDocument();
+      fetchDuels.mockClear();
+
+      await vi.advanceTimersByTimeAsync(31_000); // 15초 주기면 두 번, 60초 주기면 0번
+
+      expect(fetchDuels).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

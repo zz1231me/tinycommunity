@@ -556,3 +556,42 @@ describe('어제 퇴근을 깜빡한 사람', () => {
     expect((await attack(atkCookie, TGT)).status).toBe(200);
   });
 });
+
+describe('숨기기는 쌓이는 시간에 상한이 있다', () => {
+  // 숨기기는 그동안 정말로 누를 수 없는 유일한 종류다 — 마우스로도, Tab 으로도 닿을 수 없다.
+  // 개수 상한(10개)만 있던 때는 관리자가 한 장을 60초로 올려 두면 10장 = 10분 동안 퇴근을
+  // 아예 막을 수 있었다. 장난이 아니라 근태 방해가 되는 선이다.
+  it('합이 60초를 넘으면 더 받지 않는다', async () => {
+    await grant(ATK, 20_000);
+    await startWorking(TGT);
+
+    // 기본 20초 × 3 = 60초까지는 받는다
+    expect((await attack(atkCookie, TGT, 'hide')).status).toBe(200);
+    expect((await attack(atkCookie, TGT, 'hide')).status).toBe(200);
+    expect((await attack(atkCookie, TGT, 'hide')).status).toBe(200);
+
+    const fourth = await attack(atkCookie, TGT, 'hide');
+    expect(fourth.status).toBe(409);
+    expect(fourth.body.message).toMatch(/숨기기/);
+  });
+
+  it('막힌 뒤에도 방해는 걸 수 있다 — 끝내 누를 수 있는 종류라 상한이 없다', async () => {
+    await grant(ATK, 20_000);
+    await startWorking(TGT);
+    for (let i = 0; i < 3; i++) await attack(atkCookie, TGT, 'hide');
+    expect((await attack(atkCookie, TGT, 'hide')).status).toBe(409);
+
+    expect((await attack(atkCookie, TGT, 'chaos')).status).toBe(200);
+  });
+
+  it('막힌 요청은 포인트를 쓰지 않는다', async () => {
+    await grant(ATK, 20_000);
+    await startWorking(TGT);
+    for (let i = 0; i < 3; i++) await attack(atkCookie, TGT, 'hide');
+    const before = await balanceOf(ATK);
+
+    expect((await attack(atkCookie, TGT, 'hide')).status).toBe(409);
+
+    expect(await balanceOf(ATK)).toBe(before);
+  });
+});

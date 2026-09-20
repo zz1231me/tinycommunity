@@ -191,7 +191,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   duelMaxOpenPerUser: 3,
   attackCost: 300,
   attackHideCost: 300,
-  attackHideSeconds: 10,
+  attackHideSeconds: 20,
   attackDefendCost: 200,
   attackBlockSeconds: 60,
   attackDailyLimit: 5,

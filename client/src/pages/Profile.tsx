@@ -681,7 +681,7 @@ export default function Profile() {
                 {attackEnabled && (
                   <AttackPanel myId={user.id} refreshSignal={pointsVersion} onSpent={bumpPoints} />
                 )}
-                <PointRanking />
+                <PointRanking refreshSignal={pointsVersion} />
               </div>
             )}
             {activeTab === 'notifications' && <NotificationSettings />}

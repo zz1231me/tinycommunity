@@ -632,3 +632,99 @@ describe('문제 내기 공격', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
+
+describe('퇴근 취소 남은 시간 막대', () => {
+  // 서버 마감은 '퇴근 시각 + 11분' 이다(퇴근 시각의 초가 잘리므로 1분을 얹어 준다).
+  // 600초를 기준으로 재던 때는 처음 1분 동안 막대가 가득 찬 채로 멈춰 있었다.
+  const bar = (untilSeconds: number) => {
+    const { container } = render(
+      <TodayHero
+        workDate="2026-09-20"
+        record={{
+          id: 1,
+          userId: 'me',
+          workDate: '2026-09-20',
+          checkInAt: new Date(Date.now() - 9 * 3600e3).toISOString(),
+          checkOutAt: new Date().toISOString(),
+          workMinutes: 540,
+          note: '',
+          checklist: [],
+        }}
+        standardWorkMinutes={480}
+        canCheckIn={false}
+        canCheckOut={false}
+        checkingOut={false}
+        undoCheckOutUntil={new Date(Date.now() + untilSeconds * 1000).toISOString()}
+        onUndoCheckOut={vi.fn()}
+        onCheckIn={vi.fn()}
+        onCheckOut={vi.fn()}
+      />
+    );
+    const el = container.querySelector('button span[aria-hidden]') as HTMLElement;
+    return parseFloat(el.style.width);
+  };
+
+  it('막 눌렀을 때(11분 남음)와 반쯤 지났을 때가 다르다', () => {
+    const fresh = bar(11 * 60 - 1);
+    const half = bar(5 * 60);
+    expect(fresh).toBeGreaterThan(95);
+    expect(half).toBeLessThan(60);
+    expect(half).toBeGreaterThan(40);
+  });
+
+  it('10분이 남았을 때 이미 가득 찬 것으로 보이지 않는다', () => {
+    expect(bar(10 * 60)).toBeLessThan(96);
+  });
+});
+
+describe('문제 내기는 공격마다 처음부터', () => {
+  const props = (expiresAt: string) => ({
+    workDate: '2026-09-20',
+    record: {
+      id: 1,
+      userId: 'me',
+      workDate: '2026-09-20',
+      checkInAt: new Date(Date.now() - 3600e3).toISOString(),
+      checkOutAt: null,
+      workMinutes: null,
+      note: '',
+      checklist: [],
+    },
+    standardWorkMinutes: 480,
+    canCheckIn: false,
+    canCheckOut: true,
+    checkingOut: false,
+    attackKind: 'quiz' as AttackKind,
+    attackLevel: 5, // 두 번 맞혀야 한다
+    attackExpiresAt: expiresAt,
+    onCheckIn: vi.fn(),
+    onCheckOut: vi.fn(),
+  });
+
+  const solve = () => {
+    const text = screen.getByTestId('quiz-question').textContent!.replace('=', '');
+    const answer = Function(`return ${text.replace(/×/g, '*').replace(/−/g, '-')}`)() as number;
+    fireEvent.change(screen.getByRole('textbox', { name: '답' }), {
+      target: { value: String(answer) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '확인' }));
+  };
+
+  it('앞 공격에서 맞힌 횟수가 다음 공격으로 넘어가지 않는다', () => {
+    const onCheckOut = vi.fn();
+    const first = new Date(Date.now() + 60_000).toISOString();
+    const view = render(<TodayHero {...props(first)} onCheckOut={onCheckOut} />);
+    fireEvent.click(screen.getByRole('button', { name: /퇴근/ }));
+    solve(); // 첫 문제를 맞혔다 (1/2)
+
+    // 다음 공격이 이어진다
+    const second = new Date(Date.now() + 120_000).toISOString();
+    view.rerender(<TodayHero {...props(second)} onCheckOut={onCheckOut} />);
+    fireEvent.click(screen.getByRole('button', { name: /퇴근/ }));
+    solve(); // 새 공격의 첫 문제 (1/2) — 여기서 퇴근되면 앞의 것이 넘어온 것이다
+
+    expect(onCheckOut).not.toHaveBeenCalled();
+    solve();
+    expect(onCheckOut).toHaveBeenCalledTimes(1);
+  });
+});

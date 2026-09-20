@@ -8,7 +8,7 @@
 // 사람에게 순위표는 남의 이야기가 된다.
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { PointRanking } from './PointRanking';
 import type { PointRanking as Ranking } from '../../api/points';
 
@@ -173,5 +173,30 @@ describe('1~3등 시상대', () => {
     const items = within(await screen.findByTestId('podium')).getAllByRole('listitem');
     expect(within(items[1]).getByText('나')).toBeInTheDocument();
     expect(within(items[0]).queryByText('나')).not.toBeInTheDocument();
+  });
+});
+
+describe('다른 판에서 포인트가 움직이면', () => {
+  // 이것이 없어서 뽑기·대결로 잔액이 바뀌어도 바로 아래 순위표만 옛 잔액을 보여 주었다
+  it('순위를 다시 읽는다', async () => {
+    mockFetchRanking.mockResolvedValue(data({ me: entry(42, 'me', '나야', 3) }));
+    const { rerender } = render(<PointRanking refreshSignal={0} />);
+    expect(await screen.findByText('나야')).toBeInTheDocument();
+    mockFetchRanking.mockClear();
+
+    rerender(<PointRanking refreshSignal={1} />);
+
+    await waitFor(() => expect(mockFetchRanking).toHaveBeenCalled());
+  });
+
+  it('같은 신호에는 다시 읽지 않는다 — 대조', async () => {
+    mockFetchRanking.mockResolvedValue(data());
+    const { rerender } = render(<PointRanking refreshSignal={3} />);
+    expect(await screen.findByText('앨리스')).toBeInTheDocument();
+    mockFetchRanking.mockClear();
+
+    rerender(<PointRanking refreshSignal={3} />);
+
+    expect(mockFetchRanking).not.toHaveBeenCalled();
   });
 });

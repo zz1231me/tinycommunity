@@ -77,6 +77,11 @@ export interface IncomingAttack {
 }
 
 export interface AttackState {
+  /**
+   * 서버가 이 답을 만든 시각 — 화면은 자기 시계와의 차이를 재서 남은 시간을 센다.
+   * 없을 수도 있다(옛 서버와 이야기하는 새 화면) — 그때는 차이를 0 으로 둔다.
+   */
+  now?: string;
   rules: AttackRules;
   balance: number;
   /** 지금 나에게 걸린 공격 — 줄의 맨 앞 (없으면 null) */

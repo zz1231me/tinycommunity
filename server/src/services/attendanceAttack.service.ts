@@ -28,6 +28,7 @@ import {
 import {
   ATTACK_MAX_STACK,
   ATTACK_NAME,
+  HIDE_TOTAL_MAX_SECONDS,
   attackCost,
   attackSeconds,
   isAttackKind,
@@ -86,7 +87,7 @@ function queueView(row: AttendanceAttackModel) {
  * (checkOut 은 오늘 것이거나 자정을 넘긴 어제 것만 닫는다). 날짜를 묶지 않으면
  * 그 사람은 그날 이후로 새벽이든 주말이든 24시간 내내 공격 대상이 된다.
  */
-async function isWorking(userId: string): Promise<boolean> {
+async function isWorking(userId: string, t?: Transaction): Promise<boolean> {
   // 퇴근 버튼이 닫을 기록과 같은 기록을 본다(attendance.service 의 checkOut): 오늘 것이
   // 있으면 그것, 없을 때만 자정을 넘긴 어제의 안 닫힌 것.
   //
@@ -96,6 +97,7 @@ async function isWorking(userId: string): Promise<boolean> {
   const todays = await AttendanceRecord.findOne({
     where: { UserId: userId, workDate: today() },
     attributes: ['id', 'checkOutAt'],
+    transaction: t,
   });
   if (todays) return todays.checkOutAt === null;
 
@@ -106,6 +108,7 @@ async function isWorking(userId: string): Promise<boolean> {
       workDate: today(new Date(Date.now() - 86_400_000)),
     },
     attributes: ['id'],
+    transaction: t,
   });
   return carried !== null;
 }
@@ -134,6 +137,13 @@ export const attendanceAttackService = {
     ]);
 
     return {
+      /**
+       * 지금 서버 시각. 화면은 이것과 자기 시계의 차이를 재서 남은 시간을 센다.
+       *
+       * 자기 시계만 믿던 때는, 시계가 몇 분 빠른 PC 에서 걸려 있는 공격이 '이미 끝난 것' 으로
+       * 보여 아무 일도 일어나지 않았다(공격자의 포인트만 사라졌다).
+       */
+      now: new Date(),
       rules: {
         cost: rules.cost,
         hideCost: rules.hideCost,
@@ -217,6 +227,30 @@ export const attendanceAttackService = {
         const queue = await liveQueue(targetId, t);
         if (queue.length >= ATTACK_MAX_STACK) {
           throw new AppError(409, `이미 공격이 ${ATTACK_MAX_STACK}개 쌓여 있습니다.`);
+        }
+
+        // 잠근 뒤에 근무 중인지 다시 본다. 위에서 한 번 봤지만 그것은 잠금 밖이라, 그 사이에
+        // 대상이 퇴근해 버리면 값만 치르고 아무 일도 일어나지 않는 공격이 줄에 남았다.
+        if (!(await isWorking(targetId, t))) {
+          throw new AppError(400, '지금 근무 중인 사람에게만 쓸 수 있습니다.');
+        }
+
+        // 숨기기는 정말로 누를 수 없는 유일한 종류다 — 쌓인 시간의 합에 상한을 둔다
+        if (kind === 'hide') {
+          const now = Date.now();
+          const queuedHideMs = queue
+            .filter(q => q.kind === 'hide')
+            .reduce(
+              (sum, q) => sum + Math.max(0, q.expiresAt.getTime() - Math.max(now, startOf(q))),
+              0
+            );
+          const lifeMs = attackSeconds(kind, rules) * 1000;
+          if (queuedHideMs + lifeMs > HIDE_TOTAL_MAX_SECONDS * 1000) {
+            throw new AppError(
+              409,
+              `숨기기는 한 번에 ${HIDE_TOTAL_MAX_SECONDS}초까지만 쌓을 수 있습니다. 방해나 문제 내기를 써 보세요.`
+            );
+          }
         }
 
         const row = rows[attackerId];

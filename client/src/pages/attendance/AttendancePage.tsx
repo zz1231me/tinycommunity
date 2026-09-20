@@ -148,10 +148,17 @@ export default function AttendancePage() {
   });
 
   const incoming = attack.data?.incoming ?? null;
+  // 내 시계와 서버 시계의 차이. 몇 분 빠른 PC 에서는 걸려 있는 공격이 '이미 끝난 것' 으로
+  // 보여 아무 일도 일어나지 않았다 — 공격자의 포인트만 사라지고 받는 쪽은 멀쩡했다.
+  const clockOffset =
+    attack.data?.now && attack.dataUpdatedAt
+      ? new Date(attack.data.now).getTime() - attack.dataUpdatedAt
+      : 0;
+  const serverNow = () => Date.now() + clockOffset;
   // 서버가 준 만료 시각으로 직접 판단한다 — 이미 지난 공격을 아직 받아 오지 않았을 수 있다
-  const underAttack = Boolean(incoming && new Date(incoming.expiresAt).getTime() > Date.now());
+  const underAttack = Boolean(incoming && new Date(incoming.expiresAt).getTime() > serverNow());
   // 쌓인 공격 — 수만큼 퇴근 버튼이 사나워진다
-  const attackQueue = liveOnly(attack.data?.queue ?? []);
+  const attackQueue = liveOnly(attack.data?.queue ?? [], serverNow());
 
   const record = status.data?.record ?? null;
   const openPrevious = status.data?.openPrevious ?? null;

@@ -62,6 +62,17 @@ export const ATTACK_NAME: Record<AttackKind, string> = {
  */
 export const ATTACK_MAX_STACK = 10;
 
+/**
+ * 숨기기로 한 번에 가려 둘 수 있는 시간의 합(초).
+ *
+ * 숨기기는 그동안 정말로 누를 수 없는 유일한 종류다 — 마우스로도, Tab 으로도, 화면
+ * 낭독기로도 퇴근 버튼에 닿을 수 없다. 그런데 상한은 '개수'(10개)뿐이라, 관리자가 한 장을
+ * 60초로 올려 두면 10장 = 10분 동안 퇴근을 아예 못 하게 만들 수 있었다. 장난이 아니라
+ * 근태 방해가 되는 선이다. 개수와 무관하게 합이 이 시간을 넘으면 더 받지 않는다.
+ * (방해·문제 내기는 끝내 누를 수 있으므로 이 제한이 없다.)
+ */
+export const HIDE_TOTAL_MAX_SECONDS = 60;
+
 export const ATTACK_DEFAULTS = {
   /** 방해 공격 한 장 값 */
   cost: 300,

@@ -52,6 +52,7 @@ vi.mock('../../hooks/useRealtimeNotifications', async () => {
 });
 
 const { useNotificationStore } = await import('../../store/notifications');
+const { useUIOverlays } = await import('../../store/uiOverlays');
 const { NotificationToast, TOAST_MS, URGENT_TOAST_MS } = await import('./NotificationToast');
 
 const note = (over: Partial<Notification> = {}): Notification => ({
@@ -84,6 +85,7 @@ function renderToast() {
 const card = () => screen.queryByTestId('notification-toast');
 
 beforeEach(() => {
+  useUIOverlays.setState({ activeDropdown: null });
   vi.useFakeTimers();
   mockMarkAsRead.mockResolvedValue({});
   useNotificationStore.setState({ toast: null, toastMore: 0, unreadCount: 0 });
@@ -202,5 +204,38 @@ describe('사라지는 때', () => {
     show(note({ id: 2, message: '두 번째' }));
     act(() => vi.advanceTimersByTime(TOAST_MS - 100));
     expect(screen.getByText('두 번째')).toBeInTheDocument();
+  });
+});
+
+describe('종 목록을 열어 둔 동안', () => {
+  // 팝업이 목록보다 위층이라, 목록을 보고 있으면 새 알림이 목록 첫 줄을 덮었다 —
+  // 그 줄은 목록이 방금 맨 위에 붙인 바로 그 알림이다.
+  it('팝업을 띄우지 않는다 — 목록이 이미 보여 준다', () => {
+    renderToast();
+    act(() => useUIOverlays.setState({ activeDropdown: 'notifications' }));
+
+    show(note());
+
+    expect(card()).toBeNull();
+  });
+
+  it('목록을 닫은 뒤에 뒤늦게 튀어나오지 않는다', () => {
+    renderToast();
+    act(() => useUIOverlays.setState({ activeDropdown: 'notifications' }));
+    show(note());
+
+    act(() => useUIOverlays.setState({ activeDropdown: null }));
+
+    expect(card()).toBeNull();
+    expect(useNotificationStore.getState().toast).toBeNull();
+  });
+
+  it('다른 것이 열려 있을 때는 그대로 뜬다 — 대조', () => {
+    renderToast();
+    act(() => useUIOverlays.setState({ activeDropdown: 'userMenu' }));
+
+    show(note());
+
+    expect(card()).not.toBeNull();
   });
 });
