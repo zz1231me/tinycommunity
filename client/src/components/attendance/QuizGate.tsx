@@ -67,7 +67,9 @@ export function QuizGate({
       >
         <X className="h-4 w-4" />
       </button>
-      <p className="text-xs font-medium text-violet-700 dark:text-violet-300">
+      {/* pr-7: 오른쪽 위 닫기 단추 자리를 비워 둔다 — 좁은 화면에서 '(0/3 — 틀리면 처음부터)' 가
+          닫기 단추 밑으로 파고들었다 */}
+      <p className="pr-7 text-xs font-medium text-violet-700 dark:text-violet-300">
         🧮 풀어야 퇴근할 수 있어요
         {need > 1 && (
           <span className="ml-1.5 tabular-nums text-violet-500">

@@ -60,11 +60,18 @@ function App() {
   const { isAuthenticated } = useAuth();
   const loadFeatures = useFeatures(s => s.load);
 
-  // 다중 탭 로그아웃 동기화 - 다른 탭에서 로그아웃 시 이 탭도 로그아웃
+  // 다중 탭 동기화 — 다른 탭에서 로그아웃하거나, 다른 계정으로 로그인했을 때
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'tokenInfo' && e.newValue === null && e.oldValue !== null) {
         clearUser();
+        return;
+      }
+      // 다른 탭에서 '다른 사람' 으로 로그인하면 쿠키가 그 사람 것으로 바뀐다. 이 탭은 앞 사람의
+      // 이름·권한을 그대로 단 채 뒷사람의 데이터를 받아 오게 된다 — 통째로 다시 불러온다.
+      // (같은 사람이 토큰만 새로 받은 경우에는 아무것도 하지 않는다.)
+      if (e.key === 'authUserId' && e.newValue && e.newValue !== useAuth.getState().user?.id) {
+        window.location.reload();
       }
     };
     window.addEventListener('storage', handleStorage);

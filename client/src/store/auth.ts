@@ -83,6 +83,11 @@ export const useAuth = create<AuthState>((set, get) => ({
       tokenInfo: tokenInfo || null,
     });
 
+    // 지금 로그인한 사람이 누구인지도 남긴다 — 다른 탭이 '사람이 바뀌었다' 를 알아채는 표식이다.
+    // (탭마다 쿠키를 함께 쓰므로, 한 탭에서 다른 계정으로 로그인하면 남은 탭은 앞 사람의
+    //  이름·권한을 단 채 뒷사람의 데이터를 받아 왔다.)
+    safeStorage.set('authUserId', user.id);
+
     if (tokenInfo) {
       safeStorage.set('tokenInfo', JSON.stringify(tokenInfo));
       if (import.meta.env.DEV)
@@ -108,6 +113,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     });
 
     safeStorage.remove('tokenInfo');
+    safeStorage.remove('authUserId');
   },
 
   setLoading: isLoading => set({ isLoading }),

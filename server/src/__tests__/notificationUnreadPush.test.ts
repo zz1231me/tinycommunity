@@ -4,6 +4,8 @@ import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import { Notification } from '../models/Notification';
 import { notificationService } from '../services/notification.service';
 import { addConnection, closeAllConnections } from '../services/sse.service';
+import { userSessionService } from '../services/userSession.service';
+import { UserSession } from '../models/UserSession';
 
 // 읽음·삭제한 뒤 '안 읽은 수' 를 열려 있는 다른 화면들에 알리는가.
 //
@@ -173,5 +175,32 @@ describe('안 읽은 수를 열린 화면에 알린다', () => {
 
     expect(mine.lastCount()).toBe(0);
     expect(other.lastCount()).toBeNull();
+  });
+});
+
+describe('로그아웃·세션 종료가 스트림을 끊는다', () => {
+  // 스트림은 붙을 때 한 번만 인증을 본다 — 세션을 끊어도 그 탭은 알림을 계속 받았다.
+  it('세션 하나를 강제 종료해도 그 사람의 스트림이 끊긴다', async () => {
+    await userSessionService.createSession({
+      userId: 'admin',
+      rawToken: `raw-${Date.now()}`,
+      ipAddress: '127.0.0.1',
+    });
+    const row = await UserSession.findOne({ where: { userId: 'admin', isActive: true } });
+    const conn = fakeConnection();
+    addConnection('admin', conn.res);
+
+    await userSessionService.forceLogout(row!.id);
+
+    expect(conn.frames.join('')).toContain('event: bye');
+  });
+
+  it('전체 세션 만료(로그아웃·비밀번호 변경)가 스트림을 끊는다', async () => {
+    const conn = fakeConnection();
+    addConnection('admin', conn.res);
+
+    await userSessionService.expireAllUserSessions('admin');
+
+    expect(conn.frames.join('')).toContain('event: bye');
   });
 });

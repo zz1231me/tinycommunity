@@ -1,5 +1,11 @@
 import type { Response } from 'express';
-import { addConnection, closeAllConnections, getConnectionStats } from '../services/sse.service';
+import {
+  addConnection,
+  closeAllConnections,
+  closeUserConnections,
+  getConnectionStats,
+  pushToUser,
+} from '../services/sse.service';
 
 // 한 사람이 열 수 있는 연결 수 상한에 닿았을 때.
 //
@@ -70,5 +76,51 @@ describe('연결 수 상한', () => {
 
     expect(mine.some(c => c.gotBye())).toBe(false);
     expect(other.isEnded()).toBe(false);
+  });
+});
+
+describe('세션이 끝나면 스트림도 끊는다', () => {
+  // 스트림은 붙을 때 한 번만 인증을 본다. 끊지 않으면 로그아웃·강제 종료 뒤에도 그 탭으로
+  // 알림이 계속 갔다(쪽지 내용·대결·퇴근 공격까지). 토큰이 만료돼도 며칠이고 살아남는다.
+  it("'bye' 를 보내고 닫는다 — 받는 쪽은 스스로 물러난다", () => {
+    const a = fake();
+    const b = fake();
+    addConnection('admin', a.res);
+    addConnection('admin', b.res);
+
+    const closed = closeUserConnections('admin');
+
+    expect(closed).toBe(2);
+    expect(a.gotBye()).toBe(true);
+    expect(b.gotBye()).toBe(true);
+    expect(a.isEnded() && b.isEnded()).toBe(true);
+    expect(getConnectionStats().connections).toBe(0);
+  });
+
+  it('끊은 뒤에는 알림이 그 사람에게 가지 않는다', () => {
+    const a = fake();
+    addConnection('admin', a.res);
+    closeUserConnections('admin');
+    const before = a.frames.length;
+
+    pushToUser('admin', 'notification', { id: 1, message: '지나간 알림' });
+
+    expect(a.frames.length).toBe(before);
+  });
+
+  it('다른 사람의 스트림은 건드리지 않는다', () => {
+    const mine = fake();
+    const other = fake();
+    addConnection('admin', mine.res);
+    addConnection('testuser', other.res);
+
+    closeUserConnections('admin');
+
+    expect(other.isEnded()).toBe(false);
+    expect(getConnectionStats().connections).toBe(1);
+  });
+
+  it('연결이 없으면 아무 일도 하지 않는다', () => {
+    expect(closeUserConnections('nobody')).toBe(0);
   });
 });

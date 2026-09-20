@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { Op } from 'sequelize';
 import { logError } from '../utils/logger';
 import { getSettings } from '../utils/settingsCache';
+import { closeUserConnections } from './sse.service';
 
 const MAX_SESSIONS_PER_USER = 10;
 
@@ -184,6 +185,8 @@ export class UserSessionService extends BaseService {
   async expireAllUserSessions(userId: string): Promise<void> {
     try {
       await UserSession.update({ isActive: false }, { where: { userId, isActive: true } });
+      // 열려 있는 알림 스트림도 함께 끊는다 — 끊지 않으면 그 탭은 계속 알림을 받는다
+      closeUserConnections(userId);
     } catch (error) {
       logError('전체 세션 만료 처리 실패', error);
     }
@@ -260,6 +263,10 @@ export class UserSessionService extends BaseService {
       await session.update({ isActive: false });
       // 강제 종료를 액세스 토큰에도 즉시 반영
       this.invalidateStatus(session.sessionToken);
+      // 그 사람의 알림 스트림도 끊는다. 스트림은 붙을 때 한 번만 인증을 보므로, 끊지 않으면
+      // 세션을 종료해도 그 탭으로 알림이 계속 갔다(어느 연결이 어느 세션인지는 알 수 없어
+      // 그 사람의 연결을 모두 끊는다 — 남은 탭은 다시 열 때 새로 잇는다).
+      closeUserConnections(session.userId);
       return true;
     } catch (error) {
       logError('강제 세션 종료 실패', error);

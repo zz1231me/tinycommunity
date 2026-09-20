@@ -83,6 +83,29 @@ export function addConnection(userId: string, res: Response): void {
   res.on('error', cleanup);
 }
 
+/**
+ * 한 사람의 열린 스트림을 모두 끊는다 — 로그아웃·비밀번호 변경·세션 강제 종료에서 부른다.
+ *
+ * 스트림은 붙을 때 한 번만 인증을 본다. 25초마다 심장박동을 보내며 열려 있으므로, 세션을
+ * 끊어도 그 탭은 알림을 계속 받았다(쪽지 내용·대결·퇴근 공격까지). 토큰이 만료돼도 스트림은
+ * 며칠이고 살아남는다. 'bye' 를 보내고 닫으면 받는 쪽은 스스로 물러난다(다시 잇지 않는다).
+ */
+export function closeUserConnections(userId: string): number {
+  const set = connections.get(userId);
+  if (!set) return 0;
+  const closed = set.size;
+  for (const res of set) {
+    try {
+      write(res, 'bye', { reason: 'session-ended' });
+    } catch {
+      // 이미 끊긴 연결 — 어차피 닫을 참이다
+    }
+    res.end();
+  }
+  connections.delete(userId);
+  return closed;
+}
+
 /** 특정 사용자의 모든 연결로 이벤트를 보낸다. 연결이 없으면 아무 일도 하지 않는다. */
 export function pushToUser(userId: string, event: string, data: SsePayload): void {
   const userConnections = connections.get(userId);
