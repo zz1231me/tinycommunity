@@ -235,6 +235,11 @@ export class UserService extends BaseService {
       throw new AppError(400, '이미 삭제된 계정입니다.');
     }
 
+    // 발급된 액세스 토큰도 즉시 무효로 만든다(비활성화와 같은 처리).
+    // 이것이 없어서, 삭제 직후에도 그 사람이 들고 있던 토큰으로 30초쯤 글을 쓸 수 있었다 —
+    // 미들웨어의 사용자 캐시가 '멀쩡한 계정' 으로 남아 있었기 때문이다.
+    await user.increment('tokenVersion').catch(() => {});
+
     // 모든 활성 세션 즉시 만료 (삭제된 계정으로 토큰 갱신 방지)
     await userSessionService.expireAllUserSessions(id).catch(() => {});
 

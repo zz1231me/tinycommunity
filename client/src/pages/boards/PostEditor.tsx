@@ -187,8 +187,11 @@ const PostEditor = ({ mode }: Props) => {
     }),
     []
   );
+  // 임시저장 기능이 꺼져 있으면 아예 돌리지 않는다. 서버는 그 길을 막아 두므로(requireFeature),
+  // 켜져 있는 줄 알고 30초마다 보내 봐야 매번 거절당하고 '저장 실패' 만 계속 떴다.
+  const draftsEnabled = useFeature('post.drafts');
   const draft = useDraftAutoSave({
-    enabled: mode === 'create',
+    enabled: mode === 'create' && draftsEnabled,
     boardType,
     intervalMs: AUTO_SAVE_INTERVAL_MS,
     initialDraftId: resumeDraftId,

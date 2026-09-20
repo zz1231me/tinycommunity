@@ -360,6 +360,9 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
     }
 
     const result = await userService.deleteUser(id);
+    // 형제 처리(비활성화·복구·수정·비밀번호 초기화)와 같게 캐시를 비운다 — 빠뜨리면
+    // 삭제된 계정이 캐시가 만료될 때까지(최대 30초) 그대로 요청을 통과시켰다.
+    invalidateAllUserCaches(id);
     logAudit(req, 'delete_user', { targetType: 'user', targetId: id });
     sendSuccess(res, result);
   } catch (error: unknown) {

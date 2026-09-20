@@ -4,6 +4,7 @@ import { sendSuccess, sendError, sendNotFound } from '../utils/response';
 import { logInfo, logError } from '../utils/logger';
 import { boardManagerService } from '../services/boardManager.service';
 import { AppError } from '../middlewares/error.middleware';
+import { invalidateCache } from '../utils/cache';
 
 function toAppError(err: unknown): AppError | null {
   return err instanceof AppError ? err : null;
@@ -41,6 +42,9 @@ export const addManager = async (req: AuthRequest, res: Response): Promise<void>
 
   try {
     const record = await boardManagerService.add(boardId, userId.trim());
+    // 담당자가 되면 볼 수 있는 게시판이 늘어난다 — 목록 캐시(5분)를 비우지 않으면
+    // 그동안 사이드바에 그 게시판이 나타나지 않는다(반대로 뺐을 때는 남아 있다가 403).
+    invalidateCache('boards');
     logInfo('게시판 담당자 추가', { boardId, userId, by: req.user.id });
     sendSuccess(res, record, '담당자가 추가되었습니다.', 201);
   } catch (err) {
@@ -62,6 +66,7 @@ export const removeManager = async (req: AuthRequest, res: Response): Promise<vo
   const { id } = req.params;
   try {
     await boardManagerService.remove(id);
+    invalidateCache('boards'); // 위와 같은 이유 — 뺐는데도 5분 동안 사이드바에 남아 있었다
     logInfo('게시판 담당자 삭제', { id, by: req.user.id });
     sendSuccess(res, null, '담당자가 삭제되었습니다.');
   } catch (err) {

@@ -27,7 +27,7 @@ import {
   lockBothBalances,
   withLockRetry,
 } from './point.service';
-import { DUEL_MESSAGE_MAX, DUEL_TAUNT_MAX, cleanLine, judge } from '../config/duel';
+import { DUEL_MESSAGE_MAX, DUEL_TAUNT_MAX, cleanLine, isDuelHand, judge } from '../config/duel';
 import { getDuelSettings } from '../utils/settingsCache';
 import { notificationService } from './notification.service';
 import { logError } from '../utils/logger';
@@ -210,7 +210,10 @@ export const duelService = {
         where: { challengerId: userId, status: 'waiting' },
         include: withUsers,
         order: [['id', 'DESC']],
-        limit: rules.maxOpenPerUser,
+        // 받은 대결과 같은 이유로 설정값으로 자르지 않는다. 관리자가 '동시에 걸 수 있는 판 수'
+        // 를 줄이면, 이미 걸어 둔 판 일부가 목록에서 사라져 취소할 길이 없어졌다(건 포인트는
+        // 맡겨져 있으므로 시간이 지나 무효가 될 때까지 묶인 것처럼 보인다).
+        limit: 50,
       }),
       PointDuel.findAll({
         where: {
@@ -342,6 +345,11 @@ export const duelService = {
    * 판을 먼저 잠그므로, 두 창에서 동시에 눌러도 한 번만 정산된다.
    */
   async accept(opponentId: string, duelId: number, hand: DuelHand): Promise<DuelView> {
+    // 손을 여기서도 확인한다(거는 쪽의 stake 와 같은 이유 — 이 서비스는 라우트 말고도 불릴 수
+    // 있다). judge() 는 모르는 값을 '가위바위보 어느 것도 이기지 못한 것' 으로 보아 상대 승으로
+    // 읽는다 — 돈이 오가는 자리에서 잘못된 입력이 오류가 아니라 승부가 되면 안 된다.
+    if (!isDuelHand(hand)) throw new AppError(400, '가위·바위·보 중에서 골라주세요.');
+
     await ensureBalanceRow(opponentId);
 
     const settled = await withLockRetry(() =>

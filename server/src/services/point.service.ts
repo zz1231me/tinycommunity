@@ -115,12 +115,26 @@ function isLockConflict(err: unknown): boolean {
   return /SQLITE_BUSY|database is locked|deadlock|Lock wait timeout/i.test(message);
 }
 
+/**
+ * 잠금을 기다리다 시간이 초과된 경우.
+ *
+ * 교착(deadlock)은 DB 가 곧바로 한쪽을 물러나게 하므로 여러 번 다시 해도 금방 끝난다.
+ * 그런데 '잠금 대기 시간 초과' 는 한 번에 기본 50초를 기다린 뒤에야 실패한다 — 이것까지
+ * 열두 번 다시 하면 요청 하나가 10분 가까이 연결을 붙잡고, 그동안 다른 포인트 요청이
+ * 연결을 못 얻어 함께 느려진다. 이 경우는 한 번만 더 해 보고 포기한다.
+ */
+function isLockWaitTimeout(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /Lock wait timeout/i.test(message);
+}
+
 async function withLockRetry<T>(run: () => Promise<T>, attempts = 12): Promise<T> {
   for (let i = 0; ; i++) {
     try {
       return await run();
     } catch (err) {
-      if (i >= attempts - 1 || !isLockConflict(err)) throw err;
+      const limit = isLockWaitTimeout(err) ? Math.min(attempts, 2) : attempts;
+      if (i >= limit - 1 || !isLockConflict(err)) throw err;
       // 조금씩 늘려 가며 기다린다. 같은 순간에 몰린 요청이 다시 같은 순간에 몰리지 않도록 흔든다.
       const wait = Math.min(20 * (i + 1), 150) + Math.floor(Math.random() * 40);
       await new Promise(resolve => setTimeout(resolve, wait));

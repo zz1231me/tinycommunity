@@ -184,7 +184,14 @@ export class UserSessionService extends BaseService {
    */
   async expireAllUserSessions(userId: string): Promise<void> {
     try {
+      // 어떤 세션을 끊는지 먼저 읽어 둔다 — 상태 캐시(최대 수십 초)를 그 자리에서 비우기 위해서다.
+      // 비우지 않으면 끊긴 세션이 잠깐 '살아 있음' 으로 캐시에 남아 요청이 통과했다.
+      const rows = await UserSession.findAll({
+        where: { userId, isActive: true },
+        attributes: ['sessionToken'],
+      });
       await UserSession.update({ isActive: false }, { where: { userId, isActive: true } });
+      for (const row of rows) this.invalidateStatus(row.sessionToken);
       // 열려 있는 알림 스트림도 함께 끊는다 — 끊지 않으면 그 탭은 계속 알림을 받는다
       closeUserConnections(userId);
     } catch (error) {

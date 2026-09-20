@@ -478,3 +478,79 @@ describe('읽음 확인', () => {
     expect((await readers(adminCookie, 'nosuchpost1')).status).toBe(404);
   });
 });
+
+describe('비밀글 담당자 — 명단에 없는 사람에게 제목이 새지 않는다', () => {
+  // 게시판 권한만 보던 때는, 명단에서 빠진 사람도 담당자로 지정할 수 있었다. 그 사람은 알림으로
+  // 제목을 읽고("…님이 \"<비밀글 제목>\" 의 담당자로 지정했습니다"), '내 업무' 목록에도 제목이
+  // 남았다. 정작 글은 403 이라 열지 못하면서 상태·담당자는 바꿀 수 있었다(담당자라서).
+  const secretPost = async (allowed: string[]) => {
+    const res = await request(app)
+      .post('/api/posts/notice')
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({
+        title: '비밀 제목입니다',
+        content: '<p>비밀</p>',
+        isSecret: true,
+        secretType: 'users',
+        secretUserIds: allowed,
+      });
+    expect(res.status).toBe(201);
+    return res.body.data.id as string;
+  };
+
+  it('명단에 없는 사람은 담당자로 지정할 수 없다', async () => {
+    const id = await secretPost(['admin']);
+
+    const res = await setTask(adminCookie, id, { assigneeId: 'testuser' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/비밀글/);
+  });
+
+  it('지정이 막히면 알림도 가지 않는다', async () => {
+    const id = await secretPost(['admin']);
+    await Notification.destroy({ where: { userId: 'testuser' } });
+
+    await setTask(adminCookie, id, { assigneeId: 'testuser' });
+
+    const rows = await Notification.findAll({ where: { userId: 'testuser' } });
+    expect(rows.map(r => r.message).join(' ')).not.toContain('비밀 제목입니다');
+  });
+
+  it('명단에 있는 사람은 그대로 지정된다 — 대조', async () => {
+    const id = await secretPost(['admin', 'testuser']);
+
+    const res = await setTask(adminCookie, id, { assigneeId: 'testuser' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.assignee?.id).toBe('testuser');
+  });
+
+  it('지정된 뒤 명단에서 빠지면 내 업무 목록에서도 사라진다', async () => {
+    const id = await secretPost(['admin', 'testuser']);
+    expect(
+      (await setTask(adminCookie, id, { assigneeId: 'testuser', workStatus: 'todo' })).status
+    ).toBe(200);
+
+    const before = await request(app).get('/api/posts/tasks/mine').set('Cookie', userCookie);
+    expect(JSON.stringify(before.body.data)).toContain('비밀 제목입니다');
+
+    // 작성자가 명단에서 뺀다
+    await request(app)
+      .put(`/api/posts/notice/${id}`)
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({
+        title: '비밀 제목입니다',
+        content: '<p>비밀</p>',
+        isSecret: true,
+        secretType: 'users',
+        secretUserIds: ['admin'],
+      });
+
+    const after = await request(app).get('/api/posts/tasks/mine').set('Cookie', userCookie);
+    expect(after.status).toBe(200);
+    expect(JSON.stringify(after.body.data)).not.toContain('비밀 제목입니다');
+  });
+});

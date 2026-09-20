@@ -21,6 +21,7 @@ import path from 'path';
 import { logInfo, logError, logSuccess } from '../utils/logger';
 import { RESERVED_BOARD_IDS } from '../config/constants';
 import { deleteThumbnail } from './thumbnail.service';
+import Subscription from '../models/Subscription';
 
 export interface PermissionCheckResult {
   hasAccess: boolean;
@@ -254,6 +255,12 @@ export class BoardService extends BaseService {
       await BoardAccess.destroy({ where: { boardId }, transaction: t });
       await BoardManager.destroy({ where: { boardId }, transaction: t });
       await Tag.destroy({ where: { boardId }, transaction: t });
+      // 구독도 같은 이유로 지운다. 남겨 두면 같은 id 로 게시판을 다시 만들었을 때, 예전에
+      // 구독했던 사람에게 알림이 다시 가기 시작한다 — 그 사람은 구독한 적이 없는 게시판이다.
+      await Subscription.destroy({
+        where: { targetType: 'board', targetId: boardId },
+        transaction: t,
+      });
       await board.destroy({ transaction: t });
     });
 

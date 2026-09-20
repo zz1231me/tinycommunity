@@ -17,6 +17,7 @@ import { Board } from '../models/Board';
 import { User } from '../models/User';
 import { Role } from '../models/Role';
 import crypto from 'crypto';
+import { invalidateCache } from '../utils/cache';
 
 // 게시판 기본정보(이름/설명) 수정 — admin/manager 또는 해당 게시판 담당자
 //    (게시판 생성/삭제, 활성화/권한 설정은 관리자 전용 — 여기서 처리하지 않음)
@@ -62,6 +63,8 @@ export const updateBoardInfo = async (req: AuthRequest, res: Response): Promise<
       ...(description !== undefined && { description }),
       ...(taskEnabled !== undefined && { taskEnabled }),
     });
+    // 이름·설명이 바뀌면 사이드바 목록도 바뀐다 — 관리자 경로는 이미 비우고 있다
+    invalidateCache('boards');
     logSuccess('게시판 정보 수정 (담당자)', { userId, boardId: boardType });
     sendSuccess(res, updated, '게시판 정보가 수정되었습니다.');
   } catch (err) {

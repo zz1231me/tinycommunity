@@ -98,6 +98,14 @@ async function isWorking(userId: string, t?: Transaction): Promise<boolean> {
     where: { UserId: userId, workDate: today() },
     attributes: ['id', 'checkOutAt'],
     transaction: t,
+    // 트랜잭션 안에서는 그 기록 줄을 잠그고 읽는다.
+    //
+    // 잠그지 않고 읽으면(스냅샷 읽기) 아무것도 막지 못한다 — 공격 트랜잭션이 '근무 중' 을
+    // 확인한 바로 뒤에 상대가 퇴근을 찍어 버리면, 값만 치르고 아무 일도 일어나지 않는 공격이
+    // 줄에 남는다. 퇴근은 이 줄을 UPDATE 하므로, 잠가 두면 이 트랜잭션이 끝날 때까지 기다린다.
+    // (하루 한 사람 한 줄이라 잠기는 범위도 딱 그 줄이다. 잠금 순서는 늘 user_points → 이 줄
+    //  방향이고, 그 반대로 잡는 곳은 없다.)
+    ...(t ? { lock: t.LOCK.UPDATE } : {}),
   });
   if (todays) return todays.checkOutAt === null;
 
@@ -109,6 +117,7 @@ async function isWorking(userId: string, t?: Transaction): Promise<boolean> {
     },
     attributes: ['id'],
     transaction: t,
+    ...(t ? { lock: t.LOCK.UPDATE } : {}),
   });
   return carried !== null;
 }

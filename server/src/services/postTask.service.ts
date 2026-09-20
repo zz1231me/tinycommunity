@@ -16,6 +16,7 @@ import { ROLES } from '../config/constants';
 import { isWorkStatus, type WorkStatus } from '../config/workStatus';
 import { notificationService } from './notification.service';
 import { getAccessibleBoardTypes } from './accessibleBoards';
+import { checkSecretPostAccess } from '../utils/postAccess';
 import { sequelize } from '../config/sequelize';
 import { logError } from '../utils/logger';
 
@@ -51,8 +52,8 @@ async function assertCanManage(post: Post, actorId: string, actorRole: string) {
   }
 }
 
-/** 담당자로 지정하려는 사람이 이 게시판을 읽을 수 있는지 */
-async function assertAssigneeCanSee(assigneeId: string, boardType: string) {
+/** 담당자로 지정하려는 사람이 이 글을 읽을 수 있는지 */
+async function assertAssigneeCanSee(assigneeId: string, post: Post) {
   const user = await User.findOne({
     where: { id: assigneeId, isActive: true, isDeleted: false },
     attributes: ['id', 'roleId'],
@@ -61,8 +62,19 @@ async function assertAssigneeCanSee(assigneeId: string, boardType: string) {
 
   // 못 보는 글의 담당자가 되면 알림만 받고 열지 못한다
   const boards = await getAccessibleBoardTypes(user.id, user.roleId ?? '');
-  if (!boards.includes(boardType)) {
+  if (!boards.includes(post.boardType)) {
     throw new AppError(400, '이 게시판을 볼 수 없는 사용자는 담당자로 지정할 수 없습니다.');
+  }
+
+  // 비밀글이면 그 글에 들어갈 수 있는 사람인지까지 본다.
+  //
+  // 게시판만 보던 때는, 명단에서 빠진 사람도 담당자로 지정할 수 있었다 — 그 사람은 알림으로
+  // 제목을 읽고('…님이 "<비밀글 제목>" 의 담당자로 지정했습니다'), '내 업무' 목록에도 제목이
+  // 남았다. 글은 403 이라 열지도 못하면서 상태·담당자는 바꿀 수 있었다(담당자라서).
+  // 멘션 알림은 처음부터 이 검사를 한다(mention.service) — 이 길만 빠져 있었다.
+  const secret = checkSecretPostAccess(post, user.id, user.roleId ?? '');
+  if (!secret.ok) {
+    throw new AppError(400, '이 비밀글을 볼 수 없는 사용자는 담당자로 지정할 수 없습니다.');
   }
 }
 
@@ -87,7 +99,7 @@ export const postTaskService = {
       if (params.assigneeId === null) {
         post.assigneeId = null;
       } else {
-        await assertAssigneeCanSee(params.assigneeId, post.boardType);
+        await assertAssigneeCanSee(params.assigneeId, post);
         post.assigneeId = params.assigneeId;
       }
     }
@@ -159,13 +171,29 @@ export const postTaskService = {
         status: 'published',
       },
       include: [{ model: Board, as: 'board', attributes: ['name'], required: false }],
-      attributes: ['id', 'title', 'boardType', 'workStatus', 'createdAt', 'updatedAt'],
+      attributes: [
+        'id',
+        'title',
+        'boardType',
+        'workStatus',
+        'createdAt',
+        'updatedAt',
+        // 비밀글 여부를 함께 읽어 아래에서 거른다(제목도 가려야 하는 글이 있다)
+        'isSecret',
+        'secretType',
+        'secretUserIds',
+        'UserId',
+      ],
       // 오래 걸린 일이 위로 오게 — 방치된 것을 먼저 보여 준다
       order: [['updatedAt', 'ASC']],
       limit: 100,
     });
 
-    return posts.map(p => {
+    // 열 수 없는 비밀글은 목록에서도 뺀다. 지금은 담당자로 지정할 때 막지만, 지정한 뒤에
+    // 글이 비밀글이 되거나 명단에서 빠질 수 있다 — 그때 제목만 남아 보이지 않게 한다.
+    const visible = posts.filter(p => checkSecretPostAccess(p, userId, userRole).ok);
+
+    return visible.map(p => {
       const plain = p.get({ plain: true }) as unknown as {
         id: string;
         title: string;

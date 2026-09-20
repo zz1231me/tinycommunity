@@ -120,12 +120,20 @@ function parsePrizes(raw: string | null | undefined): LotteryPrize[] {
   try {
     const v: unknown = JSON.parse(raw);
     if (!Array.isArray(v) || v.length === 0) return LOTTERY_DEFAULTS.prizes;
-    return v
-      .map(p => ({
-        amount: Number((p as LotteryPrize).amount),
-        weight: Number((p as LotteryPrize).weight),
-      }))
-      .filter(p => Number.isFinite(p.amount) && Number.isFinite(p.weight) && p.weight > 0);
+    return (
+      v
+        .map(p => ({
+          amount: Number((p as LotteryPrize).amount),
+          weight: Number((p as LotteryPrize).weight),
+        }))
+        // 금액도 저장할 때와 같은 기준으로 다시 본다(0 이상의 정수).
+        // 읽을 때 확인하지 않던 때는, 어떤 이유로든 음수가 들어 있으면 '당첨' 이 잔액을 깎았다 —
+        // 포인트를 더하는 이 자리에는 잔액 확인이 없다(더하는 쪽이라 필요 없었다).
+        .filter(
+          p =>
+            Number.isInteger(p.amount) && p.amount >= 0 && Number.isFinite(p.weight) && p.weight > 0
+        )
+    );
   } catch {
     return LOTTERY_DEFAULTS.prizes;
   }
