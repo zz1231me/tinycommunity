@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { Newspaper, Lock, Circle } from 'lucide-react';
 import { fetchRecentPosts, type RecentPost } from '../../api/posts';
 import { ListLoading, ListState } from '../common/ListState';
+import { useUIOverlays } from '../../store/uiOverlays';
+import { hasOpenDialog } from '../../hooks/useFocusTrap';
 
 // 간단 상대시간
 function ago(iso: string): string {
@@ -21,7 +23,15 @@ function ago(iso: string): string {
 
 export function RecentPostsMenu() {
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
+  // 머리글의 다른 패널들과 같은 통합 store 를 쓴다. 혼자 useState 를 쓰던 동안에는
+  // ⌘K 로 검색을 열어도, 모바일에서 사이드바를 열어도 이 패널이 그대로 떠 있었다
+  // (사이드바 z-40 위로 z-50 패널이 겹쳤다). 화면 이동으로도 닫히지 않았다.
+  const open = useUIOverlays(s => s.activeDropdown === 'recentPosts');
+  const setOpen = useCallback((next: boolean) => {
+    const state = useUIOverlays.getState();
+    if (next) state.openDropdown('recentPosts');
+    else state.closeDropdown('recentPosts');
+  }, []);
   const [posts, setPosts] = useState<RecentPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [tick, setTick] = useState(0); // 안 읽은 제목 회전 인덱스(헤더 인라인 프리뷰)
@@ -41,7 +51,11 @@ export function RecentPostsMenu() {
   // 마운트 + 2분 주기 + 창 포커스 시 갱신 (다른 곳에서 글을 읽고 오면 카운트 반영)
   useEffect(() => {
     void load();
-    const t = setInterval(() => void load(), 120_000);
+    // 보이지 않는 탭에서는 쉰다 — 며칠 열어 둔 탭이 2분마다 요청을 보낼 이유가 없다.
+    // 돌아올 때는 아래 focus 로 한 번에 따라잡는다(알림 store 도 같은 방식이다).
+    const t = setInterval(() => {
+      if (!document.hidden) void load();
+    }, 120_000);
     const onFocus = () => void load();
     window.addEventListener('focus', onFocus);
     return () => {
@@ -67,14 +81,18 @@ export function RecentPostsMenu() {
     const onDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      // 위에 대화상자가 떠 있으면 ESC 는 그쪽 몫이다
+      if (e.key !== 'Escape' || hasOpenDialog()) return;
+      setOpen(false);
+    };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open]);
+  }, [open, setOpen]);
 
   const go = (p: RecentPost) => {
     setOpen(false);

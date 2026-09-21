@@ -182,7 +182,11 @@ export default function MentionAutocomplete({ editor }: Props) {
         e.stopPropagation();
         select(items[activeIndex]);
       } else if (e.key === 'Escape') {
+        // Enter·Tab 과 같이 여기서 끝낸다. capture 로 먼저 잡고 그냥 흘려보내면,
+        // 같은 ESC 가 뒤에 열려 있던 대화상자까지 닫는다 — 추천 목록만 접으려던
+        // 한 번의 ESC 에 화면이 함께 사라진다.
         e.preventDefault();
+        e.stopPropagation();
         close();
       }
     };
@@ -197,7 +201,7 @@ export default function MentionAutocomplete({ editor }: Props) {
     <ul
       role="listbox"
       aria-label="멘션할 사용자"
-      className="fixed z-50 min-w-56 max-w-xs overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+      className="fixed z-popover min-w-56 max-w-xs overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
       style={{ top: caret.top, left: caret.left }}
     >
       {items.map((u, i) => {

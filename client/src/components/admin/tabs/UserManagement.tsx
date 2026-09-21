@@ -484,7 +484,7 @@ export const UserManagement = () => {
 
       {/* 비밀번호 초기화 — 관리자가 6자리 숫자 임시 비밀번호 입력 */}
       {resetTarget && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center modal-scrim p-4">
+        <div className="fixed inset-0 z-modal flex items-center justify-center modal-scrim p-4">
           <div
             ref={resetPanelRef}
             role="dialog"

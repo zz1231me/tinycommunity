@@ -11,6 +11,7 @@ export type OverlayKey =
   | 'notifications' // NotificationBell 패널
   | 'userMenu' // UserDropdown 패널
   | 'search' // GlobalSearch 모달
+  | 'recentPosts' // RecentPostsMenu 패널
   | 'commandPalette'; // CommandPalette (⌘⇧P)
 
 interface UIOverlaysState {
