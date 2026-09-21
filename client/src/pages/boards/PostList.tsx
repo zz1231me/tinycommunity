@@ -37,8 +37,11 @@ const PostList = () => {
   const currentPage = Math.max(1, Number(searchParams.get('page') ?? '1') || 1);
   // 한 쪽에 보일 수는 관리자 설정(기본 페이지 크기)을 따른다.
   const postsPerPage = useSiteSettings(s => s.settings.defaultPageSize);
-  const [localSearch, setLocalSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  // 검색어도 URL 에 둔다. 페이지 번호만 URL 에 있던 때는, 검색해서 찾은 글을 열었다가
+  // 뒤로 오면 검색이 통째로 날아가 다시 입력해야 했다.
+  const urlSearch = searchParams.get('q') ?? '';
+  const [localSearch, setLocalSearch] = useState(urlSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(urlSearch);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [statusFilter, setStatusFilter] = useState<WorkStatus[]>([]);
@@ -173,19 +176,38 @@ const PostList = () => {
       const hasChanged = trimmed !== prevLocalSearch.current;
       prevLocalSearch.current = trimmed;
       setDebouncedSearch(trimmed);
-      if (hasChanged) setPage(1);
+      if (!hasChanged) return;
+      setSearchParams(
+        prev => {
+          const next = new URLSearchParams(prev);
+          if (trimmed) next.set('q', trimmed);
+          else next.delete('q');
+          next.delete('page'); // 조건이 바뀌면 첫 쪽부터
+          return next;
+        },
+        // 글자를 칠 때마다 히스토리가 쌓이면 뒤로가기가 검색어를 되짚느라 목록을 벗어나지 못한다
+        { replace: true }
+      );
     }, 300);
     return () => clearTimeout(timer);
-  }, [localSearch, setPage]);
+  }, [localSearch, setSearchParams]);
 
   // 게시판이 바뀌면 필터를 초기화한다. page 는 URL 이 달라지며 함께 초기화된다.
+  // 처음 그릴 때는 비우지 않는다 — 주소에 담겨 온 검색어(?q=)를 곧바로 지워 버리면
+  // 뒤로가기로 돌아와도 검색이 사라진다.
+  const prevBoard = useRef<string | undefined>(boardType);
   useEffect(() => {
+    const boardChanged = prevBoard.current !== boardType;
+    prevBoard.current = boardType;
+
     // 이미 비어 있으면 그대로 둔다. 매번 새 배열을 넣으면 참조가 바뀌어 목록 조회가 한 번 더 돈다.
     setSelectedTagIds(prev => (prev.length ? [] : prev));
     setStatusFilter(prev => (prev.length ? [] : prev));
-    // 검색어도 함께 비운다. 남겨 두면 다른 게시판에서 앞 게시판의 검색어로 걸러진다.
-    setLocalSearch(prev => (prev ? '' : prev));
-    setDebouncedSearch(prev => (prev ? '' : prev));
+    if (boardChanged) {
+      // 검색어도 함께 비운다. 남겨 두면 다른 게시판에서 앞 게시판의 검색어로 걸러진다.
+      setLocalSearch(prev => (prev ? '' : prev));
+      setDebouncedSearch(prev => (prev ? '' : prev));
+    }
     setAvailableTags([]);
     if (!boardType) return;
     // 게시판을 빠르게 옮기면 앞 게시판의 태그가 늦게 도착하므로 취소 표시를 둔다.
@@ -299,7 +321,7 @@ const PostList = () => {
           { label: boardInfo?.name || '게시판' },
         ]}
         title={boardInfo?.name || '게시판'}
-        description={`${boardInfo?.description || '게시글 목록을 확인하세요'} · 총 ${pagination?.totalCount || 0}개`}
+        description={`${boardInfo?.description || '게시글 목록을 확인하세요'}${pagination ? ` · 총 ${pagination.totalCount}개` : ''}`}
         icon={
           <svg
             aria-hidden="true"
