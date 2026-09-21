@@ -728,3 +728,47 @@ describe('문제 내기는 공격마다 처음부터', () => {
     expect(onCheckOut).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('퇴근 취소 — 어긋난 시계', () => {
+  /** 퇴근을 막 찍은 상태. 서버는 10분을 더 준다. */
+  const showUndo = (clockOffset: number) => {
+    const until = new Date(Date.now() + clockOffset + 10 * 60_000).toISOString();
+    return render(
+      <TodayHero
+        workDate="2026-09-18"
+        record={{
+          id: 1,
+          userId: 'u1',
+          workDate: '2026-09-18',
+          checkInAt: '2026-09-18T00:00:00.000Z',
+          checkOutAt: new Date().toISOString(),
+          workMinutes: 480,
+          note: '',
+          checklist: [],
+        }}
+        standardWorkMinutes={480}
+        canCheckIn={false}
+        canCheckOut={false}
+        checkingOut={false}
+        attackKind={null}
+        onCheckIn={vi.fn()}
+        onCheckOut={vi.fn()}
+        undoCheckOutUntil={until}
+        onUndoCheckOut={vi.fn()}
+        clockOffset={clockOffset}
+      />
+    );
+  };
+
+  it('15분 빠른 시계에서도 취소 버튼이 나온다', () => {
+    // 내 시계가 서버보다 15분 빠르다 = 서버 시각은 내 시계보다 15분 뒤(offset −15분).
+    // 내 시계로 재면 남은 10분이 이미 지나간 것으로 보여 버튼이 아예 나타나지 않았다.
+    showUndo(-15 * 60_000);
+    expect(screen.getByRole('button', { name: /퇴근 취소/ })).toBeInTheDocument();
+  });
+
+  it('시계가 맞으면 당연히 나온다 — 대조군', () => {
+    showUndo(0);
+    expect(screen.getByRole('button', { name: /퇴근 취소/ })).toBeInTheDocument();
+  });
+});

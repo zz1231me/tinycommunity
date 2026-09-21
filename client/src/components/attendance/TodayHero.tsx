@@ -41,6 +41,8 @@ interface Props {
   onCheckOut: () => void;
   /** 방금 누른 퇴근을 이 시각까지 되돌릴 수 있다 (없으면 null) */
   undoCheckOutUntil?: string | null;
+  /** 서버 시각 − 내 시계. 남은 시간은 서버 기준으로 센다 — 공격 쪽은 이미 그렇게 한다. */
+  clockOffset?: number;
   undoingCheckOut?: boolean;
   onUndoCheckOut?: () => void;
 }
@@ -90,9 +92,9 @@ function UndoCheckOut({ left, busy, onUndo }: { left: number; busy: boolean; onU
   );
 }
 
-function secondsUntil(at: string | null): number | null {
+function secondsUntil(at: string | null, offsetMs = 0): number | null {
   if (!at) return null;
-  return Math.max(0, Math.ceil((new Date(at).getTime() - Date.now()) / 1000));
+  return Math.max(0, Math.ceil((new Date(at).getTime() - (Date.now() + offsetMs)) / 1000));
 }
 
 /**
@@ -101,14 +103,20 @@ function secondsUntil(at: string | null): number | null {
  * 누르면 흔들리며 "아직 숨어 있어요". 그래도 눌리지는 않는다 — 숨기기는 그 짧은 동안
  * 정말로 누를 수 없는 공격이다. 화면 낭독기에는 감춘다(경고 띠가 같은 말을 한다).
  */
-function HiddenSlot({ expiresAt }: { expiresAt: string | null }) {
-  const [left, setLeft] = useState(() => secondsUntil(expiresAt));
+function HiddenSlot({
+  expiresAt,
+  clockOffset = 0,
+}: {
+  expiresAt: string | null;
+  clockOffset?: number;
+}) {
+  const [left, setLeft] = useState(() => secondsUntil(expiresAt, clockOffset));
   useEffect(() => {
-    setLeft(secondsUntil(expiresAt));
+    setLeft(secondsUntil(expiresAt, clockOffset));
     if (!expiresAt) return;
-    const id = window.setInterval(() => setLeft(secondsUntil(expiresAt)), 1000);
+    const id = window.setInterval(() => setLeft(secondsUntil(expiresAt, clockOffset)), 1000);
     return () => window.clearInterval(id);
-  }, [expiresAt]);
+  }, [expiresAt, clockOffset]);
 
   const [teased, setTeased] = useState(0);
   useEffect(() => {
@@ -390,6 +398,7 @@ export function TodayHero({
   onCheckIn,
   onCheckOut,
   undoCheckOutUntil = null,
+  clockOffset = 0,
   undoingCheckOut = false,
   onUndoCheckOut,
 }: Props) {
@@ -408,7 +417,10 @@ export function TodayHero({
   }, [attackKind]);
 
   // 퇴근 취소가 남아 있는 동안은 퇴근 단추 대신 취소 단추가 선다. 마감이 지나면 퇴근 단추로 돌아온다.
-  const undoLeft = useCountdown(undoCheckOutUntil ?? NEVER);
+  // 서버가 정한 마감 시각을 내 시계로 재면, 몇 분 빠른 PC 에서는 응답이 도착한 순간
+  // 이미 끝난 것으로 보여 퇴근 취소 버튼이 아예 나타나지 않았다. 반대로 느린 시계에서는
+  // 지난 뒤에도 남아 있다가 눌러야 "10분 안에만 취소할 수 있습니다" 를 듣게 된다.
+  const undoLeft = useCountdown(undoCheckOutUntil ?? NEVER, undefined, clockOffset);
   const canUndo = Boolean(undoCheckOutUntil && onUndoCheckOut) && undoLeft > 0;
 
   // 숨기기가 풀려 버튼이 돌아오는 순간에만 톡 튀어나오게 한다. 처음 그릴 때나
@@ -517,7 +529,7 @@ export function TodayHero({
             //
             // 사라진 자리에는 점선 흔적을 남기고 연기(💨)가 흩어진 뒤 🙈 가 앉는다.
             // 그냥 비워 두면 버튼이 고장 난 건지 숨겨진 건지 알 수 없다.
-            <HiddenSlot expiresAt={attackExpiresAt} />
+            <HiddenSlot expiresAt={attackExpiresAt} clockOffset={clockOffset} />
           ) : (
             /* 방해를 받는 중에도 버튼은 살아 있다 — 성가실 뿐 끝내 눌린다 */
             <span key={popKey} className={`inline-flex ${popKey > 0 ? 'animate-popIn' : ''}`}>

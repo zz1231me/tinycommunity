@@ -219,6 +219,7 @@ export default function AttendancePage() {
             onCheckIn={() => setDialogOpen(true)}
             onCheckOut={() => runCheckOut(() => checkOutMutation.mutateAsync().catch(() => {}))}
             undoCheckOutUntil={status.data?.undoCheckOutUntil ?? null}
+            clockOffset={clockOffset}
             undoingCheckOut={undoMutation.isPending}
             onUndoCheckOut={() => runUndo(() => undoMutation.mutateAsync().catch(() => {}))}
           />

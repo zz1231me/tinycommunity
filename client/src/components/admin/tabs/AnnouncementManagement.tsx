@@ -17,6 +17,7 @@ import { ConfirmationModal } from '../common/ConfirmationModal';
 import { toast } from '../../../utils/toast';
 import { getApiErrorMessage } from '../../../api/utils';
 import { ListState, ListError } from '../../common/ListState';
+import { toLocalDateInput } from '../../../utils/date';
 
 interface FormState {
   title: string;
@@ -27,7 +28,9 @@ interface FormState {
   isPinned: boolean;
 }
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
+// 오늘 날짜는 보는 사람의 달력 기준이다. toISOString() 은 UTC 라 한국에서는 09시 이전에
+// '어제' 가 채워졌다 — 그대로 저장하면 어제 시작한 공지가 된다.
+const todayStr = () => toLocalDateInput(new Date());
 const EMPTY: FormState = {
   title: '',
   content: '',
@@ -86,7 +89,8 @@ function statusOf(a: Announcement): { label: string; tone: string; detail: strin
   };
 }
 
-const fmt = (iso: string | null) => (iso ? iso.slice(0, 10) : '무기한');
+// 목록 표시도 같은 기준으로 — 편집 화면과 다른 날짜가 보이면 어느 쪽이 맞는지 알 수 없다
+const fmt = (iso: string | null) => (iso ? toLocalDateInput(iso) : '무기한');
 
 export const AnnouncementManagement = () => {
   const queryClient = useQueryClient();
@@ -126,8 +130,8 @@ export const AnnouncementManagement = () => {
     setForm({
       title: a.title,
       content: a.content,
-      startDate: a.startAt.slice(0, 10),
-      endDate: a.endAt ? a.endAt.slice(0, 10) : '',
+      startDate: toLocalDateInput(a.startAt),
+      endDate: toLocalDateInput(a.endAt),
       isActive: a.isActive,
       isPinned: a.isPinned,
     });
