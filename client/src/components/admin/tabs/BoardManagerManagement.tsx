@@ -255,9 +255,7 @@ const BoardManagerManagement = () => {
             ? `${confirmDelete.boardName} 게시판에서 ${confirmDelete.name}님을 담당자에서 삭제하시겠습니까?`
             : ''
         }
-        onConfirm={() => {
-          confirmRemove().catch(() => {});
-        }}
+        onConfirm={() => confirmRemove().catch(() => {})}
         onCancel={() => setConfirmDelete(null)}
         confirmLabel="삭제"
         variant="danger"

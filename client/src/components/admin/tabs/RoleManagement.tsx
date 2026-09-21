@@ -8,6 +8,7 @@ import { ConfirmationModal } from '../common/ConfirmationModal';
 import { AdminFormField, adminInputCls } from '../common/AdminFormField';
 import { toast } from '../../../utils/toast';
 import { ListState } from '../../common/ListState';
+import { useSubmitLock } from '../../../hooks/useSubmitLock';
 
 export const RoleManagement = () => {
   const { roles, addRole, updateRole, deleteRole, loading, fetchError } = useRoleManagement();
@@ -21,7 +22,10 @@ export const RoleManagement = () => {
   });
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const handleAddRole = async () => {
+  const handleAddRoleLock = useSubmitLock();
+  const handleAddRole = () => handleAddRoleLock(handleAddRoleOnce);
+
+  const handleAddRoleOnce = async () => {
     try {
       await addRole(roleForm);
       setRoleForm({ id: '', name: '', description: '' });

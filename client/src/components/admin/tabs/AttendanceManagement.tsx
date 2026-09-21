@@ -879,7 +879,7 @@ const AttendanceManagement = () => {
         title="확인 항목 삭제"
         message={`'${confirmDelete?.label ?? ''}' 항목을 삭제합니다. 이미 기록된 내용은 남습니다.`}
         confirmLabel="삭제"
-        onConfirm={() => confirmDelete && removeItem.mutate(confirmDelete.id)}
+        onConfirm={() => confirmDelete && removeItem.mutateAsync(confirmDelete.id).catch(() => {})}
         onCancel={() => setConfirmDelete(null)}
       />
     </div>

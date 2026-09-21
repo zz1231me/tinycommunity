@@ -593,6 +593,11 @@ export const createRole = async (req: Request, res: Response): Promise<void> => 
     sendError(res, 400, '역할 이름은 필수입니다.');
     return;
   }
+  // 컬럼은 50자다. 넘겨받으면 DB 오류가 되어 500 으로 나간다(수정 쪽은 이미 막고 있다).
+  if (String(name).trim().length > 50) {
+    sendError(res, 400, '역할 이름은 50자 이하여야 합니다.');
+    return;
+  }
   try {
     await roleService.createRole({ id: id.trim(), name: String(name).trim(), description });
     logAudit(req, 'create_role', {

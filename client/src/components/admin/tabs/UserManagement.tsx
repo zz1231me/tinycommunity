@@ -30,6 +30,7 @@ import {
 } from '../../../api/admin';
 import { UserActivityModal } from './UserActivityModal';
 import { ListState } from '../../common/ListState';
+import { useSubmitLock } from '../../../hooks/useSubmitLock';
 
 // '최근 접속' 은 lastLoginAt 과 lastActiveAt 중 더 최근 값이다.
 const lastSeenOf = (u: User): string | null => {
@@ -135,7 +136,10 @@ export const UserManagement = () => {
     };
   }, []);
 
-  const handleAddUser = async () => {
+  const addUserLock = useSubmitLock();
+  const handleAddUser = () => addUserLock(addUserOnce);
+
+  const addUserOnce = async () => {
     try {
       const randomPassword = generateRandomPassword();
       await addUser({ ...userForm, password: randomPassword });
@@ -282,14 +286,16 @@ export const UserManagement = () => {
     setConfirmAction({ type, userId, label });
   };
 
+  // 약속을 그대로 돌려준다. 삼키면 확인 상자가 곧바로 잠금을 풀어 두 번 눌린다 —
+  // 삭제는 두 번 나가면 익명화 이름이 글과 계정 사이에서 어긋난다.
   const executeConfirm = () => {
     if (!confirmAction) return;
     const { type, userId } = confirmAction;
-    if (type === 'delete') handleDeleteUser(userId);
-    else if (type === 'reject') handleRejectUser(userId);
-    else if (type === 'deactivate') handleDeactivateUser(userId);
-    else if (type === 'restore') handleRestoreUser(userId);
-    else if (type === 'approve') handleApproveUser(userId);
+    if (type === 'delete') return handleDeleteUser(userId);
+    if (type === 'reject') return handleRejectUser(userId);
+    if (type === 'deactivate') return handleDeactivateUser(userId);
+    if (type === 'restore') return handleRestoreUser(userId);
+    return handleApproveUser(userId);
   };
 
   const activeUsers = useMemo(() => users.filter(u => u.isActive !== false), [users]);

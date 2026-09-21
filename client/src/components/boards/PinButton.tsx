@@ -49,18 +49,31 @@ export function PinButton({ boardType, postId, isPinned, pinnedUntil, onChange }
     };
   }, [menuOpen]);
 
+  // 이 단추가 사라진 뒤 도착한 응답을 부모에 전하지 않는다. 글 사이를 오가면 이 단추는
+  // 사라지지만 부모(글 상세)는 살아 있어, 늦은 응답이 다른 글의 화면을 고쳐 놓았다.
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
+
   const apply = async (days: number | null) => {
     setBusy(true);
     try {
       const until = days === null ? null : new Date(Date.now() + days * 86_400_000);
-      const result = await togglePin(boardType, postId, until);
+      // 뒤집기가 아니라 원하는 상태를 보낸다. 화면이 낡았을 때 반대로 걸리지 않게.
+      const result = await togglePin(boardType, postId, until, days !== null);
+      if (!aliveRef.current) return;
       onChange(result);
       setMenuOpen(false);
       window.dispatchEvent(new Event('post-updated'));
     } catch (err) {
+      if (!aliveRef.current) return;
       toast.error(getApiErrorMessage(err, '핀 설정에 실패했습니다.'));
     } finally {
-      setBusy(false);
+      if (aliveRef.current) setBusy(false);
     }
   };
 

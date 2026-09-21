@@ -1,6 +1,6 @@
 // 글 상세의 업무 상태·담당자 영역. 권한이 없는 사람에게는 읽기 전용으로 보여 준다.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CircleDot, UserRound, X } from 'lucide-react';
 import { Avatar } from '../Avatar';
@@ -32,17 +32,31 @@ export function TaskPanel({ boardType, postId, state, editable, onChange }: Prop
     staleTime: Infinity,
   });
 
+  // 이 판이 사라진 뒤 도착한 응답을 부모에 전하지 않는다. 글 사이를 오가면 이 판은
+  // 사라지지만 부모(글 상세)는 살아 있어, 늦은 응답이 다른 글의 담당자·상태를 써 넣었다.
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
+
   const mutate = useMutation({
     mutationFn: (change: { assigneeId?: string | null; workStatus?: WorkStatus }) =>
       changeTask(boardType, postId, change),
     onSuccess: next => {
+      if (!aliveRef.current) return;
       onChange(next);
       setPickingAssignee(false);
       // 목록의 배지와 '내 업무' 도 함께 맞춘다
       queryClient.invalidateQueries({ queryKey: taskKeys.all });
       window.dispatchEvent(new Event('post-updated'));
     },
-    onError: err => toast.error(getApiErrorMessage(err, '상태를 바꾸지 못했습니다.')),
+    onError: err => {
+      if (!aliveRef.current) return;
+      toast.error(getApiErrorMessage(err, '상태를 바꾸지 못했습니다.'));
+    },
   });
 
   // 상태가 없고 바꿀 수도 없으면 보여 줄 것이 없다

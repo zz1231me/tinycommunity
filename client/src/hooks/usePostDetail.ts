@@ -66,6 +66,10 @@ interface UsePostDetailProps {
 export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
   const fetchIdRef = useRef(0);
   const mountedRef = useRef(true);
+  // 지금 보고 있는 글. 글 사이를 오갈 때 이 훅은 언마운트되지 않으므로(라우트에 key 가 없다)
+  // 늦게 도착한 응답이 다른 글의 화면을 덮어쓰지 않도록 대상을 함께 확인한다.
+  const targetRef = useRef('');
+  targetRef.current = `${boardType}/${id}`;
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -267,20 +271,23 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
     setLikeCount(Math.max(0, previous.likeCount + (previous.liked ? -1 : 1)));
     setLikeLoading(true);
 
+    const target = `${boardType}/${id}`;
+    /** 그 사이 다른 글로 옮겨 갔는가 */
+    const moved = () => !mountedRef.current || targetRef.current !== target;
+
     try {
       const result = await toggleLike(boardType, id);
-      // 다른 글로 이동한 뒤 도착한 응답이 상태를 덮어쓰지 않게 막는다.
-      if (!mountedRef.current) return;
+      if (moved()) return;
       // 다른 탭에서 이미 눌렀을 수 있으므로 서버 값을 최종으로 쓴다.
       setLiked(result.liked);
       setLikeCount(result.likeCount);
     } catch (err) {
-      if (!mountedRef.current) return;
+      if (moved()) return;
       setLiked(previous.liked);
       setLikeCount(previous.likeCount);
       toast.error(getApiErrorMessage(err, '좋아요 처리에 실패했습니다.'));
     } finally {
-      if (mountedRef.current) setLikeLoading(false);
+      if (!moved()) setLikeLoading(false);
     }
   }, [boardType, id, likeLoading, liked, likeCount]);
 

@@ -630,8 +630,11 @@ const startServer = async () => {
     setInterval(() => void cleanupExpiredTempShares(), 2 * 60 * 1000);
 
     // 만료된 포인트 대결 환불 (시작 시 1회 + 2분 주기). 양쪽 다 접속하지 않으면 걸어 둔 포인트가 묶인다.
-    void sweepAllExpiredDuels();
-    setInterval(() => void sweepAllExpiredDuels(), 2 * 60 * 1000);
+    // DB 가 잠깐 흔들려도 주기 자체는 살아 있어야 한다 — 여기서 새면 처리되지 않은 거부가 된다.
+    const sweepDuels = () =>
+      void sweepAllExpiredDuels().catch(err => logError('만료 대결 정리 실패', err));
+    sweepDuels();
+    setInterval(sweepDuels, 2 * 60 * 1000);
 
     httpServer = app.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 API 서버 시작: http://0.0.0.0:${PORT}`);

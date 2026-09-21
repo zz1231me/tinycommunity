@@ -14,6 +14,7 @@ import { LoadingSpinner } from '../common/LoadingSpinner';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import { toast } from '../../../utils/toast';
 import { ListState, ListError } from '../../common/ListState';
+import { useSubmitLock } from '../../../hooks/useSubmitLock';
 
 export function BookmarkManagement() {
   const queryClient = useQueryClient();
@@ -51,7 +52,10 @@ export function BookmarkManagement() {
     onSettled: loadBookmarks,
   });
 
-  const handleCreate = async () => {
+  const handleCreateLock = useSubmitLock();
+  const handleCreate = () => handleCreateLock(handleCreateOnce);
+
+  const handleCreateOnce = async () => {
     if (!formData.name || !formData.url) {
       toast.error('이름과 URL은 필수입니다.');
       return;

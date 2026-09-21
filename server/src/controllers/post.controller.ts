@@ -634,7 +634,9 @@ export const togglePin = async (req: AuthRequest, res: Response): Promise<void> 
   }
 
   try {
-    const result = await postService.togglePin(postId, userId, userRole, pinnedUntil);
+    const rawPinned = (req.body as { pinned?: unknown } | undefined)?.pinned;
+    const pinned = typeof rawPinned === 'boolean' ? rawPinned : undefined;
+    const result = await postService.togglePin(postId, userId, userRole, pinnedUntil, pinned);
     sendSuccess(res, result);
   } catch (err) {
     const appErr = toAppError(err);

@@ -1205,11 +1205,17 @@ export class PostService extends BaseService {
     );
   }
 
+  /**
+   * @param pinned 원하는 상태. 주지 않으면 지금 상태를 뒤집는다(옛 화면 호환).
+   *   화면이 낡은 상태를 보고 있으면 뒤집기는 반대로 동작한다 — 원하는 상태를 받으면
+   *   두 사람이 동시에 눌러도 결과가 요청한 대로 남는다.
+   */
   async togglePin(
     postId: string,
     userId: string,
     userRole: string,
-    pinnedUntil: Date | null = null
+    pinnedUntil: Date | null = null,
+    pinned?: boolean
   ): Promise<{ isPinned: boolean; pinnedUntil: Date | null }> {
     // 권한 사전 체크 (잠금 없이) — 트랜잭션 전에 403 조기 반환
     const postForPerm = await Post.findByPk(postId);
@@ -1228,7 +1234,7 @@ export class PostService extends BaseService {
     const updated = await sequelize.transaction(async t => {
       const post = await Post.findByPk(postId, { transaction: t, lock: t.LOCK.UPDATE });
       if (!post) throw new AppError(404, '게시글을 찾을 수 없습니다.');
-      post.isPinned = !post.isPinned;
+      post.isPinned = pinned ?? !post.isPinned;
       // 고정을 풀 때 기간도 함께 지운다. 남기면 다음 고정이 지난 만료일로 곧바로 풀린다.
       post.pinnedUntil = post.isPinned ? pinnedUntil : null;
       await post.save({ transaction: t });

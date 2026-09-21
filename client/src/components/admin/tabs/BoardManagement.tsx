@@ -29,6 +29,7 @@ import { useSiteSettings } from '../../../store/siteSettings';
 import { updateSiteSettings } from '../../../api/siteSettings';
 import { wikiInsertIndex } from '../../../utils/sidebarOrder';
 import { ListState } from '../../common/ListState';
+import { useSubmitLock } from '../../../hooks/useSubmitLock';
 
 interface BoardRowProps {
   board: Board;
@@ -266,7 +267,10 @@ export const BoardManagement = () => {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [togglingBoardId, setTogglingBoardId] = useState<string | null>(null);
 
-  const handleAddBoard = async () => {
+  const handleAddBoardLock = useSubmitLock();
+  const handleAddBoard = () => handleAddBoardLock(handleAddBoardOnce);
+
+  const handleAddBoardOnce = async () => {
     try {
       await addBoard(boardForm);
       setBoardForm({ id: '', name: '', description: '', order: 0, taskEnabled: false });

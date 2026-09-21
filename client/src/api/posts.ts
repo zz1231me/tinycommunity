@@ -270,13 +270,16 @@ export async function markPostRead(boardType: string, postId: string): Promise<v
  * 상단 고정 토글. 고정할 때 pinnedUntil 을 주면 그 시각까지만 고정된다.
  * 고정을 푸는 호출에서는 무시된다(서버가 기간도 함께 지운다).
  */
+/** @param pinned 원하는 상태. 뒤집기로 보내면 화면이 낡았을 때 반대로 걸린다. */
 export async function togglePin(
   boardType: string,
   postId: string,
-  pinnedUntil?: Date | null
+  pinnedUntil?: Date | null,
+  pinned?: boolean
 ): Promise<{ isPinned: boolean; pinnedUntil: string | null }> {
   const res = await axios.patch(`/posts/${boardType}/${postId}/pin`, {
     pinnedUntil: pinnedUntil ? pinnedUntil.toISOString() : undefined,
+    pinned,
   });
   return unwrap(res);
 }

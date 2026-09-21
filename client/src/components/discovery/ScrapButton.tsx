@@ -1,6 +1,6 @@
 // 글 상세의 스크랩 토글. 개인 표시라 개수를 보여 주지 않는다.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bookmark } from 'lucide-react';
 import { discoveryKeys } from '../../api/queryKeys';
@@ -24,6 +24,15 @@ export function ScrapButton({ boardType, postId, initialScrapped }: Props) {
   // 다른 글로 이동하면 새 글의 값으로 맞춘다.
   useEffect(() => setScrapped(initialScrapped), [boardType, postId, initialScrapped]);
 
+  // 이 단추가 사라진 뒤 도착한 응답으로 토스트를 띄우지 않는다(이미 다른 글을 보고 있다)
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
+
   const { mutate, isPending } = useMutation({
     mutationFn: () => toggleScrap(boardType, postId),
     // 누르는 즉시 반영하고 실패하면 되돌린다.
@@ -37,6 +46,7 @@ export function ScrapButton({ boardType, postId, initialScrapped }: Props) {
       toast.error(getApiErrorMessage(err, '스크랩 처리에 실패했습니다.'));
     },
     onSuccess: next => {
+      if (!aliveRef.current) return;
       // 다른 탭에서 이미 바꿨을 수 있으므로 서버 값을 최종으로 쓴다.
       setScrapped(next);
       toast.success(next ? '스크랩에 담았습니다.' : '스크랩에서 뺐습니다.');
