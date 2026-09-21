@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useNewBuildAvailable } from '../../hooks/useAppVersion';
 import { hasOpenDialog } from '../../hooks/useFocusTrap';
+import { TopNoticeSlot } from './TopNotice';
 
 /** 지금 새로고침하면 쓰던 것이 날아가는가 */
 function busyRightNow(): boolean {
@@ -57,19 +58,21 @@ export function UpdateBanner() {
   if (!visible) return null;
 
   return (
-    <div
-      role="status"
-      className="fixed inset-x-0 top-0 z-toast flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-primary-600 px-4 py-2 text-center text-sm font-medium text-white shadow"
-    >
-      <span>새 버전이 있습니다. 잠시 뒤 자동으로 새로고침됩니다.</span>
-      <button
-        type="button"
-        onClick={() => window.location.reload()}
-        className="inline-flex items-center gap-1.5 rounded-md bg-white/20 px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-white/30"
+    <TopNoticeSlot>
+      <div
+        role="status"
+        className="pointer-events-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-primary-600 px-4 py-2 text-center text-sm font-medium text-white shadow"
       >
-        <RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />
-        지금 새로고침
-      </button>
-    </div>
+        <span>새 버전이 있습니다. 잠시 뒤 자동으로 새로고침됩니다.</span>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="inline-flex items-center gap-1.5 rounded-md bg-white/20 px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-white/30"
+        >
+          <RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />
+          지금 새로고침
+        </button>
+      </div>
+    </TopNoticeSlot>
   );
 }

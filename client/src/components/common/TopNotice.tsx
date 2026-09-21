@@ -1,0 +1,115 @@
+// client/src/components/common/TopNotice.tsx
+// 화면 맨 위를 가로지르는 알림 띠.
+//
+// 오른쪽 구석 카드로는 눈에 잘 걸리지 않는 것들이 있다 — 공격받았거나 대결 신청을
+// 받았을 때처럼 '지금 움직여야 하는' 알림이다. 그런 것만 이 띠로 띄운다.
+// (보통 알림까지 이걸로 띄우면 하루 종일 위가 출렁여서 오히려 아무도 안 본다.)
+//
+// 머리글(높이 56px) 아래에 놓는다. 위에 겹쳐 두면 로고·메뉴 단추를 덮고, 덮인
+// 자리는 눌러도 띠가 먹는다 — 점검 배너에서 이미 겪은 일이다.
+
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
+import { prefersReducedMotion } from '../../utils/animations';
+
+export function TopNotice({
+  icon,
+  title,
+  message,
+  action,
+  onAction,
+  onClose,
+  /** 이 시간이 지나면 스스로 사라진다 (0 이면 남아 있는다) */
+  lifeMs = 0,
+  tone = 'rose',
+}: {
+  icon: ReactNode;
+  title: string;
+  message?: ReactNode;
+  action?: string;
+  onAction?: () => void;
+  onClose: () => void;
+  lifeMs?: number;
+  tone?: 'rose' | 'amber' | 'violet';
+}) {
+  const TONE = {
+    rose: 'bg-rose-600 dark:bg-rose-500',
+    amber: 'bg-amber-500 dark:bg-amber-500',
+    violet: 'bg-violet-600 dark:bg-violet-500',
+  }[tone];
+
+  // 읽는 중에 사라지지 않게 — 마우스를 올리거나 키보드로 들어오면 멈춘다
+  const [paused, setPaused] = useState(false);
+  const left = useRef(lifeMs);
+  useEffect(() => {
+    if (lifeMs <= 0 || paused) return;
+    const startedAt = Date.now();
+    const id = window.setTimeout(onClose, left.current);
+    return () => {
+      window.clearTimeout(id);
+      left.current -= Date.now() - startedAt;
+    };
+  }, [lifeMs, paused, onClose]);
+
+  return (
+    <div
+      role="status"
+      data-testid="top-notice"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+      className={`${TONE} ${prefersReducedMotion() ? '' : 'animate-noticeDrop'} pointer-events-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 py-2.5 text-center text-sm text-white shadow-lg`}
+    >
+      <span aria-hidden className="text-lg leading-none">
+        {icon}
+      </span>
+      <span className="font-semibold">{title}</span>
+      {message && <span className="text-white/90">{message}</span>}
+      {action && onAction && (
+        <button
+          type="button"
+          onClick={onAction}
+          className="rounded-md bg-white/20 px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-white/30"
+        >
+          {action}
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="알림 닫기"
+        className="ml-1 rounded-md p-1 transition-colors hover:bg-white/20"
+      >
+        <X aria-hidden="true" className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * 띠들이 앉는 자리 — 머리글(56px) 바로 아래.
+ *
+ * 자리는 화면에 하나뿐이다. 띠마다 각자 fixed 상자를 만들면 두 개가 동시에 떴을 때
+ * 정확히 같은 자리에 겹쳐 아래 것이 보이지 않는다(공격 알림 + 새 버전 안내가 실제로
+ * 그렇게 된다). 한 상자에 모아 세로로 쌓는다.
+ *
+ * 띠 자체는 클릭을 받고, 사이 공간은 통과시킨다 — 뒤 화면을 가리지 않는다.
+ */
+function noticeHost(): HTMLElement {
+  let el = document.getElementById('top-notices');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'top-notices';
+    el.className =
+      'pointer-events-none fixed inset-x-0 top-14 z-toast flex flex-col items-stretch gap-1';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
+export function TopNoticeSlot({ children }: { children: ReactNode }) {
+  const [host] = useState(noticeHost);
+  return createPortal(children, host);
+}

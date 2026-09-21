@@ -29,6 +29,7 @@ import { toast } from '../../utils/toast';
 import { UserPicker } from '../common/UserPicker';
 import type { UserSuggestion } from '../../api/users';
 import { PointsSection } from './PointsSection';
+import { WinFanfare } from './WinFanfare';
 import { ListState } from '../common/ListState';
 import { LoadingSpinner } from '../common/LoadingStates';
 import { useNotificationArrival } from '../../hooks/useNotificationArrival';
@@ -146,6 +147,8 @@ export function DuelPanel({
 
   // 이긴 판에 남길 한마디 — 어느 판에 쓰는 중인지
   const [tauntFor, setTauntFor] = useState<number | null>(null);
+  /** 이겼을 때 잠깐 터지는 축하 — 딴 포인트 */
+  const [fanfare, setFanfare] = useState<number | null>(null);
   const focusTauntInput = useRef(false);
 
   /**
@@ -333,6 +336,8 @@ export function DuelPanel({
       const mine = outcomeOf(settled, myId);
       if (mine === '승') {
         toast.success(`이겼습니다! ${(duel.stake * 2).toLocaleString()}P 획득`);
+        // 이기는 순간이 이 기능에서 제일 기분 좋은 자리다 — 한 줄 토스트로는 심심하다
+        setFanfare(duel.stake * 2);
         // 이긴 김에 한마디 — 최근 결과에 그 판의 입력칸을 바로 열어 둔다
         setTauntFor(duel.id);
         setTauntText('');
@@ -368,362 +373,375 @@ export function DuelPanel({
   const canSubmit = picked.length > 0 && hand !== null && stake.trim() !== '' && !busy;
 
   return (
-    <PointsSection
-      icon={<Swords className="h-5 w-5" />}
-      tone="violet"
-      title="포인트 대결"
-      badge={
-        board.incoming.length > 0 && (
-          <span className="animate-popIn rounded-full bg-violet-600 px-2 py-0.5 text-[11px] font-semibold text-white">
-            도전장 {board.incoming.length}
-          </span>
-        )
-      }
-      description={
-        <>
-          가위바위보로 겨룹니다. 건 포인트는 신청하는 순간 맡겨지고, 이긴 쪽이 두 배를 가져갑니다.{' '}
-          {rules.expireMinutes}분 안에 답이 없으면 무효가 되어 돌려받습니다.
-        </>
-      }
-    >
-      {/* ── 받은 대결 ── 가장 먼저 보여 준다. 시간이 지나면 무효가 되기 때문이다. */}
-      {board.incoming.length > 0 && (
-        <section className="mt-4">
-          <h4 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
-            받은 대결
-          </h4>
-          <ul className="space-y-3">
-            {board.incoming.map(duel => {
-              const left = minutesLeft(duel.expiresAt);
-              const urgent = left <= 3;
-              const highlighted = highlightId === duel.id;
-              return (
-                <li
-                  key={duel.id}
-                  id={`duel-${duel.id}`}
-                  tabIndex={-1}
-                  className={`rounded-xl border-2 bg-gradient-to-br from-violet-50 to-white p-4 shadow-sm transition-colors dark:from-violet-500/15 dark:to-slate-900 ${
-                    highlighted
-                      ? 'animate-duelPulse border-violet-500'
-                      : 'border-violet-200 dark:border-violet-500/30'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-bold tracking-wide text-violet-600 dark:text-violet-300">
-                        ⚔️ 도전장
-                      </p>
-                      <p className="mt-0.5 text-sm text-slate-700 dark:text-slate-200">
-                        <span className="font-semibold text-slate-900 dark:text-white">
-                          {duel.challengerName}
-                        </span>
-                        님이 대결을 신청했습니다
-                      </p>
-                      {duel.message && (
-                        <p className="mt-2 inline-block max-w-full break-words rounded-xl rounded-tl-sm bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm ring-1 ring-violet-100 dark:bg-slate-800 dark:text-slate-200 dark:ring-violet-500/20">
-                          “{duel.message}”
+    <>
+      {fanfare !== null && <WinFanfare amount={fanfare} onDone={() => setFanfare(null)} />}
+      <PointsSection
+        icon={<Swords className="h-5 w-5" />}
+        tone="violet"
+        title="포인트 대결"
+        badge={
+          board.incoming.length > 0 && (
+            <span className="animate-popIn rounded-full bg-violet-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+              도전장 {board.incoming.length}
+            </span>
+          )
+        }
+        description={
+          <>
+            가위바위보로 겨룹니다. 건 포인트는 신청하는 순간 맡겨지고, 이긴 쪽이 두 배를 가져갑니다.{' '}
+            {rules.expireMinutes}분 안에 답이 없으면 무효가 되어 돌려받습니다.
+          </>
+        }
+      >
+        {/* ── 받은 대결 ── 가장 먼저 보여 준다. 시간이 지나면 무효가 되기 때문이다. */}
+        {board.incoming.length > 0 && (
+          <section className="mt-4">
+            <h4 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
+              받은 대결
+            </h4>
+            <ul className="space-y-3">
+              {board.incoming.map(duel => {
+                const left = minutesLeft(duel.expiresAt);
+                const urgent = left <= 3;
+                const highlighted = highlightId === duel.id;
+                return (
+                  <li
+                    key={duel.id}
+                    id={`duel-${duel.id}`}
+                    tabIndex={-1}
+                    className={`rounded-xl border-2 bg-gradient-to-br from-violet-50 to-white p-4 shadow-sm transition-colors dark:from-violet-500/15 dark:to-slate-900 ${
+                      highlighted
+                        ? 'animate-duelPulse border-violet-500'
+                        : 'border-violet-200 dark:border-violet-500/30'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold tracking-wide text-violet-600 dark:text-violet-300">
+                          ⚔️ 도전장
                         </p>
-                      )}
-                    </div>
-                    <span
-                      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
-                        urgent
-                          ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300'
-                          : 'bg-white text-violet-700 ring-1 ring-violet-200 dark:bg-slate-800 dark:text-violet-300 dark:ring-violet-500/30'
-                      }`}
-                    >
-                      <Clock className="h-3 w-3" aria-hidden />
-                      {urgent ? `곧 무효 · ${left}분` : `${left}분 남음`}
-                    </span>
-                  </div>
-
-                  <p className="mt-2 text-2xl font-bold tabular-nums text-violet-700 dark:text-violet-200">
-                    {duel.stake.toLocaleString()}P
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    이기면 {(duel.stake * 2).toLocaleString()}P · 손을 고르는 즉시 승부가 납니다
-                  </p>
-
-                  <div className="mt-3">
-                    <HandPick
-                      large
-                      value={null}
-                      onChange={h => void respond(duel, h)}
-                      disabled={busy}
-                      labelFor={hand =>
-                        `${HAND_LABEL[hand]} 내고 ${duel.stake.toLocaleString()}P 대결 받기`
-                      }
-                    />
-                  </div>
-                  <div className="mt-2 text-right">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() =>
-                        void run(() => declineDuel(duel.id), '대결을 거절하지 못했습니다.').then(
-                          () => focusRow(duel.id)
-                        )
-                      }
-                      className="text-xs text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline disabled:opacity-40 dark:text-slate-400 dark:hover:text-slate-200"
-                    >
-                      거절
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-
-      {/* ── 신청 ── */}
-      <section className="mt-4">
-        <h4 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">대결 신청</h4>
-        <UserPicker
-          selected={picked}
-          onChange={setPicked}
-          single
-          excludeIds={[myId]}
-          placeholder="대결할 사람을 검색"
-        />
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-1.5 text-sm">
-            <span className="text-slate-600 dark:text-slate-300">걸 포인트</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              value={stake}
-              min={rules.minStake}
-              max={rules.maxStake}
-              onChange={e => setStake(e.target.value)}
-              aria-label="걸 포인트"
-              className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-sm tabular-nums dark:border-slate-600 dark:bg-slate-800"
-            />
-          </label>
-          <span className="text-xs text-slate-400">
-            {rules.minStake.toLocaleString()}~{rules.maxStake.toLocaleString()}P · 보유{' '}
-            {board.balance.toLocaleString()}P
-          </span>
-        </div>
-        <label className="relative mt-2 block">
-          <input
-            value={message}
-            onChange={e => setMessage(e.target.value.slice(0, DUEL_MESSAGE_MAX))}
-            maxLength={DUEL_MESSAGE_MAX}
-            placeholder="도전장에 한마디 (선택)"
-            aria-label="신청 메시지"
-            className="input input-sm w-full pr-14"
-          />
-          <span
-            aria-hidden
-            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs tabular-nums text-slate-400"
-          >
-            {message.length}/{DUEL_MESSAGE_MAX}
-          </span>
-        </label>
-        <div className="mt-2">
-          <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">
-            낼 손 (상대에게는 승부가 날 때까지 보이지 않습니다)
-          </p>
-          <HandPick value={hand} onChange={setHand} disabled={busy} />
-        </div>
-        <button
-          type="button"
-          disabled={!canSubmit}
-          onClick={() => void submit()}
-          className="btn-primary mt-3 inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
-          대결 신청
-        </button>
-      </section>
-
-      {/* ── 내가 건 대결 ── */}
-      {board.outgoing.length > 0 && (
-        <section className="mt-4">
-          <h4 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
-            기다리는 중
-          </h4>
-          <ul className="space-y-1">
-            {board.outgoing.map(duel => (
-              <li
-                key={duel.id}
-                id={`duel-${duel.id}`}
-                tabIndex={-1}
-                className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm ${
-                  highlightId === duel.id
-                    ? 'animate-duelPulse border-violet-500'
-                    : 'border-slate-200 dark:border-slate-700'
-                }`}
-              >
-                {/* 남은 시간은 따로 둔다. 한 줄에 몰아 자르면 375px 에서 메시지가 긴 판은
-                    남은 시간이 통째로 잘려 안 보였다 — 내가 건 판의 유일한 시계인데. */}
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                    <span className="min-w-0 truncate">
-                      {duel.opponentName}님에게{' '}
-                      <span className="font-semibold tabular-nums">
-                        {duel.stake.toLocaleString()}P
-                      </span>
-                      {duel.challengerHand && (
-                        <span className="ml-1.5 text-xs text-slate-400">
-                          내 손 {HAND_FACE[duel.challengerHand]}
-                        </span>
-                      )}
-                    </span>
-                    <span className="shrink-0 text-xs tabular-nums text-slate-400">
-                      · {minutesLeft(duel.expiresAt)}분 남음
-                    </span>
-                  </span>
-                  {duel.message && (
-                    <span className="block truncate text-xs text-slate-400">“{duel.message}”</span>
-                  )}
-                </span>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void run(() => cancelDuel(duel.id), '대결을 취소하지 못했습니다.')}
-                  className="shrink-0 text-xs text-slate-500 underline hover:text-slate-700 disabled:opacity-40 dark:text-slate-400"
-                >
-                  취소
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* ── 지난 판 ── */}
-      <section className="mt-4">
-        <h4 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">최근 결과</h4>
-        {board.recent.length === 0 ? (
-          <ListState>아직 끝난 대결이 없습니다.</ListState>
-        ) : (
-          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-700/60 dark:border-slate-700">
-            {board.recent.map(duel => {
-              const mine = outcomeOf(duel, myId);
-              const other = duel.challengerId === myId ? duel.opponentName : duel.challengerName;
-              return (
-                <li
-                  key={duel.id}
-                  id={`duel-${duel.id}`}
-                  tabIndex={-1}
-                  className={`px-3 py-2 text-sm ${
-                    highlightId === duel.id
-                      ? 'animate-duelPulse bg-violet-50 dark:bg-violet-500/10'
-                      : ''
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="min-w-0 truncate text-slate-600 dark:text-slate-300">
-                      {other}
-                      {duel.status === 'canceled' ? (
-                        <span className="ml-1.5 text-xs text-slate-400">무효</span>
-                      ) : (
-                        duel.challengerHand &&
-                        duel.opponentHand && (
-                          <span className="ml-1.5 text-xs text-slate-400">
-                            {HAND_FACE[duel.challengerHand]} vs {HAND_FACE[duel.opponentHand]}
+                        <p className="mt-0.5 text-sm text-slate-700 dark:text-slate-200">
+                          <span className="font-semibold text-slate-900 dark:text-white">
+                            {duel.challengerName}
                           </span>
-                        )
-                      )}
-                    </span>
-                    <span className="flex shrink-0 items-center gap-2">
-                      {mine === '승' && !duel.taunt && tauntFor !== duel.id && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            focusTauntInput.current = true;
-                            setTauntFor(duel.id);
-                            setTauntText('');
-                          }}
-                          className="text-xs text-rose-600 hover:underline dark:text-rose-400"
-                        >
-                          🔥 한마디 남기기
-                        </button>
-                      )}
+                          님이 대결을 신청했습니다
+                        </p>
+                        {duel.message && (
+                          <p className="mt-2 inline-block max-w-full break-words rounded-xl rounded-tl-sm bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm ring-1 ring-violet-100 dark:bg-slate-800 dark:text-slate-200 dark:ring-violet-500/20">
+                            “{duel.message}”
+                          </p>
+                        )}
+                      </div>
                       <span
-                        className={`font-semibold tabular-nums ${
-                          mine === '승'
-                            ? 'text-secondary-600 dark:text-secondary-400'
-                            : mine === '패'
-                              ? 'text-red-500'
-                              : 'text-slate-400'
+                        className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
+                          urgent
+                            ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300'
+                            : 'bg-white text-violet-700 ring-1 ring-violet-200 dark:bg-slate-800 dark:text-violet-300 dark:ring-violet-500/30'
                         }`}
                       >
-                        {mine ?? '—'}{' '}
-                        <span className="text-xs font-medium">{duel.stake.toLocaleString()}P</span>
+                        <Clock className="h-3 w-3" aria-hidden />
+                        {urgent ? `곧 무효 · ${left}분` : `${left}분 남음`}
                       </span>
-                    </span>
-                  </div>
+                    </div>
 
-                  {/* 이긴 사람이 남긴 한마디. 진 쪽에서는 약 오르라고 분홍 말풍선으로 */}
-                  {duel.taunt && (
-                    <p
-                      className={`mt-1.5 inline-block max-w-full break-words rounded-xl px-2.5 py-1 text-xs ${
-                        mine === '패'
-                          ? 'rounded-tl-sm bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
-                          : 'rounded-tr-sm bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                      }`}
-                    >
-                      {mine === '패' ? `💬 ${other}: ` : '내 한마디: '}“{duel.taunt}”
+                    <p className="mt-2 text-2xl font-bold tabular-nums text-violet-700 dark:text-violet-200">
+                      {duel.stake.toLocaleString()}P
                     </p>
-                  )}
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      이기면 {(duel.stake * 2).toLocaleString()}P · 손을 고르는 즉시 승부가 납니다
+                    </p>
 
-                  {mine === '승' && !duel.taunt && tauntFor === duel.id && (
-                    <form
-                      className="mt-2 flex items-center gap-1.5"
-                      onSubmit={e => {
-                        e.preventDefault();
-                        void sendTaunt(duel.id);
-                      }}
-                    >
-                      <label className="relative min-w-0 flex-1">
-                        <input
-                          // 사람이 '한마디 남기기' 를 눌러 열었을 때만 포커스를 준다. autoFocus 로 두면
-                          // 이긴 뒤 목록이 늦게 읽혀 칸이 나중에 뜰 때, 다른 칸에 쓰던 커서를 빼앗는다.
-                          ref={el => {
-                            if (el && focusTauntInput.current) {
-                              focusTauntInput.current = false;
-                              el.focus();
-                            }
-                          }}
-                          value={tauntText}
-                          onChange={e => setTauntText(e.target.value.slice(0, DUEL_TAUNT_MAX))}
-                          maxLength={DUEL_TAUNT_MAX}
-                          placeholder={`${other}님에게 한마디`}
-                          aria-label="이긴 판에 남길 한마디"
-                          className="input input-sm w-full pr-12"
-                        />
-                        <span
-                          aria-hidden
-                          className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs tabular-nums text-slate-400"
-                        >
-                          {tauntText.length}/{DUEL_TAUNT_MAX}
-                        </span>
-                      </label>
-                      <button
-                        type="submit"
-                        disabled={busy || tauntText.trim() === ''}
-                        className="btn-primary btn-sm disabled:opacity-50"
-                      >
-                        보내기
-                      </button>
+                    <div className="mt-3">
+                      <HandPick
+                        large
+                        value={null}
+                        onChange={h => void respond(duel, h)}
+                        disabled={busy}
+                        labelFor={hand =>
+                          `${HAND_LABEL[hand]} 내고 ${duel.stake.toLocaleString()}P 대결 받기`
+                        }
+                      />
+                    </div>
+                    <div className="mt-2 text-right">
                       <button
                         type="button"
-                        onClick={() => setTauntFor(null)}
-                        className="btn-secondary btn-sm"
+                        disabled={busy}
+                        onClick={() =>
+                          void run(() => declineDuel(duel.id), '대결을 거절하지 못했습니다.').then(
+                            () => focusRow(duel.id)
+                          )
+                        }
+                        className="text-xs text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline disabled:opacity-40 dark:text-slate-400 dark:hover:text-slate-200"
                       >
-                        닫기
+                        거절
                       </button>
-                    </form>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         )}
-      </section>
-    </PointsSection>
+
+        {/* ── 신청 ── */}
+        <section className="mt-4">
+          <h4 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
+            대결 신청
+          </h4>
+          <UserPicker
+            selected={picked}
+            onChange={setPicked}
+            single
+            excludeIds={[myId]}
+            placeholder="대결할 사람을 검색"
+          />
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 text-sm">
+              <span className="text-slate-600 dark:text-slate-300">걸 포인트</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={stake}
+                min={rules.minStake}
+                max={rules.maxStake}
+                onChange={e => setStake(e.target.value)}
+                aria-label="걸 포인트"
+                className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-sm tabular-nums dark:border-slate-600 dark:bg-slate-800"
+              />
+            </label>
+            <span className="text-xs text-slate-400">
+              {rules.minStake.toLocaleString()}~{rules.maxStake.toLocaleString()}P · 보유{' '}
+              {board.balance.toLocaleString()}P
+            </span>
+          </div>
+          <label className="relative mt-2 block">
+            <input
+              value={message}
+              onChange={e => setMessage(e.target.value.slice(0, DUEL_MESSAGE_MAX))}
+              maxLength={DUEL_MESSAGE_MAX}
+              placeholder="도전장에 한마디 (선택)"
+              aria-label="신청 메시지"
+              className="input input-sm w-full pr-14"
+            />
+            <span
+              aria-hidden
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs tabular-nums text-slate-400"
+            >
+              {message.length}/{DUEL_MESSAGE_MAX}
+            </span>
+          </label>
+          <div className="mt-2">
+            <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">
+              낼 손 (상대에게는 승부가 날 때까지 보이지 않습니다)
+            </p>
+            <HandPick value={hand} onChange={setHand} disabled={busy} />
+          </div>
+          <button
+            type="button"
+            disabled={!canSubmit}
+            onClick={() => void submit()}
+            className="btn-primary mt-3 inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
+            대결 신청
+          </button>
+        </section>
+
+        {/* ── 내가 건 대결 ── */}
+        {board.outgoing.length > 0 && (
+          <section className="mt-4">
+            <h4 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
+              기다리는 중
+            </h4>
+            <ul className="space-y-1">
+              {board.outgoing.map(duel => (
+                <li
+                  key={duel.id}
+                  id={`duel-${duel.id}`}
+                  tabIndex={-1}
+                  className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm ${
+                    highlightId === duel.id
+                      ? 'animate-duelPulse border-violet-500'
+                      : 'border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  {/* 남은 시간은 따로 둔다. 한 줄에 몰아 자르면 375px 에서 메시지가 긴 판은
+                    남은 시간이 통째로 잘려 안 보였다 — 내가 건 판의 유일한 시계인데. */}
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                      <span className="min-w-0 truncate">
+                        {duel.opponentName}님에게{' '}
+                        <span className="font-semibold tabular-nums">
+                          {duel.stake.toLocaleString()}P
+                        </span>
+                        {duel.challengerHand && (
+                          <span className="ml-1.5 text-xs text-slate-400">
+                            내 손 {HAND_FACE[duel.challengerHand]}
+                          </span>
+                        )}
+                      </span>
+                      <span className="shrink-0 text-xs tabular-nums text-slate-400">
+                        · {minutesLeft(duel.expiresAt)}분 남음
+                      </span>
+                    </span>
+                    {duel.message && (
+                      <span className="block truncate text-xs text-slate-400">
+                        “{duel.message}”
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(() => cancelDuel(duel.id), '대결을 취소하지 못했습니다.')
+                    }
+                    className="shrink-0 text-xs text-slate-500 underline hover:text-slate-700 disabled:opacity-40 dark:text-slate-400"
+                  >
+                    취소
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* ── 지난 판 ── */}
+        <section className="mt-4">
+          <h4 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
+            최근 결과
+          </h4>
+          {board.recent.length === 0 ? (
+            <ListState>아직 끝난 대결이 없습니다.</ListState>
+          ) : (
+            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-700/60 dark:border-slate-700">
+              {board.recent.map(duel => {
+                const mine = outcomeOf(duel, myId);
+                const other = duel.challengerId === myId ? duel.opponentName : duel.challengerName;
+                return (
+                  <li
+                    key={duel.id}
+                    id={`duel-${duel.id}`}
+                    tabIndex={-1}
+                    className={`px-3 py-2 text-sm ${
+                      highlightId === duel.id
+                        ? 'animate-duelPulse bg-violet-50 dark:bg-violet-500/10'
+                        : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 truncate text-slate-600 dark:text-slate-300">
+                        {other}
+                        {duel.status === 'canceled' ? (
+                          <span className="ml-1.5 text-xs text-slate-400">무효</span>
+                        ) : (
+                          duel.challengerHand &&
+                          duel.opponentHand && (
+                            <span className="ml-1.5 text-xs text-slate-400">
+                              {HAND_FACE[duel.challengerHand]} vs {HAND_FACE[duel.opponentHand]}
+                            </span>
+                          )
+                        )}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        {mine === '승' && !duel.taunt && tauntFor !== duel.id && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              focusTauntInput.current = true;
+                              setTauntFor(duel.id);
+                              setTauntText('');
+                            }}
+                            className="text-xs text-rose-600 hover:underline dark:text-rose-400"
+                          >
+                            🔥 한마디 남기기
+                          </button>
+                        )}
+                        <span
+                          className={`font-semibold tabular-nums ${
+                            mine === '승'
+                              ? 'text-secondary-600 dark:text-secondary-400'
+                              : mine === '패'
+                                ? 'text-red-500'
+                                : 'text-slate-400'
+                          }`}
+                        >
+                          {mine ?? '—'}{' '}
+                          <span className="text-xs font-medium">
+                            {duel.stake.toLocaleString()}P
+                          </span>
+                        </span>
+                      </span>
+                    </div>
+
+                    {/* 이긴 사람이 남긴 한마디. 진 쪽에서는 약 오르라고 분홍 말풍선으로 */}
+                    {duel.taunt && (
+                      <p
+                        className={`mt-1.5 inline-block max-w-full break-words rounded-xl px-2.5 py-1 text-xs ${
+                          mine === '패'
+                            ? 'rounded-tl-sm bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
+                            : 'rounded-tr-sm bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                        }`}
+                      >
+                        {mine === '패' ? `💬 ${other}: ` : '내 한마디: '}“{duel.taunt}”
+                      </p>
+                    )}
+
+                    {mine === '승' && !duel.taunt && tauntFor === duel.id && (
+                      <form
+                        className="mt-2 flex items-center gap-1.5"
+                        onSubmit={e => {
+                          e.preventDefault();
+                          void sendTaunt(duel.id);
+                        }}
+                      >
+                        <label className="relative min-w-0 flex-1">
+                          <input
+                            // 사람이 '한마디 남기기' 를 눌러 열었을 때만 포커스를 준다. autoFocus 로 두면
+                            // 이긴 뒤 목록이 늦게 읽혀 칸이 나중에 뜰 때, 다른 칸에 쓰던 커서를 빼앗는다.
+                            ref={el => {
+                              if (el && focusTauntInput.current) {
+                                focusTauntInput.current = false;
+                                el.focus();
+                              }
+                            }}
+                            value={tauntText}
+                            onChange={e => setTauntText(e.target.value.slice(0, DUEL_TAUNT_MAX))}
+                            maxLength={DUEL_TAUNT_MAX}
+                            placeholder={`${other}님에게 한마디`}
+                            aria-label="이긴 판에 남길 한마디"
+                            className="input input-sm w-full pr-12"
+                          />
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs tabular-nums text-slate-400"
+                          >
+                            {tauntText.length}/{DUEL_TAUNT_MAX}
+                          </span>
+                        </label>
+                        <button
+                          type="submit"
+                          disabled={busy || tauntText.trim() === ''}
+                          className="btn-primary btn-sm disabled:opacity-50"
+                        >
+                          보내기
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTauntFor(null)}
+                          className="btn-secondary btn-sm"
+                        >
+                          닫기
+                        </button>
+                      </form>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </PointsSection>
+    </>
   );
 }

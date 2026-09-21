@@ -364,6 +364,60 @@ body {
   animation: attackIn 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* 위에서 내려오는 알림 띠 — 눈이 먼저 위쪽으로 가게 한다 */
+@keyframes noticeDrop {
+  0% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(4%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+.animate-noticeDrop {
+  animation: noticeDrop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 대결에서 이겼을 때 — 종이 조각이 흩날린다 */
+@keyframes confettiFall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -12px, 0) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--confetti-x, 0), 120px, 0) rotate(var(--confetti-spin, 360deg));
+  }
+}
+.animate-confettiFall {
+  animation: confettiFall 1.5s cubic-bezier(0.25, 0.8, 0.4, 1) forwards;
+}
+
+/* 이겼다는 글자가 한 번 크게 튀어나온다 */
+@keyframes winPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  55% {
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-winPop {
+  animation: winPop 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* 방어권 — 눌러 달라고 은근히 빛난다 */
 @keyframes shieldGlow {
   0%,

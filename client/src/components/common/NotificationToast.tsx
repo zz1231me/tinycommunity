@@ -6,7 +6,8 @@
 //  - 종류마다 아이콘·제목·색 (종 목록과 같은 표 — notificationKinds)
 //  - 누르면 읽음으로 하고 그 알림의 자리로 간다
 //  - 마우스를 올리거나 키보드로 들어오면 멈춘다. 남은 시간은 아래 막대로 보인다
-//  - 공격·대결은 받는 사람이 움직여야 하는 알림이라 더 오래 둔다
+//  - 공격·대결은 받는 사람이 움직여야 하는 알림이라, 더 오래 두고 화면 맨 위를
+//    가로지르는 띠로 띄운다(구석 카드로는 눈에 잘 걸리지 않는다고 했다)
 //  - 그사이 함께 온 알림이 있으면 '외 N건'
 
 import { useEffect, useRef, useState } from 'react';
@@ -18,6 +19,7 @@ import { useUIOverlays } from '../../store/uiOverlays';
 import { useNotificationStore } from '../../store/notifications';
 import { markAsRead, type Notification } from '../../api/notifications';
 import { kindOf } from './notificationKinds';
+import { TopNotice, TopNoticeSlot } from './TopNotice';
 
 export const TOAST_MS = 6000;
 /** 받는 사람이 곧 움직여야 하는 알림 — 공격은 1분이면 끝나고, 대결은 답을 기다린다 */
@@ -142,21 +144,62 @@ export function NotificationToast() {
     if (panelOpen && newNotification) clearNew();
   }, [panelOpen, newNotification, clearNew]);
 
+  const show = newNotification && !panelOpen ? newNotification : null;
+  // 지금 움직여야 하는 알림은 맨 위 띠로 — 구석 카드는 놓치기 쉽다
+  const urgent = show && URGENT.has(show.type) ? show : null;
+
   return (
-    // z-toast: 모달(z-50)보다 위. 같은 값이면 App.tsx 위쪽에서 렌더되는 탓에
-    // 라우트 안쪽 모달에 덮여, 모달을 열어 둔 동안 온 알림이 보이지 않는다.
-    // 늘 붙어 있는 알림 영역 — 화면 낭독기가 새로 들어온 내용을 읽어 준다.
-    <div
-      role="status"
-      aria-live="polite"
-      className="pointer-events-none fixed inset-x-4 top-20 z-toast flex justify-end sm:left-auto"
-    >
-      <AnimatePresence>
-        {newNotification && !panelOpen && (
-          // 알림마다 새 카드 — 남은 시간·멈춤 상태가 앞 알림에서 이어지지 않는다
-          <ToastCard key={newNotification.id} n={newNotification} more={more} onClose={clearNew} />
-        )}
-      </AnimatePresence>
-    </div>
+    <>
+      {urgent && (
+        <TopNoticeSlot>
+          <UrgentNotice key={urgent.id} n={urgent} onClose={clearNew} />
+        </TopNoticeSlot>
+      )}
+      {/* z-toast: 모달(z-50)보다 위. 같은 값이면 App.tsx 위쪽에서 렌더되는 탓에
+          라우트 안쪽 모달에 덮여, 모달을 열어 둔 동안 온 알림이 보이지 않는다.
+          늘 붙어 있는 알림 영역 — 화면 낭독기가 새로 들어온 내용을 읽어 준다. */}
+      <div
+        role="status"
+        aria-live="polite"
+        className="pointer-events-none fixed inset-x-4 top-20 z-toast flex justify-end sm:left-auto"
+      >
+        <AnimatePresence>
+          {show && !urgent && (
+            // 알림마다 새 카드 — 남은 시간·멈춤 상태가 앞 알림에서 이어지지 않는다
+            <ToastCard key={show.id} n={show} more={more} onClose={clearNew} />
+          )}
+        </AnimatePresence>
+      </div>
+    </>
+  );
+}
+
+/** 공격·대결처럼 지금 움직여야 하는 알림 — 맨 위를 가로지르는 띠 */
+function UrgentNotice({ n, onClose }: { n: Notification; onClose: () => void }) {
+  const navigate = useNavigate();
+  const markRead = useNotificationStore(s => s.markRead);
+  const kind = kindOf(n.type);
+
+  const open = () => {
+    onClose();
+    if (!n.isRead) {
+      markAsRead(n.id)
+        .then(res => markRead(n.id, res?.unreadCount))
+        .catch(() => {});
+    }
+    if (n.link) navigate(n.link);
+  };
+
+  return (
+    <TopNotice
+      icon={n.type === 'ATTACK' ? '💥' : '⚔️'}
+      title={kind.title}
+      message={n.message}
+      action={n.link ? '보러 가기' : undefined}
+      onAction={n.link ? open : undefined}
+      onClose={onClose}
+      lifeMs={URGENT_TOAST_MS}
+      tone={n.type === 'ATTACK' ? 'rose' : 'violet'}
+    />
   );
 }

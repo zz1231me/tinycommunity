@@ -83,6 +83,8 @@ function renderToast() {
 }
 
 const card = () => screen.queryByTestId('notification-toast');
+// 공격·대결은 구석 카드가 아니라 화면 맨 위를 가로지르는 띠로 뜬다
+const bar = () => screen.queryByTestId('top-notice');
 
 beforeEach(() => {
   useUIOverlays.setState({ activeDropdown: null });
@@ -169,9 +171,24 @@ describe('사라지는 때', () => {
     renderToast();
     show(note({ type: 'ATTACK' }));
     act(() => vi.advanceTimersByTime(TOAST_MS + 100));
-    expect(card()).not.toBeNull();
+    expect(bar()).not.toBeNull();
     act(() => vi.advanceTimersByTime(URGENT_TOAST_MS - TOAST_MS));
+    expect(bar()).toBeNull();
+  });
+
+  it('공격·대결은 맨 위 띠로, 나머지는 구석 카드로', () => {
+    // 구석 카드는 놓치기 쉬웠다. 지금 움직여야 하는 알림만 위로 올린다 —
+    // 전부 위로 올리면 하루 종일 화면 위가 출렁여 결국 아무도 안 본다.
+    const { unmount } = renderToast();
+    show(note({ type: 'ATTACK' }));
+    expect(bar()).not.toBeNull();
     expect(card()).toBeNull();
+    unmount();
+
+    renderToast();
+    show(note({ type: 'COMMENT' }));
+    expect(card()).not.toBeNull();
+    expect(bar()).toBeNull();
   });
 
   it('마우스를 올려 둔 동안에는 사라지지 않고, 떼면 남은 시간만큼만 더 있다', () => {
