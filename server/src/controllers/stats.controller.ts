@@ -8,13 +8,37 @@ import { LoginHistory } from '../models/LoginHistory';
 import { Role } from '../models/Role';
 import { Report } from '../models/Report';
 import { PasswordResetRequest } from '../models/PasswordResetRequest';
+import { sequelize } from '../config/sequelize';
 import { sendSuccess, sendError } from '../utils/response';
 import { logError } from '../utils/logger';
 
-// SQLite 날짜는 'YYYY-MM-DD HH:MM:SS.SSS +00:00' 문자열로 저장되므로
-// strftime(타임존 파싱 이슈)보다 substr가 안전하다: 1~7=YYYY-MM, 1~10=YYYY-MM-DD.
-const MONTH_EXPR = 'substr(createdAt,1,7)';
-const DAY_EXPR = 'substr(createdAt,1,10)';
+// 그래프의 칸을 '보는 사람의 달력' 으로 나눈다.
+//
+// SQLite 는 시각을 'YYYY-MM-DD HH:MM:SS.SSS +00:00'(UTC) 로 저장한다. 앞에서 열 글자를
+// 그냥 잘라 쓰면 UTC 날짜라, 한국 시간 09시 이전에 일어난 로그인·가입·글이 모두 전날
+// 칸에 들어갔다(1일 아침이면 지난달 막대에 들어간다). 프로세스 타임존과 무관하게 그랬다.
+// strftime 의 'localtime' 은 그 프로세스의 타임존으로 옮겨 준다 — 서버가 '오늘' 을 세는
+// 기준과 같아진다.
+//
+// MySQL/MariaDB 는 연결을 +09:00 으로 고정해 두어(config/sequelize) 저장된 값이 이미
+// 그 지역 시각이다 — 거기서 옮기면 두 번 옮기는 셈이 된다.
+// Postgres 는 substr 도 DATE_FORMAT 도 timestamp 에 쓸 수 없다 — to_char 로 나눈다.
+// 여기서 옮기는 폭은 연결에 고정해 둔 값(+09:00)과 같아야 한다.
+function bucketExpr(unit: 'month' | 'day'): string {
+  const sqlite = unit === 'month' ? '%Y-%m' : '%Y-%m-%d';
+  const other = unit === 'month' ? '%Y-%m' : '%Y-%m-%d';
+  switch (sequelize.getDialect()) {
+    case 'sqlite':
+      return `strftime('${sqlite}', createdAt, 'localtime')`;
+    case 'postgres':
+      return `to_char("createdAt" AT TIME ZONE INTERVAL '+09:00', '${unit === 'month' ? 'YYYY-MM' : 'YYYY-MM-DD'}')`;
+    default:
+      return `DATE_FORMAT(createdAt, '${other}')`;
+  }
+}
+
+const MONTH_EXPR = bucketExpr('month');
+const DAY_EXPR = bucketExpr('day');
 
 type Bucket = { key: string; count: number };
 
