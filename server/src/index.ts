@@ -75,7 +75,7 @@ import {
 } from './config/sequelize';
 
 // SPA index.html OG 메타 주입(링크 미리보기용)
-import { renderIndexHtml } from './utils/indexHtml';
+import { readAppVersion, renderIndexHtml } from './utils/indexHtml';
 
 // 모든 모델 import (관계 설정 포함)
 import './models';
@@ -427,6 +427,13 @@ if (clientBuildExists) {
       etag: true,
     })
   );
+  // 지금 서빙 중인 빌드의 표식. 켜 둔 채로 배포가 일어났는지 화면이 이것으로 알아챈다 —
+  // 열어 둔 탭은 스스로 다시 받아 오지 않아, 배포해도 예전 화면이 남곤 했다.
+  app.get('/api/app-version', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ success: true, data: { version: readAppVersion(clientIndexPath) } });
+  });
+
   // SPA 폴백: /api, /uploads 이외 모든 경로에 index.html 반환
   // Express 5는 app.get(/regex/) 미지원 → app.use + path 검사 방식 사용
   app.use((req, res, next) => {

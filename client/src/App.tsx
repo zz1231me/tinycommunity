@@ -21,6 +21,7 @@ import { toast } from './utils/toast';
 import { consumeSessionExpired } from './utils/sessionExpiry';
 import { LoadingSpinner } from './components/admin/common/LoadingSpinner';
 import { NotificationToast } from './components/common/NotificationToast';
+import { UpdateBanner } from './components/common/UpdateBanner';
 import { MaintenanceGate } from './components/MaintenanceGate';
 import { FeatureRoute } from './components/common/FeatureRoute';
 import { CheckInReminder } from './components/attendance/CheckInReminder';
@@ -148,6 +149,8 @@ function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <NotificationToast />
+        {/* 켜 둔 채로 배포가 일어났을 때 알리고, 안전한 순간에 스스로 새로고침한다 */}
+        <UpdateBanner />
         {/* 출근을 아직 안 찍었으면 알린다. 관리자 화면은 대시보드 바깥이라
             여기 한 번 두어야 어느 화면에 있든 뜬다.
             (퇴근 기준 시간 알림은 뺐다 — 일하는 중에 화면을 가로막는 쪽이 성가셨다.) */}
