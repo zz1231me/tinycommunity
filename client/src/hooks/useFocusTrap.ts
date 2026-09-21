@@ -8,6 +8,7 @@
 // 키보드만 쓰는 사람에게는 "닫지 않았는데 다른 곳이 눌리는" 상태가 된다.
 
 import { useEffect, useRef, type RefObject } from 'react';
+import { lockScroll, unlockScroll } from '../utils/scrollLock';
 
 /** 이 안에서 Tab 으로 갈 수 있는 요소들 */
 const FOCUSABLE =
@@ -37,6 +38,10 @@ export function useFocusTrap(
   useEffect(() => {
     if (!active) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
+
+    // 열려 있는 동안 뒤 화면이 스크롤되지 않게 한다. 대화상자마다 손으로 하던 일이라
+    // 공용 상자(ModalShell·확인 상자)를 쓰는 곳은 아예 빠져 있었다 — 뒤가 같이 밀렸다.
+    lockScroll();
 
     // 첫 포커스는 지정한 곳, 없으면 안쪽 첫 요소로 — 열자마자 바로 쓸 수 있어야 한다
     const t = setTimeout(() => {
@@ -69,6 +74,7 @@ export function useFocusTrap(
     document.addEventListener('keydown', onKey);
     return () => {
       clearTimeout(t);
+      unlockScroll();
       document.removeEventListener('keydown', onKey);
       // 열기 전에 보던 자리로 되돌린다.
       // 이미 문서에서 떨어진 요소면 focus() 가 아무 일도 하지 않으므로 먼저 확인한다 —

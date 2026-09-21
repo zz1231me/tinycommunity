@@ -1,5 +1,6 @@
 // src/components/ImageViewer.tsx - passive 이벤트 리스너 오류 해결 버전
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { lockScroll, unlockScroll } from '../utils/scrollLock';
 
 interface ImageViewerProps {
   isOpen: boolean;
@@ -117,20 +118,17 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
         setIsDragging(false);
       });
 
-      // body scroll 제어
-      const originalOverflow = document.body.style.overflow;
+      // 배경 스크롤 잠금 — 세어 두는 공용 잠금을 쓴다(겹쳐 열려도 어긋나지 않게)
       const originalPaddingRight = document.body.style.paddingRight;
-
-      // 스크롤바 공간 계산
+      // 스크롤바가 사라지며 화면이 옆으로 튀지 않게 그만큼 여백을 준다
       const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-
-      document.body.style.overflow = 'hidden';
+      lockScroll();
       if (scrollbarWidth > 0) {
         document.body.style.paddingRight = `${scrollbarWidth}px`;
       }
 
       return () => {
-        document.body.style.overflow = originalOverflow;
+        unlockScroll();
         document.body.style.paddingRight = originalPaddingRight;
       };
     }

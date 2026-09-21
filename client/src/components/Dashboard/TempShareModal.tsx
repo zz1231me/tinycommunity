@@ -19,6 +19,7 @@ import { uploadTempShare, type TempShareResult } from '../../api/tempShare';
 import { getApiErrorMessage } from '../../api/utils';
 import { useSiteSettings } from '../../store/siteSettings';
 import { toast } from '../../utils/toast';
+import { lockScroll, unlockScroll } from '../../utils/scrollLock';
 
 interface Props {
   open: boolean;
@@ -56,11 +57,9 @@ export function TempShareModal({ open, onClose }: Props) {
   // 열려 있는 동안 배경 스크롤 잠금
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    // 세어 두는 공용 잠금을 쓴다 — 겹쳐 열렸을 때 안쪽이 닫히며 바깥 잠금을 풀지 않게
+    lockScroll();
+    return () => unlockScroll();
   }, [open]);
 
   // Esc 로 닫고, 열려 있는 동안 포커스를 안에 가둔다.

@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { useRef, useState } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useFocusTrap } from './useFocusTrap';
+import { resetScrollLock } from '../utils/scrollLock';
 
 function Dialog({ onClose, active = true }: { onClose: () => void; active?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -208,5 +209,30 @@ describe('닫을 때 포커스를 되돌린다', () => {
     expect(screen.queryByRole('button', { name: '처음' })).not.toBeInTheDocument();
     // 되돌리지 않으면 포커스가 body 로 떨어져, 키보드 사용자는 처음부터 다시 Tab 해야 한다
     expect(document.activeElement).toBe(outside);
+  });
+});
+
+describe('열려 있는 동안 배경 스크롤을 잠근다', () => {
+  it('열면 잠기고 닫으면 풀린다', () => {
+    resetScrollLock();
+    render(<Harness />);
+    // 뒤 화면이 같이 스크롤되면 대화상자가 시야 밖으로 밀려난다
+    expect(document.body.style.overflow).toBe('');
+
+    openFromOutside();
+    expect(document.body.style.overflow).toBe('hidden');
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(document.body.style.overflow).toBe('');
+  });
+
+  it('겹쳐 열린 대화상자 중 하나만 닫혀도 잠금이 남는다', () => {
+    resetScrollLock();
+    const { unmount } = render(<Dialog onClose={() => {}} />);
+    render(<Dialog onClose={() => {}} />); // 그 위에 열린 확인 상자
+    expect(document.body.style.overflow).toBe('hidden');
+
+    unmount(); // 하나만 닫힘
+    expect(document.body.style.overflow).toBe('hidden');
   });
 });

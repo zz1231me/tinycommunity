@@ -8,6 +8,7 @@ import { formatDate } from '../../utils/date';
 import { useAuthStore } from '../../store/auth';
 import { useSearchHistory } from '../../hooks/useSearchHistory';
 import { useUIOverlays } from '../../store/uiOverlays';
+import { lockScroll, unlockScroll } from '../../utils/scrollLock';
 
 type ResultType = 'post' | 'wiki' | 'event' | 'memo';
 
@@ -234,12 +235,12 @@ export function GlobalSearch() {
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = 'hidden';
+      lockScroll();
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = '';
+      if (isOpen) unlockScroll();
     };
   }, [isOpen, handleClickOutside, handleKeyDown]);
 
