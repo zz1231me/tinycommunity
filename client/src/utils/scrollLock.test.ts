@@ -48,3 +48,22 @@ describe('scrollLock', () => {
     expect(document.body.style.overflow).toBe('');
   });
 });
+
+describe('마지막 하나가 풀렸는지 알려 준다', () => {
+  beforeEach(() => {
+    resetScrollLock();
+  });
+
+  it('겹쳐 잠긴 동안에는 false, 마지막에만 true', () => {
+    // 사진 뷰어는 스크롤바가 사라진 만큼 본문에 여백을 준다. 아직 다른 대화상자가
+    // 잠가 두고 있는데 그 여백을 먼저 빼면 본문이 스크롤바 폭만큼 옆으로 밀린다.
+    lockScroll();
+    lockScroll();
+    expect(unlockScroll()).toBe(false);
+    expect(unlockScroll()).toBe(true);
+  });
+
+  it('잠근 적이 없으면 false', () => {
+    expect(unlockScroll()).toBe(false);
+  });
+});

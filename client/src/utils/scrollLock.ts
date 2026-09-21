@@ -19,11 +19,14 @@ export function lockScroll(): void {
   depth += 1;
 }
 
-export function unlockScroll(): void {
-  if (typeof document === 'undefined') return;
-  if (depth === 0) return;
+/** @returns 마지막 하나가 풀려 배경이 다시 스크롤되는가 */
+export function unlockScroll(): boolean {
+  if (typeof document === 'undefined') return false;
+  if (depth === 0) return false;
   depth -= 1;
-  if (depth === 0) document.body.style.overflow = original;
+  if (depth > 0) return false;
+  document.body.style.overflow = original;
+  return true;
 }
 
 /** 테스트용 — 열린 채로 끝난 테스트가 다음 테스트로 잠금을 흘리지 않게 */

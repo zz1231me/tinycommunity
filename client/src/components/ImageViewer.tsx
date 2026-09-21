@@ -130,8 +130,11 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
       }
 
       return () => {
-        unlockScroll();
-        document.body.style.paddingRight = originalPaddingRight;
+        // 아직 다른 대화상자가 열려 있으면 스크롤바는 여전히 없다 — 그때 여백을
+        // 먼저 빼면 그 대화상자가 닫힐 때까지 본문이 스크롤바 폭만큼 옆으로 밀린다
+        if (unlockScroll()) {
+          document.body.style.paddingRight = originalPaddingRight;
+        }
       };
     }
     return undefined;
