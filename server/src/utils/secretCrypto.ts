@@ -1,11 +1,6 @@
-// server/src/utils/secretCrypto.ts
-// 민감한 비밀값(현재 2FA TOTP 시크릿)을 DB에 저장하기 전 암호화하는 유틸.
-// API 응답에는 노출되지 않지만(toJSON에서 strip), DB 유출 시 평문 TOTP 시크릿이 그대로
-// 새어 2차 인증이 무력화되는 것을 막기 위한 at-rest 방어 계층이다.
-//
-// 키는 이미 필수·강제 검증되는 JWT_SECRET에서 HKDF로 파생한다(새 env 변수 불필요).
-// 저장 포맷: `enc:v1:<iv_hex>:<tag_hex>:<ciphertext_hex>` — 접두어로 암호문 여부를 판별해
-// 과거 평문(접두어 없음)도 그대로 복호화 단계에서 통과시켜 하위호환을 유지한다.
+// 민감한 비밀값(2FA TOTP 시크릿)을 DB 저장 전에 암호화한다.
+// 키는 JWT_SECRET 에서 HKDF 로 파생한다.
+// 저장 포맷: `enc:v1:<iv_hex>:<tag_hex>:<ciphertext_hex>`. 접두어가 없으면 과거 평문이다.
 
 import crypto from 'crypto';
 import { env } from '../config/env';
@@ -19,7 +14,7 @@ let cachedKey: Buffer | null = null;
 
 function getKey(): Buffer {
   if (cachedKey) return cachedKey;
-  // HKDF-SHA256으로 JWT_SECRET에서 32바이트 키 파생 (앱 고정 salt/info로 도메인 분리)
+  // HKDF-SHA256 으로 JWT_SECRET 에서 32바이트 키 파생
   const derived = crypto.hkdfSync(
     'sha256',
     Buffer.from(env.JWT_SECRET, 'utf8'),

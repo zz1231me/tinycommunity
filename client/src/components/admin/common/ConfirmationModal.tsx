@@ -11,7 +11,7 @@ interface ConfirmationModalProps {
   /** 확인을 눌렀을 때. Promise 를 돌려주면 끝날 때까지 단추를 잠가 둔다 */
   onConfirm: () => unknown | Promise<unknown>;
   onCancel: () => void;
-  /** 확인 버튼 색상 — 기본 red (삭제), blue (일반 확인) */
+  /** 확인 버튼 색상. danger 는 빨강(삭제), primary 는 파랑 */
   variant?: 'danger' | 'primary';
 }
 
@@ -26,8 +26,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   variant = 'danger',
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
-  // 확인은 한 번만. 지우는 동작은 돌아오는 데 시간이 걸리는데 단추가 계속 눌려,
-  // 두 번 누르면 같은 요청이 두 번 나갔다(17곳이 이 상자를 함께 쓴다).
+  // 확인은 한 번만. 응답이 오기 전에 두 번 누르면 같은 요청이 두 번 나간다.
   const [busy, setBusy] = useState(false);
   const handleConfirm = async () => {
     if (busy) return;
@@ -41,16 +40,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
   const cancelBtnRef = useRef<HTMLButtonElement>(null);
 
-  // 접근성: ESC로 닫기, 모달 안에서 Tab 순환(focus trap), 첫 포커스를 취소 버튼으로,
-  // 닫힐 때 이전 포커스 복원.
-  //
-  // 같은 일을 하던 손코드를 공용 훅으로 바꿨다. 동작은 그대로다 — 이 패널 안에서
-  // 포커스를 받는 것은 단추 둘뿐이라(제목·본문은 글자고 message 는 문자열 prop),
-  // '단추 둘만 순환' 과 '안쪽 전부 순환' 이 지금은 같은 뜻이다. 바뀌는 것은 사본이
-  // 하나 줄고, 테스트가 붙어 있는 쪽으로 합쳐진다는 점이다.
-  //
-  // 첫 포커스는 취소로 못 박는다. 훅 기본값(안쪽 첫 요소)도 지금은 취소지만,
-  // 위험한 확인에서 그것이 단추 순서에 딸려 바뀌게 두면 안 된다.
+  // ESC 닫기·포커스 트랩·포커스 복원. 첫 포커스는 단추 순서와 무관하게 취소로 못 박는다.
   useFocusTrap(panelRef, onCancel, open, cancelBtnRef);
 
   const confirmCls =

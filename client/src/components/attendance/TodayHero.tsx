@@ -1,8 +1,4 @@
-// client/src/components/attendance/TodayHero.tsx
-// 오늘 카드 — 지금 상태와 큰 숫자 하나.
-//
-// 경과 시간은 이 안에서만 센다. 부모에서 세면 시간이 바뀔 때마다 아래 표까지
-// 함께 다시 그려진다.
+// 오늘 카드. 경과 시간은 이 안에서만 센다(부모에서 세면 아래 표까지 다시 그려진다).
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { LogIn, LogOut, RotateCcw } from 'lucide-react';
@@ -11,7 +7,7 @@ import type { AttackKind } from '../../api/attendance';
 import { ChaosButton } from './ChaosButton';
 import { QuizGate } from './QuizGate';
 
-/** 퇴근 취소 마감이 없을 때 세는 시각 — 늘 지난 시각이라 남은 시간이 0 이다 */
+/** 퇴근 취소 마감이 없을 때 쓰는 시각. 늘 지난 시각이라 남은 시간이 0 이다. */
 const NEVER = new Date(0).toISOString();
 import { prefersReducedMotion } from '../../utils/animations';
 import { useCountdown } from '../../hooks/useCountdown';
@@ -19,7 +15,7 @@ import { formatClock, formatDay, formatMinutes, minutesBetween } from '../../uti
 
 interface Props {
   workDate: string;
-  /** 지금 살아 있는 기록 — 오늘 것이거나, 자정을 넘겨 이어지는 어제 것 */
+  /** 지금 살아 있는 기록. 오늘 것이거나 자정을 넘겨 이어지는 어제 것. */
   record: AttendanceRecord | null;
   standardWorkMinutes: number;
   /** 오늘 몫을 아직 안 찍었는가. 어제 것이 안 닫혔어도 오늘 출근은 따로 찍을 수 있다. */
@@ -27,47 +23,26 @@ interface Props {
   /** 자정을 넘겨 남은 어제 기록이 있으면 오늘 출근 전이라도 퇴근을 누를 수 있다 */
   canCheckOut: boolean;
   checkingOut: boolean;
-  /**
-   * 지금 걸린 퇴근 공격의 종류 (없으면 null).
-   *  · chaos — 버튼이 도망다니고 깜빡인다. 막지는 않는다.
-   *  · hide  — 버튼이 잠깐 사라진다. 그동안은 정말로 누를 수 없다.
-   */
+  /** 지금 걸린 퇴근 공격의 종류. chaos 는 버튼이 도망다니고, hide 는 잠깐 누를 수 없다. */
   attackKind?: AttackKind | null;
-  /** 걸린 공격이 풀리는 시각 — 숨기기의 남은 초를 센다 */
+  /** 걸린 공격이 풀리는 시각 */
   attackExpiresAt?: string | null;
-  /** 쌓인 공격 수(1~10). 클수록 버튼이 사나워지고 가짜가 늘어난다. */
+  /** 쌓인 공격 수(1~10). 클수록 가짜가 늘어난다. */
   attackLevel?: number;
   onCheckIn: () => void;
   onCheckOut: () => void;
-  /** 방금 누른 퇴근을 이 시각까지 되돌릴 수 있다 (없으면 null) */
+  /** 이 시각까지 퇴근을 되돌릴 수 있다. 없으면 null. */
   undoCheckOutUntil?: string | null;
-  /** 서버 시각 − 내 시계. 남은 시간은 서버 기준으로 센다 — 공격 쪽은 이미 그렇게 한다. */
+  /** 서버 시각 − 내 시계. 남은 시간은 서버 기준으로 센다. */
   clockOffset?: number;
   undoingCheckOut?: boolean;
   onUndoCheckOut?: () => void;
 }
 
-/**
- * 방금 누른 퇴근을 되돌리는 단추 — 잘못 눌렀을 때를 위한 것이다.
- *
- * 마감(서버가 정한 시각)까지 남은 분을 함께 보여 주고, 지나면 저절로 사라진다.
- * 눌러도 되는지는 서버가 다시 확인한다(시간이 지났거나 새로 열린 기록이 있으면 거절).
- */
-/**
- * 퇴근 취소 막대의 기준 길이(초).
- *
- * 서버는 마감 시각만 준다. 그 마감은 '퇴근 시각 + 11분' 이다 — 퇴근 시각이 분 단위로 잘리기
- * 때문에(초를 버린다) 잘린 만큼을 되돌려 주려고 1분을 더 얹은 값이다(CHECKOUT_UNDO_MINUTES).
- * 600 으로 재던 때는 처음 1분 동안 막대가 가득 찬 채로 멈춰 있었다.
- */
+/** 퇴근 취소 막대의 기준 길이(초). 서버 마감은 '퇴근 시각 + 11분' 이라 600 이 아니다. */
 const UNDO_WINDOW_SECONDS = 660;
 
-/**
- * 방금 누른 퇴근을 되돌리는 단추 — 퇴근 단추 자리에 대신 선다.
- *
- * 예전에는 흐린(눌리지 않는) 퇴근 단추 옆에 작은 회색 단추로 붙어 있어 눈에 잘 띄지 않았다.
- * 잘못 누른 사람이 곧바로 찾도록 색을 달리하고, 남은 시간을 분:초와 줄어드는 막대로 보인다.
- */
+/** 퇴근 취소 단추. 퇴근 단추 자리에 대신 선다. */
 function UndoCheckOut({ left, busy, onUndo }: { left: number; busy: boolean; onUndo: () => void }) {
   const m = Math.floor(left / 60);
   const ss = String(left % 60).padStart(2, '0');
@@ -97,12 +72,7 @@ function secondsUntil(at: string | null, offsetMs = 0): number | null {
   return Math.max(0, Math.ceil((new Date(at).getTime() - (Date.now() + offsetMs)) / 1000));
 }
 
-/**
- * 숨은 퇴근 버튼의 자리 — 연기(💨)가 흩어지고 🙈 와 남은 초가 앉는다.
- *
- * 누르면 흔들리며 "아직 숨어 있어요". 그래도 눌리지는 않는다 — 숨기기는 그 짧은 동안
- * 정말로 누를 수 없는 공격이다. 화면 낭독기에는 감춘다(경고 띠가 같은 말을 한다).
- */
+/** 숨은 퇴근 버튼의 자리. 실제로 누를 수 없고 화면 낭독기에는 감춘다. */
 function HiddenSlot({
   expiresAt,
   clockOffset = 0,
@@ -126,7 +96,6 @@ function HiddenSlot({
   }, [teased]);
 
   return (
-    // 자리는 그대로 남긴다(같은 크기). 버튼이 빠지면 줄이 줄어들어 옆의 출근 버튼까지 움직인다.
     // disabled 버튼이 아니라 span 이다. Tab 으로도 잡히지 않아야 감춘 것이 된다.
     <span
       aria-hidden
@@ -152,8 +121,7 @@ function HiddenSlot({
         {left !== null && left > 0 && <span>{left}</span>}
       </span>
       {teased > 0 && (
-        // 위치 잡기(가운데 정렬 translate)와 튀어나오기(scale)를 한 요소에 두면
-        // 애니메이션의 transform 이 translate 를 덮어 말풍선이 옆으로 밀린다 — 둘로 나눈다.
+        // translate 와 scale 을 한 요소에 두면 애니메이션 transform 이 translate 를 덮는다.
         <span className="pointer-events-none absolute -top-9 left-1/2 z-20 -translate-x-1/2">
           <span className="animate-popIn block whitespace-nowrap rounded-full bg-slate-900 px-2.5 py-1 text-xs font-medium text-white shadow-lg dark:bg-white dark:text-slate-900">
             아직 숨어 있어요
@@ -164,43 +132,24 @@ function HiddenSlot({
   );
 }
 
-/**
- * 숨기기 동안 카드 여기저기에서 생겼다 사라지는 가짜 퇴근 버튼.
- *
- * 누르면 "속았지롱 🙈" 하고 터져 사라진다. 기록은 아무것도 남지 않는다 — onClick 은
- * 화면 안의 장난일 뿐 서버를 부르지 않는다.
- *
- * 화면 낭독기·키보드 사용자는 속이지 않는다: aria-hidden 이고 Tab 으로 잡히지 않는
- * span 이다. 그 사람들에게는 경고 띠가 '버튼이 보이지 않습니다' 라고 말한다.
- */
 type Rect = { l: number; t: number; r: number; b: number };
 type Decoy = { key: number; left: string; top: string; leaving: boolean };
 
-/** 가짜 버튼 하나의 대략적인 크기(px) — 겹침을 피할 때만 쓴다 */
+/** 가짜 버튼 하나의 대략적인 크기(px). 겹침을 피할 때만 쓴다. */
 const DECOY_W = 84;
 const DECOY_H = 38;
 const MARGIN = 8;
 
-/** 가짜의 수 — 하나일 때 여덟, 쌓이면 열까지 */
 function decoyCount(level: number): number {
   return Math.min(10, 8 + Math.max(0, level - 1));
 }
 
-/**
- * 하나가 사라지고 다른 자리에 새로 뜨는 간격 — 쌓일수록 빨라진다(0.5초 → 최소 0.22초).
- * (0.9초였을 때는 진짜가 어디 있을지 차분히 훑어볼 여유가 있었다.)
- */
+/** 가짜가 자리를 바꾸는 간격(ms) */
 function blinkMs(level: number): number {
   return Math.max(220, 500 - 30 * (level - 1));
 }
 
-/**
- * 카드 안에서 가려서는 안 되는 것들 — 진짜 버튼·링크, 진행 막대, 숨은 자리(🙈 와 남은 초).
- *
- * 가짜가 진짜 버튼 위에 얹히면 그 버튼을 누를 수 없다. 퇴근이 숨은 동안에도 출근
- * (어제 기록이 안 닫힌 채 오늘 출근 전인 사람)은 살아 있어야 한다 — 장난이 다른 기능을
- * 막으면 선을 넘는다.
- */
+/** 가짜가 가리면 안 되는 영역. 진짜 버튼 위에 얹히면 그 버튼을 누를 수 없다. */
 function blockedIn(card: HTMLElement, box: DOMRect): Rect[] {
   return [
     ...card.querySelectorAll<HTMLElement>(
@@ -226,7 +175,7 @@ function hits(x: number, y: number, rects: Rect[]): boolean {
   );
 }
 
-/** 이미 떠 있는 가짜(px 자리)들 — 서로 겹치지 않게 */
+/** 이미 떠 있는 가짜들의 px 자리 */
 function takenBy(decoys: Decoy[]): Rect[] {
   return decoys
     .filter(d => !d.leaving && d.left.endsWith('px'))
@@ -237,12 +186,7 @@ function takenBy(decoys: Decoy[]): Rect[] {
     });
 }
 
-/**
- * 새 가짜 하나의 자리. 카드를 재서 가리면 안 되는 것과 다른 가짜를 피한다.
- *
- * 'none' 이면 빈자리가 없다(좁은 화면에 많이 떠 있을 때) — 이번에는 띄우지 않는다.
- * null 이면 잴 수 없다(크기 0 — 테스트 환경 등) — 비율로 흩어 둔다.
- */
+/** 새 가짜 하나의 자리. 빈자리가 없으면 'none', 카드를 잴 수 없으면 null 을 준다. */
 function pickSpot(
   card: HTMLElement | null,
   current: Decoy[]
@@ -266,8 +210,7 @@ function roughSpot(): { left: string; top: string } {
 function Decoys({ count = 8, level = 1 }: { count?: number; level?: number }) {
   const anchorRef = useRef<HTMLSpanElement>(null);
   const [decoys, setDecoys] = useState<Decoy[]>([]);
-  // 주기마다 무엇을 없애고 띄울지는 상태 갱신 함수 밖에서 정한다. 갱신 함수 안에서 타이머를
-  // 걸거나 다른 상태를 바꾸면, 개발 모드(StrictMode)가 그 함수를 두 번 불러 둘씩 사라진다.
+  // 무엇을 없애고 띄울지는 상태 갱신 함수 밖에서 정한다. 안에서 정하면 StrictMode 가 두 번 부른다.
   const current = useRef<Decoy[]>([]);
   useEffect(() => {
     current.current = decoys;
@@ -287,8 +230,7 @@ function Decoys({ count = 8, level = 1 }: { count?: number; level?: number }) {
     window.setTimeout(() => setDecoys(prev => prev.filter(d => d.key !== key)), 450);
   };
 
-  // 처음 한 번 채운다. 자리를 재려면 그려진 뒤여야 하므로 첫 그림은 비워 두고,
-  // 그리기 직전(layout effect)에 정한다 — 화면에는 자리 잡은 뒤의 모습만 나온다.
+  // 자리를 재려면 그려진 뒤여야 하므로 첫 그림은 비워 두고 layout effect 에서 채운다.
   useLayoutEffect(() => {
     const list: Decoy[] = [];
     for (let i = 0; i < count; i++) {
@@ -300,13 +242,11 @@ function Decoys({ count = 8, level = 1 }: { count?: number; level?: number }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 가만히 있으면 금방 어느 것이 가짜인지 안다. 하나씩 사라지고 다른 자리에 새로 뜬다.
-  // 움직임을 줄여 달라고 한 사람에게는 자리를 지킨다.
+  // 움직임 줄이기를 켠 사용자에게는 자리를 바꾸지 않는다.
   useEffect(() => {
     if (prefersReducedMotion()) return;
     const id = window.setInterval(() => {
       const alive = current.current.filter(d => !d.leaving);
-      // 모자라면 먼저 새로 띄워 본다
       if (alive.length < count) {
         const born = spawn(alive);
         if (born) {
@@ -314,9 +254,7 @@ function Decoys({ count = 8, level = 1 }: { count?: number; level?: number }) {
           return;
         }
       }
-      // 다 찼거나 빈자리가 없으면 하나를 흩어 그 자리를 비우고 새로 띄운다.
-      // (예전에는 '다 찼을 때만' 흩었다. 좁은 카드에서 자리가 모자라 목표보다 적게 차면
-      //  흩지도 띄우지도 못하고 그대로 멈춰 있었다 — 375px 에서 실제로 멈춰 있었다.)
+      // 빈자리가 없을 때도 하나를 흩어 자리를 비운다. 좁은 화면에서 멈추지 않게.
       if (alive.length === 0) return;
       const out = alive[Math.floor(Math.random() * alive.length)];
       leave(out.key);
@@ -324,9 +262,7 @@ function Decoys({ count = 8, level = 1 }: { count?: number; level?: number }) {
       if (born) setDecoys(prev => [...prev, born]);
     }, blinkMs(level));
     return () => window.clearInterval(id);
-    // 흩어지는 중인 가짜를 지우는 타이머는 끊지 않는다. 끊으면 공격이 하나 더 쌓여
-    // level 이 바뀌는 순간(이 자리가 다시 도는 순간) 흩어지던 가짜가 영영 남았다.
-    // 화면이 사라진 뒤에 도는 것은 아무 일도 하지 않는다(React 가 무시한다).
+    // 흩어지는 중인 가짜를 지우는 타이머는 끊지 않는다. 끊으면 level 이 바뀔 때 영영 남는다.
   }, [count, level]);
 
   const [fooled, setFooled] = useState<{ left: string; top: string; key: number } | null>(null);
@@ -403,35 +339,27 @@ export function TodayHero({
   onUndoCheckOut,
 }: Props) {
   const working = Boolean(record && !record.checkOutAt);
-  // 방해는 퇴근을 누를 수 있을 때만 — 퇴근한 뒤에는 방해할 버튼이 없다. 공격은 1분쯤 가서, 공격 중에
-  // 퇴근하면 남은 동안 도망다니는 버튼(과 둘레 감지 영역)·가짜 버튼들이 바로 옆 '퇴근 취소'
-  // 를 덮어 눌리지 않았다. (취소해 다시 근무 중이 되면 남은 공격이 다시 걸린다.)
+  // 방해는 퇴근을 누를 수 있을 때만. 아니면 가짜 버튼이 '퇴근 취소' 를 덮는다.
   const attackKind = canCheckOut ? incomingKind : null;
 
-  // 문제 내기 — 퇴근을 누르면 문제가 열린다. 공격이 끝나면 저절로 닫힌다(열려 있어도 무시).
   const [quizOpen, setQuizOpen] = useState(false);
   const showQuiz = quizOpen && attackKind === 'quiz';
-  // 공격이 끝나면 접어 둔다 — 남겨 두면 다음 문제 내기 공격이 오자마자 스스로 열린다
+  // 공격이 끝나면 접어 둔다. 남겨 두면 다음 문제 내기 공격이 오자마자 스스로 열린다.
   useEffect(() => {
     if (attackKind !== 'quiz') setQuizOpen(false);
   }, [attackKind]);
 
-  // 퇴근 취소가 남아 있는 동안은 퇴근 단추 대신 취소 단추가 선다. 마감이 지나면 퇴근 단추로 돌아온다.
-  // 서버가 정한 마감 시각을 내 시계로 재면, 몇 분 빠른 PC 에서는 응답이 도착한 순간
-  // 이미 끝난 것으로 보여 퇴근 취소 버튼이 아예 나타나지 않았다. 반대로 느린 시계에서는
-  // 지난 뒤에도 남아 있다가 눌러야 "10분 안에만 취소할 수 있습니다" 를 듣게 된다.
+  // 마감까지 남은 시간은 clockOffset 을 적용해 서버 시각 기준으로 센다.
   const undoLeft = useCountdown(undoCheckOutUntil ?? NEVER, undefined, clockOffset);
   const canUndo = Boolean(undoCheckOutUntil && onUndoCheckOut) && undoLeft > 0;
 
-  // 숨기기가 풀려 버튼이 돌아오는 순간에만 톡 튀어나오게 한다. 처음 그릴 때나
-  // 방해가 풀릴 때는 움직이지 않는다 — 버튼이 괜히 들썩이면 그것도 방해다.
+  // 숨기기가 풀려 버튼이 돌아오는 순간에만 튀어나오게 한다.
   const [popKey, setPopKey] = useState(0);
   const prevKind = useRef(attackKind);
   useEffect(() => {
     if (prevKind.current === 'hide' && attackKind !== 'hide') setPopKey(k => k + 1);
     prevKind.current = attackKind;
   }, [attackKind]);
-  // 퇴근까지 찍고 나면 더 셀 것이 없다
   const now = useTick(!record || working);
 
   const minutes = record
@@ -458,12 +386,10 @@ export function TodayHero({
   }[state];
 
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  // 어제 찍고 이어 일하는 중이면 시각만으로는 언제부터인지 알 수 없다
   const carried = record && record.workDate !== workDate ? record.workDate : null;
 
   return (
-    // data-chaos-bounds: 방해받는 퇴근 버튼이 이 카드 안 어디로든 달아난다(ChaosButton).
-    // relative: 숨기기 동안 카드 여기저기에 가짜 퇴근 버튼을 띄운다(Decoys).
+    // data-chaos-bounds 와 relative 는 ChaosButton·Decoys 가 이 카드를 기준 삼는 데 쓴다.
     <section data-chaos-bounds className="card relative overflow-hidden">
       {attackKind === 'hide' && (
         <Decoys
@@ -519,19 +445,8 @@ export function TodayHero({
           {canUndo ? (
             <UndoCheckOut left={undoLeft} busy={undoingCheckOut} onUndo={onUndoCheckOut!} />
           ) : attackKind === 'hide' ? (
-            // 숨기기 공격 — 잠깐 동안 버튼 자체가 없다.
-            //
-            // 자리는 그대로 남긴다(같은 크기의 투명한 자리). 버튼이 빠지면 줄이
-            // 줄어들어 옆의 출근 버튼까지 움직인다.
-            //
-            // disabled 버튼이 아니라 span 이다. 안 보이는 버튼을 눌리게 두면
-            // "보이지도 않는데 눌렸다" 가 되고, Tab 으로도 잡히지 않아야 감춘 것이 된다.
-            //
-            // 사라진 자리에는 점선 흔적을 남기고 연기(💨)가 흩어진 뒤 🙈 가 앉는다.
-            // 그냥 비워 두면 버튼이 고장 난 건지 숨겨진 건지 알 수 없다.
             <HiddenSlot expiresAt={attackExpiresAt} clockOffset={clockOffset} />
           ) : (
-            /* 방해를 받는 중에도 버튼은 살아 있다 — 성가실 뿐 끝내 눌린다 */
             <span key={popKey} className={`inline-flex ${popKey > 0 ? 'animate-popIn' : ''}`}>
               <ChaosButton active={attackKind === 'chaos'} level={attackLevel}>
                 <button
@@ -553,7 +468,6 @@ export function TodayHero({
 
       {showQuiz && (
         <QuizGate
-          // 공격이 바뀌면 맞힌 횟수를 처음부터 — 앞 공격에서 쌓아 둔 것이 넘어가지 않게
           key={attackExpiresAt ?? 'quiz'}
           level={attackLevel}
           onSolved={() => {

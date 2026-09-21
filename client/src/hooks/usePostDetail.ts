@@ -1,4 +1,3 @@
-// src/hooks/usePostDetail.ts - 비밀글 + 좋아요 지원
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../store/auth';
@@ -36,14 +35,14 @@ export type Post = {
   secretSalt?: string | null;
   likeCount?: number;
   isPinned?: boolean;
-  /** 상단 고정 만료 시각 (무기한이면 null) */
+  /** 상단 고정 만료 시각. 무기한이면 null. */
   pinnedUntil?: string | null;
-  /** 업무 상태 — 업무로 추적하지 않는 글은 'none' */
+  /** 업무 상태. 추적하지 않는 글은 'none'. */
   workStatus?: WorkStatus;
   assignee?: Assignee | null;
-  /** 이 글이 속한 게시판. 이름과 용도를 글과 함께 받는다 */
+  /** 이 글이 속한 게시판 */
   board?: { id: string; name: string; taskEnabled: boolean } | null;
-  /** 이 글의 태그. 목록과 마찬가지로 글과 함께 온다 */
+  /** 이 글의 태그 */
   tags?: Tag[];
   user?: {
     id: string;
@@ -73,7 +72,6 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isBoardManager, setIsBoardManager] = useState(false);
 
-  // 비밀글 상태
   const [isLocked, setIsLocked] = useState(false);
   const [lockedMeta, setLockedMeta] = useState<{
     id: string;
@@ -86,11 +84,10 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
 
-  // 좋아요 상태
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [likeLoading, setLikeLoading] = useState(false);
-  // 스크랩 — 버튼이 자기 것으로 들고 가지만, 첫 값은 상세 응답에서 온다
+  // 첫 값은 상세 응답에서 오고, 이후는 버튼이 들고 간다.
   const [scrapped, setScrapped] = useState(false);
 
   const navigate = useNavigate();
@@ -100,8 +97,7 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
   const canEditOrDelete = useMemo(() => {
     if (!post || !user) return false;
     const currentUserId = getUserId();
-    // UserId(서버에서 내려주는 작성자 PK)로 비교 (가장 정확)
-    // fallback: author 이름으로 비교 (하위 호환)
+    // UserId 로 비교하고, 없는 옛 응답에서만 author 이름으로 비교한다.
     return (
       (post.UserId !== null && post.UserId !== undefined && post.UserId === currentUserId) ||
       post.author === getUserName() ||
@@ -151,11 +147,7 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
     [boardType]
   );
 
-  /**
-   * 상세 응답에 함께 오는 "보는 사람의 상태" 를 반영한다.
-   * 좋아요·스크랩·관리 권한을 따로 묻지 않는 이유는 서버 쪽에 적어 두었다.
-   * 옛 응답(viewer 없음)에서도 화면이 깨지지 않게 없으면 건드리지 않는다.
-   */
+  /** 상세 응답의 viewer 를 반영한다. viewer 가 없는 옛 응답에서는 건드리지 않는다. */
   const applyViewer = useCallback((viewer: ViewerState | undefined) => {
     if (!viewer) return;
     setLiked(viewer.liked);
@@ -218,9 +210,7 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
     }
   }, [boardType, id, setPostFromData, applyViewer]);
 
-  // 비밀글 비밀번호 검증
-  // - E2EE: 암호문만 가져와 클라이언트에서 복호화 (비밀번호 서버 미전송)
-  // - 일반 비밀글: 서버에서 비밀번호 검증 후 평문 반환
+  // E2EE 글은 비밀번호를 서버로 보내지 않고 암호문을 받아 클라이언트에서 푼다.
   const handleVerifyPassword = useCallback(
     async (password: string) => {
       if (!boardType || !id) return;
@@ -228,7 +218,6 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
       setVerifyError(null);
       try {
         if (lockedMeta?.isEncrypted) {
-          // E2EE 경로: 서버에서 비밀번호 bcrypt 검증 + 암호문 수신 → 클라이언트에서 복호화
           const data = await verifySecretPost(boardType, id, password);
 
           if (!data.isEncrypted || !data.secretSalt || !data.rawContent) {
@@ -247,7 +236,6 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
           setLockedMeta(null);
           setPostFromData(data, plaintext);
         } else {
-          // 일반 비밀글 경로: 서버에서 비밀번호 검증
           const data = await verifySecretPost(boardType, id, password);
           if (!mountedRef.current) return;
           setIsLocked(false);
@@ -270,10 +258,7 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
     [boardType, id, lockedMeta, setPostFromData, applyViewer]
   );
 
-  // 좋아요 토글
-  //
-  // 누르는 즉시 반영한다(스크랩 버튼과 같은 방식). 왕복을 기다리면 네트워크가
-  // 느린 만큼 하트가 늦게 움직여, 안 눌린 줄 알고 한 번 더 누르게 된다.
+  // 왕복을 기다리지 않고 누르는 즉시 반영한다.
   const handleToggleLike = useCallback(async () => {
     if (!boardType || !id || likeLoading) return;
 
@@ -284,9 +269,9 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
 
     try {
       const result = await toggleLike(boardType, id);
-      // 언마운트/다른 게시글 이동 후 응답이 도착해 잘못된 상태를 덮어쓰지 않도록 가드
+      // 다른 글로 이동한 뒤 도착한 응답이 상태를 덮어쓰지 않게 막는다.
       if (!mountedRef.current) return;
-      // 서버 값이 최종이다 — 다른 탭에서 이미 눌렀을 수 있다
+      // 다른 탭에서 이미 눌렀을 수 있으므로 서버 값을 최종으로 쓴다.
       setLiked(result.liked);
       setLikeCount(result.likeCount);
     } catch (err) {
@@ -300,7 +285,7 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
   }, [boardType, id, likeLoading, liked, likeCount]);
 
   const handleBack = useCallback(() => {
-    // 목록에서 넘어온 경우 원래 목록 위치(페이지·검색·태그)로 복귀, 아니면 게시판 첫 페이지
+    // 목록에서 넘어왔으면 그 위치로, 아니면 게시판 첫 페이지로 돌아간다.
     const from = (location.state as { from?: string } | null)?.from;
     navigate(from || `/dashboard/posts/${boardType}`);
   }, [navigate, boardType, location.state]);
@@ -342,9 +327,7 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
     fetchPost();
   }, [fetchPost]);
 
-  // 게시판 담당자 여부는 상세 응답의 viewer.canManage 로 온다.
-  // /board-managers/check 를 따로 묻지 않는다. 서버가 글을 내주기 전 권한 미들웨어에서
-  // 같은 판정을 끝내고 응답에 실어 준다.
+  // 담당자 여부는 상세 응답의 viewer.canManage 로 온다. 따로 묻지 않는다.
 
   return {
     post,

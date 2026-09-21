@@ -1,7 +1,4 @@
-// client/src/components/AvatarMarkSvg.tsx
-// 사진이 없는 사람의 아바타 바탕. 아이디로 정해진 색 위에 옅은 도형 하나를 얹는다.
-// 색만 쓰면 비슷한 계열끼리 구분이 안 되므로, 실루엣으로도 구별되게 한다.
-// 무늬를 진하게 그리면 이니셜을 잡아먹으므로 흰색 9~14% 로만 깐다.
+// 사진 없는 사용자의 아바타 바탕. 무늬는 이니셜을 가리지 않게 흰색 9~14% 로만 깐다.
 import React from 'react';
 import type { AvatarMark } from './avatarMark';
 

@@ -1,4 +1,4 @@
-// server/src/models/IpRule.ts — IP 화이트리스트/블랙리스트 규칙 모델
+// IP 화이트리스트·블랙리스트 규칙 모델
 
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../config/sequelize';
@@ -78,12 +78,7 @@ IpRule.init(
     indexes: [
       { fields: ['type', 'isActive'] },
       { fields: ['ip'] },
-      // 같은 종류·같은 IP 는 한 건만. createIpRule 이 findOrCreate 로 먼저 조회해
-      // 409 를 내지만, 그 가드는 요청이 하나씩 들어올 때만 성립한다 — 동시에
-      // 들어오면 둘 다 '없음' 을 보고 각자 INSERT 한다. 쌍둥이가 남으면 나중에
-      // 그 IP 를 화이트리스트에서 지워도 접근이 계속 허용된다.
-      // 다른 관계 테이블(PostLike·PostScrap·BoardManager 등)은 모두 이 제약을
-      // 갖고 있는데 여기만 빠져 있었다.
+      // 같은 종류·같은 IP 는 한 건만. 컨트롤러의 findOrCreate 는 동시 요청을 막지 못한다.
       { unique: true, fields: ['type', 'ip'], name: 'idx_ip_rules_type_ip' },
     ],
   }

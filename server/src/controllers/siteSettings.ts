@@ -1,4 +1,3 @@
-// src/controllers/siteSettings.ts
 import { Request, Response } from 'express';
 import { SiteSettings } from '../models';
 import { logInfo, logError } from '../utils/logger';
@@ -23,7 +22,7 @@ const DEFAULTS = {
   siteTitle: 'TinyCommunity',
   faviconUrl: null as string | null,
   logoUrl: null as string | null,
-  // 브랜드 색 — null 이면 기본 디자인 시스템 색
+  // null 이면 기본 디자인 시스템 색
   themePrimaryColor: null as string | null,
   themeSecondaryColor: null as string | null,
   description: null as string | null,
@@ -32,28 +31,19 @@ const DEFAULTS = {
   maintenanceMode: false,
   maintenanceMessage: null as string | null,
   loginMessage: null as string | null,
-  // 숫자/불리언 설정은 settingsCache.ts의 SETTINGS_DEFAULTS를 단일 소스로 사용
+  // 숫자/불리언 설정의 단일 소스는 settingsCache.ts 의 SETTINGS_DEFAULTS 이다.
   ...SETTINGS_DEFAULTS,
-  // 허용 확장자는 Sequelize TEXT 컬럼에 저장되므로 JSON 문자열로 직렬화
+  // TEXT 컬럼에 저장되므로 JSON 문자열로 직렬화한다.
   allowedImageExtensions: JSON.stringify(SETTINGS_DEFAULTS.allowedImageExtensions),
   allowedDocumentExtensions: JSON.stringify(SETTINGS_DEFAULTS.allowedDocumentExtensions),
   allowedArchiveExtensions: JSON.stringify(SETTINGS_DEFAULTS.allowedArchiveExtensions),
   allowedMediaExtensions: JSON.stringify(SETTINGS_DEFAULTS.allowedMediaExtensions),
-  // 업무 상태 이름도 같은 이유로 JSON 문자열이다 (빈 객체 = 코드 기본값 사용)
+  // 빈 객체는 코드 기본값을 쓴다는 뜻이다.
   workStatusLabels: JSON.stringify(SETTINGS_DEFAULTS.workStatusLabels),
-  // 로또 상품표도 같은 이유로 JSON 문자열
   lotteryPrizes: JSON.stringify(SETTINGS_DEFAULTS.lotteryPrizes),
 };
 
-// ─── 허용 확장자 유효성 검사 ────────────────────────────────────────────────────
-
-/**
- * 업무 상태 이름 검사.
- *
- * 키는 코드가 아는 것만 받는다 — 모르는 키를 저장하면 어디에도 안 쓰이는 값이 쌓이고,
- * 나중에 상태를 늘렸을 때 옛 오타가 되살아난다.
- * 빈 문자열은 "기본값을 쓰겠다" 는 뜻이므로 저장하지 않는다.
- */
+/** 업무 상태 이름 검사. 코드가 아는 키만 받고, 빈 문자열은 저장하지 않는다. */
 function validateLabels(value: unknown): Record<string, string> {
   if (value === null || value === undefined) return {};
   if (typeof value !== 'object' || Array.isArray(value)) {
@@ -72,7 +62,7 @@ function validateLabels(value: unknown): Record<string, string> {
   return out;
 }
 
-/** 저장된 JSON 을 화면이 쓰는 객체로. 깨져 있으면 빈 객체 — 이름 하나로 설정 화면이 막히면 안 된다 */
+/** 저장된 JSON 을 화면이 쓰는 객체로. 깨져 있으면 빈 객체를 준다. */
 function parseLabelField(raw: unknown): Record<string, string> {
   if (typeof raw !== 'string' || !raw.trim()) return {};
   try {
@@ -93,7 +83,7 @@ function validateExtensionList(value: unknown, field: string): string[] {
     }
   }
   const normalized = (value as string[]).map(e => e.toLowerCase().trim());
-  // 보안상 위험한 절대차단 확장자는 화이트리스트에 추가 불가 (인라인 서빙 이미지의 저장형 XSS 방지)
+  // 절대차단 확장자는 화이트리스트에 넣을 수 없다(저장형 XSS 방지).
   for (const ext of normalized) {
     if (BLOCKED_EXTENSIONS_FLOOR.includes(ext)) {
       throw new Error(`${field}에 보안상 위험한 확장자(${ext})는 추가할 수 없습니다.`);
@@ -101,8 +91,6 @@ function validateExtensionList(value: unknown, field: string): string[] {
   }
   return normalized;
 }
-
-// ─── DB → 응답 페이로드 변환 ─────────────────────────────────────────────────────
 
 function parseExtensionField(raw: string | null | undefined, fallback: string[]): string[] {
   if (!raw) return fallback;
@@ -114,15 +102,7 @@ function parseExtensionField(raw: string | null | undefined, fallback: string[])
   }
 }
 
-/**
- * 익명 방문자도 받는 공개 설정.
- *
- * 브랜딩·업로드 한도·글자수 제한처럼 화면이 실제로 쓰는 값만 담는다.
- * 로그인 잠금 횟수, bcrypt 라운드, 토큰 수명, rate limit 상한, 로그 보관 기간은
- * 공격자에게 "몇 번까지 시도할 수 있고 얼마나 기다리면 되는지"를 그대로 알려주므로
- * adminOnlyPayload() 로 분리해 관리자만 받는다.
- */
-/** 저장된 상품표를 화면용 배열로. 깨져 있으면 기본값 — 화면이 빈 표를 그리는 것보다 낫다 */
+/** 저장된 상품표를 화면용 배열로. 깨져 있으면 기본값을 준다. */
 function parsePrizeField(raw: string | null | undefined): LotteryPrize[] {
   if (!raw) return SETTINGS_DEFAULTS.lotteryPrizes;
   try {
@@ -135,6 +115,7 @@ function parsePrizeField(raw: string | null | undefined): LotteryPrize[] {
   }
 }
 
+/** 익명 방문자도 받는 공개 설정. 보안 관련 값은 adminOnlyPayload 로 분리한다. */
 function toPayload(s: SiteSettings) {
   return {
     siteName: s.siteName,
@@ -193,14 +174,12 @@ function toPayload(s: SiteSettings) {
     commentContentMaxLength: s.commentContentMaxLength ?? DEFAULTS.commentContentMaxLength,
     eventBodyMaxLength: s.eventBodyMaxLength ?? DEFAULTS.eventBodyMaxLength,
     eventLocationMaxLength: s.eventLocationMaxLength ?? DEFAULTS.eventLocationMaxLength,
-    // 업무 상태 이름 — 비어 있으면 화면이 코드 기본값을 쓴다
     workStatusLabels: parseLabelField(s.workStatusLabels),
-    // 로또 규칙 — 확률표는 사용자에게도 보여야 한다(가려 두면 신뢰할 수 없는 뽑기가 된다)
+    // 확률표는 사용자에게도 보여야 한다.
     lotteryPrizes: parsePrizeField(s.lotteryPrizes),
     lotteryDailyLimit: s.lotteryDailyLimit ?? DEFAULTS.lotteryDailyLimit,
     lotteryDrawCost: s.lotteryDrawCost ?? DEFAULTS.lotteryDrawCost,
     attendanceBonus: s.attendanceBonus ?? DEFAULTS.attendanceBonus,
-    // 대결·공격 규칙도 숨길 이유가 없다 — 화면이 "얼마가 드는지" 를 보여 줘야 한다
     duelMinStake: s.duelMinStake ?? DEFAULTS.duelMinStake,
     duelMaxStake: s.duelMaxStake ?? DEFAULTS.duelMaxStake,
     duelExpireMinutes: s.duelExpireMinutes ?? DEFAULTS.duelExpireMinutes,
@@ -214,7 +193,7 @@ function toPayload(s: SiteSettings) {
   };
 }
 
-/** 관리자 화면(설정 폼)만 받는 보안 설정 — 공개 응답에는 포함하지 않는다. */
+/** 관리자만 받는 보안 설정. 공개 응답에는 넣지 않는다. */
 function adminOnlyPayload(s: SiteSettings) {
   return {
     maxLoginAttempts: s.maxLoginAttempts ?? DEFAULTS.maxLoginAttempts,
@@ -229,12 +208,7 @@ function adminOnlyPayload(s: SiteSettings) {
   };
 }
 
-/**
- * 숫자 설정값을 범위 안으로 받아들인다. 값이 없으면 기존 값을 유지한다.
- *
- * 로또 설정은 잘못된 값이 들어가도 화면에는 숫자가 정상으로 보인다. 하루 한도가 0 이면
- * 뽑기가 막히고 음수면 계산이 뒤집히므로 저장 시점에 검사한다.
- */
+/** 숫자 설정값을 범위 안에서만 받는다. 범위 밖이거나 비어 있으면 기존 값을 유지한다. */
 function intOrKeep(value: unknown, current: number, min: number, max: number): number {
   if (value === undefined || value === null || value === '') return current;
   const n = Number(value);
@@ -245,7 +219,7 @@ function intOrKeep(value: unknown, current: number, min: number, max: number): n
 /** GET /api/site-settings — public */
 export const getSiteSettings = async (_req: Request, res: Response) => {
   try {
-    // findOrCreate로 원자적 처리 — 동시 요청 시 설정 행 중복 생성 방지
+    // findOrCreate 로 동시 요청 시 설정 행이 중복 생성되는 것을 막는다.
     const [settings] = await SiteSettings.findOrCreate({ where: {}, defaults: DEFAULTS });
     sendSuccess(res, toPayload(settings));
   } catch (error) {
@@ -338,7 +312,6 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       attackDailyLimit,
     } = req.body;
 
-    // ── 입력 유효성 검사 ──────────────────────────────────────────────────────
     if (bcryptRounds !== undefined) {
       const rounds = Number(bcryptRounds);
       if (!Number.isInteger(rounds) || rounds < 10 || rounds > 14) {
@@ -346,7 +319,6 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       }
     }
 
-    // 숫자 범위 검증 헬퍼
     function validateInt(value: unknown, field: string, min: number, max: number): string | null {
       const v = Number(value);
       if (!Number.isInteger(v) || v < min || v > max) {
@@ -356,44 +328,33 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
     }
 
     const numericChecks: Array<[unknown, string, number, number]> = [
-      // 계정 보안
       [maxLoginAttempts, 'maxLoginAttempts', 1, 20],
       [accountLockMinutes, 'accountLockMinutes', 1, 1440],
       [minPasswordLength, 'minPasswordLength', 6, 72],
-      // 파일 업로드
       [maxFileCount, 'maxFileCount', 1, 20],
       [maxFileSizeMb, 'maxFileSizeMb', 1, 1000],
       [maxImageSizeMb, 'maxImageSizeMb', 1, 500],
       [maxAvatarSizeMb, 'maxAvatarSizeMb', 1, 100],
       [maxArchiveSizeMb, 'maxArchiveSizeMb', 1, 1000],
       [maxImageCount, 'maxImageCount', 1, 20],
-      // 게시글 설정
       [defaultPageSize, 'defaultPageSize', 5, 100],
       // 제목 컬럼 중 가장 작은 것이 WikiPage.title STRING(200) 이다
       [postTitleMaxLength, 'postTitleMaxLength', 10, 200],
       [postContentMaxLength, 'postContentMaxLength', 1000, 2000000],
       [postSecretPasswordMinLength, 'postSecretPasswordMinLength', 4, 20],
       [globalSearchLimit, 'globalSearchLimit', 10, 200],
-      // 로그 보존
       [securityLogRetentionDays, 'securityLogRetentionDays', 7, 365],
       [errorLogRetentionDays, 'errorLogRetentionDays', 7, 365],
       [deletedPostRetentionDays, 'deletedPostRetentionDays', 1, 365],
-      // JWT 토큰 유효시간
       [jwtAccessTokenHours, 'jwtAccessTokenHours', 1, 168],
       [jwtRefreshTokenDays, 'jwtRefreshTokenDays', 1, 30],
-      // 댓글 설정
       [commentMaxDepth, 'commentMaxDepth', 1, 5],
       [commentMaxCount, 'commentMaxCount', 100, 5000],
-      // 아바타 처리
       [avatarSizePx, 'avatarSizePx', 50, 500],
       [avatarQuality, 'avatarQuality', 50, 100],
-      // 비밀번호 재설정
       [passwordResetTokenHours, 'passwordResetTokenHours', 1, 48],
-      // Rate limit
-      // 에디터
       [autoSaveIntervalSeconds, 'autoSaveIntervalSeconds', 10, 300],
       [draftExpiryMinutes, 'draftExpiryMinutes', 10, 1440],
-      // 신규 (관리자 조정 가능 항목 — 사용자 메모 한도/댓글·이벤트 길이)
       [memoMaxPerUser, 'memoMaxPerUser', 10, 2000],
       [wikiOrder, 'wikiOrder', 0, 9999],
       [commentContentMaxLength, 'commentContentMaxLength', 100, 10000],
@@ -408,7 +369,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       }
     }
 
-    // ── 문자열 길이 검증 (DB 컬럼 길이와 정합) ────────────────────────────────
+    // 최대 길이는 DB 컬럼 길이와 맞춘다.
     function validateString(
       value: unknown,
       field: string,
@@ -440,7 +401,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       }
     }
 
-    // ── URL 형식 검증 (javascript:/data: 등 차단) ─────────────────────────────
+    // javascript:, data: 같은 스킴을 막는다.
     function validateSafeUrl(value: unknown, field: string): string | null {
       if (value === null || value === '') return null;
       if (typeof value !== 'string') return `${field}는 문자열이어야 합니다.`;
@@ -457,9 +418,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       if (err) return sendError(res, 400, err);
     }
 
-    // ── 색상 형식 검증 ────────────────────────────────────────────────────────
-    // 이 값은 클라이언트에서 CSS 변수로 그대로 주입되므로, 형식이 느슨하면
-    // 스타일시트에 임의 문자열이 들어간다. #rgb/#rrggbb 만 허용한다.
+    // 이 값은 클라이언트에서 CSS 변수로 그대로 주입되므로 #rgb/#rrggbb 만 허용한다.
     function validateHexColor(value: unknown, field: string): string | null {
       if (value === null || value === '') return null;
       if (typeof value !== 'string') return `${field}는 문자열이어야 합니다.`;
@@ -504,9 +463,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       if (allowedMediaExtensions !== undefined) {
         parsedAllowedMedia = validateExtensionList(allowedMediaExtensions, '미디어 허용 확장자');
       }
-      // 업무 상태 이름도 저장 전에 여기서 검사한다.
-      // DB 저장 구문 안에서 검사하면 잘못된 값이 이 catch 를 지나쳐 바깥으로 튀어,
-      // 400 이어야 할 응답이 500 으로 나간다.
+      // 저장 구문 안에서 검사하면 이 catch 를 지나쳐 400 이 아니라 500 으로 나간다.
       if (workStatusLabels !== undefined) {
         parsedWorkStatusLabels = validateLabels(workStatusLabels);
       }
@@ -518,17 +475,10 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       return sendError(res, 400, msg);
     }
 
-    // ── DB 저장 ───────────────────────────────────────────────────────────────
-    // findOrCreate로 원자적 처리 — 동시 요청 시 설정 행 중복 생성 방지
-    // 신규 생성 시: settings.field = DEFAULTS.field → 아래 update의 `settings.field` 폴백이 곧 DEFAULTS
+    // findOrCreate 로 동시 요청 시 설정 행이 중복 생성되는 것을 막는다.
     const [settings] = await SiteSettings.findOrCreate({ where: {}, defaults: DEFAULTS });
 
-    // 대결 판돈의 아래위가 뒤집히면 어떤 금액도 걸 수 없는 상태가 된다(모든 신청이 400).
-    //
-    // 반드시 '저장될 값' 끼리 비교한다. 보내온 값끼리 비교하면 두 군데서 틀린다:
-    //  · 한쪽만 보내면 나머지를 코드 기본값으로 메워 비교하게 된다 — 저장된 값이 아니다
-    //  · 범위를 벗어난 값은 intOrKeep 이 조용히 버리고 옛 값을 남기므로,
-    //    검사한 쌍과 실제로 저장되는 쌍이 달라진다
+    // 보내온 값이 아니라 '저장될 값' 끼리 비교해야 실제 저장되는 쌍을 검사한다.
     const nextDuelMin = intOrKeep(duelMinStake, settings.duelMinStake, 1, 1000000);
     const nextDuelMax = intOrKeep(duelMaxStake, settings.duelMaxStake, 1, 1000000);
     if (nextDuelMin > nextDuelMax) {
@@ -539,7 +489,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       siteName: siteName !== undefined ? siteName : settings.siteName,
       siteTitle: siteTitle !== undefined ? siteTitle : settings.siteTitle,
       faviconUrl: faviconUrl !== undefined ? faviconUrl : settings.faviconUrl,
-      // 빈 문자열은 "기본색으로 되돌리기" 로 본다
+      // 빈 문자열은 기본색으로 되돌리라는 뜻이다.
       themePrimaryColor:
         themePrimaryColor !== undefined ? themePrimaryColor || null : settings.themePrimaryColor,
       themeSecondaryColor:
@@ -661,8 +611,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       duelMaxOpenPerUser: intOrKeep(duelMaxOpenPerUser, settings.duelMaxOpenPerUser, 1, 20),
       attackCost: intOrKeep(attackCost, settings.attackCost, 0, 100000),
       attackHideCost: intOrKeep(attackHideCost, settings.attackHideCost, 0, 100000),
-      // 숨기는 시간은 짧게만 허용한다. chaos 와 달리 그 시간 동안 정말로 누를 수
-      // 없으므로, 분 단위로 늘릴 수 있게 두면 남의 퇴근을 막는 기능이 된다.
+      // 숨기는 동안은 실제로 누를 수 없으므로 상한을 짧게 둔다.
       attackHideSeconds: intOrKeep(attackHideSeconds, settings.attackHideSeconds, 3, 60),
       attackDefendCost: intOrKeep(attackDefendCost, settings.attackDefendCost, 0, 100000),
       attackBlockSeconds: intOrKeep(attackBlockSeconds, settings.attackBlockSeconds, 5, 600),
@@ -673,15 +622,13 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
           : settings.workStatusLabels,
     });
 
-    // ── 캐시 갱신 ─────────────────────────────────────────────────────────────
     refreshMaintenanceCache();
     await refreshSettingsCache();
-    // 파일 크기·허용 확장자·이미지 개수가 변경될 수 있으므로 multer 인스턴스 재빌드
+    // 업로드 제한이 바뀔 수 있으므로 multer 인스턴스를 다시 만든다.
     refreshUploaders();
-    // 사이트 이름/타이틀/설명 변경 시 링크 미리보기 OG 메타 재주입을 위해 캐시 무효화
+    // OG 메타를 다시 주입하려면 index.html 캐시를 버려야 한다.
     invalidateIndexHtmlCache();
 
-    // ── 감사 로그 ─────────────────────────────────────────────────────────────
     const authReq = req as unknown as AuthRequest;
     auditLogService
       .createAuditLog({

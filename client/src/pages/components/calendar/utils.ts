@@ -1,9 +1,7 @@
-// client/src/pages/components/calendar/utils.ts
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
 /**
- * 날짜 유틸리티
  * 모든 날짜 연산은 UTC 기준으로 처리 (타임존 밀림 방지)
  */
 export const dateUtils = {
@@ -66,7 +64,6 @@ export const dateUtils = {
  * 예) "2024-01-15T00:00:00Z" ~ "2024-01-16T00:00:00Z" → "2024년 1월 15일 (월)"
  */
 export const formatDateRange = (startStr: string, endStr: string): string => {
-  // UTC 기준으로 날짜 파싱 (타임존 무관하게 일관된 결과)
   const startDateStr = startStr.split('T')[0];
   const endDateStr = endStr.split('T')[0];
 

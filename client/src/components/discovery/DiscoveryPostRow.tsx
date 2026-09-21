@@ -1,6 +1,4 @@
-// client/src/components/discovery/DiscoveryPostRow.tsx
-// 탐색·스크랩 목록의 글 한 줄. 게시판을 가로지르는 목록이라
-// 게시판 이름을 함께 보여주지 않으면 어디 글인지 알 수 없다.
+// 탐색·스크랩 목록의 글 한 줄. 게시판을 가로지르는 목록이라 게시판 이름을 함께 보여준다.
 
 import { Link } from 'react-router-dom';
 import { Eye, Heart, MessageCircle } from 'lucide-react';

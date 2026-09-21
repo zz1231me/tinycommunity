@@ -1,11 +1,4 @@
-// server/src/services/sse.service.ts
-// 알림 실시간 전달용 SSE(Server-Sent Events) 연결 레지스트리.
-//
-// 알림은 서버→클라이언트 단방향이고, SSE 는 일반 HTTP 응답이라 업그레이드 핸드셰이크
-// 없이 기존 쿠키 인증·리버스 프록시·rate limit 설정을 그대로 쓴다.
-//
-// 연결은 이 프로세스의 메모리에만 존재한다. 여러 프로세스로 띄우면 다른 프로세스가
-// 만든 알림은 이쪽 연결로 오지 않고, 클라이언트의 폴링 폴백이 받는다(지연만 발생).
+// 알림 전달용 SSE 연결 레지스트리. 연결은 이 프로세스 메모리에만 있어, 다중 프로세스에서는 폴링 폴백이 받는다.
 
 import { Response } from 'express';
 import { logInfo } from '../utils/logger';
@@ -16,7 +9,7 @@ const connections = new Map<string, Set<Response>>();
 /** 프록시·로드밸런서가 유휴 연결을 끊지 않도록 보내는 주석 프레임 주기 */
 const HEARTBEAT_MS = 25_000;
 
-/** 한 사용자가 열 수 있는 동시 연결 수 상한 — 탭을 대량으로 열어 자원을 소모하는 것 방지 */
+/** 한 사용자가 열 수 있는 동시 연결 수 상한 */
 const MAX_CONNECTIONS_PER_USER = 8;
 
 export type SsePayload = Record<string, unknown>;
@@ -27,10 +20,7 @@ function write(res: Response, event: string, data: SsePayload): void {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
-/**
- * SSE 연결을 등록한다. 라우트 핸들러에서 응답 헤더를 세운 뒤 호출한다.
- * 반환값은 정리 함수이며, 연결 종료 시 자동으로도 호출된다.
- */
+/** SSE 연결을 등록한다. 라우트 핸들러에서 응답 헤더를 세운 뒤 호출한다. */
 export function addConnection(userId: string, res: Response): void {
   let userConnections = connections.get(userId);
   if (!userConnections) {
@@ -38,13 +28,7 @@ export function addConnection(userId: string, res: Response): void {
     connections.set(userId, userConnections);
   }
 
-  // 상한 초과 시 가장 오래된 연결을 닫는다(Set 은 삽입 순서를 유지한다).
-  //
-  // 닫기 전에 'bye' 를 보낸다. 그냥 끊으면 그 탭의 EventSource 가 몇 초 뒤 스스로 다시
-  // 이으면서 그다음으로 오래된 연결을 밀어내고, 그 탭이 또 다시 잇는다 — 탭이 아홉 개
-  // 넘게 열려 있으면 끝없이 돌아가며 서로를 끊었다(그때마다 안 읽은 수 질의도 함께 돈다).
-  // 'bye' 를 받은 쪽은 스스로 연결을 접고 폴링으로 지낸다(자리를 다시 잡는 것은 그 탭이
-  // 화면에 나타날 때다 — client store 의 visibilitychange).
+  // 상한을 넘으면 가장 오래된 연결부터 닫는다. 'bye' 를 먼저 보내야 그 탭이 다시 이어 붙으며 서로를 밀어내지 않는다.
   while (userConnections.size >= MAX_CONNECTIONS_PER_USER) {
     const oldest = userConnections.values().next().value;
     if (!oldest) break;
@@ -52,7 +36,7 @@ export function addConnection(userId: string, res: Response): void {
     try {
       write(oldest, 'bye', { reason: 'too-many-connections' });
     } catch {
-      // 이미 끊긴 연결에 쓰면 예외가 날 수 있다 — 어차피 닫을 참이다
+      // 이미 끊긴 연결이라 무시한다.
     }
     oldest.end();
   }
@@ -61,13 +45,10 @@ export function addConnection(userId: string, res: Response): void {
 
   const heartbeat = setInterval(() => {
     try {
-      // ':' 로 시작하는 줄은 SSE 주석 — 클라이언트는 무시하지만 연결은 살아 있게 한다.
+      // ':' 로 시작하는 줄은 SSE 주석이라 연결만 살려 둔다.
       res.write(': ping\n\n');
     } catch {
-      // pushToUser 와 같은 이유로 삼킨다(끊긴 연결에 쓰면 예외가 날 수 있다).
-      // 다만 이쪽이 더 위험하다 — 타이머 콜백이라 예외를 받아 줄 요청 처리 흐름이
-      // 없어서, 그대로 두면 연결 하나가 죽을 때 프로세스가 함께 내려간다.
-      // 정리는 close 핸들러가 맡는다.
+      // 타이머 콜백이라 예외가 새면 프로세스가 내려간다. 정리는 close 핸들러가 맡는다.
     }
   }, HEARTBEAT_MS);
 
@@ -83,13 +64,7 @@ export function addConnection(userId: string, res: Response): void {
   res.on('error', cleanup);
 }
 
-/**
- * 한 사람의 열린 스트림을 모두 끊는다 — 로그아웃·비밀번호 변경·세션 강제 종료에서 부른다.
- *
- * 스트림은 붙을 때 한 번만 인증을 본다. 25초마다 심장박동을 보내며 열려 있으므로, 세션을
- * 끊어도 그 탭은 알림을 계속 받았다(쪽지 내용·대결·퇴근 공격까지). 토큰이 만료돼도 스트림은
- * 며칠이고 살아남는다. 'bye' 를 보내고 닫으면 받는 쪽은 스스로 물러난다(다시 잇지 않는다).
- */
+/** 한 사람의 열린 스트림을 모두 끊는다. 스트림은 붙을 때 한 번만 인증하므로 세션을 끊을 때 직접 닫아야 한다. */
 export function closeUserConnections(userId: string): number {
   const set = connections.get(userId);
   if (!set) return 0;
@@ -98,7 +73,7 @@ export function closeUserConnections(userId: string): number {
     try {
       write(res, 'bye', { reason: 'session-ended' });
     } catch {
-      // 이미 끊긴 연결 — 어차피 닫을 참이다
+      // 이미 끊긴 연결이라 무시한다.
     }
     res.end();
   }
@@ -120,7 +95,7 @@ export function pushToUser(userId: string, event: string, data: SsePayload): voi
   }
 }
 
-/** 운영 지표용 — 현재 열린 연결 수 */
+/** 현재 열린 연결 수 */
 export function getConnectionStats(): { users: number; connections: number } {
   let total = 0;
   for (const set of connections.values()) total += set.size;

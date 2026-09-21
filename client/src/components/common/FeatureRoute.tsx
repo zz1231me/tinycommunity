@@ -1,11 +1,4 @@
-// client/src/components/common/FeatureRoute.tsx
-// 관리자가 끈 기능의 화면을 열었을 때 무슨 일이 일어났는지 알려 준다.
-//
-// 안내가 없으면 화면이 "비어 있음" 으로 보여, 자료가 없는 것인지 기능이 꺼진 것인지
-// 구별할 수 없다.
-//
-// 메뉴를 숨기는 것만으로는 부족하다. 주소를 직접 입력하거나, 알림·북마크 링크로
-// 들어오거나, 보고 있는 동안 관리자가 끄는 경우가 남는다.
+// 관리자가 끈 기능의 화면 대신 안내를 보여 준다.
 
 import { Link } from 'react-router-dom';
 import { PowerOff } from 'lucide-react';
@@ -14,7 +7,7 @@ import { useFeature, useFeatures, type FeatureKey } from '../../store/features';
 
 interface Props {
   feature: FeatureKey;
-  /** 안내에 쓸 기능 이름 — "위키 기능이 꺼져 있습니다" */
+  /** 안내 문구에 쓸 기능 이름 */
   name: string;
   children: React.ReactNode;
 }
@@ -23,8 +16,7 @@ export function FeatureRoute({ feature, name, children }: Props) {
   const enabled = useFeature(feature);
   const loaded = useFeatures(s => s.loaded);
 
-  // 아직 못 읽었으면 막지 않는다 — store 와 같은 원칙이다.
-  // 잘못 숨기는 것보다 잠깐 보여 주고 서버가 막는 편이 낫다.
+  // 설정을 아직 못 읽었으면 막지 않는다. 잘못 숨기는 것보다 서버가 막게 둔다.
   if (!loaded || enabled) return <>{children}</>;
 
   return (

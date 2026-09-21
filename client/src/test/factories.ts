@@ -1,6 +1,4 @@
-// client/src/test/factories.ts - 테스트용 도메인 객체 팩토리
-// 권한 판정 테스트가 대부분 User 형태를 필요로 해서, 기본값을 한곳에 모아두고
-// 각 테스트는 관심 있는 필드만 override 한다.
+// 테스트용 도메인 객체 팩토리. 기본값을 모아 두고 각 테스트는 필요한 필드만 덮어쓴다.
 
 import type { User } from '../store/auth';
 

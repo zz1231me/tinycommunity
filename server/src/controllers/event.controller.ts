@@ -24,7 +24,6 @@ function isValidCssColor(value: unknown): boolean {
   return typeof value === 'string' && value.length <= 50 && CSS_COLOR_REGEX.test(value);
 }
 
-// 이벤트 생성
 export const createEvent = async (
   req: AuthRequest,
   res: Response,
@@ -39,7 +38,6 @@ export const createEvent = async (
   }
 
   try {
-    // 이벤트 생성 권한 확인 (관리자는 항상 허용)
     if (userRole !== ROLES.ADMIN) {
       const eventPermission = await EventPermission.findOne({ where: { roleId: userRole } });
       if (!eventPermission?.canCreate) {
@@ -48,7 +46,7 @@ export const createEvent = async (
       }
     }
 
-    // req.body 전체 전달 대신 허용 필드만 명시적으로 추출 (UserId, id 등 민감 필드 주입 방지)
+    // UserId·id 주입을 막으려 허용 필드만 뽑아 쓴다.
     const {
       calendarId,
       title,
@@ -105,7 +103,7 @@ export const createEvent = async (
       sendError(res, 400, '시작 또는 종료 날짜가 올바르지 않습니다.');
       return;
     }
-    // 종일 이벤트(isAllday)는 start === end 허용 (단일 날 종일 이벤트)
+    // 종일 이벤트는 start === end 를 허용한다.
     if (isAllday ? startDate > endDate : startDate >= endDate) {
       sendError(res, 400, '종료 시간은 시작 시간 이후여야 합니다.');
       return;
@@ -123,7 +121,6 @@ export const createEvent = async (
       }
     }
 
-    // 반복 이벤트 옵션 교차 검증
     const validRecurrenceTypes = ['none', 'daily', 'weekly', 'monthly', 'yearly'];
     if (recurrenceType && !validRecurrenceTypes.includes(recurrenceType)) {
       sendError(res, 400, '유효하지 않은 반복 유형입니다.');
@@ -143,7 +140,7 @@ export const createEvent = async (
         sendError(res, 400, '반복 종료 날짜는 시작 날짜 이후여야 합니다.');
         return;
       }
-      // !(x >= 1)은 NaN(숫자 아님)과 1 미만을 모두 거부
+      // !(x >= 1) 은 NaN 과 1 미만을 함께 거른다.
       if (recurrenceInterval !== undefined && !(Number(recurrenceInterval) >= 1)) {
         sendError(res, 400, '반복 간격은 1 이상의 숫자여야 합니다.');
         return;
@@ -198,18 +195,16 @@ export const createEvent = async (
   }
 };
 
-// 이벤트 조회 (기간 필터)
 export const getEvents = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  // query string이 배열로 주입되는 경우 방어 (e.g. ?start[]=a&start[]=b)
+  // query string 이 배열로 들어오는 경우를 거른다.
   const start = typeof req.query.start === 'string' ? req.query.start : undefined;
   const end = typeof req.query.end === 'string' ? req.query.end : undefined;
 
-  // 날짜 파라미터 검증 — 잘못된 값을 그대로 비교에 넣으면 일부 DB(PostgreSQL/MySQL)에서
-  // 캐스팅 에러로 500이 난다(SQLite는 빈 결과). createEvent와 동일하게 400으로 거른다.
+  // 잘못된 날짜를 그대로 넘기면 PostgreSQL/MySQL 에서 캐스팅 오류로 500 이 되므로 400 으로 거른다.
   if (
     (start !== undefined && isNaN(new Date(start).getTime())) ||
     (end !== undefined && isNaN(new Date(end).getTime()))
@@ -234,7 +229,6 @@ export const getEvents = async (
   }
 };
 
-// 이벤트 수정
 export const updateEvent = async (
   req: AuthRequest,
   res: Response,
@@ -267,7 +261,7 @@ export const updateEvent = async (
       }
     }
 
-    // req.body 전체 전달 금지 — UserId 변경(소유권 탈취) 방지
+    // UserId 변경으로 소유권이 바뀌지 않도록 허용 필드만 뽑아 쓴다.
     const {
       calendarId,
       title,
@@ -319,8 +313,7 @@ export const updateEvent = async (
       );
       return;
     }
-    // start/end 단독 변경 시에도 기존 값과 비교해 시간 순서를 검증해야 한다.
-    // (start만, 또는 end만 보내고 다른 한쪽은 DB의 기존 값을 사용하는 경우)
+    // 한쪽만 보내도 DB 의 기존 값과 비교해 시간 순서를 검증한다.
     if (start !== undefined || end !== undefined) {
       const startDate = new Date(start ?? existingEvent.start);
       const endDate = new Date(end ?? existingEvent.end);
@@ -347,9 +340,7 @@ export const updateEvent = async (
       }
     }
 
-    // 반복 이벤트 옵션 교차 검증 (createEvent와 동일).
-    // recurrenceType이 미전송이어도 반복 옵션 필드(interval/days/endDate)가 들어오면
-    // 기존 이벤트의 recurrenceType을 기준으로 검증해 우회를 방지한다.
+    // recurrenceType 을 보내지 않아도 옵션 필드가 오면 기존 recurrenceType 기준으로 검증한다.
     const validRecurrenceTypes = ['none', 'daily', 'weekly', 'monthly', 'yearly'];
     const recurrenceFieldsTouched =
       recurrenceType !== undefined ||
@@ -367,7 +358,7 @@ export const updateEvent = async (
         return;
       }
 
-      // recurrenceType이 'none'/null인데 옵션 필드를 보내면 데이터 불일치 (none 일정에 interval 저장 등)
+      // recurrenceType 이 'none' 인데 옵션 필드를 보내면 데이터가 어긋난다.
       const optionsTouched =
         recurrenceInterval !== undefined ||
         recurrenceDays !== undefined ||
@@ -394,7 +385,7 @@ export const updateEvent = async (
           sendError(res, 400, '반복 종료 날짜는 시작 날짜 이후여야 합니다.');
           return;
         }
-        // !(x >= 1)은 NaN(숫자 아님)과 1 미만을 모두 거부
+        // !(x >= 1) 은 NaN 과 1 미만을 함께 거른다.
         if (recurrenceInterval !== undefined && !(Number(recurrenceInterval) >= 1)) {
           sendError(res, 400, '반복 간격은 1 이상의 숫자여야 합니다.');
           return;
@@ -461,7 +452,6 @@ export const updateEvent = async (
   }
 };
 
-// 이벤트 삭제
 export const deleteEvent = async (
   req: AuthRequest,
   res: Response,
@@ -494,10 +484,8 @@ export const deleteEvent = async (
       }
     }
 
-    // 반복 이벤트의 부모를 삭제할 때 자식 인스턴스도 함께 삭제 (고아화 방지) — 트랜잭션으로 원자적 처리.
-    // ⚠️ 같은 소유자의 자식만 삭제한다. parentEventId는 검증 없이 raw body로 설정 가능하므로,
-    //    UserId 스코프가 없으면 타 사용자가 이 이벤트를 부모로 링크해 둔 경우 소유자의 삭제가
-    //    그 사용자의 이벤트까지 지우는 교차 사용자 데이터 손실이 발생할 수 있다.
+    // 부모를 지울 때 자식 인스턴스도 같은 트랜잭션에서 지운다.
+    // 같은 소유자의 자식만 지운다. parentEventId 는 임의로 설정할 수 있어 남의 이벤트가 함께 지워질 수 있다.
     let deleted = 0;
     await sequelize.transaction(async t => {
       await Event.destroy({

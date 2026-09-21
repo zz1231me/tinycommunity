@@ -1,7 +1,3 @@
-// client/src/components/discovery/TagCloud.tsx
-// 태그를 "쓰인 만큼" 크게 보여준다 — 어떤 주제가 살아 있는지 한눈에 보이게 하는 것이
-// 태그 클라우드의 목적이고, 크기 차이가 없으면 그냥 태그 목록이다.
-
 import { DEFAULT_TAG_COLOR } from '../../constants/colors';
 import type { CloudTag } from '../../api/discovery';
 
@@ -16,7 +12,7 @@ const isSafeColor = (color: string): boolean =>
   /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/.test(color) ||
   /^hsl\(\s*\d+\s*,\s*\d+%?\s*,\s*\d+%?\s*\)$/.test(color);
 
-/** 글 수를 4단계 글씨 크기로 — 최다 태그만 튀지 않도록 최댓값 기준 상대 비율로 나눈다 */
+/** 글 수를 최댓값 기준 상대 비율로 나눠 4단계 글씨 크기로 */
 function sizeClass(count: number, max: number): string {
   if (max <= 0) return 'text-xs';
   const ratio = count / max;

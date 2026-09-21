@@ -1,16 +1,10 @@
-// server/src/scripts/add-indexes.ts
-// 데이터베이스 성능 최적화를 위한 인덱스 추가 스크립트
-
 import { sequelize } from '../config/sequelize';
 import { logger } from '../utils/logger';
 
 interface IndexDef {
   /**
-   * 모델의 tableName 과 대소문자까지 일치해야 한다.
-   *
-   * SQLite 는 테이블 이름의 대소문자를 가리지 않지만 리눅스의 MySQL/MariaDB 는 가린다.
-   * 이름이 어긋나면 이 스크립트가 '테이블 없음' 으로 건너뛰고 실패 0 으로 보고하므로,
-   * 인덱스가 만들어지지 않은 것을 알아채기 어렵다. indexTableNames.test.ts 가 지킨다.
+   * 모델의 tableName 과 대소문자까지 일치해야 한다. 리눅스의 MySQL/MariaDB 는 대소문자를 가린다.
+   * 어긋나면 '테이블 없음' 으로 건너뛰고 실패 0 으로 보고한다. indexTableNames.test.ts 가 지킨다.
    */
   table: string;
   name: string;
@@ -26,16 +20,13 @@ export async function addDatabaseIndexes(): Promise<void> {
     const queryInterface = sequelize.getQueryInterface();
 
     const indexes: IndexDef[] = [
-      // ── PostTags ───────────────────────────────────────
-      // 복합 PK 가 (PostId, TagId) 라 TagId 로 시작하는 조회(태그 클라우드,
-      // 태그별 글)에는 쓰이지 못한다. 반대 순서 인덱스를 따로 둔다.
+      // 복합 PK 가 (PostId, TagId) 라 TagId 로 시작하는 조회에는 쓰이지 못한다. 반대 순서 인덱스를 따로 둔다.
       {
         table: 'PostTags',
         name: 'idx_posttags_tag_post',
         fields: ['TagId', 'PostId'],
         description: '태그별 게시글 (태그 클라우드·태그 필터)',
       },
-      // ── Posts ────────────────────────────��─────────────
       {
         table: 'Posts',
         name: 'idx_posts_user_created',
@@ -69,7 +60,6 @@ export async function addDatabaseIndexes(): Promise<void> {
         description: '비밀글 접근',
       },
 
-      // ── Comments ───────────────────────────────────────
       {
         table: 'comments',
         name: 'idx_comments_post_parent',
@@ -83,12 +73,10 @@ export async function addDatabaseIndexes(): Promise<void> {
         description: '좋아요 순 정렬',
       },
 
-      // ── Events ────────────────────────────────────────
       { table: 'Events', name: 'idx_events_title', fields: ['title'], description: '이벤트 검색' },
 
-      // ── BoardAccess ───────────────────────────────────
-      // ⚠️ 테이블명은 Sequelize 가 만든 실제 이름과 정확히 일치해야 한다('board_accesses').
-      //    BoardAccess 모델에는 indexes 정의가 없어 이 스크립트가 유일한 인덱스 출처다.
+      // 테이블명은 Sequelize 가 만든 실제 이름('board_accesses')과 일치해야 한다.
+      // BoardAccess 모델에는 indexes 정의가 없어 이 스크립트가 유일한 인덱스 출처다.
       {
         table: 'board_accesses',
         name: 'idx_board_access_role',
@@ -102,7 +90,6 @@ export async function addDatabaseIndexes(): Promise<void> {
         description: '읽기 권한 조회(접근 가능 게시판 목록)',
       },
 
-      // ── Users ─────────────────────────────────────────
       {
         table: 'users',
         name: 'idx_users_active',
@@ -110,20 +97,13 @@ export async function addDatabaseIndexes(): Promise<void> {
         description: '활성 사용자',
       },
 
-      // 여기에 적지 않는 것들 — 모델의 indexes 옵션이 이미 같은 인덱스를 만든다.
-      //
-      // 두 곳에서 만들면 이름만 다른 같은 인덱스가 두 벌 생긴다. 읽기 이득은 없고
-      // INSERT/UPDATE/DELETE 마다 두 벌을 갱신하는 비용만 늘어난다.
-      //
-      // 대상: PostLike · PostRead · LoginHistory · Posts(boardType,createdAt)
-      //      comments(PostId,createdAt) · comments(UserId) · Events(start,end)
-      //      Events(UserId) · Events(parentEventId) · users(role) · users(lastLoginAt)
-      //      security_logs(createdAt) · WikiPages(parentId) · Reports(targetType,targetId)
-      //      audit_logs(adminId,createdAt) · Tags(name,boardId)
-      //
-      // 새 인덱스를 넣기 전에 해당 모델의 indexes 옵션을 먼저 확인할 것.
+      // 아래 대상은 모델의 indexes 옵션이 이미 만들므로 여기에 적지 않는다(중복 인덱스 방지).
+      // PostLike · PostRead · LoginHistory · Posts(boardType,createdAt)
+      // comments(PostId,createdAt) · comments(UserId) · Events(start,end)
+      // Events(UserId) · Events(parentEventId) · users(role) · users(lastLoginAt)
+      // security_logs(createdAt) · WikiPages(parentId) · Reports(targetType,targetId)
+      // audit_logs(adminId,createdAt) · Tags(name,boardId)
 
-      // ── Notifications ─────────────────────────────────
       {
         table: 'Notifications',
         name: 'idx_notifications_user_read',
@@ -131,7 +111,6 @@ export async function addDatabaseIndexes(): Promise<void> {
         description: '읽지 않은 알림',
       },
 
-      // ── SecurityLog ───────────────────────────────────
       {
         table: 'security_logs',
         name: 'idx_security_logs_user',
@@ -139,7 +118,6 @@ export async function addDatabaseIndexes(): Promise<void> {
         description: '사용자 보안 로그',
       },
 
-      // ── WikiPages ─────────────────────────────────────
       {
         table: 'WikiPages',
         name: 'idx_wiki_published',
@@ -153,7 +131,6 @@ export async function addDatabaseIndexes(): Promise<void> {
         description: '위키 제목 검색',
       },
 
-      // ── Memos ─────────────────────────────────────────
       {
         table: 'Memos',
         name: 'idx_memos_user_pinned',
@@ -161,7 +138,6 @@ export async function addDatabaseIndexes(): Promise<void> {
         description: '사용자 메모 목록',
       },
 
-      // ── Tags ─────────────────────────────────────────
       {
         table: 'Tags',
         name: 'idx_tags_board',
@@ -169,7 +145,6 @@ export async function addDatabaseIndexes(): Promise<void> {
         description: '게시판별 태그 조회',
       },
 
-      // ── Reports ──────────────────────────────────────
       {
         table: 'Reports',
         name: 'idx_reports_status',
@@ -177,7 +152,6 @@ export async function addDatabaseIndexes(): Promise<void> {
         description: '신고 상태별 조회',
       },
 
-      // ── UserSession ───────────────────────────────────
       {
         table: 'user_sessions',
         name: 'idx_user_sessions_expires',
@@ -185,7 +159,6 @@ export async function addDatabaseIndexes(): Promise<void> {
         description: '만료 세션 정리',
       },
 
-      // ── AuditLog ──────────────────────────────────────
       {
         table: 'audit_logs',
         name: 'idx_audit_logs_action',
@@ -193,11 +166,8 @@ export async function addDatabaseIndexes(): Promise<void> {
         description: '액션별 감사 로그',
       },
 
-      // ── IpRule ────────────────────────────────────────
-      // 모델에도 같은 인덱스를 선언해 두었지만 sync 는 alter:false 라 기존
-      // 테이블에는 인덱스를 만들지 않는다. 이미 돌고 있는 설치에는 여기로 들어간다.
-      // 중복 행이 이미 있으면 생성이 실패하는데, 위 루프가 경고만 남기고 넘어가므로
-      // 부팅이 깨지지는 않는다(그 경우 중복을 정리한 뒤 재기동하면 걸린다).
+      // 모델에도 선언돼 있지만 sync 는 alter:false 라 기존 테이블에는 생기지 않아 여기서 만든다.
+      // 중복 행이 이미 있으면 생성이 실패하지만 위 루프가 경고만 남기고 넘어간다.
       {
         table: 'ip_rules',
         name: 'idx_ip_rules_type_ip',
@@ -206,9 +176,7 @@ export async function addDatabaseIndexes(): Promise<void> {
         description: '같은 종류·같은 IP 규칙 중복 방지',
       },
 
-      // ── UserPoint ─────────────────────────────────────
-      // 랭킹이 잔액으로 정렬한다. 모델에도 선언해 두었지만 sync 는 alter:false 라
-      // 이미 있는 테이블에는 만들어 주지 않으므로 여기에도 넣는다.
+      // 랭킹이 잔액으로 정렬한다. sync 는 alter:false 라 기존 테이블에는 여기서 만든다.
       {
         table: 'user_points',
         name: 'idx_user_points_balance',
@@ -223,7 +191,6 @@ export async function addDatabaseIndexes(): Promise<void> {
 
     for (const index of indexes) {
       try {
-        // 테이블 존재 여부 먼저 확인
         const tableExists = await queryInterface
           .showIndex(index.table)
           .then(() => true)
@@ -265,7 +232,6 @@ export async function addDatabaseIndexes(): Promise<void> {
   }
 }
 
-// 직접 실행 시
 if (require.main === module) {
   void (async () => {
     try {

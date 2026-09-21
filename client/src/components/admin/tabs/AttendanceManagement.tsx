@@ -1,8 +1,4 @@
-// client/src/components/admin/tabs/AttendanceManagement.tsx
-// 출퇴근 — 오늘 현황, 기간별 기록, 인원별 집계, 확인 항목·설정.
-//
-// 기록에 남은 확인 내용은 그날 찍힌 문구 그대로다. 항목을 고쳐도 지난 기록은
-// 바뀌지 않는다.
+// 출퇴근 관리. 기록에 남은 확인 문구는 그날 값 그대로이며 항목을 고쳐도 바뀌지 않는다.
 
 import { Fragment, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -63,7 +59,7 @@ const SORTS: Array<{ key: SortKey; label: string; numeric: boolean }> = [
   { key: 'total', label: '총 근무', numeric: true },
   { key: 'average', label: '하루 평균', numeric: true },
   { key: 'open', label: '퇴근 안 찍음', numeric: true },
-  // 날짜지만 최근 것부터 보는 게 자연스러워 숫자 칸처럼 내림차순으로 시작한다
+  // 날짜지만 최근 것부터 보도록 숫자 칸처럼 내림차순으로 시작한다
   { key: 'last', label: '마지막 출근', numeric: true },
 ];
 
@@ -73,17 +69,14 @@ const PAGE_SIZE = 30;
 const STANDARD_MIN = 30;
 const STANDARD_MAX = 1440;
 
-/** 오늘 현황은 근무 중인 사람의 시간이 흐르므로 짧게 다시 읽는다 */
+/** 오늘 현황은 근무 시간이 흐르므로 짧은 주기로 다시 읽는다. */
 const TODAY_REFRESH_MS = 60_000;
 
 function monthStart(): string {
   return `${todayString().slice(0, 7)}-01`;
 }
 
-/**
- * 자주 쓰는 기간. 날짜 두 칸을 직접 고르는 것보다 이쪽이 대부분의 경우다.
- * 눌렀을 때 시작일·종료일 칸도 함께 바뀌므로 지금 보는 기간이 그대로 보인다.
- */
+/** 자주 쓰는 기간 프리셋. 누르면 시작일·종료일 칸도 함께 바뀐다. */
 const RANGE_PRESETS: Array<{
   id: string;
   label: string;
@@ -136,14 +129,14 @@ const AttendanceManagement = () => {
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ChecklistItem | null>(null);
-  // 표 정렬 — 기본은 많이 일한 순. 이름순이면 근무한 사람이 0일인 사람들 사이에 묻힌다.
+  // 표 정렬. 기본은 총 근무가 많은 순.
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'total', desc: true });
 
   const toggleSort = (key: SortKey) =>
     setSort(prev =>
       prev.key === key
         ? { key, desc: !prev.desc }
-        : // 숫자 칸은 큰 값부터, 글자 칸은 가나다순부터가 자연스럽다
+        : // 숫자 칸은 큰 값부터, 글자 칸은 가나다순부터
           { key, desc: SORTS.find(c => c.key === key)?.numeric ?? false }
     );
 
@@ -165,14 +158,13 @@ const AttendanceManagement = () => {
   const records = useQuery({
     queryKey: adminKeys.attendance.records({ ...range, userId, page }),
     queryFn: () => fetchAttendanceRecords({ ...range, userId: userId || undefined, page }),
-    // 사람을 고르기 전에는 인원별 요약만 보여준다 — 전체 기록을 한 줄씩 늘어놓아도 읽히지 않는다
+    // 사람을 고르기 전에는 인원별 요약만 보여준다
     enabled: view === 'period' && !!userId,
-    // 페이지·기간을 바꿀 때 표가 비었다가 다시 차면 화면이 튄다 — 새 값이 올 때까지 둔다
+    // 새 값이 올 때까지 이전 값을 둬서 표가 비었다 차는 것을 막는다
     placeholderData: prev => prev,
   });
 
-  // 그래프용 — 표는 페이지로 끊기지만 그래프는 기간 전체를 그려야 한다.
-  // 한 사람의 기록은 하루 한 건이라 기간 상한(366일)이면 한 번에 다 온다.
+  // 그래프는 기간 전체가 필요하다. 한 사람은 하루 한 건이라 366건이면 다 들어온다.
   const chartRecords = useQuery({
     queryKey: adminKeys.attendance.records({ ...range, userId, chart: true }),
     queryFn: () => fetchAttendanceRecords({ ...range, userId, page: 1, limit: 366 }),
@@ -187,7 +179,7 @@ const AttendanceManagement = () => {
     placeholderData: prev => prev,
   });
 
-  // 기준 근무 시간은 그래프의 눈금이라 설정 화면이 아닐 때도 필요하다
+  // 기준 근무 시간은 그래프 눈금이라 설정 화면이 아닐 때도 필요하다
   const settings = useQuery({
     queryKey: adminKeys.attendance.settings,
     queryFn: fetchAttendanceSettings,
@@ -197,12 +189,7 @@ const AttendanceManagement = () => {
   const invalidateSettings = () =>
     queryClient.invalidateQueries({ queryKey: adminKeys.attendance.settings });
 
-  /**
-   * 화면을 먼저 바꾸고 요청을 보낸다.
-   *
-   * 체크 한 번에 서버 왕복과 재조회를 기다리면, 네트워크가 느린 만큼 체크박스가
-   * 늦게 움직인다. 실패하면 이전 값으로 되돌리고, onSettled 의 재조회가 최종 확인이다.
-   */
+  /** 화면을 먼저 바꾸고 요청을 보낸다. 실패하면 이전 값으로 되돌린다. */
   const applyOptimistic = async (update: (current: AttendanceSettings) => AttendanceSettings) => {
     await queryClient.cancelQueries({ queryKey: adminKeys.attendance.settings });
     const previous = queryClient.getQueryData<AttendanceSettings>(adminKeys.attendance.settings);
@@ -242,7 +229,7 @@ const AttendanceManagement = () => {
       rollback(context);
       onMutationError('항목을 수정하지 못했습니다.')(err);
     },
-    // 실패해도 서버 값으로 되돌려야 화면과 저장된 값이 갈라지지 않는다
+    // 실패해도 서버 값으로 맞춰야 화면과 저장값이 갈라지지 않는다
     onSettled: () => invalidateSettings(),
   });
 
@@ -252,7 +239,7 @@ const AttendanceManagement = () => {
       applyOptimistic(current => {
         const byId = new Map(current.checklist.map(item => [item.id, item]));
         const next = ids.map(id => byId.get(id)).filter((item): item is ChecklistItem => !!item);
-        // 목록과 안 맞는 순서는 서버가 거절한다 — 화면을 섣불리 바꾸지 않는다
+        // 목록과 안 맞는 순서는 서버가 거절하므로 화면도 바꾸지 않는다
         return next.length === current.checklist.length ? { ...current, checklist: next } : current;
       }),
     onError: (err, _vars, context) => {
@@ -285,13 +272,12 @@ const AttendanceManagement = () => {
   });
 
   const policy = settings.data?.policy;
-  // 총 근무가 가장 긴 사람을 눈금으로 삼아 막대를 그린다
+  // 총 근무가 가장 긴 사람을 막대 눈금으로 삼는다
   const summaryPeak = Math.max(1, ...(summary.data ?? []).map(r => r.totalMinutes));
 
-  // 기본은 많이 일한 순. 이름순이면 근무한 사람이 0일인 사람들 사이에 묻힌다.
   const standard = settings.data?.policy.standardWorkMinutes ?? 480;
 
-  /** 기간 전체를 한 줄로 — 표를 읽기 전에 규모부터 잡힌다 */
+  /** 기간 전체 합계. */
   const periodTotals = useMemo(() => {
     const rows = summary.data ?? [];
     const worked = rows.filter(r => r.days > 0);
@@ -307,7 +293,7 @@ const AttendanceManagement = () => {
     };
   }, [summary.data]);
 
-  /** 드릴다운에서 보여줄 그 사람의 기간 요약 — 표만 늘어놓으면 규모가 안 잡힌다 */
+  /** 드릴다운에서 보여줄 그 사람의 기간 요약. */
   const personSummary = useMemo(
     () => (summary.data ?? []).find(r => r.userId === userId) ?? null,
     [summary.data, userId]
@@ -350,8 +336,7 @@ const AttendanceManagement = () => {
             key={v.id}
             type="button"
             onClick={() => {
-              // 탭을 옮겼다 오면 전체 목록부터 — 지난번에 보던 사람이 남아 있으면
-              // 왜 한 사람만 나오는지 알 수 없다
+              // 탭을 옮기면 전체 목록부터 보여 준다
               setView(v.id);
               setUserId('');
               setPage(1);
@@ -378,8 +363,7 @@ const AttendanceManagement = () => {
             <TodayBoardView
               board={board.data}
               onSelectUser={id => {
-                // 오늘 화면에서 사람을 누르면 그대로 그 사람 기록으로 — 탭을 옮겨
-                // 다시 찾게 하지 않는다
+                // 오늘 화면에서 사람을 누르면 그 사람 기록으로 바로 넘어간다
                 setUserId(id);
                 setPage(1);
                 setView('period');
@@ -428,7 +412,7 @@ const AttendanceManagement = () => {
               value={from}
               max={to}
               onChange={e => {
-                // 비우면 화면은 빈칸인데 서버는 이번 달을 돌려준다 — 어긋나지 않게 되돌린다
+                // 비우면 서버는 이번 달을 돌려주므로 화면도 같은 값으로 되돌린다
                 setFrom(e.target.value || monthStart());
                 setPage(1);
               }}
@@ -544,7 +528,7 @@ const AttendanceManagement = () => {
                                   근무 중
                                 </span>
                               ) : (
-                                // 지난 날짜인데 퇴근이 없으면 지금 일하는 중이 아니다
+                                // 지난 날짜인데 퇴근이 없으면 근무 중이 아니다
                                 <span className="text-amber-600 dark:text-amber-400">
                                   퇴근 안 찍음
                                 </span>
@@ -788,8 +772,7 @@ const AttendanceManagement = () => {
                       min={STANDARD_MIN}
                       max={STANDARD_MAX}
                       step={30}
-                      // 저장된 값이 바뀌면 다시 그린다. 실패했을 때 입력칸에
-                      // 저장되지 않은 숫자가 남아 있으면 저장된 줄 알게 된다.
+                      // 저장된 값이 바뀌면 입력칸을 다시 그린다
                       key={policy.standardWorkMinutes}
                       defaultValue={policy.standardWorkMinutes}
                       onBlur={e => {
@@ -828,8 +811,7 @@ const AttendanceManagement = () => {
                     <input
                       type="number"
                       min={0}
-                      // 서버도 0~60 으로 막는다(attendance.service.updatePolicy).
-                      // 한 시간을 넘겨 당기면 보정이 아니라 기록을 지어내는 것이다.
+                      // 서버도 0~60 으로 막는다(attendance.service.updatePolicy)
                       max={60}
                       key={policy.checkInGraceMinutes}
                       defaultValue={policy.checkInGraceMinutes}

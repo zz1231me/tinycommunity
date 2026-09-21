@@ -1,4 +1,3 @@
-// client/src/api/points.ts
 import api from './axios';
 import { unwrap } from './utils';
 
@@ -13,12 +12,12 @@ export interface PointStatus {
   dailyLimit: number;
   drawsLeft: number;
   attendanceBonus: number;
-  /** 한 번 뽑는 데 드는 포인트. 0 이면 공짜 */
+  /** 한 번 뽑는 데 드는 포인트. 0 이면 공짜. */
   drawCost: number;
   /** 지금 잔액으로 한 번 더 뽑을 수 있는가 */
   canAfford: boolean;
   attendanceClaimedToday: boolean;
-  /** 확률표는 공개다 — 가려 두면 신뢰할 수 없는 뽑기가 된다 */
+  /** 확률표 */
   prizes: LotteryPrize[];
   /** 확률 합이 100 미만일 때 남는 몫(꽝) */
   blankWeight: number;
@@ -26,7 +25,7 @@ export interface PointStatus {
 
 export interface DrawResult {
   amount: number;
-  /** 이번 뽑기에 든 참가비 (0 이면 공짜) */
+  /** 이번 뽑기에 든 참가비 */
   cost: number;
   isBlank: boolean;
   balance: number;
@@ -52,8 +51,6 @@ export interface PointEntry {
   createdAt: string;
 }
 
-// ── 포인트 대결 ────────────────────────────────────────────────────────────
-
 export type DuelHand = 'rock' | 'paper' | 'scissors';
 export type DuelStatus = 'waiting' | 'done' | 'canceled';
 export type DuelResult = 'challenger' | 'opponent' | 'draw';
@@ -67,23 +64,19 @@ export interface Duel {
   challengerName: string;
   opponentId: string;
   opponentName: string;
-  /**
-   * 승부가 나기 전에는 신청자 본인에게만 내려온다. 받은 쪽에서는 null 이다 —
-   * 서버가 가리는 값이라 화면에서 다시 확인할 필요는 없지만, 타입이 null 을
-   * 허용해야 "있겠지" 하고 쓰는 코드가 생기지 않는다.
-   */
+  /** 승부가 나기 전에는 신청자 본인에게만 내려온다. 받은 쪽에서는 null 이다. */
   challengerHand: DuelHand | null;
   opponentHand: DuelHand | null;
   expiresAt: string;
   settledAt: string | null;
   createdAt: string;
-  /** 신청하며 남긴 말 (없으면 null) */
+  /** 신청하며 남긴 말 */
   message: string | null;
-  /** 이긴 사람이 남긴 한마디 — 한 판에 한 번 (없으면 null) */
+  /** 이긴 사람이 남긴 한마디. 한 판에 한 번. */
   taunt: string | null;
 }
 
-/** 서버(config/duel)의 상한과 같다 */
+/** 서버(config/duel)의 상한과 같아야 한다 */
 export const DUEL_MESSAGE_MAX = 40;
 export const DUEL_TAUNT_MAX = 30;
 
@@ -107,7 +100,7 @@ export const createDuel = async (body: {
   message?: string;
 }): Promise<Duel> => unwrap(await api.post('/points/duels', body));
 
-/** 이긴 사람의 한마디 — 한 판에 한 번 */
+/** 이긴 사람의 한마디. 한 판에 한 번. */
 export const tauntDuel = async (id: number, message: string): Promise<Duel> =>
   unwrap(await api.post(`/points/duels/${id}/taunt`, { message }));
 
@@ -126,14 +119,14 @@ export interface RankingEntry {
   rank: number;
   userId: string;
   name: string;
-  /** 프로필 사진 주소 (없으면 null — Avatar 가 이니셜로 대신 그린다) */
+  /** 프로필 사진 주소 */
   avatar?: string | null;
   balance: number;
 }
 
 export interface PointRanking {
   top: RankingEntry[];
-  /** 호출한 본인의 자리 — 상위권 밖이어도 늘 내려온다. 포인트가 없으면 null */
+  /** 호출한 본인의 자리. 상위권 밖이어도 내려온다. */
   me: RankingEntry | null;
 }
 

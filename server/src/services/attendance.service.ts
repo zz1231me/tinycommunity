@@ -1,10 +1,4 @@
-// server/src/services/attendance.service.ts
-// 출퇴근 기록.
-//
-// 한 사람이 하루에 한 건이다. 출근할 때 확인 항목의 답을 문구째로 함께 저장한다 —
-// 항목 표를 참조만 해 두면 관리자가 항목을 고쳤을 때 지난 기록의 뜻이 바뀐다.
-//
-// 지각·조기 퇴근 판정은 하지 않는다. 남기는 것은 찍은 시각과 그 사이의 시간이다.
+// 출퇴근 기록. 확인 항목 답변은 문구째로 저장한다(항목 표를 참조만 하면 지난 기록의 뜻이 바뀐다).
 
 import { Op, UniqueConstraintError } from 'sequelize';
 import { sequelize } from '../config/sequelize';
@@ -15,7 +9,7 @@ import User from '../models/User';
 import { BaseService } from './base.service';
 import { AppError } from '../middlewares/error.middleware';
 import { logWarning } from '../utils/logger';
-// 하루의 경계는 출석 포인트와 같아야 한다 — 같은 함수를 쓴다.
+// 하루 경계는 출석 포인트와 같아야 하므로 같은 함수를 쓴다.
 import { today } from './point.service';
 
 const MAX_NOTE = 500;
@@ -24,34 +18,18 @@ const MAX_DESCRIPTION = 500;
 /** 명단에 올릴 사용자 수 상한 */
 const USER_LIMIT = 500;
 
-/**
- * 퇴근을 눌렀다가 되돌릴 수 있는 시간(분).
- *
- * 잘못 눌렀을 때를 위한 것이다. 제한이 없으면 '퇴근 → 취소 → 나중에 다시 퇴근' 으로 근무
- * 시간을 원하는 만큼 늘릴 수 있다. 퇴근 시각은 분 단위로 잘려 저장되므로(atMinute) 그 1분을
- * 더 쳐 준다 — 18:00:59 에 눌러도 실제로 10분은 남게.
- */
+/** 퇴근 취소 허용 시간(분). 퇴근 시각은 분 단위로 잘려 저장된다. */
 export const CHECKOUT_UNDO_MINUTES = 10;
 
-/**
- * 명단이 상한에서 잘렸으면 알린다.
- *
- * 잘리는 순간부터 이름순 뒤쪽 사람들이 현황판과 집계에서 통째로 빠진다. 화면에는
- * 그냥 없는 사람처럼 보여서, 알아챌 길이 서버 로그밖에 없다.
- */
+/** 명단이 상한에서 잘렸으면 경고 로그를 남긴다. */
 function warnIfUserListTruncated(count: number, where: string): void {
-  // 하나 더 읽어서(USER_LIMIT + 1) 넘을 때만 경고한다. 정확히 500명이면 아무도 빠지지 않았다.
+  // 호출부가 USER_LIMIT + 1 건을 읽으므로 초과일 때만 경고한다.
   if (count <= USER_LIMIT) return;
   logWarning(`${where}: 명단이 ${USER_LIMIT}명에서 잘렸습니다 — 이름순 뒤쪽 인원이 빠집니다.`, {
     limit: USER_LIMIT,
   });
 }
-/**
- * 집계 기간 상한.
- *
- * 집계는 기간 안의 기록을 모두 읽어 묶는다. 기간이 없으면 표 전체를 읽으므로
- * 기본값을 이번 달로 두고 넘치는 요청은 거절한다.
- */
+/** 집계 기간 상한(일). 기간을 안 주면 표 전체를 읽으므로 기본값은 이번 달이다. */
 const MAX_RANGE_DAYS = 366;
 
 export interface PolicyView {
@@ -122,15 +100,7 @@ function elapsedMinutes(from: Date, to: Date): number {
   return Math.max(0, Math.round((to.getTime() - from.getTime()) / 60000));
 }
 
-/**
- * 출근 시각을 보정만큼 앞당긴다.
- *
- * 자리에 앉아 컴퓨터를 켜고 로그인하기까지의 시간을 인정해 주기 위한 값이다.
- *
- * 근무일의 자정보다 앞으로는 가지 않는다. 그 아래로 내려가면 00:00 직후에 누른 출근이
- * 어제 날짜의 시각이 되어, 화면에는 오늘로 보이는데 저장된 시각은 어제인 기록이 된다.
- * 근무일 자체는 누른 순간으로 정하므로(호출부) 유니크 인덱스와도 어긋나지 않는다.
- */
+/** 출근 시각을 보정만큼 앞당긴다. 근무일 자정보다 앞으로는 가지 않는다. */
 function withGrace(pressedAt: Date, graceMinutes: number, workDate: string): Date {
   if (graceMinutes <= 0) return pressedAt;
   const shifted = new Date(pressedAt.getTime() - graceMinutes * 60_000);
@@ -138,16 +108,7 @@ function withGrace(pressedAt: Date, graceMinutes: number, workDate: string): Dat
   return shifted < midnight ? midnight : shifted;
 }
 
-/**
- * 초를 버려 분 단위로 맞춘다. 09:59:09 에 눌러도 09:59:00 으로 남는다.
- *
- * 화면은 분까지만 보여 주는데 저장은 초까지 하고 있었다. 같은 분에 누른 두 기록이
- * 실제로는 수십 초 어긋난 채 남아, 같은 시각으로 보이는데 정렬이나 계산에서는 갈렸다.
- *
- * 출근과 퇴근 양쪽에 적용한다. 한쪽만 자르면 간격에 최대 59초가 끼어들어
- * elapsedMinutes 의 반올림이 1분을 더하거나 뺀다. 둘 다 자르면 간격이 정확히
- * 분의 배수라 반올림이 개입할 여지가 없다.
- */
+/** 초를 버려 분 단위로 맞춘다. 출근·퇴근 양쪽에 적용해야 간격 반올림이 어긋나지 않는다. */
 function atMinute(d: Date): Date {
   const copy = new Date(d);
   copy.setSeconds(0, 0);
@@ -188,12 +149,7 @@ function toPolicyView(policy: AttendancePolicy): PolicyView {
   };
 }
 
-/**
- * 실제로 있는 YYYY-MM-DD 인지.
- *
- * 모양만 검사하면 0000-00-00 이나 2026-02-30 이 통과한다. 그런 값은 Date 로 바꾸면
- * NaN 이라 기간 길이 검사가 통째로 넘어간다.
- */
+/** 실제로 있는 YYYY-MM-DD 인지. 모양만 검사하면 2026-02-30 이 통과한다. */
 function isDay(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const [y, m, d] = value.split('-').map(Number);
@@ -215,12 +171,7 @@ function dayOrDefault(value: string | undefined, fallback: string, label: string
 }
 
 export class AttendanceService extends BaseService {
-  /**
-   * 설정은 한 행만 둔다. 없으면 기본값으로 만든다.
-   *
-   * id 를 못 박아 findOrCreate 로 만든다. 조회 후 생성으로 두면 동시에 들어온
-   * 두 요청이 각각 행을 만들어, 어느 쪽이 읽히는지 알 수 없는 상태가 된다.
-   */
+  /** 설정은 한 행만 둔다. 동시 요청이 행을 둘 만들지 않도록 id 를 못 박아 findOrCreate 한다. */
   async getPolicy(): Promise<AttendancePolicy> {
     const [policy] = await AttendancePolicy.findOrCreate({
       where: { id: 1 },
@@ -239,7 +190,6 @@ export class AttendanceService extends BaseService {
     });
   }
 
-  /** 오늘 내 상태 — 화면이 출근/퇴근 중 무엇을 보여줄지 정하는 데 쓴다 */
   async getMyStatus(userId: string): Promise<{
     workDate: string;
     record: RecordView | null;
@@ -256,8 +206,7 @@ export class AttendanceService extends BaseService {
       this.getPolicy(),
     ]);
 
-    // checkOut 이 닫는 대상과 같은 기준으로 고른다. 오늘 것이 있으면 그것이 우선이라
-    // 어제 것은 내보내지 않는다 — 어느 쪽이 닫히는지 알 수 없어진다.
+    // checkOut 이 닫는 대상과 같은 기준으로 고른다. 오늘 것이 있으면 어제 것은 내보내지 않는다.
     const openPrevious = record ? null : await findOpenPreviousDay(userId, workDate);
 
     const undoable = await findUndoableCheckOut(userId);
@@ -296,8 +245,7 @@ export class AttendanceService extends BaseService {
       checked: answered.get(i.id) === true,
     }));
 
-    // 근무일은 '누른 순간' 으로 정한다. 보정된 시각으로 정하면 자정 직후의 출근이
-    // 어제 날짜로 넘어가, 오늘 출근이 없는 것처럼 보인다.
+    // 근무일은 누른 순간으로 정한다. 보정된 시각으로 정하면 자정 직후 출근이 어제로 넘어간다.
     const pressedAt = new Date();
     const workDate = today(pressedAt);
     const checkInAt = atMinute(withGrace(pressedAt, policy.checkInGraceMinutes, workDate));
@@ -312,7 +260,7 @@ export class AttendanceService extends BaseService {
       });
       return toRecordView(record);
     } catch (err) {
-      // 하루 한 건은 유니크 인덱스가 지킨다. 버튼을 두 번 눌러도 여기서 걸린다.
+      // 하루 한 건은 유니크 인덱스가 지킨다.
       if (err instanceof UniqueConstraintError) {
         throw new AppError(409, '오늘 출근은 이미 기록되어 있습니다.');
       }
@@ -322,8 +270,7 @@ export class AttendanceService extends BaseService {
 
   async checkOut(userId: string): Promise<RecordView> {
     const workDate = today();
-    // 자정을 넘겨 퇴근하면 출근과 퇴근이 서로 다른 날이 된다. 오늘 것이 없으면
-    // 어제 찍고 안 닫힌 건을 닫는다.
+    // 오늘 것이 없으면 자정을 넘겨 안 닫힌 어제 건을 닫는다.
     const record =
       (await AttendanceRecord.findOne({ where: { UserId: userId, workDate } })) ??
       (await findOpenPreviousDay(userId, workDate));
@@ -344,11 +291,7 @@ export class AttendanceService extends BaseService {
     return toRecordView(record);
   }
 
-  /**
-   * 방금 누른 퇴근을 되돌린다 — 다시 근무 중이 된다. 출근 시각은 그대로다.
-   *
-   * 가장 최근에 닫은 내 기록 하나만, 누른 뒤 CHECKOUT_UNDO_MINUTES 분 안에만 된다.
-   */
+  /** 방금 누른 퇴근을 되돌린다. 가장 최근에 닫은 기록 하나만, CHECKOUT_UNDO_MINUTES 안에만 된다. */
   async undoCheckOut(userId: string): Promise<RecordView> {
     const record = await findUndoableCheckOut(userId);
     if (!record) {
@@ -357,7 +300,7 @@ export class AttendanceService extends BaseService {
         `퇴근은 누른 뒤 ${CHECKOUT_UNDO_MINUTES}분 안에만 취소할 수 있습니다.`
       );
     }
-    // 두 창에서 동시에 누르거나, 그 사이 다른 변경이 있었으면 한 번만 되돌린다
+    // 동시에 여러 번 눌러도 한 번만 되돌린다.
     const [affected] = await AttendanceRecord.update(
       { checkOutAt: null, workMinutes: null },
       { where: { id: record.id, checkOutAt: record.checkOutAt } }
@@ -368,7 +311,7 @@ export class AttendanceService extends BaseService {
     return toRecordView(record);
   }
 
-  /** 내 기록 — month 는 YYYY-MM */
+  /** 내 기록. month 는 YYYY-MM */
   async getMyHistory(
     userId: string,
     month: string
@@ -378,8 +321,7 @@ export class AttendanceService extends BaseService {
     summary: Omit<UserSummary, 'userId' | 'userName'>;
     policy: PolicyView;
   }> {
-    // 달까지 본다. /^\d{4}-\d{2}$/ 만 보던 때는 '2026-13' 이 통과해, 문자열 비교로 아무것도
-    // 걸리지 않는 조건이 되어 '그 달에는 기록이 없다' 처럼 조용히 빈 목록을 줬다.
+    // 달 값까지 검사한다. 모양만 보면 '2026-13' 이 통과해 빈 목록이 된다.
     const wellFormed =
       /^\d{4}-\d{2}$/.test(month) &&
       Number(month.slice(5, 7)) >= 1 &&
@@ -401,8 +343,6 @@ export class AttendanceService extends BaseService {
     };
   }
 
-  // ── 관리자 ────────────────────────────────────────────────────────────────
-
   async listRecords(params: {
     from?: string;
     to?: string;
@@ -410,11 +350,9 @@ export class AttendanceService extends BaseService {
     page?: number;
     limit?: number;
   }): Promise<{ records: RecordView[]; total: number; page: number; totalPages: number }> {
-    // 위쪽도 막는다 — 아주 큰 page 는 offset 이 지수 표기가 되어 DB 가 거절했다(500)
+    // 아주 큰 page 는 offset 이 지수 표기가 되어 DB 가 거절한다.
     const page = Math.min(1000, Math.max(1, params.page ?? 1));
-    // 한 사람의 기록은 하루 한 건(attendance_user_date)이라 기간 상한(366일)만큼 한 번에
-    // 줘도 무겁지 않다 — 날짜별 그래프가 한 페이지(30건)만 그리면 한 달도 다 못 담는다.
-    // 전체 인원 조회는 그대로 100 건으로 묶는다.
+    // 한 사람 조회는 하루 한 건이라 기간 상한만큼, 전체 조회는 100 건으로 묶는다.
     const cap = params.userId ? MAX_RANGE_DAYS : 100;
     const limit = Math.min(Math.max(1, params.limit ?? 30), cap);
 
@@ -426,8 +364,7 @@ export class AttendanceService extends BaseService {
     const { rows, count } = await AttendanceRecord.findAndCountAll({
       where,
       include: [{ model: User, as: 'user', attributes: ['id', 'name'], required: false }],
-      // 같은 날짜가 여러 건이므로 id 로 확정 순서를 준다.
-      // (MySQL/MariaDB 는 동점일 때 LIMIT/OFFSET 페이지 사이에 같은 행을 흘린다)
+      // 동점이면 페이지 사이로 행이 새므로 id 로 확정 순서를 준다.
       order: [
         ['workDate', 'DESC'],
         ['id', 'DESC'],
@@ -447,9 +384,7 @@ export class AttendanceService extends BaseService {
     };
   }
 
-  /**
-   * 오늘 누가 나왔는지. 안 찍은 사람이 보여야 쓸모가 있으므로 명단 전체를 준다.
-   */
+  /** 오늘 누가 나왔는지. 안 찍은 사람도 보여야 하므로 명단 전체를 준다. */
   async getTodayBoard(): Promise<{ workDate: string; rows: TodayRow[] }> {
     const workDate = today();
     const yesterday = shiftDay(workDate, -1);
@@ -461,7 +396,7 @@ export class AttendanceService extends BaseService {
         order: [['name', 'ASC']],
         limit: USER_LIMIT + 1,
       }),
-      // 어제 것도 함께 읽는다. 자정을 넘겨 일하는 사람이 '미출근' 으로 잡힌다.
+      // 자정을 넘겨 일하는 사람 때문에 어제 것도 함께 읽는다.
       AttendanceRecord.findAll({ where: { workDate: { [Op.in]: [workDate, yesterday] } } }),
     ]);
     warnIfUserListTruncated(users.length, '오늘 출근 현황');
@@ -508,10 +443,7 @@ export class AttendanceService extends BaseService {
     return { workDate, rows };
   }
 
-  /**
-   * 인원별 집계. 기간 안에 한 번도 안 찍은 사람도 0 으로 넣는다 —
-   * 명단에서 빠지면 "안 찍은 사람" 을 찾을 수 없다.
-   */
+  /** 인원별 집계. 기간 안에 한 번도 안 찍은 사람도 0 으로 넣는다. */
   async listSummary(params: { from?: string; to?: string }): Promise<UserSummary[]> {
     const { from, to } = this.boundedRange(params.from, params.to);
 
@@ -613,7 +545,7 @@ export class AttendanceService extends BaseService {
     return toItemView(item);
   }
 
-  /** 순서 바꾸기 — 넘어온 순서대로 다시 매긴다 */
+  /** 넘어온 순서대로 다시 매긴다 */
   async reorderChecklist(ids: number[]): Promise<ChecklistItemView[]> {
     const items = await AttendanceChecklistItem.findAll();
     const known = new Set(items.map(i => i.id));
@@ -654,7 +586,7 @@ export class AttendanceService extends BaseService {
     }
     if (data.checkInGraceMinutes !== undefined) {
       const grace = data.checkInGraceMinutes;
-      // 상한을 둔다. 한 시간을 넘겨 당기면 그건 보정이 아니라 기록을 지어내는 것이다.
+      // 보정 상한은 60분.
       if (!Number.isInteger(grace) || grace < 0 || grace > 60) {
         throw new AppError(400, '출근 시각 보정은 0~60분 사이의 정수여야 합니다.');
       }
@@ -671,10 +603,7 @@ export class AttendanceService extends BaseService {
     return toPolicyView(policy);
   }
 
-  /**
-   * 집계용 기간. 형식이 어긋나거나 빠진 값은 이번 달로 채운다.
-   * 기간을 안 주면 표 전체를 읽게 되므로 상한을 둔다.
-   */
+  /** 집계용 기간. 값이 없거나 형식이 어긋나면 이번 달로 채운다. */
   private boundedRange(from?: string, to?: string): { from: string; to: string } {
     const day = today();
     const start = dayOrDefault(from, `${day.slice(0, 7)}-01`, '시작일');
@@ -690,7 +619,7 @@ export class AttendanceService extends BaseService {
     return { from: start, to: end };
   }
 
-  /** from/to 를 workDate 조건으로. 날짜가 아닌 값을 줬으면 거절한다(조용히 전체를 돌려주지 않는다). */
+  /** from/to 를 workDate 조건으로. 날짜가 아니면 거절한다. */
   private dayRangeFilter(from?: string, to?: string): Record<symbol, unknown> | null {
     const start = from === undefined || from === '' ? null : requireDay(from, '시작일');
     const end = to === undefined || to === '' ? null : requireDay(to, '종료일');
@@ -711,22 +640,12 @@ function shiftDay(day: string, delta: number): string {
   return `${y}-${m}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/**
- * 어제 찍고 아직 퇴근을 안 찍은 기록.
- *
- * 하루 전까지만 본다. 더 거슬러 올라가면 잊고 있던 기록이 엉뚱한 시각으로 마감된다.
- */
-/** 퇴근 취소 마감 — 잘린 1분을 더 쳐 준다(CHECKOUT_UNDO_MINUTES 설명) */
+/** 퇴근 취소 마감. 분 단위로 잘린 1분을 더 쳐 준다. */
 function undoDeadline(record: AttendanceRecord): Date {
   return new Date(record.checkOutAt!.getTime() + (CHECKOUT_UNDO_MINUTES + 1) * 60_000);
 }
 
-/**
- * 되돌릴 수 있는 퇴근 — 가장 최근에 닫은 내 기록이 마감 안이고, 지금 열린 기록이 없을 때.
- *
- * 열린 기록이 있으면 막는다. 어제 기록을 닫고 오늘 새로 출근한 뒤 어제 퇴근을 되돌리면
- * 열린 기록이 둘이 되는데, 퇴근은 오늘 것만 닫으므로 어제 것은 영영 열린 채 남는다.
- */
+/** 되돌릴 수 있는 퇴근. 열린 기록이 있으면 막는다(퇴근은 오늘 것만 닫는다). */
 async function findUndoableCheckOut(userId: string): Promise<AttendanceRecord | null> {
   const last = await AttendanceRecord.findOne({
     where: { UserId: userId, checkOutAt: { [Op.ne]: null } },
@@ -749,7 +668,7 @@ async function findOpenPreviousDay(userId: string, workDate: string) {
   });
 }
 
-/** 기록 묶음 요약. 평균은 퇴근까지 찍힌 날만 센다 (근무 중인 날을 섞으면 평균이 내려간다). */
+/** 기록 묶음 요약. 평균은 퇴근까지 찍힌 날만 센다. */
 function summarize(records: AttendanceRecord[]): Omit<UserSummary, 'userId' | 'userName'> {
   const closed = records.filter(r => r.workMinutes !== null);
   const totalMinutes = closed.reduce((sum, r) => sum + (r.workMinutes ?? 0), 0);

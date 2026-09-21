@@ -21,8 +21,7 @@ interface WikiDetailProps {
   onRestore?: (content: string) => void;
 }
 
-// WikiDetail renders sanitized HTML content from the wiki page.
-// Content is processed through DOMPurify via sanitizeHTML before rendering.
+// 위키 본문은 sanitizeHTML(DOMPurify)을 거친 뒤 렌더한다.
 export const WikiDetail: React.FC<WikiDetailProps> = ({
   page,
   allPages,
@@ -35,15 +34,14 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
   const { imageViewer, closeImageViewer } = useContentImageHandler();
   const [showHistory, setShowHistory] = useState(false);
 
-  // 페이지 이동 시 이력 패널 초기화 (버그 2 수정)
+  // 페이지 이동 시 이력 패널 초기화
   useEffect(() => {
     setShowHistory(false);
   }, [page.slug]);
 
   useCodeHighlight(contentRef);
 
-  // Build breadcrumb (visited set prevents infinite loop on circular parentId)
-  // 현재 페이지(본문 있음)와 트리 노드(본문 없음)가 섞이므로 트리 타입으로 모은다.
+  // 순환 parentId 에 대비해 visited 로 막는다. 현재 페이지와 트리 노드가 섞여 트리 타입으로 모은다.
   const breadcrumb: WikiTreePage[] = [];
   const visited = new Set<number>();
   let current: WikiTreePage | undefined = page;
@@ -53,7 +51,6 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
     current = allPages.find(p => p.id === current!.parentId);
   }
 
-  // Child pages (하위 페이지)
   const childPages = allPages.filter(p => p.parentId === page.id);
 
   return (
@@ -66,8 +63,7 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
       />
       <div className="flex-1 overflow-y-auto bg-white dark:bg-slate-900">
         <div className="max-w-[var(--content-width-reading)] mx-auto px-6 py-8">
-          {/* 경로 — 최상위 문서는 경로에 자기 이름만 남아 바로 아래 제목과 겹친다.
-              보여 줄 상위 문서가 있을 때만 그린다. */}
+          {/* 최상위 문서는 경로에 자기 이름만 남아 제목과 겹치므로, 상위 문서가 있을 때만 그린다 */}
           {breadcrumb.length > 1 && (
             <nav className="flex items-center gap-1.5 text-sm mb-6 flex-wrap">
               {breadcrumb.map((p, i) => (
@@ -102,7 +98,6 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
             </nav>
           )}
 
-          {/* 제목 + 편집 버튼 */}
           <div className="flex items-start justify-between gap-4 mb-4">
             <h1 className="doc-title">{page.title}</h1>
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -176,7 +171,6 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
             </div>
           </div>
 
-          {/* 메타 정보 */}
           <div className="flex items-center gap-4 text-xs text-slate-400 mb-6 pb-6 border-b border-slate-100 dark:border-slate-800">
             <span className="flex items-center gap-1.5">
               <svg
@@ -202,7 +196,6 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
             )}
           </div>
 
-          {/* 본문 */}
           {page.content ? (
             <WikiContentRenderer content={page.content} contentRef={contentRef} />
           ) : (
@@ -220,7 +213,6 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
             </div>
           )}
 
-          {/* 편집 이력 */}
           {showHistory && canEdit && (
             <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
               {/* key=updatedAt: 복원/편집으로 페이지가 바뀌면 이력 목록을 새로 불러온다 */}
@@ -233,7 +225,6 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
             </div>
           )}
 
-          {/* 하위 페이지 */}
           {childPages.length > 0 && (
             <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800">
               <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400 tracking-wider mb-4">
@@ -290,7 +281,6 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
   );
 };
 
-// Separate component for sanitized CKEditor HTML rendering
 function WikiContentRenderer({
   content,
   contentRef,
@@ -299,8 +289,7 @@ function WikiContentRenderer({
   contentRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const sanitized = sanitizeHTML(content);
-  // 객체까지 기억해 둔다 — React 는 dangerouslySetInnerHTML 을 객체 참조로 비교해서,
-  // 매번 새 리터럴을 만들면 내용이 같아도 본문을 통째로 다시 붙인다.
+  // React 는 dangerouslySetInnerHTML 을 객체 참조로 비교하므로 객체까지 메모한다.
   const bodyHtml = useMemo(() => ({ __html: sanitized }), [sanitized]);
   return <div ref={contentRef} className="ck-content-view" dangerouslySetInnerHTML={bodyHtml} />;
 }

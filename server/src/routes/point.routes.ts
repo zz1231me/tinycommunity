@@ -23,7 +23,7 @@ import { AuthRequest } from '../types/auth-request';
 
 const router = Router();
 
-// 스위치는 서버에서 막는다 — 화면에서 버튼만 숨기면 API 를 직접 부르는 쪽엔 제약이 없다.
+// 기능 스위치는 서버에서 막는다.
 router.use(authenticate as RequestHandler);
 router.use(requireFeature('tools.lottery'));
 
@@ -73,9 +73,7 @@ router.get(
 );
 
 /**
- * 출석 포인트는 로그인할 때 서버가 알아서 준다(auth.service). 이 엔드포인트는 그 지급을
- * 다시 부를 수 있는 입구이자, "하루 한 번" 보장이 동시 요청에서도 지켜지는지 검증하는 자리다.
- * 화면에서 부르는 곳은 없다 — 나중에 '출석 체크' 버튼을 붙인다면 여기를 쓴다.
+ * 출석 포인트는 로그인 시 자동 지급되며(auth.service), 이 엔드포인트는 수동 호출용이다.
  *
  * @swagger
  * /api/points/attendance:
@@ -107,9 +105,7 @@ router.post(
   asyncHandler((req, res) => drawLottery(req as AuthRequest, res))
 );
 
-// ── 포인트 대결 ────────────────────────────────────────────────────────────
-// 뽑기와 별개로 끌 수 있다. 위의 requireFeature('tools.lottery') 가 이미 걸려 있으므로
-// 포인트 기능 자체가 꺼지면 대결도 함께 닫힌다.
+// 포인트 대결. 뽑기와 별개로 끌 수 있고, 위의 requireFeature('tools.lottery') 때문에 포인트 기능이 꺼지면 함께 닫힌다.
 const duels = Router();
 duels.use(requireFeature('tools.pointDuel'));
 
@@ -192,7 +188,7 @@ duels.post(
  *     responses:
  *       200: { description: 취소됨 }
  */
-// 이긴 사람의 한마디 — 한 판에 한 번. 누가 이겼는지·이미 남겼는지는 서비스가 본다.
+// 이긴 사람의 한마디. 한 판에 한 번이며 검증은 서비스에서 한다.
 duels.post(
   '/:id/taunt',
   validateBody(duelTauntSchema),

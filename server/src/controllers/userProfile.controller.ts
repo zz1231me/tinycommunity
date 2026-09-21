@@ -24,8 +24,7 @@ export const getMyPosts = async (req: AuthRequest, res: Response): Promise<void>
         where: { UserId: userId },
         include: [{ model: Board, as: 'board', attributes: ['name'], required: false }],
         attributes: ['id', 'title', 'boardType', 'viewCount', 'createdAt', 'isSecret'],
-        // 시각이 같으면 id 로 가른다. 같은 밀리초의 행이 있으면 MySQL/MariaDB 는 페이지마다
-        // 순서를 다르게 줄 수 있어, 어떤 글은 두 번 나오고 어떤 글은 빠진다.
+        // 시각이 같으면 id 로 가른다. 같은 밀리초 행은 페이지마다 순서가 달라져 중복·누락이 난다.
         order: [
           ['createdAt', 'DESC'],
           ['id', 'DESC'],
@@ -187,7 +186,7 @@ export const getMyActivity = async (req: AuthRequest, res: Response): Promise<vo
 };
 
 // GET /api/users/search?q=name  → 사용자 이름 검색 (비밀글 대상 설정용)
-/** ?q=a&q=b 처럼 같은 이름이 두 번 오면 Express 는 배열을 준다 — 첫 값만 쓴다 */
+/** ?q=a&q=b 처럼 같은 이름이 두 번 오면 Express 가 배열을 주므로 첫 값만 쓴다 */
 function asScalar(value: unknown): string {
   if (Array.isArray(value)) return typeof value[0] === 'string' ? value[0] : '';
   return typeof value === 'string' ? value : '';
@@ -200,8 +199,7 @@ export const searchUsers = async (req: AuthRequest, res: Response): Promise<void
     return;
   }
 
-  // 특정 게시판을 볼 수 있는 사람만 (담당자 지정처럼 대상이 제한된 경우).
-  // 고를 수 없는 사람을 목록에 띄워 놓고 고른 뒤에 거절하면 고르는 사람만 헛수고한다.
+  // 특정 게시판을 볼 수 있는 사람만 고른다. 고를 수 없는 사람을 띄우면 고른 뒤에 거절된다.
   const boardType = asScalar(req.query.boardType).trim();
 
   try {
@@ -215,8 +213,7 @@ export const searchUsers = async (req: AuthRequest, res: Response): Promise<void
     const escapedQ = q.replace(/[%_\\]/g, '\\$&');
     const users = await User.findAll({
       where: {
-        // 이름뿐 아니라 아이디로도 찾는다 — @멘션은 아이디로 걸리므로
-        // 이름만 검색하면 자동완성에서 대상을 찾지 못한다.
+        // @멘션은 아이디로 걸리므로 이름뿐 아니라 아이디로도 찾는다.
         [Op.and]: [
           {
             [Op.or]: [
@@ -230,11 +227,7 @@ export const searchUsers = async (req: AuthRequest, res: Response): Promise<void
         isDeleted: false,
       },
       attributes: ['id', 'name'],
-      // 이름으로 맞은 사람을 먼저 보여 준다.
-      //
-      // 정렬을 안 주면 DB 가 주는 순서(대개 아이디 순)로 나와, 이름을 쳐서 찾았는데
-      // 엉뚱하게 아이디에 그 글자가 들어간 사람이 위에 오는 일이 생긴다.
-      // 이름이 그 글자로 시작하는 사람 → 이름 어딘가에 들어간 사람 → 아이디로만 맞은 사람 순.
+      // 이름으로 맞은 사람을 먼저 보여 준다. 정렬이 없으면 아이디에 그 글자가 든 사람이 위로 온다.
       order: [
         [
           literal(

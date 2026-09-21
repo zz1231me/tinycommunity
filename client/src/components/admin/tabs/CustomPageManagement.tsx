@@ -1,6 +1,5 @@
-// CustomPageManagement.tsx — 관리자 커스텀 HTML 페이지 CRUD.
-// 두 가지 방식: (1) HTML 직접 입력, (2) 폴더를 ZIP으로 압축해 업로드(index.html + 자산).
-// 저장된 내용은 사용자 화면에서 sandbox iframe으로 격리 렌더된다(앱과 분리).
+// 관리자 커스텀 HTML 페이지 CRUD. HTML 직접 입력 또는 ZIP 번들 업로드(index.html + 자산).
+// 저장된 내용은 사용자 화면에서 sandbox iframe 으로 격리 렌더된다.
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminKeys } from '../../../api/queryKeys';
@@ -50,7 +49,6 @@ export const CustomPageManagement = () => {
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<CustomPage | null>(null);
 
-  // 번들 모드 상태
   const [mode, setMode] = useState<Mode>('html');
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [uploadPct, setUploadPct] = useState(0);
@@ -106,7 +104,6 @@ export const CustomPageManagement = () => {
       setMode('url');
     } else if (p.bundlePath) {
       setMode('bundle');
-      // 진입 파일 선택용 목록 로드
       fetchBundleFiles(p.id)
         .then(r => {
           setBundleHtmlFiles(r.htmlFiles);
@@ -121,7 +118,6 @@ export const CustomPageManagement = () => {
   };
   /**
    * 방식 바꾸기. 번들에서 벗어나면 올려 둔 파일이 저장 시 지워지므로 미리 알린다.
-   * (예전에는 아예 못 바꿔서, 종류를 바꾸려면 지우고 같은 주소로 다시 만들어야 했다)
    */
   const applyMode = (next: Mode) => {
     if (next !== 'bundle') resetBundleFiles();
@@ -131,7 +127,6 @@ export const CustomPageManagement = () => {
   const switchMode = (next: Mode) => {
     if (next === mode) return;
     const leavingBundle = mode === 'bundle' && bundleHtmlFiles.length > 0;
-    // 브라우저 기본 confirm 대신 이 화면이 이미 쓰는 공용 확인 상자로
     if (leavingBundle) {
       setPendingMode(next);
       return;
@@ -232,7 +227,6 @@ export const CustomPageManagement = () => {
     }
   };
 
-  // ── 편집 폼 ──
   if (editingId) {
     const isNew = editingId === 'new';
     return (
@@ -287,7 +281,6 @@ export const CustomPageManagement = () => {
             </button>
           </div>
 
-          {/* 공통: 제목 / slug */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="form-label" htmlFor="cp-title">
@@ -319,7 +312,6 @@ export const CustomPageManagement = () => {
             </div>
           </div>
 
-          {/* 모드별 본문 */}
           {mode === 'html' ? (
             <div>
               <label className="form-label" htmlFor="cp-html">
@@ -403,7 +395,6 @@ export const CustomPageManagement = () => {
             <div className="space-y-3">
               {/* 아래 드롭존이 이미 파일 칸을 감싼 라벨이다 — 여기는 제목일 뿐이라 span */}
               <span className="form-label">폴더(ZIP) 업로드</span>
-              {/* 드롭존/파일선택 */}
               <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 py-8 text-center transition-colors hover:border-secondary-400 hover:bg-secondary-50/40 dark:border-slate-700 dark:hover:border-secondary-600 dark:hover:bg-secondary-900/10">
                 <UploadCloud className="h-8 w-8 text-slate-400" />
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -432,7 +423,6 @@ export const CustomPageManagement = () => {
                 </div>
               )}
 
-              {/* 진입 파일 선택 (업로드/편집으로 목록이 있을 때) */}
               {bundleHtmlFiles.length > 0 && (
                 <div>
                   <label className="form-label" htmlFor="cp-entry-file">
@@ -476,7 +466,6 @@ export const CustomPageManagement = () => {
             </div>
           )}
 
-          {/* 공통: 게시 / 정렬 */}
           <div className="flex flex-wrap items-center gap-6">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
               <input
@@ -509,7 +498,6 @@ export const CustomPageManagement = () => {
     );
   }
 
-  // ── 목록 ──
   if (loading && pages.length === 0) return <LoadingSpinner message="불러오는 중..." />;
 
   return (

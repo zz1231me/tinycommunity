@@ -1,13 +1,4 @@
-// client/src/components/common/UpdateBanner.tsx
-// 새 배포가 떴을 때 알리고, 안전한 순간에 스스로 새로고침한다.
-//
-// 열어 둔 탭은 배포를 알아채지 못한다. 예전에는 사람들이 며칠째 예전 화면을 쓰다가
-// 고쳐 둔 문제를 다시 겪었고, 강제로 다시 받게 하려면 Ctrl+Shift+R 을 알려 줘야 했다.
-//
-// 다만 아무 때나 새로고침하면 쓰던 것이 날아간다. 그래서:
-//  · 글을 쓰는 중(입력칸에 손이 가 있음)이거나 대화상자가 열려 있으면 기다린다
-//  · 그 밖에는 잠깐 알린 뒤 스스로 새로고침한다
-//  · 다른 탭을 보고 있는 동안이면 그때 바로 — 돌아오면 이미 새 화면이다
+// 새 배포를 알리고 안전한 순간에 스스로 새로고침한다.
 
 import { useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
@@ -43,7 +34,7 @@ export function UpdateBanner() {
       window.location.reload();
     };
 
-    // 보고 있지 않은 탭이면 지금이 가장 안전하다 — 돌아오면 이미 새 화면이다
+    // 보고 있지 않은 탭이면 지금 새로고침한다.
     if (document.hidden) {
       reload();
       return;

@@ -31,8 +31,7 @@ import {
 import { UserActivityModal } from './UserActivityModal';
 import { ListState } from '../../common/ListState';
 
-// "최근 접속" = 명시적 로그인(lastLoginAt)과 세션 활동(lastActiveAt, 토큰 자동갱신마다 갱신) 중 더 최근값.
-// 자동 인증 갱신으로 계속 활동 중인 사용자를 실제 접속 시점으로 표시한다.
+// '최근 접속' 은 lastLoginAt 과 lastActiveAt 중 더 최근 값이다.
 const lastSeenOf = (u: User): string | null => {
   const a = u.lastActiveAt ? new Date(u.lastActiveAt).getTime() : 0;
   const l = u.lastLoginAt ? new Date(u.lastLoginAt).getTime() : 0;
@@ -59,7 +58,7 @@ export const UserManagement = () => {
   const [deletedUsers, setDeletedUsers] = useState<User[]>([]);
   const [showDeleted, setShowDeleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  // 정렬은 react-table가 관리 — 기본은 '최근 접속' 내림차순(활동 최신순)
+  // 정렬은 react-table 이 관리하며 기본은 최근 접속 내림차순이다.
   const [sorting, setSorting] = useState<SortingState>([{ id: 'lastSeen', desc: true }]);
   const [confirmAction, setConfirmAction] = useState<{
     type: string;
@@ -110,7 +109,7 @@ export const UserManagement = () => {
       return s[buf[0] % s.length];
     };
 
-    // 각 문자 클래스를 최소 1개씩 보장 — 서버 복잡도 검증(대문자/소문자/숫자·특수) 통과
+    // 서버 복잡도 검증을 통과하도록 문자 클래스를 최소 1개씩 보장한다.
     const required = [cryptoRand(upper), cryptoRand(lower), cryptoRand(digits)];
     const rest = Array.from({ length: 13 }, () => cryptoRand(pool));
     const all = [...required, ...rest];
@@ -150,10 +149,10 @@ export const UserManagement = () => {
   };
 
   const handleUpdateUserRole = async (userId: string, newRole: string) => {
-    // 본인 역할 변경은 서버에서 차단됨(자기 권한 박탈 방지) — 클라에서 먼저 안내해 무음 원복 방지
+    // 본인 역할 변경은 서버에서 막히므로 먼저 안내한다.
     if (userId === currentUser?.id) {
       toast.error('자신의 역할은 변경할 수 없습니다.');
-      // 컨트롤드 select가 선택한(거부된) 값에 멈추지 않도록 실제 역할로 원복(리렌더 유도)
+      // 컨트롤드 select 가 거부된 값에 멈추지 않도록 실제 역할로 되돌린다.
       fetchUsers();
       return;
     }
@@ -163,7 +162,7 @@ export const UserManagement = () => {
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       toast.error(e.response?.data?.message ?? '역할 변경에 실패했습니다.');
-      // 서버 거부(비활성/미존재 역할 등) 시 select가 거부된 값에 남는 문제 방지 — 실제 역할로 원복
+      // 서버가 거부하면 select 가 거부된 값에 남으므로 실제 역할로 되돌린다.
       fetchUsers();
     }
   };
@@ -193,10 +192,7 @@ export const UserManagement = () => {
     setResetTarget({ id, name });
   };
 
-  // ESC 로 닫고, 열려 있는 동안 포커스를 안에 가둔다.
-  // 가두지 않으면 Tab 이 뒤쪽 사용자 표로 새어, 가려진 줄의 단추를 누르게 된다.
-  // 첫 포커스는 훅 기본값(안쪽 첫 요소)에 맡긴다 — 여기서는 그것이 코드 칸이라,
-  // 원래 autoFocus 로 시작하던 자리와 같다. 그래서 autoFocus 는 뺐다(방식은 하나로).
+  // ESC 로 닫고 열려 있는 동안 포커스를 가둔다. 가두지 않으면 Tab 이 뒤쪽 표로 새어 나간다.
   const resetPanelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(resetPanelRef, () => setResetTarget(null), !!resetTarget);
 
@@ -297,7 +293,7 @@ export const UserManagement = () => {
   };
 
   const activeUsers = useMemo(() => users.filter(u => u.isActive !== false), [users]);
-  // 승인 대기(isApproved=false)와 관리자가 비활성화한 사용자(isApproved=true & isActive=false)를 구분한다.
+  // 승인 대기(isApproved=false)와 관리자가 비활성화한 사용자를 구분한다.
   const pendingUsers = users.filter(u => u.isApproved === false);
   const deactivatedUsers = users.filter(u => u.isApproved !== false && u.isActive === false);
   const roleNameOf = (id: string) => roles.find(r => r.id === id)?.name ?? id;
@@ -482,7 +478,6 @@ export const UserManagement = () => {
         onCancel={() => setConfirmAction(null)}
       />
 
-      {/* 비밀번호 초기화 — 관리자가 6자리 숫자 임시 비밀번호 입력 */}
       {resetTarget && (
         <div className="fixed inset-0 z-modal flex items-center justify-center modal-scrim p-4">
           <div
@@ -535,7 +530,6 @@ export const UserManagement = () => {
         </div>
       )}
 
-      {/* 1. 사용자 추가 */}
       <AdminSection title="사용자 직접 추가">
         {newUserInfo && (
           <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-start justify-between gap-4">
@@ -616,7 +610,6 @@ export const UserManagement = () => {
         </p>
       </AdminSection>
 
-      {/* 2. 승인 대기 */}
       {pendingUsers.length > 0 && (
         <AdminSection
           title={`승인 대기 (${pendingUsers.length}명)`}
@@ -678,7 +671,6 @@ export const UserManagement = () => {
         </AdminSection>
       )}
 
-      {/* 2-2. 비활성화됨 (관리자가 비활성화한 사용자 — 승인 대기와 분리) */}
       {deactivatedUsers.length > 0 && (
         <AdminSection
           title={`비활성화됨 (${deactivatedUsers.length}명)`}
@@ -742,7 +734,6 @@ export const UserManagement = () => {
         </AdminSection>
       )}
 
-      {/* 3. 활성 사용자 목록 */}
       <AdminSection
         title={`사용자 목록 (${activeUsers.length}명)`}
         actions={
@@ -858,7 +849,6 @@ export const UserManagement = () => {
         )}
       </AdminSection>
 
-      {/* 4. 삭제된 계정 */}
       <AdminSection
         title="삭제된 계정"
         actions={
@@ -920,7 +910,6 @@ export const UserManagement = () => {
         )}
       </AdminSection>
 
-      {/* 활동 내역 모달 */}
       {activityModal && (
         <UserActivityModal
           userId={activityModal.userId}

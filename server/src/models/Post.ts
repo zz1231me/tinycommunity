@@ -1,4 +1,3 @@
-// server/src/models/Post.ts - 수정된 Post 모델 (Sequelize 옵션 개선)
 import {
   DataTypes,
   Model,
@@ -14,11 +13,9 @@ import { logError } from '../utils/logger';
 import { extractSearchText } from '../utils/contentRenderer';
 import type { WorkStatus } from '../config/workStatus';
 
-// 타입 전용 import
 import type { UserInstance } from './User';
 import type { Board } from './Board';
 
-// 파일 첨부 타입 정의
 export interface Attachment {
   filename: string; // 서버에 저장된 파일명
   originalname: string; // 원본 파일명
@@ -27,14 +24,13 @@ export interface Attachment {
   path: string; // 저장 경로
 }
 
-// PostInstance 타입 정의 (사용자 삭제 대응)
 export interface PostInstance extends Model<
   InferAttributes<PostInstance>,
   InferCreationAttributes<PostInstance>
 > {
   id: CreationOptional<string>;
   title: string;
-  content: string; // 본문(현재 CKEditor HTML, 레거시 Tiptap JSON 호환)
+  content: string; // 본문. CKEditor HTML, 레거시 Tiptap JSON 호환.
   contentText: CreationOptional<string | null>; // 검색용 평문(content에서 태그 제거)
   author: string;
   attachments: Attachment[] | null;
@@ -42,12 +38,12 @@ export interface PostInstance extends Model<
   viewCount: CreationOptional<number>;
   isPinned: CreationOptional<boolean>;
   pinnedUntil: CreationOptional<Date | null>;
-  // 업무 추적 — 게시판을 '글 모음' 이 아니라 '할 일 목록' 으로 쓸 수 있게 한다
+  // 업무 추적
   workStatus: CreationOptional<WorkStatus>;
   assigneeId: CreationOptional<string | null>;
   status: CreationOptional<'draft' | 'published' | 'archived'>;
   deletedAt: CreationOptional<Date | null>;
-  UserId: ForeignKey<string | null>; // ✅ null 허용
+  UserId: ForeignKey<string | null>; // 삭제된 사용자면 null
   // 비밀글
   isSecret: CreationOptional<boolean>;
   secretType: CreationOptional<'password' | 'users' | null>;
@@ -65,7 +61,6 @@ export interface PostInstance extends Model<
   board?: NonAttribute<Board>;
 }
 
-// Post 클래스 정의 - 사용자 삭제 대응
 class PostModel
   extends Model<InferAttributes<PostInstance>, InferCreationAttributes<PostInstance>>
   implements PostInstance
@@ -83,7 +78,7 @@ class PostModel
   declare public assigneeId: CreationOptional<string | null>;
   declare public status: CreationOptional<'draft' | 'published' | 'archived'>;
   declare public deletedAt: CreationOptional<Date | null>;
-  declare public UserId: ForeignKey<string | null>; // ✅ null 허용
+  declare public UserId: ForeignKey<string | null>; // 삭제된 사용자면 null
   declare public attachments: Attachment[] | null;
   declare public isSecret: CreationOptional<boolean>;
   declare public secretType: CreationOptional<'password' | 'users' | null>;
@@ -101,10 +96,10 @@ class PostModel
 
   public override toJSON(): Partial<PostInstance> {
     const values = { ...this.get() } as any;
-    // secretPassword는 항상 제거; secretSalt는 E2EE 게시글에서만 노출 (컨트롤러에서 추가 필터링됨)
-    // contentText는 검색 전용 내부 컬럼이라 API 응답에서 제외(content와 중복 페이로드 방지)
+    // secretPassword 는 항상 제거하고, secretSalt 는 E2EE 게시글에서만 내보낸다.
+    // contentText 는 검색 전용 내부 컬럼이라 응답에서 뺀다.
     const { secretPassword: _sp, secretSalt: _ss, contentText: _ct, ...safeValues } = values;
-    // E2EE 게시글이면 secretSalt를 다시 포함 (클라이언트가 복호화에 필요)
+    // E2EE 게시글이면 클라이언트 복호화에 필요하므로 secretSalt 를 다시 넣는다
     if (values.isEncrypted) {
       return { ...safeValues, secretSalt: _ss };
     }
@@ -112,7 +107,6 @@ class PostModel
   }
 }
 
-// 모델 초기화
 PostModel.init(
   {
     id: {
@@ -196,8 +190,7 @@ PostModel.init(
       allowNull: true,
       comment: '상단 고정 만료 시각 (null = 무기한)',
     },
-    // ENUM 이 아니라 문자열이다 — 이 프로젝트는 sync({alter:false}) 로 떠서
-    // ENUM 값을 늘려도 이미 만들어진 테이블에 반영되지 않는다(Notifications.type 과 같은 이유).
+    // ENUM 이 아니라 문자열이다. sync({alter:false}) 라 ENUM 값 추가가 반영되지 않는다.
     workStatus: {
       type: DataTypes.STRING(10),
       allowNull: false,
@@ -207,7 +200,7 @@ PostModel.init(
     assigneeId: {
       type: DataTypes.STRING(50),
       allowNull: true,
-      // 담당자가 탈퇴해도 글은 남아야 한다 — FK 제약 없이 앱에서 다룬다
+      // 담당자가 탈퇴해도 글은 남아야 하므로 FK 제약을 걸지 않는다
       comment: '담당자 사용자 id',
     },
     status: {
@@ -223,13 +216,13 @@ PostModel.init(
     },
     UserId: {
       type: DataTypes.STRING(50),
-      allowNull: true, // ✅ null 허용 (삭제된 사용자 대응)
+      allowNull: true, // 삭제된 사용자 대응
       references: {
         model: 'users',
         key: 'id',
       },
       onUpdate: 'CASCADE',
-      onDelete: 'SET NULL', // ✅ RESTRICT → SET NULL로 변경
+      onDelete: 'SET NULL',
       comment: '작성자 ID (삭제된 경우 null)',
     },
     isSecret: {
@@ -301,7 +294,6 @@ PostModel.init(
     deletedAt: 'deletedAt',
     tableName: 'Posts',
     modelName: 'Post',
-    // 추가 옵션으로 명시적 설정
     underscored: false,
     freezeTableName: true,
     indexes: [
@@ -314,13 +306,13 @@ PostModel.init(
       { fields: ['deletedAt'] },
       { fields: ['boardType', 'createdAt'] },
       { fields: ['boardType', 'status', 'createdAt'] },
-      // 게시판에서 '진행중인 것만' 보기
+      // 게시판에서 진행 중인 것만 보기
       { fields: ['boardType', 'workStatus'] },
-      // '내가 맡은 일' 모아 보기
+      // 내가 맡은 일 모아 보기
       { fields: ['assigneeId', 'workStatus'] },
     ],
     scopes: {
-      // paranoid: true 옵션이 자동으로 deletedAt IS NULL 조건을 추가하므로 중복 불필요
+      // paranoid: true 가 deletedAt IS NULL 조건을 자동으로 붙인다
       published: {
         where: { status: 'published' },
       },
@@ -329,8 +321,7 @@ PostModel.init(
       },
     },
     hooks: {
-      // content가 바뀔 때마다 검색용 평문(contentText)을 자동 갱신.
-      // 생성·수정 모두에서 동작(beforeSave)하여, 검색이 원본 HTML이 아닌 평문에 매칭된다.
+      // content 가 바뀔 때마다 검색용 평문(contentText)을 갱신한다
       beforeSave: async post => {
         if (post.isNewRecord || post.changed('content')) {
           post.contentText = extractSearchText(post.content || '');
@@ -340,7 +331,6 @@ PostModel.init(
   }
 );
 
-// Export 정리
 export const Post = PostModel;
 export type Post = PostModel;
 export default PostModel;

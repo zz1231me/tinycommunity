@@ -32,17 +32,12 @@ interface GetLogsDTO {
 }
 
 export class SecurityLogService extends BaseService {
-  /**
-   * 보안 로그 생성
-   * 비동기로 실행하여 메인 로직 성능 영향 최소화 (await 없이 호출 가능)
-   */
+  /** 보안 로그 생성. 메인 로직을 막지 않도록 await 없이 호출해도 된다. */
   async createLog(data: CreateLogDTO): Promise<void> {
     try {
       await SecurityLog.create({
         ...data,
-        // userAgent 만 자르고 있었다. route 도 요청자가 정하는 값(originalUrl)이라
-        // 길게 채우면 STRING(500)을 넘겨 MySQL·PostgreSQL 에서 INSERT 가 거부되고,
-        // 아래 catch 가 삼켜 기록만 사라진다.
+        // route 도 요청자가 정하는 값이라 자르지 않으면 STRING(500)을 넘겨 INSERT 가 거부된다.
         userId: clampText(data.userId, 50),
         ipAddress: clampText(data.ipAddress, 45),
         action: clampText(data.action, 100),
@@ -50,19 +45,17 @@ export class SecurityLogService extends BaseService {
         route: clampText(data.route, 500),
         status: clampText(data.status, 20),
         details: clampJson(data.details, DETAILS_MAX_CHARS),
-        userAgent: data.userAgent?.substring(0, 255) || 'Unknown', // 길이 제한 방지
+        userAgent: data.userAgent?.substring(0, 255) || 'Unknown',
       });
     } catch (error) {
       logError('보안 로그 저장 실패', error);
-      // 로그 저장이 실패해도 메인 로직은 중단되지 않도록 throw하지 않음
+      // 로그 저장이 실패해도 메인 로직은 중단하지 않는다.
     }
   }
 
-  /**
-   * 로그 조회 (관리자용)
-   */
+  /** 로그 조회 (관리자용) */
   async getLogs(params: GetLogsDTO) {
-    // 위쪽도 막는다 — 아주 큰 page 는 offset 이 지수 표기가 되어 DB 가 거절했다(500)
+    // 아주 큰 page 는 offset 이 지수 표기가 되어 DB 가 거절한다.
     const page = Math.min(1000, Math.max(1, params.page || 1));
     const limit = params.limit || 20;
     const offset = (page - 1) * limit;
@@ -82,9 +75,7 @@ export class SecurityLogService extends BaseService {
       where.action = params.action;
     }
 
-    // 날짜를 확인한다. 'abc' 같은 값은 Invalid Date 가 되는데, SQLite 는 그 조건을 그냥
-    // 지나쳐 '거른 것처럼 보이지만 안 걸러진' 목록을 줬다(MySQL 은 오류로 500).
-    // 감사 로그·오류 로그·로그인 기록은 모두 이 확인을 한다 — 여기만 빠져 있었다.
+    // 'abc' 같은 값은 Invalid Date 라 SQLite 가 조건을 그냥 지나친다. 날짜 형식을 확인한다.
     if (params.startDate && params.endDate) {
       const start = new Date(params.startDate);
       const end = new Date(params.endDate);
@@ -97,7 +88,7 @@ export class SecurityLogService extends BaseService {
       where,
       limit,
       offset,
-      // 시각이 같으면 id 로 가른다 — 없으면 페이지 경계에서 행이 중복·누락된다.
+      // 시각이 같으면 id 로 가른다. 없으면 페이지 경계에서 행이 중복·누락된다.
       order: [
         ['createdAt', 'DESC'],
         ['id', 'DESC'],
@@ -107,8 +98,7 @@ export class SecurityLogService extends BaseService {
           model: User,
           as: 'user',
           attributes: ['id', 'name', 'email'],
-          // required:false 미지정 시 INNER JOIN으로 userId NULL 행(익명 시스템 이벤트)이
-          // 페이지네이션 total에서 누락됨
+          // required:false 가 없으면 INNER JOIN 이라 userId NULL 행이 total 에서 빠진다.
           required: false,
         },
       ],
@@ -149,13 +139,13 @@ export class SecurityLogService extends BaseService {
     const where: any = {};
 
     if (Array.isArray(options.ids)) {
-      // 빈 배열은 no-op으로 처리 (accidental delete-all 방지)
+      // 빈 배열은 no-op 으로 둔다(전체 삭제 사고 방지).
       if (options.ids.length === 0) return 0;
       where.id = { [Op.in]: options.ids };
     } else if (options.before) {
       where.createdAt = { [Op.lt]: new Date(options.before) };
     } else {
-      // 조건 없으면 전체 삭제 — truncate 대신 destroy로 훅 정상 실행
+      // 조건이 없으면 전체 삭제. 훅이 돌도록 truncate 대신 destroy 를 쓴다.
       return SecurityLog.destroy({ where: {} });
     }
 
@@ -170,11 +160,7 @@ export class SecurityLogService extends BaseService {
 
 export const securityLogService = new SecurityLogService();
 
-/**
- * 계정 보안 이벤트 기록 헬퍼 (컨트롤러용).
- * 요청 컨텍스트(ip·method·route·userAgent·userId)를 req에서 추출해 보안 로그를 남긴다.
- * fire-and-forget — 실패해도 메인 로직에 영향 없음.
- */
+/** 컨트롤러용 보안 이벤트 기록. req 에서 컨텍스트를 뽑아 남기며 실패해도 무시한다. */
 export function logSecurityEvent(
   req: Request,
   action: string,

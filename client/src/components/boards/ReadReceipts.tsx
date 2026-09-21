@@ -1,10 +1,4 @@
-// client/src/components/boards/ReadReceipts.tsx
-// 누가 읽었는지 — 작성자·게시판 담당자·관리자만 본다.
-//
-// 접힌 상태에서는 "12명 중 5명 확인" 같은 숫자만 보여 주고 이름은 펼쳐야 나온다.
-// 서버도 같은 선을 지킨다(403).
-//
-// 아직 안 읽은 사람을 먼저 보여 준다.
+// 누가 읽었는지. 작성자·게시판 담당자·관리자만 볼 수 있고 서버도 같은 선을 지킨다(403).
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -31,7 +25,7 @@ export function ReadReceipts({ boardType, postId }: Props) {
     retry: false,
   });
 
-  // 권한이 없으면 서버가 403 을 준다 — 그 경우 섹션 자체를 그리지 않는다
+  // 권한이 없으면(403) 섹션 자체를 그리지 않는다
   if (isError) return null;
 
   const percent = data && data.total > 0 ? Math.round((data.readCount / data.total) * 100) : 0;
@@ -56,7 +50,6 @@ export function ReadReceipts({ boardType, postId }: Props) {
               <strong className="text-slate-900 dark:text-slate-100">{data.readCount}</strong>명
               확인
             </span>
-            {/* 막대는 숫자를 대신하지 않고 거든다 — 숫자를 항상 함께 둔다 */}
             <span
               className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700 sm:block"
               aria-hidden="true"

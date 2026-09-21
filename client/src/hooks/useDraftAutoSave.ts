@@ -1,11 +1,5 @@
-// client/src/hooks/useDraftAutoSave.ts
 // 작성 중인 글을 주기적으로 서버에 임시저장한다.
-//
-// 저장 시점 판단이 이 기능의 전부라 에디터에서 분리해 따로 검증한다.
-//
-// 저장하지 않는 경우:
-//  - 제목과 본문이 모두 비어 있을 때 (빈 초안이 목록을 채우는 것을 막는다)
-//  - 직전 저장 이후 내용이 그대로일 때
+// 제목·본문이 모두 비었거나 직전 저장 이후 내용이 같으면 저장하지 않는다.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createDraft, updateDraft } from '../api/drafts';
@@ -16,24 +10,24 @@ export interface DraftSnapshot {
 }
 
 interface Options {
-  /** 자동저장을 켤지 — 수정 모드처럼 초안이 필요 없는 화면에서는 끈다 */
+  /** 자동저장을 켤지 */
   enabled: boolean;
   boardType: string | undefined;
   intervalMs: number;
   /** 이어쓰기로 열었을 때의 초안 id */
   initialDraftId?: string | null;
-  /** 지금 화면의 제목·본문을 읽어 온다 (에디터 인스턴스에서 직접) */
+  /** 지금 화면의 제목·본문을 읽어 온다 */
   read: () => DraftSnapshot;
 }
 
 export interface DraftAutoSaveState {
-  /** 지금 붙어 있는 초안 id (아직 한 번도 저장 안 했으면 null) */
+  /** 지금 붙어 있는 초안 id. 아직 저장 전이면 null. */
   draftId: string | null;
   /** 마지막으로 저장에 성공한 시각 */
   savedAt: Date | null;
-  /** 저장이 실패한 상태인지 — 사용자에게 "저장 안 되고 있음" 을 알려야 한다 */
+  /** 저장이 실패한 상태인지 */
   failed: boolean;
-  /** 발행에 성공했을 때처럼, 초안 추적을 끊는다 */
+  /** 초안 추적을 끊는다 */
   forget: () => void;
 }
 
@@ -79,8 +73,7 @@ export function useDraftAutoSave({
     if (!enabled || !boardType) return;
 
     const tick = async () => {
-      // 앞선 저장이 아직 안 끝났으면 건너뛴다 — 느린 연결에서 요청이 쌓이면
-      // 나중에 도착한 오래된 본문이 최신 본문을 덮어쓸 수 있다.
+      // 앞선 저장이 안 끝났으면 건너뛴다. 요청이 쌓이면 오래된 본문이 최신을 덮어쓴다.
       if (inFlightRef.current) return;
 
       const snapshot = readRef.current();
@@ -103,8 +96,7 @@ export function useDraftAutoSave({
         setSavedAt(new Date(saved.updatedAt));
         setFailed(false);
       } catch {
-        // 실패해도 계속 시도한다 — 다음 주기에 다시 붙으면 그만이다.
-        // 다만 표시는 남겨 사용자가 "저장되고 있다" 고 오해하지 않게 한다.
+        // 실패해도 다음 주기에 다시 시도한다. 표시만 남긴다.
         setFailed(true);
       } finally {
         inFlightRef.current = false;

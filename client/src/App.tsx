@@ -1,8 +1,3 @@
-// App.tsx - 회원가입 승인 시스템이 적용된 메인 애플리케이션 컴포넌트
-//
-// 성능 최적화: React.lazy 및 Suspense 적용
-// 라우팅 구조 개선
-
 import { useEffect, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazyWithRetry as lazy } from './utils/lazyWithRetry';
@@ -28,7 +23,6 @@ import { CheckInReminder } from './components/attendance/CheckInReminder';
 import { WorkEndNotice } from './components/attendance/WorkEndNotice';
 import { DashboardLanding } from './components/common/DashboardLanding';
 
-// Lazy Loading applied to all page components
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const Forbidden = lazy(() => import('./pages/Forbidden'));
@@ -61,16 +55,14 @@ function App() {
   const { isAuthenticated } = useAuth();
   const loadFeatures = useFeatures(s => s.load);
 
-  // 다중 탭 동기화 — 다른 탭에서 로그아웃하거나, 다른 계정으로 로그인했을 때
+  // 다중 탭 동기화. 다른 탭에서 로그아웃하거나 다른 계정으로 로그인한 경우.
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'tokenInfo' && e.newValue === null && e.oldValue !== null) {
         clearUser();
         return;
       }
-      // 다른 탭에서 '다른 사람' 으로 로그인하면 쿠키가 그 사람 것으로 바뀐다. 이 탭은 앞 사람의
-      // 이름·권한을 그대로 단 채 뒷사람의 데이터를 받아 오게 된다 — 통째로 다시 불러온다.
-      // (같은 사람이 토큰만 새로 받은 경우에는 아무것도 하지 않는다.)
+      // 다른 탭에서 다른 사람으로 로그인하면 쿠키가 바뀌므로 이 탭을 통째로 다시 불러온다.
       if (e.key === 'authUserId' && e.newValue && e.newValue !== useAuth.getState().user?.id) {
         window.location.reload();
       }
@@ -79,13 +71,12 @@ function App() {
     return () => window.removeEventListener('storage', handleStorage);
   }, [clearUser]);
 
-  // 기능 스위치는 인증이 필요하다 — 로그인 상태가 되면 불러온다.
-  // 못 불러와도 화면은 아무것도 숨기지 않으므로(store 주석 참고) 실패를 막지 않는다.
+  // 기능 스위치는 인증이 필요하므로 로그인 상태가 되면 불러온다. 실패해도 막지 않는다.
   useEffect(() => {
     if (isAuthenticated) loadFeatures();
   }, [isAuthenticated, loadFeatures]);
 
-  // 세션 만료로 강제 로그아웃된 경우(하드 리다이렉트 직후) 1회성 안내 토스트
+  // 세션 만료로 강제 로그아웃된 경우 1회 안내한다
   useEffect(() => {
     if (consumeSessionExpired()) {
       toast.warning('세션이 만료되어 로그아웃되었습니다. 다시 로그인해주세요.');
@@ -96,16 +87,13 @@ function App() {
     try {
       const settings = await getSiteSettings();
 
-      // Store에 저장
       setSettings(settings);
 
-      // 관리자가 고른 브랜드 색 적용 — 지정이 없으면 기본 색으로 되돌린다
+      // 지정이 없으면 기본 색으로 되돌린다
       applyTheme(settings.themePrimaryColor, settings.themeSecondaryColor);
 
-      // 타이틀 업데이트
       document.title = settings.siteTitle;
 
-      // 파비콘 업데이트
       if (settings.faviconUrl) {
         let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
         if (!link) {
@@ -116,15 +104,13 @@ function App() {
         link.href = settings.faviconUrl;
       }
 
-      // 다음 새로고침 때 깜빡임 없이 즉시 적용되도록 캐시 — index.html의 인라인 스크립트가
-      // 첫 페인트 전에 이 값을 읽어 적용한다.
+      // index.html 의 인라인 스크립트가 첫 페인트 전에 읽는 캐시
       cacheSiteIdentity({
         siteName: settings.siteName,
         siteTitle: settings.siteTitle,
         faviconUrl: settings.faviconUrl,
       });
 
-      // 메타 설명 업데이트
       if (settings.description) {
         let meta = document.querySelector("meta[name='description']") as HTMLMetaElement;
         if (!meta) {
@@ -136,11 +122,10 @@ function App() {
       }
     } catch (error) {
       logger.error('사이트 설정 로드 실패', error);
-      // 실패해도 계속 진행 (기본값 사용)
+      // 실패해도 기본값으로 계속 진행한다
     }
   };
 
-  // 앱 시작 시 사이트 설정 로드
   useEffect(() => {
     loadSiteSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -152,15 +137,13 @@ function App() {
         <NotificationToast />
         {/* 켜 둔 채로 배포가 일어났을 때 알리고, 안전한 순간에 스스로 새로고침한다 */}
         <UpdateBanner />
-        {/* 출근을 아직 안 찍었으면 알린다. 관리자 화면은 대시보드 바깥이라
-            여기 한 번 두어야 어느 화면에 있든 뜬다.
-            (퇴근 기준 시간 알림은 뺐다 — 일하는 중에 화면을 가로막는 쪽이 성가셨다.) */}
+        {/* 관리자 화면은 대시보드 바깥이라 여기 두어야 어느 화면에서든 뜬다 */}
         <CheckInReminder />
         {/* 기준 근무 시간 10분 전 · 지나고 3분 뒤에 맨 위 띠로 알린다 */}
         <WorkEndNotice />
-        {/* 점검 모드 게이트 — 점검 ON 시 비관리자에게 안내 페이지 표시(관리자는 우회) */}
+        {/* 점검 모드에서는 비관리자에게 안내 페이지를 보여 준다 */}
         <MaintenanceGate>
-          {/* 🚀 Suspense로 로딩 중 상태 처리 */}
+          {/* 로딩 중에는 스피너를 보여 준다 */}
           <Suspense
             fallback={
               <div className="flex h-screen w-full items-center justify-center bg-slate-50 dark:bg-slate-900">
@@ -169,14 +152,14 @@ function App() {
             }
           >
             <Routes>
-              {/* ✅ 공개 라우트 */}
+              {/* 공개 라우트 */}
               <Route path="/" element={<Login />} />
               <Route path="/login" element={<Login />} />
               <Route path="/login/2fa" element={<LoginTwoFactor />} />
               <Route path="/register" element={<Register />} />
               <Route path="/password-reset-request" element={<PasswordResetRequest />} />
 
-              {/* ✅ 강제 비밀번호 변경 (관리자 초기화 후) — ProtectedRoute가 여기로 강제 이동 */}
+              {/* 강제 비밀번호 변경. ProtectedRoute 가 여기로 보낸다. */}
               <Route
                 path="/change-password"
                 element={
@@ -186,11 +169,10 @@ function App() {
                 }
               />
 
-              {/* 예전 퇴근 공격 알림은 '/attendance' 로 걸려 있었다(없는 페이지). 이미 쌓인
-                  알림도 눌리면 출퇴근 기록 화면으로 가게 돌려보낸다. */}
+              {/* 이미 쌓인 '/attendance' 알림 링크를 출퇴근 화면으로 돌려보낸다 */}
               <Route path="/attendance" element={<Navigate to="/dashboard/attendance" replace />} />
 
-              {/* ✅ 프로필 페이지 - 독립적인 보호된 라우트 */}
+              {/* 프로필 */}
               <Route
                 path="/profile"
                 element={
@@ -200,7 +182,7 @@ function App() {
                 }
               />
 
-              {/* ✅ 권한 없음 안내 페이지 - 인증된 사용자만 접근 가능 */}
+              {/* 권한 없음 안내 */}
               <Route
                 path="/unauthorized"
                 element={
@@ -210,10 +192,10 @@ function App() {
                 }
               />
 
-              {/* ✅ 접근 금지 페이지 - IP 차단 등 */}
+              {/* 접근 금지(IP 차단 등) */}
               <Route path="/forbidden" element={<Forbidden />} />
 
-              {/* ✅ 보호된 경로: 대시보드 및 하위 페이지들 */}
+              {/* 대시보드와 하위 페이지 */}
               <Route
                 path="/dashboard"
                 element={
@@ -222,12 +204,11 @@ function App() {
                   </ProtectedRoute>
                 }
               >
-                {/* 켜져 있는 곳으로 보낸다 — 일정이 꺼져 있으면 첫 화면이 막힌다 */}
+                {/* 켜져 있는 화면으로 보낸다 */}
                 <Route index element={<DashboardLanding />} />
 
-                {/* 주요 화면 라우팅 */}
-                {/* 꺼진 기능은 빈 화면 대신 무슨 일인지 알려 준다.
-                    메뉴를 숨기는 것만으로는 주소 직접 입력·알림 링크가 남는다. */}
+                {/* 주요 화면 */}
+                {/* 꺼진 기능도 주소 직접 입력·알림 링크로 닿을 수 있어 안내 화면을 둔다 */}
                 <Route
                   path="calendar"
                   element={
@@ -319,7 +300,7 @@ function App() {
                 />
                 <Route path="pages/:slug" element={<CustomPageView />} />
 
-                {/* ✅ 게시글 관련 - 권한 보호됨 */}
+                {/* 게시글 */}
                 <Route
                   path="posts/:boardType/new"
                   element={
@@ -357,7 +338,7 @@ function App() {
                 />
               </Route>
 
-              {/* ✅ 관리자 전용 라우트 - 별도 독립 페이지 (/admin) */}
+              {/* 관리자 전용(/admin) */}
               <Route
                 path="/admin/*"
                 element={
@@ -367,7 +348,7 @@ function App() {
                 }
               />
 
-              {/* ✅ 404 페이지 - 가장 마지막에 배치 */}
+              {/* 404 는 가장 마지막에 둔다 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

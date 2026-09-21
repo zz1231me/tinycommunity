@@ -1,22 +1,13 @@
-// client/src/utils/linkifyText.ts
 // 평문에서 링크로 만들 부분을 찾아 조각으로 나눈다.
-//
-// HTML 을 만들어 주입하지 않고 조각만 돌려주는 이유: 호출부가 React 요소로 그리면
-// 텍스트는 React 가 알아서 이스케이프한다. 정화기를 한 벌 더 두거나 원시 HTML 을
-// 그대로 밀어 넣는 경로를 만들 필요가 없다 — 메시지는 사용자가 쓴 글 그대로라
-// 그런 표면을 아예 만들지 않는 편이 낫다.
+// HTML 을 만들지 않고 조각만 돌려줘야 호출부의 React 렌더가 이스케이프를 맡는다.
 
 export type TextSegment =
   { type: 'text'; value: string } | { type: 'link'; value: string; href: string };
 
-/**
- * http/https 로 시작하거나 www. 로 시작하는 덩어리.
- * 다른 스킴은 애초에 찾지 않는다 — 찾은 뒤 거르는 것보다 찾지 않는 쪽이
- * 빠뜨릴 구석이 없다.
- */
+/** http/https 또는 www. 로 시작하는 덩어리. 다른 스킴은 애초에 찾지 않는다. */
 const URL_RE = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
 
-/** 문장 끝의 문장부호는 링크에서 뺀다 — "확인하세요: https://a.com." 의 마침표 */
+/** 문장 끝의 문장부호는 링크에서 뺀다 */
 const TRAILING = /[.,;:!?)\]}'"]+$/;
 
 export function linkifyText(text: string): TextSegment[] {

@@ -1,11 +1,4 @@
-// client/src/components/points/PointRanking.tsx
-// 포인트 순위표 — 상위 몇 명과, 보는 사람 본인의 자리.
-//
-// 상위권만 보여 주면 대부분의 사람에게는 남의 이야기가 된다. 본인이 몇 등인지
-// 늘 함께 내려받아, 목록 밖에 있으면 아래에 따로 붙인다.
-//
-// 같은 폴더의 LotteryPanel 과 같은 방식으로 받아 온다(React Query 대신 useEffect) —
-// 한 화면 안에서 방식이 갈리면 로딩·실패 처리도 따로 놀게 된다.
+// 포인트 순위표. 상위 목록과 본인 순위를 함께 보여 주며, 같은 화면의 LotteryPanel 과 같이 useEffect 로 받아 온다.
 
 import { useEffect, useState } from 'react';
 import { Crown, Trophy } from 'lucide-react';
@@ -16,7 +9,7 @@ import { Avatar } from '../Avatar';
 import { PointsSection } from './PointsSection';
 
 /**
- * 1~3 등 시상대의 색 — 금·은·동. 등수(rank)로 고른다: 공동 1등이 둘이면 둘 다 금이다.
+ * 1~3 등 시상대 색. 등수(rank)로 고르므로 공동 1등이면 둘 다 금이다.
  * ring: 사진 둘레 띠 / badge: 등수 딱지 / plinth: 받침대
  */
 const MEDAL = {
@@ -41,9 +34,8 @@ const MEDAL = {
 } as const;
 
 /**
- * 자리(0,1,2 — 받은 순서)마다 놓이는 곳과 받침대 높이.
- * 화면에는 2·1·3 순으로 놓지만(order) 문서 순서는 1·2·3 그대로 둔다 — 화면 낭독기는 1등부터 읽는다.
- * 올라오는 시간은 3등 → 2등 → 1등 순으로 늦춘다. 1등이 마지막에 솟아야 시상식 같다.
+ * 자리별 배치와 받침대 높이.
+ * 화면에는 2·1·3 순으로 놓지만(order) 문서 순서는 1·2·3 으로 둬야 낭독기가 1등부터 읽는다.
  */
 const SLOT = [
   { order: 'order-2', height: 'h-20', delay: '240ms', size: 'xl' },
@@ -65,7 +57,7 @@ function Podium({ entries, myId }: { entries: Entry[]; myId?: string }) {
             key={e.userId}
             className={`flex w-1/3 max-w-[9rem] min-w-0 flex-col items-center ${slot.order}`}
           >
-            {/* 왕관 자리는 모두 비워 둔다 — 1등만 있으면 1등 사진이 그만큼 아래로 밀려 받침대 높이 차가 흐려진다 */}
+            {/* 왕관 자리는 모든 칸에 비워 둔다. 1등에만 두면 사진 높이가 어긋난다. */}
             <span className="flex h-6 items-end" aria-hidden>
               {e.rank === 1 && (
                 <Crown className="h-5 w-5 fill-amber-300 text-amber-500 animate-crownFloat" />
@@ -95,7 +87,6 @@ function Podium({ entries, myId }: { entries: Entry[]; myId?: string }) {
               {e.balance.toLocaleString()}
               <span className="ml-0.5 font-medium text-slate-400">P</span>
             </p>
-            {/* 받침대 — 꾸밈이라 낭독기에는 감춘다 */}
             <div
               aria-hidden
               className={`mt-2 w-full origin-bottom rounded-t-lg border border-b-0 bg-gradient-to-b animate-podiumRise ${slot.height} ${medal.plinth}`}
@@ -132,7 +123,6 @@ function Row({
       <span className="w-6 shrink-0 text-center text-sm font-bold tabular-nums text-slate-400">
         {rank}
       </span>
-      {/* 사진이 없으면 Avatar 가 이니셜·무늬로 대신 그린다 */}
       <Avatar user={{ id: userId, name, avatar }} size="sm" className="shrink-0" />
       <span className="min-w-0 flex-1 truncate text-sm text-slate-700 dark:text-slate-300">
         {name}
@@ -147,8 +137,7 @@ function Row({
 }
 
 /**
- * @param refreshSignal 같은 화면의 다른 판에서 포인트가 움직이면 바뀐다 — 순위·잔액을 다시 읽는다.
- *   이것이 없어서, 뽑기·대결로 포인트가 바뀌어도 바로 아래 순위표만 옛 잔액을 보여 주었다.
+ * @param refreshSignal 값이 바뀌면 순위와 잔액을 다시 읽는다.
  */
 export function PointRanking({ refreshSignal = 0 }: { refreshSignal?: number }) {
   const [data, setData] = useState<Ranking | null>(null);
@@ -163,7 +152,7 @@ export function PointRanking({ refreshSignal = 0 }: { refreshSignal?: number }) 
         if (alive) setData(r);
       })
       .catch(() => {
-        // 실패를 '아무도 없습니다' 로 보여 주면 순위표가 비어 있는 것으로 오해한다
+        // 실패와 '순위 없음' 을 구분해서 보여 준다.
         if (alive) setFailed(true);
       })
       .finally(() => {

@@ -1,6 +1,4 @@
-// server/src/routes/feature.routes.ts
-// /api/features — 지금 켜져 있는 기능 목록.
-// 화면이 메뉴·버튼을 숨기는 데 쓴다. 실제 차단은 각 라우트의 requireFeature 가 한다.
+// /api/features. 화면 숨김용이며 실제 차단은 각 라우트의 requireFeature 가 한다.
 
 import { Router, RequestHandler } from 'express';
 import asyncHandler from 'express-async-handler';

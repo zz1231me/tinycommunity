@@ -1,4 +1,3 @@
-// client/src/components/AuthProvider.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../store/auth';
 import { useAuthInit } from '../hooks/useAuthInit';
@@ -11,9 +10,7 @@ interface AuthProviderProps {
 }
 
 /**
- * 인증 상태를 관리하는 프로바이더 컴포넌트
- * 앱 시작 시 쿠키의 토큰을 확인해서 자동 로그인 처리
- * 백그라운드에서 토큰 만료 시간을 체크하여 스마트하게 갱신
+ * 인증 프로바이더. 앱 시작 시 쿠키 토큰으로 자동 로그인하고, 만료 전에 백그라운드로 갱신한다.
  */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const {
@@ -29,12 +26,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const { isLoading } = useAuthInit();
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isRefreshing = useRef(false); // ✅ 토큰 갱신 중 플래그 추가
+  const isRefreshing = useRef(false);
   const [isTimerActive, setIsTimerActive] = useState(false);
 
-  // 🔄 스마트한 백그라운드 토큰 갱신 설정 (개선됨)
   useEffect(() => {
-    // 로그인 상태가 아니면 타이머 정리하고 종료
     if (!isAuthenticated || !user || !tokenInfo) {
       if (intervalRef.current) {
         if (import.meta.env.DEV) console.info('🛑 로그아웃 상태로 인한 토큰 갱신 타이머 정리');
@@ -42,27 +37,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         intervalRef.current = null;
         setIsTimerActive(false);
       }
-      isRefreshing.current = false; // ✅ 갱신 플래그 리셋
+      isRefreshing.current = false;
       return;
     }
 
-    // 이미 타이머가 실행 중이면 스킵 (중복 방지)
     if (intervalRef.current) {
       return;
     }
 
     if (import.meta.env.DEV) console.info('🔄 백그라운드 토큰 갱신 타이머 시작');
 
-    // 30초마다 체크
     setIsTimerActive(true);
     intervalRef.current = setInterval(async () => {
-      // 이미 갱신 중이면 스킵
       if (isRefreshing.current) {
         return;
       }
 
       try {
-        // Refresh Token 만료 체크
         if (isRefreshTokenExpired()) {
           if (import.meta.env.DEV) console.info('❌ Refresh Token 만료, 로그아웃 처리');
           flagSessionExpired();
@@ -71,16 +62,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
-        // Access Token이 30분 내로 만료될 예정인지 체크
         if (isTokenExpiringSoon(30)) {
           if (import.meta.env.DEV) console.info('🔄 토큰이 곧 만료됨, 사전 갱신 시도...');
 
-          isRefreshing.current = true; // ✅ 갱신 시작
+          isRefreshing.current = true;
 
           try {
             const response = await refreshToken();
 
-            // 갱신 중 로그아웃(clearUser)이 발생했으면 플래그가 false로 리셋됨 → 재주입 방지
+            // 갱신 중 로그아웃이면 플래그가 false 로 리셋되므로 재주입하지 않는다.
             if (!isRefreshing.current) return;
 
             if (response.data?.tokenInfo) {
@@ -90,7 +80,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           } catch (error) {
             if (import.meta.env.DEV) console.error('❌ 사전 토큰 갱신 실패:', error);
 
-            // Access Token이 실제로 만료되었는지 재확인
             if (isAccessTokenExpired()) {
               if (import.meta.env.DEV) console.info('🚪 Access Token 만료로 인한 자동 로그아웃');
               flagSessionExpired();
@@ -98,28 +87,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               window.location.href = '/';
             }
           } finally {
-            isRefreshing.current = false; // ✅ 갱신 완료
+            isRefreshing.current = false;
           }
         }
       } catch (error) {
         if (import.meta.env.DEV) console.error('토큰 상태 체크 오류:', error);
-        isRefreshing.current = false; // ✅ 오류 발생 시에도 플래그 리셋
+        isRefreshing.current = false;
       }
-    }, 30 * 1000); // ✅ 30초마다 실행
+    }, 30 * 1000);
 
-    // 정리 함수 - 컴포넌트 언마운트 또는 의존성 변경 시
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
         setIsTimerActive(false);
       }
-      isRefreshing.current = false; // ✅ 플래그 리셋
+      isRefreshing.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, tokenInfo?.accessTokenExpiry]); // ✅ tokenInfo 변경 시에도 타이머 재설정
+  }, [isAuthenticated, tokenInfo?.accessTokenExpiry]);
 
-  // 인증 상태 초기화 중이면 로딩 화면 표시
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -132,12 +119,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     );
   }
 
-  // 인증 상태 초기화 완료 후 자식 컴포넌트 렌더링
   return (
     <>
       {children}
 
-      {/* 개발 환경에서만 보이는 인증 상태 디버깅 정보 */}
       {import.meta.env.DEV && (
         <div className="fixed bottom-4 right-4 bg-black/75 text-white p-2 rounded text-xs z-50">
           <div>🔐 Login : {isAuthenticated ? '✅' : '❌'}</div>

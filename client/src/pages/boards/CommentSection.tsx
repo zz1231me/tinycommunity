@@ -1,4 +1,3 @@
-// client/src/pages/boards/CommentSection.tsx
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useCodeHighlight } from '../../hooks/useCodeHighlight';
 import { copyText } from '../../utils/clipboard';
@@ -118,16 +117,14 @@ const ErrorBanner: React.FC<ErrorBannerProps> = ({ message, onDismiss, onRetry }
   </div>
 );
 
-/** 댓글 본문 렌더러 — DOMPurify sanitizeCommentHTML + hljs 코드 하이라이팅 */
+/** 댓글 본문 렌더러. sanitizeCommentHTML 로 정화한 뒤 코드 하이라이팅을 건다. */
 const CommentContent = React.memo<{ content: string }>(({ content }) => {
   const ref = useRef<HTMLDivElement>(null);
   // 정화 이후에 멘션을 강조한다(정화 전에 넣으면 삽입한 span 이 제거될 수 있다)
   const sanitized = highlightMentions(sanitizeCommentHTML(content));
-  // 객체까지 기억해 둔다 — React 는 dangerouslySetInnerHTML 을 객체 참조로 비교해서,
-  // 매번 새 리터럴을 만들면 내용이 같아도 본문을 통째로 다시 붙인다.
+  // dangerouslySetInnerHTML 은 객체 참조로 비교하므로 객체도 메모해야 본문이 다시 붙지 않는다.
   const bodyHtml = useMemo(() => ({ __html: sanitized }), [sanitized]);
   useCodeHighlight(ref);
-  // content is sanitized via DOMPurify (sanitizeCommentHTML) before rendering
   return (
     <div
       ref={ref}
@@ -162,16 +159,16 @@ const flattenCommentsText = (list: Comment[], depth = 0): string[] => {
 const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   const { boardType } = useParams<{ boardType: string }>();
   const [comments, setComments] = useState<Comment[]>([]);
-  // @멘션 자동완성이 붙을 CKEditor 인스턴스 (댓글 작성 에디터)
+  // @멘션 자동완성이 붙을 CKEditor 인스턴스
   const [mentionEditor, setMentionEditor] = useState<MentionEditor | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState('');
   // 'popular'(추천순)은 댓글 좋아요 기능이 없어 항상 등록순과 동일하므로 옵션에서 제외
   const [sortBy, setSortBy] = useState<'oldest' | 'newest'>('oldest');
   const [copied, setCopied] = useState(false);
-  // 좋아요 토글 in-flight 가드 (댓글 id별 1요청 — 더블클릭으로 인한 토글 꼬임 방지)
+  // 좋아요 토글 in-flight 가드. 댓글 id 마다 한 요청만 보낸다.
   const likeInFlight = useRef<Set<number>>(new Set());
-  // 이모지 리액션 in-flight 가드 (댓글 id + 이모지별 1요청)
+  // 이모지 리액션 in-flight 가드. 댓글 id 와 이모지 조합마다 한 요청만 보낸다.
   const reactionInFlight = useRef<Set<string>>(new Set());
 
   const { isAuthenticated, getUserId, getUser, isAdmin } = useAuth();
@@ -221,9 +218,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
     []
   );
 
-  // Enter=등록 / Shift+Enter=줄바꿈.
-  // CKEditor 기본은 Enter=새 문단이므로 hard-enter(비-soft)를 가로채 등록을 트리거한다.
-  // 핸들러는 onReady에서 1회만 등록되므로, 최신 상태를 반영하도록 콜백을 ref에 매 렌더 갱신한다.
+  // Enter 는 등록, Shift+Enter 는 줄바꿈. 핸들러가 onReady 에서 한 번만 붙으므로 콜백을 ref 로 둔다.
   const writeSubmitRef = useRef<() => void>(() => {});
   writeSubmitRef.current = () => ops.handleSubmit(setComments);
   const replySubmitRef = useRef<() => void>(() => {});
@@ -244,8 +239,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
       'enter',
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (evt: any, data: any) => {
-        if (data.isSoft) return; // Shift+Enter → 줄바꿈(기본 동작 유지)
-        if (data.domEvent?.isComposing) return; // 한글 등 IME 조합 중 Enter는 글자 확정용 — 무시
+        if (data.isSoft) return; // Shift+Enter 는 줄바꿈
+        if (data.domEvent?.isComposing) return; // IME 조합 중 Enter 는 글자 확정용
         data.preventDefault();
         evt.stop();
         actionRef.current();
@@ -263,13 +258,12 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
 
   const commentTree = useMemo(() => buildCommentTree(comments), [comments]);
 
-  // 가상화는 스크롤하는 요소를 알아야 한다. 이 앱은 window 가 아니라
-  // 대시보드 본문 영역이 스크롤한다(Dashboard.tsx 의 overflow-y-auto).
+  // 가상화는 스크롤 요소가 필요하다. 이 앱은 window 가 아니라 대시보드 본문이 스크롤한다.
   const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
   const sectionRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (commentTree.length <= VIRTUALIZE_THRESHOLD) return;
-    // 조상 중 실제로 스크롤하는 요소를 찾는다 — 레이아웃이 바뀌어도 따라간다
+    // 조상 중 실제로 스크롤하는 요소를 찾는다
     let node = sectionRef.current?.parentElement ?? null;
     while (node) {
       const overflowY = getComputedStyle(node).overflowY;
@@ -289,8 +283,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
     }
   }, [commentTree]);
 
-  // 댓글 좋아요 토글 — 낙관적 업데이트 + 서버 권위값 보정 + 실패 시 롤백.
-  // comments는 평면 배열이고 트리는 파생되므로 평면 배열에서 id로 찾아 갱신하면 트리에도 반영된다.
+  // 낙관적으로 바꾸고 서버 값으로 보정한다. 트리는 평면 배열에서 파생되므로 평면만 갱신한다.
   const handleToggleCommentLike = useCallback(
     async (comment: Comment) => {
       if (comment.isDeleted) return;
@@ -300,8 +293,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
       }
       if (!boardType) return;
       const id = comment.id;
-      if (id < 0) return; // 아직 서버 저장 전(낙관적 임시) 댓글은 좋아요 불가
-      if (likeInFlight.current.has(id)) return; // 진행 중이면 무시 (토글 꼬임 방지)
+      if (id < 0) return; // 아직 서버에 없는 임시 댓글
+      if (likeInFlight.current.has(id)) return; // 진행 중이면 무시
       likeInFlight.current.add(id);
 
       const prevLiked = !!comment.liked;
@@ -333,8 +326,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
     [boardType, isAuthenticated]
   );
 
-  // 이모지 리액션 토글 — 서버 권위값(해당 댓글의 reactions 배열)으로 갱신.
-  // 좋아요와 달리 다중 이모지라 낙관적 계산이 복잡해, 서버 응답을 그대로 반영한다.
+  // 다중 이모지라 낙관적 계산이 복잡해 서버 응답을 그대로 반영한다.
   const handleToggleReaction = useCallback(
     async (comment: Comment, emoji: string) => {
       if (comment.isDeleted) return;
@@ -344,7 +336,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
       }
       if (!boardType) return;
       const id = comment.id;
-      if (id < 0) return; // 아직 서버 저장 전 임시 댓글
+      if (id < 0) return; // 아직 서버에 없는 임시 댓글
       const key = `${id}:${emoji}`;
       if (reactionInFlight.current.has(key)) return;
       reactionInFlight.current.add(key);
@@ -368,11 +360,10 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   const editCommentLen = getTextLength(ops.editContent);
   const replyCommentLen = getTextLength(ops.replyContent);
 
-  // 단일 댓글 행 렌더러 (재귀적으로 replies 포함)
+  // 단일 댓글 행 렌더러. replies 를 재귀적으로 그린다.
   const renderComment = useCallback(
     (comment: Comment, isReply = false): React.ReactNode => {
-      // 삭제됐지만 답글이 살아있어 트리 보존용으로 내려온 placeholder — 내용/작성자/액션 없이
-      // 음영 처리한 안내만 보여주고, 답글은 그대로 들여쓰기해 계층을 유지한다.
+      // 답글이 남아 트리 보존용으로 내려온 placeholder. 안내만 보여 주고 계층은 유지한다.
       if (comment.isDeleted) {
         return (
           <div key={comment.id}>
@@ -848,7 +839,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
             {commentTree.length > VIRTUALIZE_THRESHOLD ? (
-              // 댓글이 많으면 보이는 것만 그린다 — 250개에서 정렬 한 번에 145ms 멈췄다
+              // 댓글이 많으면 보이는 것만 그린다
               <VirtualizedCommentList
                 items={commentTree}
                 keyOf={c => c.id}

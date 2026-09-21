@@ -56,17 +56,14 @@ const WikiPageRoute = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pagesLoadError, setPagesLoadError] = useState(false);
-  // 리비전 복원 — 복원할 내용(null이면 확인 모달 닫힘)
+  // 리비전 복원. null 이면 확인 모달이 닫힌 상태.
   const [restoreContent, setRestoreContent] = useState<string | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
   // 모바일에서 문서 트리 표시 여부 (데스크톱은 항상 표시)
   const [treeOpen, setTreeOpen] = useState(false);
-  // 넓은 화면에서 문서 트리를 접어 둘지. 앱 사이드바(240px)와 트리(240px)가 겹치면
-  // 1180px 화면에서 글이 650px 밖에 안 남는다 — 읽기만 할 때는 접어 두는 편이 낫다.
-  // 고른 상태는 기억한다(매번 다시 접게 만들지 않는다).
+  // 넓은 화면에서 문서 트리를 접어 둘지. 고른 상태는 기억한다.
   const [treeCollapsed, setTreeCollapsed] = useState(() => {
-    // 사이트 데이터를 막아 둔 브라우저에서는 읽기만 해도 예외가 난다.
-    // 여기는 useState 초기화라, 막으면 화면 전체가 죽는다.
+    // 사이트 데이터를 막아 둔 브라우저에서는 읽기만 해도 예외가 난다. useState 초기화라 화면 전체가 죽는다.
     try {
       return safeStorage.get('wiki:treeCollapsed') === '1';
     } catch {
@@ -133,8 +130,7 @@ const WikiPageRoute = () => {
     try {
       if (isCreating) {
         const page = await createWikiPage(data);
-        // 문서는 이미 만들어졌다. 목록 갱신이 실패했다고 저장 실패로 알리면
-        // 사용자가 다시 저장해 같은 문서가 두 개 생긴다.
+        // 문서는 이미 만들어졌다. 갱신 실패를 저장 실패로 알리면 같은 문서가 두 개 생긴다.
         await fetchPages().catch(() => {});
         navigate(`/dashboard/wiki/${page.slug}`);
       } else if (currentPage) {
@@ -155,7 +151,7 @@ const WikiPageRoute = () => {
     }
   };
 
-  // Called by sidebar when user clicks a page while editing
+  // 편집 중에 사이드바에서 다른 문서를 누르면 여기로 온다.
   const handleInterceptNav = (slug: string | null) => {
     setPendingNavSlug(slug); // null = home, string = specific page
   };
@@ -173,17 +169,7 @@ const WikiPageRoute = () => {
     }
   };
 
-  // ESC로 확인 모달 닫기(취소 방향) + 열려 있는 동안 포커스 가두기 — 다른 모달과 일관.
-  //
-  // 확인 모달이 셋인데 ESC 를 한 곳에서 받아 delete → restore → nav 순으로 처리하고
-  // 있었다. 가두기는 대화상자마다 따로 걸어야 하므로 그 순서를 active 로 옮긴다 —
-  // 셋을 그냥 켜 두면 ESC 한 번에 여럿이 함께 닫힌다.
-  //
-  // 닫는 동작은 예전 ESC 와 똑같이 둔다. 각 취소 단추는 오류 메시지까지 지우지만
-  // ESC 는 원래 지우지 않았다.
-  //
-  // 첫 포커스는 훅 기본값(안쪽 첫 요소)에 맡긴다 — 셋 다 안전한 쪽(계속 편집·취소)이
-  // 먼저 오고 삭제·복원은 그 뒤라, 파괴적인 단추에 포커스가 얹히지 않는다.
+  // ESC 로 확인 모달을 닫고 포커스를 가둔다. 가두기는 대화상자마다 따로 걸어 ESC 한 번에 여럿이 닫히지 않게 한다.
   const deleteOpen = showDeleteConfirm;
   const restoreOpen = restoreContent !== null;
   const navOpen = pendingNavSlug !== undefined;
@@ -211,7 +197,7 @@ const WikiPageRoute = () => {
     try {
       await deleteWikiPage(currentPage.slug);
       setShowDeleteConfirm(false);
-      // 이미 지워졌다 — 갱신 실패를 삭제 실패로 알리면 다시 눌러 404 를 본다
+      // 이미 지워졌다. 갱신 실패를 삭제 실패로 알리면 다시 눌러 404 를 본다.
       await fetchPages().catch(() => {});
       navigate('/dashboard/wiki', { replace: true });
     } catch (err: unknown) {
@@ -250,8 +236,7 @@ const WikiPageRoute = () => {
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* 페이지 트리 — 데스크톱은 항상 표시, 모바일은 토글로 여닫는다.
-          예전에는 모바일에서도 240px 고정이라 본문이 밀려 가로 스크롤이 생겼다. */}
+      {/* 페이지 트리. 데스크톱은 항상 표시, 모바일은 토글로 여닫는다 */}
       <div
         className={`${treeOpen ? 'flex' : 'hidden'} ${treeCollapsed ? 'lg:hidden' : 'lg:flex'} flex-col`}
       >
@@ -275,7 +260,7 @@ const WikiPageRoute = () => {
         )}
       </div>
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* 넓은 화면 전용 트리 접기 — 좁은 화면에는 아래 별도 토글이 있다 */}
+        {/* 넓은 화면 전용 트리 접기. 좁은 화면에는 아래 별도 토글이 있다 */}
         <div className="hidden flex-shrink-0 border-b border-slate-200 bg-white px-4 py-2 lg:block dark:border-slate-700 dark:bg-slate-800">
           <button
             type="button"
@@ -343,7 +328,7 @@ const WikiPageRoute = () => {
               </svg>
               새 페이지
             </button>
-            {/* 페이지 액션(편집·삭제·이력)은 제목 옆 WikiDetail로 이동 — 상단 툴바 중복 제거 */}
+            {/* 페이지 액션(편집·삭제·이력)은 제목 옆 WikiDetail 에 있다 */}
             {saveError && (
               <span className="text-xs text-red-500 ml-2 flex items-center gap-1">
                 <svg

@@ -1,13 +1,4 @@
-// server/src/config/features.ts
-// 관리자가 켜고 끌 수 있는 기능 목록(카탈로그).
-//
-// 실제로 구현되어 있고, 꺼도 나머지가 정상 동작하는 기능만 올린다.
-//
-// 스위치는 서버에서 강제한다(requireFeature 미들웨어). 화면에서 버튼만 숨기면
-// API 를 직접 호출하는 쪽에는 제약이 걸리지 않는다.
-//
-// 새 기능을 추가할 때: 이 파일에 한 줄 넣고, 해당 라우트에 requireFeature 를 건다.
-// 저장되지 않은 키는 여기 적힌 기본값을 쓰므로 DB 마이그레이션은 필요 없다.
+// 관리자가 켜고 끌 수 있는 기능 카탈로그. 스위치는 requireFeature 미들웨어로 서버에서 강제한다.
 
 export const FEATURE_GROUPS = {
   boards: '게시판',
@@ -25,23 +16,13 @@ export interface FeatureDefinition {
   group: FeatureGroup;
   /** 저장된 값이 없을 때 쓰는 값 */
   defaultEnabled: boolean;
-  /**
-   * 이 기능이 의미를 가지려면 함께 켜져 있어야 하는 기능들.
-   * FeatureKey 가 FEATURES 에서 파생되므로 여기서 그 타입을 쓰면 순환 참조가 된다.
-   * 대신 아래 assertFeatureCatalog 가 기동 시 오타를 잡는다.
-   */
+  /** 함께 켜져 있어야 하는 선행 기능. FeatureKey 를 쓰면 순환 참조라 string 으로 둔다. */
   requires?: readonly string[];
-  /**
-   * API 표면이 없어 화면에서만 적용되는 기능인지.
-   *
-   * 대부분의 스위치는 서버(requireFeature)에서 막지만, 표시 방식만 바꾸는 기능은
-   * 막을 API 가 없다. 관리자 화면도 이 표시를 보고 "화면에만 적용" 이라고 안내한다.
-   */
+  /** API 표면이 없어 화면에서만 적용되는 기능인지. */
   clientOnly?: boolean;
 }
 
 export const FEATURES = {
-  // ── 게시판 ──────────────────────────────────────────────────────────────
   'post.like': {
     label: '좋아요',
     description: '게시글에 좋아요를 누를 수 있습니다. 끄면 인기글 점수에도 반영되지 않습니다.',
@@ -92,7 +73,6 @@ export const FEATURES = {
     defaultEnabled: true,
   },
 
-  // ── 글쓰기 ──────────────────────────────────────────────────────────────
   'post.attachments': {
     label: '파일 첨부',
     description: '게시글에 파일을 첨부합니다. 끄면 이미 올라간 첨부는 그대로 열람됩니다.',
@@ -105,8 +85,7 @@ export const FEATURES = {
     group: 'writing',
     defaultEnabled: true,
     requires: ['post.attachments'],
-    // 저장된 마크업을 카드로 그릴지 말지의 문제라 막을 API 가 없다.
-    // 꺼도 이미 꽂아 둔 참조는 파일명 그대로 본문에 남는다.
+    // 저장된 마크업을 카드로 그릴지의 문제라 막을 API 가 없다
     clientOnly: true,
   },
   'post.drafts': {
@@ -116,7 +95,6 @@ export const FEATURES = {
     defaultEnabled: true,
   },
 
-  // ── 탐색 ────────────────────────────────────────────────────────────────
   'discovery.popular': {
     label: '인기글',
     description: '좋아요·댓글·조회를 합산해 읽을 만한 글을 모아 보여 줍니다.',
@@ -143,7 +121,6 @@ export const FEATURES = {
     defaultEnabled: true,
   },
 
-  // ── 소통 ────────────────────────────────────────────────────────────────
   'social.mentions': {
     label: '@멘션 알림',
     description: '본문에서 @아이디로 부르면 그 사람에게 알림이 갑니다.',
@@ -169,7 +146,6 @@ export const FEATURES = {
     defaultEnabled: true,
   },
 
-  // ── 도구 ────────────────────────────────────────────────────────────────
   'tools.wiki': {
     label: '위키',
     description: '여러 사람이 함께 고치는 문서 공간입니다.',
@@ -234,7 +210,7 @@ export function isFeatureKey(key: string): key is FeatureKey {
   return Object.prototype.hasOwnProperty.call(FEATURES, key);
 }
 
-/** requires 에 적힌 키가 실제로 존재하는지 — 오타를 조용히 넘기면 의존성이 무시된다 */
+/** requires 에 적힌 키가 실제로 존재하는지 검증한다. */
 export function assertFeatureCatalog(): void {
   for (const key of FEATURE_KEYS) {
     for (const dep of requiredKeys(key)) {
@@ -258,13 +234,7 @@ export function defaultFeatureState(): Record<FeatureKey, boolean> {
   return state;
 }
 
-/**
- * 의존성을 반영한 실효 상태.
- *
- * 예를 들어 '파일 첨부' 를 끄면 '문단별 첨부' 는 저장값이 켜짐이라도 꺼진 것으로 본다.
- * 이걸 하지 않으면 관리자 화면에는 켜져 있는데 실제로는 동작하지 않는,
- * 설명할 수 없는 상태가 생긴다.
- */
+/** 의존성을 반영한 실효 상태. 선행 기능이 꺼져 있으면 저장값이 켜짐이라도 꺼짐으로 본다. */
 export function resolveFeatures(
   stored: Partial<Record<FeatureKey, boolean>>
 ): Record<FeatureKey, boolean> {
@@ -273,7 +243,7 @@ export function resolveFeatures(
     if (stored[key] !== undefined) state[key] = stored[key] as boolean;
   }
 
-  // 의존성은 한 단계만 두는 것을 전제로 하지 않고, 더 이상 바뀌지 않을 때까지 훑는다.
+  // 의존성이 여러 단계일 수 있어 더 이상 바뀌지 않을 때까지 훑는다.
   let changed = true;
   while (changed) {
     changed = false;

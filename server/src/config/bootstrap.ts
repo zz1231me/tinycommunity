@@ -1,9 +1,4 @@
-// server/src/config/bootstrap.ts
-// 서버 기동 시 DB를 사용 가능한 상태로 만드는 절차와, 주기적 정리 작업.
-//
-// index.ts 에서 분리했다 — 미들웨어·라우트 설정과 섞여 있어 "부팅 시 무슨 일이
-// 일어나는가"를 따라가기 어려웠다. 여기 있는 함수는 모두 idempotent 라서
-// 재기동을 반복해도 안전하다.
+// 서버 기동 시 DB 를 사용 가능한 상태로 만드는 절차와 주기적 정리 작업. 모두 idempotent 하다.
 
 import { DataTypes } from 'sequelize';
 import { sequelize } from './sequelize';
@@ -23,11 +18,7 @@ import { userSessionService } from '../services/userSession.service';
 import { postService } from '../services/post.service';
 import { notificationService } from '../services/notification.service';
 
-/**
- * 오래된 로그 자동 정리
- * - 보안 로그: 90일 이상 보존 (기본값)
- * - 에러 로그: 30일 이상 보존 (기본값)
- */
+/** 오래된 로그 자동 정리(기본 보존: 보안 90일, 에러 30일). */
 export async function runLogCleanup(): Promise<void> {
   try {
     const { securityLogRetentionDays, errorLogRetentionDays, deletedPostRetentionDays } =
@@ -49,8 +40,7 @@ export async function runLogCleanup(): Promise<void> {
       userSessionService.cleanExpiredSessions(),
       // 삭제된 게시글: soft-delete 후 보관 기간(관리자 설정값)이 지나면 DB에서 영구 삭제
       postService.purgeExpiredPosts(deletedPostRetentionDays),
-      // 알림: 댓글·좋아요·멘션·구독 전파마다 한 줄씩 쌓이는데 지우는 길이 사용자가
-      // 직접 누르는 것뿐이었다. 다른 기록들과 달리 보관 기간이 없어 끝없이 늘어났다.
+      // 알림은 보관 기간이 없어 무한히 쌓이므로 90일로 정리한다
       notificationService.deleteOldNotifications(90),
     ]);
 
@@ -72,13 +62,7 @@ export async function runLogCleanup(): Promise<void> {
   }
 }
 
-// 모델에 추가된 신규 컬럼을 DB 에 보강한다(모든 dialect + 모든 테이블).
-// Sequelize QueryInterface(describeTable/addColumn)를 쓰므로 dialect 에 맞는 SQL 이 생성된다.
-// SQLite 는 sync({alter}) 를 쓸 수 없고 MariaDB 등도 alter:true 가 컬럼을 붙이지 못하는
-// 경우가 있어, 마이그레이션 도구 없이도 재시작만으로 "no such column" 을 막는 안전망이다.
-// - 이미 있는 컬럼은 건너뜀 (idempotent)
-// - VIRTUAL(가상 컬럼)·PK 는 보강 대상 아님
-// - NOT NULL 인데 기본값 없는 신규 컬럼은 기존 행 때문에 실패할 수 있어 경고만 남김(수동 처리)
+// 모델에 추가된 신규 컬럼을 DB 에 보강한다. 이미 있는 컬럼과 VIRTUAL·PK 는 건너뛴다.
 async function ensureModelColumns(model: (typeof sequelize.models)[string]): Promise<void> {
   const qi = sequelize.getQueryInterface();
   const rawTableName = model.getTableName();
@@ -90,16 +74,14 @@ async function ensureModelColumns(model: (typeof sequelize.models)[string]): Pro
   try {
     existing = await qi.describeTable(tableName);
   } catch (err) {
-    // 이 함수는 sync 보다 먼저 돌기 때문에(index.ts 의 순서 주석 참고) 새 DB 에서는
-    // 아직 테이블이 없는 것이 정상이다. 그 경우까지 경고를 찍으면 첫 기동 로그가
-    // 경고로 뒤덮여 진짜 문제가 묻힌다. 뒤따르는 sync 가 테이블을 제대로 만든다.
+    // 이 함수는 sync 보다 먼저 돌아 새 DB 에는 테이블이 없는 것이 정상이다
     const msg = err instanceof Error ? err.message : String(err);
     if (/no such table|doesn't exist|does not exist/i.test(msg)) return;
     logger.warn(`[${tableName}] 컬럼 보강 스킵 (테이블 조회 실패): ${msg}`);
     return;
   }
 
-  // 타임스탬프/PK는 항상 존재 — 건너뛴다 (underscored: created_at/updated_at)
+  // 타임스탬프/PK 는 항상 존재하므로 건너뛴다
   const SKIP = new Set(['id', 'created_at', 'updated_at', 'createdAt', 'updatedAt']);
 
   for (const key of Object.keys(rawAttributes)) {
@@ -112,8 +94,7 @@ async function ensureModelColumns(model: (typeof sequelize.models)[string]): Pro
     if (SKIP.has(fieldName) || existing[fieldName]) continue;
 
     try {
-      // addColumn은 dialect에 맞는 타입/기본값/NOT NULL SQL을 알아서 생성한다.
-      // references는 의도적으로 생략 — 누락 컬럼 복구가 목적이며 FK 제약은 추가하지 않는다.
+      // references 는 생략한다. 누락 컬럼 복구가 목적이고 FK 제약은 추가하지 않는다.
       await qi.addColumn(tableName, fieldName, {
         type: attr.type,
         allowNull: attr.allowNull ?? true,
@@ -129,7 +110,7 @@ async function ensureModelColumns(model: (typeof sequelize.models)[string]): Pro
   }
 }
 
-// 등록된 모든 모델에 대해 누락 컬럼 보강 (한 모델 실패가 전체를 막지 않도록 개별 try)
+// 한 모델의 실패가 전체를 막지 않도록 모델마다 개별 try
 export async function ensureAllModelColumns(): Promise<void> {
   for (const model of Object.values(sequelize.models)) {
     try {
@@ -141,10 +122,7 @@ export async function ensureAllModelColumns(): Promise<void> {
   }
 }
 
-// 검색용 평문 백필 — 게시글(content→contentText)/위키(content→contentText)/이벤트(body→bodyText).
-// 신규 컬럼 추가 직후 기존 행은 NULL이라 검색에 잡히지 않으므로 1회 채운다.
-// 원본을 건드리지 않으므로 silent(updatedAt 유지)+hooks:false로 개별 업데이트한다.
-// 평문 컬럼이 NULL인 행만 대상이라 idempotent(다음 기동 시 0건).
+// 검색용 평문 백필. 평문 컬럼이 NULL 인 행만 대상이며 silent+hooks:false 로 updatedAt 을 보존한다.
 export async function backfillSearchText(): Promise<void> {
   try {
     const posts = await PostModel.findAll({
@@ -190,11 +168,7 @@ export async function backfillSearchText(): Promise<void> {
   }
 }
 
-// site_settings는 싱글턴이어야 하지만 모델에 unique 제약이 없어, 과거 race(빈 테이블에 동시 요청 등)로
-// 중복 행이 생겼을 수 있다. 코드 전반은 ORDER BY 없는 SiteSettings.findOne()으로 설정을 읽는데,
-// 행이 2개 이상이면 DB(특히 MySQL/MariaDB)가 호출마다 다른 행을 반환할 수 있다 → 저장한 행과
-// 읽는 행이 달라 "새 사이트 이름을 저장해도 옛 값이 계속 보이는" 문제가 발생한다.
-// 시작 시 가장 최근 수정된 행 1개만 남기고 정리해 싱글턴을 보장한다(읽기가 결정적이 됨).
+// site_settings 는 싱글턴이어야 한다. 중복 행이 있으면 findOne 이 매번 다른 행을 줄 수 있어 최신 1행만 남긴다.
 export async function consolidateSiteSettings(): Promise<void> {
   const { SiteSettings } = await import('../models/SiteSettings');
   const rows = await SiteSettings.findAll({
@@ -203,7 +177,7 @@ export async function consolidateSiteSettings(): Promise<void> {
       ['id', 'ASC'],
     ],
   });
-  if (rows.length <= 1) return; // 정상(0 또는 1행)이면 아무것도 하지 않음
+  if (rows.length <= 1) return;
   const [keep, ...extras] = rows;
   const extraIds = extras.map(r => r.id);
   await SiteSettings.destroy({ where: { id: extraIds } });
@@ -212,23 +186,14 @@ export async function consolidateSiteSettings(): Promise<void> {
   );
 }
 
-// 초기 데이터 자동 생성
-/**
- * ENUM 컬럼을 문자열로 넓힌다 (기존 설치용).
- *
- * sync({alter:false}) 로 뜨므로 모델에서 ENUM 을 문자열로 바꿔도 이미 만들어진
- * 테이블은 그대로다. MySQL/PostgreSQL 에서는 새 값을 넣는 순간 INSERT 가 깨진다.
- * SQLite 는 ENUM 을 TEXT 로 만들므로 대상이 아니다.
- *
- * 실패해도 기동은 막지 않고, 직접 실행할 SQL 을 로그에 남긴다.
- */
+/** ENUM 컬럼을 문자열로 넓힌다. sync({alter:false}) 라 기존 테이블은 저절로 바뀌지 않는다. */
 async function widenEnumColumn(
   table: string,
   column: string,
   length: number,
-  /** 넓히지 못했을 때 무엇이 안 되는지 — 로그만 보고 판단할 수 있게 */
+  /** 넓히지 못했을 때의 증상. 경고 로그에 남는다. */
   symptom: string,
-  /** 컬럼의 기본값. 있으면 타입을 바꾸면서 다시 붙여 준다(아래 설명) */
+  /** 컬럼 기본값. 있으면 타입 변경 후 다시 붙인다. */
   defaultValue?: string
 ): Promise<void> {
   const dialect = sequelize.getDialect();
@@ -240,13 +205,11 @@ async function widenEnumColumn(
     const current = String(
       (describe as Record<string, { type?: unknown }>)[column]?.type ?? ''
     ).toUpperCase();
-    // 이미 문자열이면 할 일이 없다 (재기동마다 ALTER 를 돌리지 않는다)
+    // 이미 문자열이면 할 일이 없다
     if (!current.includes('ENUM')) return;
 
     if (dialect === 'postgres') {
-      // PostgreSQL 은 enum → varchar 변환에 USING 절이 필요하다.
-      // 기본값이 걸려 있으면 그것부터 떼야 한다 — enum 리터럴을 varchar 로 자동 변환하지
-      // 못해 "default for column cannot be cast automatically" 로 거절한다.
+      // PostgreSQL 은 enum → varchar 에 USING 이 필요하고, 기본값이 있으면 먼저 떼야 한다.
       if (defaultValue !== undefined) {
         await sequelize.query(`ALTER TABLE "${table}" ALTER COLUMN "${column}" DROP DEFAULT`);
       }
@@ -259,8 +222,7 @@ async function widenEnumColumn(
         );
       }
     } else {
-      // MySQL/MariaDB 의 MODIFY 는 넘긴 정의로 통째로 갈아 끼운다 —
-      // 기본값을 함께 주지 않으면 조용히 사라진다.
+      // MySQL/MariaDB 의 MODIFY 는 정의를 통째로 갈아 끼우므로 기본값도 함께 줘야 한다.
       await qi.changeColumn(table, column, {
         type: DataTypes.STRING(length),
         allowNull: false,
@@ -288,11 +250,7 @@ async function widenEnumColumn(
   }
 }
 
-/**
- * 값이 늘어나는 컬럼들을 문자열로 넓힌다.
- *  - Notifications.type: 알림 종류가 계속 는다 (구독·담당자 지정·메시지…)
- *  - users.theme: 테마가 계속 는다 (라이트·다크·시스템·드라큘라…)
- */
+/** 값이 계속 늘어나는 컬럼(Notifications.type, users.theme 등)을 문자열로 넓힌다. */
 export async function widenGrowingEnums(): Promise<void> {
   await widenEnumColumn(
     'Notifications',
@@ -308,17 +266,12 @@ export async function widenGrowingEnums(): Promise<void> {
     '드라큘라 등 새 테마를 저장할 수 없습니다.',
     'system'
   );
-  // 감사 종류는 기능이 늘 때마다 늘어난다. ENUM 으로 두면 새 종류가 조용히
-  // 누락된다 (감사 로그 기록은 실패해도 요청을 막지 않는다).
+  // 감사 종류는 기능이 늘 때마다 늘어난다
   await widenEnumColumn('audit_logs', 'action', 40, '새 종류의 관리자 작업이 남지 않습니다.');
   await widenEnumColumn('audit_logs', 'targetType', 20, '새 대상 종류가 남지 않습니다.');
 }
 
-/**
- * 기능 카탈로그의 의존성 오타를 기동 시점에 잡는다.
- * requires 에 없는 키를 적어 두면 그 의존성은 조용히 무시되어,
- * 선행 기능을 껐는데도 파생 기능이 살아 있는 상태가 된다.
- */
+/** 기능 카탈로그의 requires 오타를 기동 시점에 잡는다. */
 export function verifyFeatureCatalog(): void {
   assertFeatureCatalog();
 }
@@ -329,7 +282,6 @@ export async function initializeDefaultData() {
     const { User } = await import('../models/User');
     const { SiteSettings } = await import('../models/SiteSettings');
 
-    // 1. 역할 초기화
     logger.info('🔄 기본 역할 확인 중...');
     const roleCount = await Role.count();
 
@@ -360,9 +312,8 @@ export async function initializeDefaultData() {
       logger.info(`✅ 역할 ${roleCount}개 존재`);
     }
 
-    // 2. 기본 admin 계정 생성
     logger.info('🔄 기본 admin 계정 확인 중...');
-    const adminUser = await User.findByPk('admin', { paranoid: false }); // ✅ deletedAt 컬럼 없어도 동작
+    const adminUser = await User.findByPk('admin', { paranoid: false }); // deletedAt 컬럼이 없어도 동작
 
     const defaultAdminPw = env.ADMIN_DEFAULT_PASSWORD;
 
@@ -370,7 +321,7 @@ export async function initializeDefaultData() {
       logger.info('📝 기본 admin 계정 생성 중...');
       await User.create({
         id: 'admin',
-        password: defaultAdminPw, // 평문 전달 — beforeCreate 훅에서 해시
+        password: defaultAdminPw, // 평문 전달, beforeCreate 훅에서 해시
         name: '관리자',
         email: 'admin@tinycommunity.local',
         roleId: 'admin',
@@ -379,7 +330,6 @@ export async function initializeDefaultData() {
       logger.info(`  ✅ admin 계정 생성 완료 (비밀번호: ADMIN_DEFAULT_PASSWORD 환경변수 값)`);
       logger.warn('  ⚠️  보안을 위해 admin 비밀번호를 반드시 변경하세요!');
     } else {
-      // 기존 admin 계정이 비활성화되어 있으면 활성화
       if (!adminUser.isActive) {
         adminUser.isActive = true;
         await adminUser.save();
@@ -389,7 +339,6 @@ export async function initializeDefaultData() {
       }
     }
 
-    // 3. 사이트 설정 초기화
     logger.info('🔄 사이트 설정 확인 중...');
     const siteSettings = await SiteSettings.findOne();
 
@@ -412,7 +361,6 @@ export async function initializeDefaultData() {
       logger.info('✅ 사이트 설정 존재');
     }
 
-    // 4. 이벤트 권한 기본값 초기화
     logger.info('🔄 이벤트 권한 확인 중...');
     const { default: EventPermission } = await import('../models/EventPermission');
     const permCount = await EventPermission.count();
@@ -433,8 +381,7 @@ export async function initializeDefaultData() {
       logger.info(`✅ 이벤트 권한 ${permCount}개 존재`);
     }
 
-    // 5. 출퇴근 설정·확인 항목 초기화
-    //    설정 행이 없을 때만 만든다. 관리자가 항목을 모두 지웠는데 다시 생기면 안 된다.
+    // 설정 행이 없을 때만 만든다. 관리자가 항목을 모두 지웠는데 다시 생기면 안 된다.
     logger.info('🔄 출퇴근 설정 확인 중...');
     const { AttendancePolicy } = await import('../models/AttendancePolicy');
     const { AttendanceChecklistItem } = await import('../models/AttendanceChecklistItem');

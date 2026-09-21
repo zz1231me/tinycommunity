@@ -1,9 +1,4 @@
-// client/src/components/messages/ComposeDialog.tsx
-// 첫 메시지를 쓰는 모달.
-//
-// 프로필의 "메시지" 버튼과 메시지함의 "새 대화" 가 같은 화면을 쓴다 —
-// 둘이 따로 있으면 글자수 제한 표시나 ESC 처리 같은 것이 한쪽에서만 고쳐진다.
-// 덮개·ESC·포커스 처리는 ModalShell 이 맡는다.
+// 첫 메시지를 쓰는 모달. 덮개·ESC·포커스 처리는 ModalShell 이 맡는다.
 
 import { MESSAGE_MAX_LENGTH } from '../../api/messages';
 import { ModalShell } from '../common/ModalShell';

@@ -1,4 +1,3 @@
-// client/src/pages/boards/PostEditor.tsx
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useCodeHighlight } from '../../hooks/useCodeHighlight';
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
@@ -64,33 +63,28 @@ const PostEditor = ({ mode }: Props) => {
   const [editorKey, setEditorKey] = useState(0);
   const [error, setError] = useState('');
 
-  // 게시판 이동(수정 모드) — 쓰기 권한 있는 일반 게시판 목록 + 선택값
+  // 수정 모드의 게시판 이동. 쓰기 권한이 있는 일반 게시판만 고를 수 있다.
   const [targetBoard, setTargetBoard] = useState(boardType ?? '');
   const { regularBoards, getBoardById } = useAccessibleBoards();
   const moveTargets = regularBoards.filter(b => b.permissions.canWrite);
-  // 실제 게시판 이름 우선(커스텀 게시판은 getBoardTitle이 id를 노출) — API 이름 → getBoardTitle 폴백
+  // 커스텀 게시판은 getBoardTitle 이 id 를 노출하므로 API 이름을 먼저 쓴다.
   const boardTitle = getBoardById(boardType ?? '')?.name || getBoardTitle(boardType || '');
 
-  // 태그 상태
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
 
-  // 분할 보기 상태
   const [splitView, setSplitView] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
-  // 객체까지 기억해 둔다 — React 는 dangerouslySetInnerHTML 을 객체 참조로 비교해서,
-  // 매번 새 리터럴을 만들면 내용이 같아도 미리보기를 통째로 다시 붙인다.
+  // dangerouslySetInnerHTML 은 객체 참조로 비교되므로 객체까지 기억해 둔다.
   const previewBodyHtml = useMemo(() => ({ __html: previewHtml }), [previewHtml]);
   const previewRef = useRef<HTMLDivElement>(null);
 
   // 분할 보기 미리보기 코드 블록 syntax highlight
   useCodeHighlight(previewRef);
 
-  // 비밀글 상태
   const [isSecret, setIsSecret] = useState(false);
   const [secretPassword, setSecretPassword] = useState('');
   const [originalSecretType, setOriginalSecretType] = useState<'password' | 'users' | null>(null);
-  // 비밀글 방식 — 비밀번호를 아는 사람 / 지정한 사람만.
-  // 서버는 처음부터 두 방식을 다 지원했는데 화면에는 비밀번호 방식만 있었다.
+  // 비밀글 방식. 비밀번호를 아는 사람 또는 지정한 사람만.
   const [secretMode, setSecretMode] = useState<'password' | 'users'>('password');
   const currentUserId = useAuth(s => s.getUserId());
   const [allowedUsers, setAllowedUsers] = useState<UserSuggestion[]>([]);
@@ -104,13 +98,11 @@ const PostEditor = ({ mode }: Props) => {
 
   const { handleImageUpload } = useImageUpload();
 
-  // 임시저장 interval에서 클로저 캡처 없이 최신 title/boardType 참조
+  // interval 에서 최신 title/boardType 을 읽기 위한 ref
   const draftRef = useRef({ title, boardType });
   useEffect(() => {
     draftRef.current = { title, boardType };
   }, [title, boardType]);
-
-  // 에디터 ref는 이미 존재 — interval에서 최신 콘텐츠를 직접 읽기 위해 참조 유지
 
   useEffect(() => {
     let isMounted = true;
@@ -120,7 +112,6 @@ const PostEditor = ({ mode }: Props) => {
         try {
           const post = await fetchPostById(boardType, id);
           if (isMounted) {
-            // 잠긴 게시글(비밀번호 보호)은 편집 불가
             if (post.isLocked) {
               setError(
                 post.isEncrypted
@@ -130,8 +121,7 @@ const PostEditor = ({ mode }: Props) => {
               return;
             }
             setTitle(post.title);
-            // 편집은 원본(rawContent)을 로드 — 서버 렌더본(content)은 data-oembed-url 등이
-            // 제거돼 동영상 위젯 복원이 안 되고 서식이 변형됨. rawContent로 라운드트립 정합 보장.
+            // 서버 렌더본은 data-oembed-url 등이 빠지므로 편집에는 rawContent 를 쓴다.
             setInitialContent(post.rawContent || post.content || '');
             setEditorKey(prev => prev + 1);
 
@@ -141,22 +131,18 @@ const PostEditor = ({ mode }: Props) => {
               setDeletedFileNames([]);
             }
 
-            // 비밀글 설정 로드
             if (post.isSecret) {
               setIsSecret(true);
               const type = (post.secretType as 'password' | 'users') || null;
               setOriginalSecretType(type);
-              // 원래 방식으로 열어 준다 — 지정 방식 글을 열었는데 비밀번호 칸이
-              // 나오면 방식이 바뀐 줄 안다
+              // 저장된 방식 그대로 열어 준다.
               if (type) setSecretMode(type);
-              // 지금 허용된 사람들을 그대로 채운다. 비워 두면 화면에는 지정된 사람이 없는
-              // 것으로 보이고, 거기서 한 명을 고르면 목록이 그 한 명으로 교체된다.
+              // 허용된 사람들을 그대로 채운다. 비워 두면 고르는 순간 목록이 교체된다.
               if (Array.isArray(post.secretAllowedUsers)) {
                 setAllowedUsers(post.secretAllowedUsers);
               }
             }
 
-            // 태그 로드
             try {
               const tags = await getPostTags(boardType, id);
               if (isMounted) setSelectedTags(tags);
@@ -177,9 +163,7 @@ const PostEditor = ({ mode }: Props) => {
     };
   }, [mode, id, boardType]);
 
-  // 임시저장 — 서버에 저장한다.
-  //    localStorage 한 칸을 쓰던 예전 방식은 다른 기기에서 보이지 않았고,
-  //    두 번째 글을 쓰기 시작하면 앞의 것이 조용히 덮어써졌다.
+  // 임시저장은 서버에 보관한다.
   const readSnapshot = useCallback(
     () => ({
       title: draftRef.current.title,
@@ -187,8 +171,7 @@ const PostEditor = ({ mode }: Props) => {
     }),
     []
   );
-  // 임시저장 기능이 꺼져 있으면 아예 돌리지 않는다. 서버는 그 길을 막아 두므로(requireFeature),
-  // 켜져 있는 줄 알고 30초마다 보내 봐야 매번 거절당하고 '저장 실패' 만 계속 떴다.
+  // 임시저장 기능이 꺼져 있으면 돌리지 않는다. 서버가 거절해 실패만 반복된다.
   const draftsEnabled = useFeature('post.drafts');
   const draft = useDraftAutoSave({
     enabled: mode === 'create' && draftsEnabled,
@@ -198,7 +181,7 @@ const PostEditor = ({ mode }: Props) => {
     read: readSnapshot,
   });
 
-  // 이어쓰기 — 임시저장 목록에서 ?draft=<id> 로 들어온 경우 본문을 불러온다
+  // ?draft=<id> 로 들어오면 그 임시저장 본문을 불러온다.
   useEffect(() => {
     if (mode !== 'create' || !resumeDraftId) return;
     let cancelled = false;
@@ -219,7 +202,6 @@ const PostEditor = ({ mode }: Props) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 중복 제출 방지
     if (loading) return;
 
     if (!boardType) {
@@ -262,20 +244,14 @@ const PostEditor = ({ mode }: Props) => {
 
     setError('');
 
-    // 비밀글 유효성 검사
     if (isSecret && secretMode === 'users') {
-      // 지정 방식은 비밀번호가 아니라 사람이 필요하다.
-      // 한 명도 고르지 않으면 작성자만 볼 수 있는 글이 된다.
-      //
-      // 수정할 때도 같은 검사를 건다. 서버가 기존 허용 목록을 채워서 내려주므로,
-      // 비어 있다는 것은 사용자가 전부 지웠다는 뜻이다.
+      // 지정 방식은 사람을 한 명 이상 골라야 한다. 수정할 때도 같다.
       if (allowedUsers.length === 0) {
         setError('열람을 허용할 사람을 한 명 이상 선택해주세요.');
         return;
       }
     } else if (isSecret) {
       const trimmedPw = secretPassword.trim();
-      // 공백 전용 입력은 모든 모드에서 먼저 차단
       if (secretPassword && !trimmedPw) {
         setError('비밀글 비밀번호에 공백만 입력할 수 없습니다.');
         return;
@@ -292,12 +268,11 @@ const PostEditor = ({ mode }: Props) => {
       }
     }
 
-    // E2EE 암호화 처리 (비밀글 + 비밀번호 타입일 때)
     let finalContent: string = typeof content === 'string' ? content : JSON.stringify(content);
     let encryptedSalt: string | undefined;
     let isEncrypted = false;
 
-    // E2EE 는 비밀번호 방식에서만 성립한다 — 지정 방식에는 공유할 비밀번호가 없다
+    // E2EE 는 비밀번호 방식에서만 성립한다.
     if (isSecret && secretMode === 'password' && secretPassword.trim()) {
       const encrypted = encryptContent(finalContent, secretPassword.trim());
       finalContent = encrypted.ciphertext;
@@ -305,7 +280,6 @@ const PostEditor = ({ mode }: Props) => {
       isEncrypted = true;
     }
 
-    // 어떤 방식으로 잠글지에 따라 서버에 보낼 값이 갈린다.
     // 지정 방식은 비밀번호가 없으므로 E2EE 도 걸지 않는다.
     const secretFields = !isSecret
       ? { isSecret: false as const }
@@ -314,7 +288,6 @@ const PostEditor = ({ mode }: Props) => {
             isSecret: true as const,
             secretType: 'users' as const,
             secretPassword: undefined,
-            // 화면에 보이는 목록이 곧 저장될 목록이다. 위 검사가 빈 목록을 이미 막았다.
             secretUserIds: allowedUsers.map(u => u.id),
             isEncrypted: false,
           }
@@ -340,7 +313,7 @@ const PostEditor = ({ mode }: Props) => {
           targetBoardType: targetBoard,
           ...secretFields,
         });
-        // 게시판 이동 시 응답의 새 boardType을 기준으로 태그 저장·이동(URL 정합)
+        // 게시판을 옮겼으면 응답의 새 boardType 을 기준으로 태그를 저장하고 이동한다.
         const finalBoardType = updated?.boardType || targetBoard || boardType;
         try {
           await savePostTags(
@@ -375,14 +348,14 @@ const PostEditor = ({ mode }: Props) => {
           }
         }
         logger.success('게시글 작성 완료');
-        // 발행했으면 초안은 역할이 끝났다. 실패해도 글은 이미 올라갔으므로 막지 않는다.
+        // 발행했으면 초안을 지운다. 실패해도 글은 이미 올라갔으므로 막지 않는다.
         if (draft.draftId) {
           draft.forget();
           deleteDraft(draft.draftId).catch(err =>
             logger.warn('임시저장 삭제에 실패했습니다.', err)
           );
         }
-        // 작성한 글의 상세 페이지로 바로 이동 (일반 커뮤니티 패턴) — id가 없을 때만 목록 폴백
+        // id 가 없을 때만 목록으로 폴백한다.
         if (createdId) {
           navigate(`/dashboard/posts/${boardType}/${createdId}`);
         } else {
@@ -391,7 +364,7 @@ const PostEditor = ({ mode }: Props) => {
       }
     } catch (err: unknown) {
       logger.error('저장 실패', err);
-      // 409: 게시판 이동 등 충돌 — 서버 메시지를 그대로 노출
+      // 409 는 서버 메시지를 그대로 보여 준다.
       const response = (err as { response?: { status?: number; data?: { message?: string } } })
         ?.response;
       if (response?.status === 409) {
@@ -409,7 +382,7 @@ const PostEditor = ({ mode }: Props) => {
   };
 
   const handleNewFilesAdd = (newFiles: File[]) => {
-    // 확장자 제한 없음 — 위험한 확장자는 서버 업로드 필터의 절대차단 목록에서 걸러진다.
+    // 확장자 제한은 서버 업로드 필터가 맡는다.
     setFiles(prev => [...prev, ...newFiles]);
   };
 
@@ -428,8 +401,7 @@ const PostEditor = ({ mode }: Props) => {
     }
   };
 
-  // 본문에 증적으로 꽂을 수 있는 첨부 — 저장된 것과 방금 고른 것 모두.
-  // 참조는 원본 파일명으로 하므로 아직 업로드되지 않은 파일도 미리 꽂을 수 있다.
+  // 참조는 원본 파일명으로 하므로 아직 업로드되지 않은 파일도 꽂을 수 있다.
   const attachmentsEnabled = useFeature('post.attachments');
   const attachmentNames = [
     ...new Set([...existingAttachments.map(a => a.originalName), ...files.map(f => f.name)]),
@@ -438,20 +410,15 @@ const PostEditor = ({ mode }: Props) => {
   const isEditMode = mode === 'edit';
   const submitButtonText = isEditMode ? '수정하기' : '작성하기';
 
-  // 분할 보기 토글 — '내용' 라벨 옆에 둔다. 그 영역을 조작하는 버튼이므로
-  // 위쪽에 따로 한 줄을 차지하면 태그와 내용 사이에 빈 띠만 생긴다.
   const splitViewToggle = (
     <button
       type="button"
       onClick={() => {
-        // 분할/비분할은 서로 다른 위치의 에디터 인스턴스라 토글 시 에디터가 remount된다.
-        // CKEditor는 uncontrolled(내용이 인스턴스에만 존재)이므로, 현재 내용을 캡처해
-        // 새로 마운트되는 에디터의 initialContent로 넘기지 않으면 입력 내용이 소실된다.
-        // (기존 편집/임시저장 로드와 동일하게 setInitialContent + editorKey 증가로 재seed)
+        // 토글하면 에디터가 remount 된다. CKEditor 는 uncontrolled 라 내용을 넘기지 않으면 사라진다.
         const html = editorRef.current?.getInstance()?.getContent?.() ?? initialContent;
         setInitialContent(html);
         setEditorKey(prev => prev + 1);
-        // 분할 보기를 켤 때만 미리보기 초기화(비분할은 미리보기가 화면에 없어 sanitize 불필요)
+        // 미리보기가 보일 때만 sanitize 한다.
         if (!splitView) setPreviewHtml(sanitizeHTML(html));
         setSplitView(v => !v);
       }}
@@ -462,7 +429,6 @@ const PostEditor = ({ mode }: Props) => {
       }`}
       title="분할 보기 (미리보기)"
     >
-      {/* 이모지 대신 아이콘 — 업무 화면의 버튼은 조용해야 한다 */}
       <Columns2 className="h-3.5 w-3.5" aria-hidden="true" />
       {splitView ? '편집 전용' : '분할 보기'}
     </button>
@@ -470,9 +436,6 @@ const PostEditor = ({ mode }: Props) => {
 
   return (
     <PageContainer>
-      {/* 페이지 머리 — 다른 화면(PageHeader)과 같은 모양으로 맞춘다.
-          제목만 크게 띄우고 아래를 텅 비워 두면 화면이 시작되는 지점이 흐려진다.
-          가는 구분선 하나가 "여기까지가 머리" 를 말해 준다. */}
       <div className="mb-4 flex items-center gap-2 border-b border-slate-200 pb-3 dark:border-slate-700/60">
         <button
           onClick={() => navigate(-1)}
@@ -504,12 +467,8 @@ const PostEditor = ({ mode }: Props) => {
       </div>
 
       <div className="card">
-        {/* 입력 사이 간격은 20px — 24px 는 한 폼 안의 항목끼리 떨어져 보인다 */}
         <form onSubmit={handleSubmit} className="space-y-5 p-5">
-          {/* 임시저장 상태 — 저장되고 있는지, 안 되고 있는지를 숨기지 않는다.
-              자리는 처음부터 비워 둔다. 글을 쓰는 도중 자동저장이 처음 성공하면 이 줄이
-              생기는데, 그때 아래 내용이 통째로 64px 밀린다 — 마침 버튼을 누르려던 손이
-              엉뚱한 것을 누르게 된다. */}
+          {/* 자동저장 줄이 나중에 생기며 아래를 밀지 않도록 자리를 미리 비워 둔다. */}
           {mode === 'create' && (
             <div aria-live="polite" className="min-h-9">
               {(draft.savedAt || draft.failed) && (
@@ -544,7 +503,6 @@ const PostEditor = ({ mode }: Props) => {
 
           <PostTitleInput value={title} onChange={setTitle} maxLength={MAX_TITLE_LENGTH} />
 
-          {/* 게시판 이동 (수정 모드 + 이동 가능한 다른 게시판이 있을 때만) */}
           {isEditMode && moveTargets.some(b => b.id !== boardType) && (
             <div>
               <label
@@ -559,7 +517,7 @@ const PostEditor = ({ mode }: Props) => {
                 onChange={e => setTargetBoard(e.target.value)}
                 className="input"
               >
-                {/* 현재 게시판이 쓰기권한 목록에 없을 수 있으므로 항상 선택지로 포함 */}
+                {/* 현재 게시판은 쓰기 권한 목록에 없을 수 있어 항상 선택지에 넣는다 */}
                 {boardType && !moveTargets.some(b => b.id === boardType) && (
                   <option value={boardType}>{boardTitle} (현재)</option>
                 )}
@@ -578,9 +536,8 @@ const PostEditor = ({ mode }: Props) => {
             </div>
           )}
 
-          {/* 태그 선택 */}
           <div role="group" aria-labelledby="post-tags-label">
-            {/* 입력칸 하나가 아니라 고르는 영역이라 label 로 이을 수 없다 */}
+            {/* 입력칸이 아니라 고르는 영역이라 label 로 이을 수 없다 */}
             <span
               id="post-tags-label"
               className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
@@ -624,8 +581,7 @@ const PostEditor = ({ mode }: Props) => {
                         : '내용을 작성해주세요...'
                     }
                     onChange={html => {
-                      // 분할 보기일 때만 sanitize/setState — 비활성 시 큰 글 입력에서 매 키마다
-                      // DOMPurify를 호출하는 비용을 회피 (미리보기가 보이지 않아 불필요)
+                      // 미리보기가 보일 때만 sanitize 한다. 아니면 매 키마다 DOMPurify 가 돈다.
                       if (splitView) setPreviewHtml(sanitizeHTML(html));
                     }}
                     attachmentNames={attachmentNames}
@@ -637,7 +593,7 @@ const PostEditor = ({ mode }: Props) => {
               <Panel defaultSize={50} minSize={30}>
                 <div className="h-full overflow-y-auto p-6">
                   <h1 className="doc-title mb-4">{title}</h1>
-                  {/* previewHtml은 sanitizeHTML()로 정화 완료 */}
+                  {/* previewHtml 은 sanitizeHTML() 로 정화된 값이다 */}
                   <div
                     ref={previewRef}
                     className="ck-content-view"
@@ -672,8 +628,7 @@ const PostEditor = ({ mode }: Props) => {
             </EditorErrorBoundary>
           )}
 
-          {/* 첨부가 꺼져 있으면 고를 수 없게 한다 —
-              업로더를 두면 파일을 다 고른 뒤 저장에서야 403 을 만난다 */}
+          {/* 첨부가 꺼져 있으면 업로더를 두지 않는다. 저장할 때가 되어서야 403 이 난다 */}
           {attachmentsEnabled && (
             <UppyFileUpload
               files={files}
@@ -687,7 +642,6 @@ const PostEditor = ({ mode }: Props) => {
             />
           )}
 
-          {/* 비밀글 설정 */}
           <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-4">
             <label className="flex items-center gap-3 cursor-pointer">
               <input
@@ -708,7 +662,6 @@ const PostEditor = ({ mode }: Props) => {
 
             {isSecret && (
               <div className="pl-7 space-y-3">
-                {/* 어떤 방식으로 잠글지 — 업무에서는 "이 사람들만" 이 더 자주 필요하다 */}
                 <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="비밀글 방식">
                   {[
                     { value: 'password' as const, label: '비밀번호를 아는 사람' },

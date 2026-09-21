@@ -1,11 +1,4 @@
-// client/src/components/common/UserPicker.tsx
-// 사람을 찾아 고르는 입력.
-//
-// 사용자가 수백 명이면 <select> 로는 고를 수 없다. Tom Select 같은 바닐라 라이브러리는
-// DOM 을 직접 조작해 React 리렌더와 부딪히므로, 사용자 검색 API 위에 얇게 만든다.
-//
-// 한 명을 고르는 곳(메시지 받는 사람)과 여러 명을 고르는 곳(비밀글 열람 허용)이 같은
-// 컴포넌트를 쓴다. 검색 지연·키보드 조작·빈 상태 문구가 갈리지 않는다.
+// 사람을 찾아 고르는 입력. 한 명 선택과 여러 명 선택을 모두 처리한다.
 
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -15,7 +8,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { ListState } from './ListState';
 
 interface Props {
-  /** 이미 고른 사람들 — 목록에서 빼고 칩으로 보여 준다 */
+  /** 이미 고른 사람들. 목록에서 빼고 칩으로 보여 준다. */
   selected: UserSuggestion[];
   onChange: (next: UserSuggestion[]) => void;
   /** 한 명만 고를지 */
@@ -25,7 +18,7 @@ interface Props {
   placeholder?: string;
   /** 결과 목록에 처음부터 포커스를 둘지 */
   autoFocus?: boolean;
-  /** 이 게시판을 볼 수 있는 사람만 후보로 — 담당자 지정처럼 대상이 제한된 곳에서 쓴다 */
+  /** 이 게시판을 볼 수 있는 사람만 후보로 둔다 */
   boardType?: string;
 }
 
@@ -62,7 +55,7 @@ export function UserPicker({
   const excluded = new Set(excludeIds);
   const results = found.filter(u => !chosen.has(u.id) && !excluded.has(u.id));
 
-  // 결과가 바뀌면 첫 항목으로 되돌린다 — 안 그러면 사라진 자리를 가리킨다
+  // 결과가 바뀌면 첫 항목으로 되돌린다. 안 그러면 사라진 자리를 가리킨다.
   useEffect(() => {
     setActiveIndex(0);
   }, [debounced, selected.length]);
@@ -126,7 +119,7 @@ export function UserPicker({
         />
       </div>
 
-      {/* 검색어가 없을 때도 최근 사용자 몇 명을 보여 주면 고르기 쉽다 */}
+      {/* 검색어가 없을 때도 후보를 보여 준다 */}
       <ul
         role="listbox"
         aria-label="검색 결과"
@@ -134,11 +127,7 @@ export function UserPicker({
       >
         {results.length === 0 ? (
           <li>
-            {/*
-              조회가 실패해도 결과는 빈 배열이다. 그대로 두면 '없습니다' 가 떠서,
-              사람을 지정하려던 쪽은 "그런 사람이 없구나" 라고 잘못 결론짓는다.
-              실패는 실패라고 말해야 다시 시도할 수 있다.
-            */}
+            {/* 조회가 실패해도 결과는 빈 배열이라 '없습니다' 와 구분해서 알려야 한다 */}
             <ListState>
               {isFetching
                 ? '찾는 중…'

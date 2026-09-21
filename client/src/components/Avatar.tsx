@@ -1,4 +1,3 @@
-// client/src/components/Avatar.tsx - 완전 최적화 버전
 import React, { useState } from 'react';
 import { markFor } from './avatarMark';
 import { AvatarMarkSvg } from './AvatarMarkSvg';
@@ -16,18 +15,11 @@ interface AvatarProps {
   variant?: 'gradient' | 'solid' | 'muted';
   className?: string;
   showTooltip?: boolean;
-  /**
-   * 눌러서 사진을 크게 볼 수 있게 한다. 사진이 실제로 있을 때만 동작한다
-   * (글자·무늬 대체 표시는 확대할 것이 없다).
-   *
-   * 기본값이 꺼짐인 이유: 아바타는 목록·행 안에도 들어가는데, 그런 자리는
-   * 이미 바깥이 클릭 대상인 경우가 있다(예: 메시지 목록의 대화 선택 버튼).
-   * 거기서 클릭을 가로채면 원래 동작이 막힌다. 그래서 자리마다 켠다.
-   */
+  /** 눌러서 사진을 크게 본다. 바깥이 클릭 대상인 자리도 있어 기본값은 꺼짐이다. */
   enlargeable?: boolean;
 }
 
-// 크기는 기존보다 살짝(+2px) 키운 값. Tailwind 4px 스텝으로는 미세 증가가 안 되어 arbitrary px 사용.
+// Tailwind 4px 스텝으로는 미세 조정이 안 되어 arbitrary px 을 쓴다.
 const sizeClasses = {
   xs: 'w-[30px] h-[30px] text-xs',
   sm: 'w-[42px] h-[42px] text-xs',
@@ -39,7 +31,7 @@ const sizeClasses = {
 
 const variantClasses = {
   solid: 'bg-blue-500 text-white',
-  muted: 'bg-slate-400 dark:bg-slate-600 text-slate-100', // ✅ 삭제된 계정용 음소거 스타일
+  muted: 'bg-slate-400 dark:bg-slate-600 text-slate-100', // 삭제된 계정용
 };
 
 export const Avatar: React.FC<AvatarProps> = React.memo(
@@ -55,7 +47,6 @@ export const Avatar: React.FC<AvatarProps> = React.memo(
     const [imageLoaded, setImageLoaded] = useState(false);
     const [viewerOpen, setViewerOpen] = useState(false);
 
-    // 아바타 URL 메모이제이션 - 사용자 ID나 아바타 URL이 변경될 때만 새로고침
     const avatarUrl = React.useMemo(() => {
       if (!user.avatar || imageError) return null;
 
@@ -76,10 +67,7 @@ export const Avatar: React.FC<AvatarProps> = React.memo(
 
       const baseUrl = user.avatar;
 
-      // 사용자별 고유 식별자로 캐시 버스팅 (매번 새로고침 방지)
-      // btoa는 Latin1만 지원하므로 한글 ID(예: '홍길동') → InvalidCharacterError 발생.
-      // encodeURIComponent로 ASCII 변환 후 btoa 적용해 안전 처리. 실패 시 캐시 버스터 생략 (URL 자체에
-      // 서버가 생성한 timestamp+uuid가 이미 포함되어 cache busting 효과 있음).
+      // 캐시 버스팅 키. btoa 는 Latin1 만 받으므로 encodeURIComponent 로 ASCII 로 바꾼 뒤 적용한다.
       let cacheKey = '';
       try {
         cacheKey = btoa(encodeURIComponent(`${user.id}_${user.avatar}`)).replace(
@@ -98,29 +86,23 @@ export const Avatar: React.FC<AvatarProps> = React.memo(
     const getInitials = React.useCallback((name: string): string => {
       if (!name || name.trim() === '') return '?';
 
-      // 삭제된 계정 처리
       if (name.startsWith('삭제된계정_')) {
         return '🗑️';
       }
 
-      // 한글, 영문, 숫자 등을 모두 처리
       const words = name.trim().split(/\s+/);
 
       if (words.length === 1) {
         const word = words[0];
-        // 한글인 경우 첫 글자만
         if (/[가-힣]/.test(word)) {
           return word.charAt(0);
         }
-        // 영문인 경우 첫 두 글자
         if (/[a-zA-Z]/.test(word)) {
           return word.substring(0, 2).toUpperCase();
         }
-        // 기타 (숫자, 특수문자)
         return word.charAt(0);
       }
 
-      // 여러 단어인 경우 각 단어의 첫 글자
       return words
         .slice(0, 2)
         .map(word => {
@@ -133,9 +115,7 @@ export const Avatar: React.FC<AvatarProps> = React.memo(
 
     const initials = React.useMemo(() => getInitials(user.name), [user.name, getInitials]);
 
-    // 공통 클래스 메모이제이션
-    // 모서리는 버튼·입력칸과 같은 8px(rounded-lg). 예전 2px 는 각진 것도 둥근 것도 아니라
-    // 옆에 놓인 컨트롤들과 어긋나 보였다.
+    // 모서리는 버튼·입력칸과 같은 8px(rounded-lg)로 맞춘다.
     const baseClasses = React.useMemo(
       () => `
     ${sizeClasses[size]}
@@ -165,15 +145,12 @@ export const Avatar: React.FC<AvatarProps> = React.memo(
       setImageLoaded(true);
     }, []);
 
-    // Fallback(사진 없음) 바탕. gradient 는 아이디로 정해진 무늬를 그리고,
-    // muted/solid 는 기존대로 단색 클래스를 쓴다.
-    // 씨앗은 id 우선 — 동명이인이 같은 그림을 받지 않도록.
+    // 사진이 없을 때의 바탕. 씨앗은 id 를 먼저 쓴다(동명이인이 같은 그림을 받지 않도록).
     const mark = React.useMemo(
       () => (variant === 'gradient' ? markFor(user.id || user.name) : null),
       [variant, user.id, user.name]
     );
 
-    // 이미지가 있는 경우
     if (avatarUrl) {
       const picture = (
         <>
@@ -249,7 +226,6 @@ export const Avatar: React.FC<AvatarProps> = React.memo(
     );
   },
   (prevProps, nextProps) => {
-    // 얕은 비교로 불필요한 리렌더링 방지
     return (
       prevProps.user.id === nextProps.user.id &&
       prevProps.user.name === nextProps.user.name &&
@@ -264,4 +240,4 @@ export const Avatar: React.FC<AvatarProps> = React.memo(
   }
 );
 
-// 기존 export와의 호환성을 위해 default로도 export
+// 기존 import 호환을 위해 default 로도 내보낸다.

@@ -1,9 +1,4 @@
-// server/src/models/Subscription.ts
-// 게시판 구독 / 사용자 팔로우.
-//
-// 둘을 한 테이블에 두는 이유: "새 글이 올라오면 알려 줘" 라는 같은 요구이고,
-// 새 글 하나가 올라올 때 알릴 사람을 찾는 질의도 하나로 끝난다.
-// 나누면 글마다 두 번 조회하고 결과를 합쳐야 한다.
+// 게시판 구독과 사용자 팔로우. 알릴 사람을 한 번의 질의로 찾으려고 한 테이블에 둔다.
 
 import {
   DataTypes,
@@ -51,13 +46,13 @@ SubscriptionModel.init(
     timestamps: true,
     updatedAt: false,
     indexes: [
-      // 같은 대상을 두 번 구독할 수 없다 — 토글이 곧 유일성이다
+      // 같은 대상을 두 번 구독할 수 없다.
       {
         unique: true,
         fields: ['userId', 'targetType', 'targetId'],
         name: 'idx_subscriptions_unique',
       },
-      // 새 글 하나로 알릴 사람을 찾는 경로
+      // 새 글 하나로 알릴 사람을 찾는 경로다.
       { fields: ['targetType', 'targetId'], name: 'idx_subscriptions_target' },
     ],
   }

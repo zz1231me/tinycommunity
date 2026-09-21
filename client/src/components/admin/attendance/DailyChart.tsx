@@ -1,8 +1,4 @@
-// client/src/components/admin/attendance/DailyChart.tsx
-// 한 사람의 기간 안 날짜별 근무 시간.
-//
-// 기록이 없는 날도 빈 칸으로 둔다. 기록 있는 날만 붙여 그리면 주말·결근이 사라져
-// 막대가 촘촘히 붙고, 언제 비었는지가 안 보인다.
+// 날짜별 근무 시간 막대. 기록 없는 날도 빈 칸으로 둬야 결근이 보인다.
 
 import { useMemo } from 'react';
 import { formatDay, formatMinutes, shiftDay, weekdayOf } from '../../../utils/attendance';
@@ -30,8 +26,7 @@ export function DailyChart({ records, from, to, standardWorkMinutes }: Props) {
 
   if (days.length < 2) return null;
 
-  // 눈금 위쪽에 여유를 둔다. 기준과 최대값이 같으면 기준선이 맨 위 테두리에 붙어
-  // 선인지 테두리인지 구분되지 않고, 기준만큼 일한 날의 막대도 천장에 닿는다.
+  // 기준선이 맨 위 테두리에 붙지 않도록 눈금 위쪽에 여유를 둔다.
   const longest = Math.max(standardWorkMinutes, ...days.map(d => d.record?.workMinutes ?? 0));
   const peak = longest * 1.1;
   const standardAt = (standardWorkMinutes / peak) * 100;
@@ -65,7 +60,7 @@ export function DailyChart({ records, from, to, standardWorkMinutes }: Props) {
             >
               {record &&
                 (minutes === null ? (
-                  // 시간이 안 잡힌 날은 높이가 없다 — 바닥에 표시만 남긴다
+                  // 시간이 안 잡힌 날은 바닥에 표시만 남긴다.
                   <div className="h-1 rounded-sm bg-amber-400 dark:bg-amber-500" />
                 ) : (
                   <div

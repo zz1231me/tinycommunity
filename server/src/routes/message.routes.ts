@@ -1,8 +1,4 @@
-// server/src/routes/message.routes.ts
-// /api/messages — 1:1 메시지.
-//
-// 라우터 전체에 requireFeature 를 건다. 메시지를 끄면 기존 대화도 열리지 않는다.
-// 데이터는 지우지 않으므로 다시 켜면 그대로 돌아온다.
+// 라우터 전체에 requireFeature를 건다. 기능을 끄면 기존 대화도 열리지 않는다.
 
 import { Router, RequestHandler } from 'express';
 import asyncHandler from 'express-async-handler';

@@ -1,7 +1,4 @@
-// client/src/components/editor/components/PostTitleInput.tsx
-//
-// 스타일은 클래스로만 준다. 인라인 style 은 클래스로 덮을 수 없어, 배경색을 인라인으로
-// 못 박으면 dark:bg-slate-700 이 적용되지 않는다.
+// 스타일은 클래스로만 준다. 인라인 style 은 dark: 클래스를 덮어 버린다.
 import React from 'react';
 
 interface PostTitleInputProps {
@@ -11,7 +8,6 @@ interface PostTitleInputProps {
 }
 
 const PostTitleInput: React.FC<PostTitleInputProps> = ({ value, onChange, maxLength }) => {
-  // Defensive: Ensure value is never undefined
   const safeValue = value ?? '';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

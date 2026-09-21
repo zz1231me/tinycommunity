@@ -1,13 +1,9 @@
-// client/src/utils/identicon.ts
-// 외부 서비스 없이 코드로 '현대적인' 랜덤 아바타를 생성한다.
-// 도트 그리드(구식) 대신 그라디언트 + 소프트 오브/링/기하 스타일을 랜덤으로 그려,
-// 클릭할 때마다 세련되고 다양한 결과가 나온다. canvas → PNG File로 반환해
-// 기존 아바타 업로드 파이프라인(서버 sharp 처리·저장)을 그대로 재사용한다.
+// canvas 로 랜덤 아바타를 그려 PNG File 로 돌려준다. 업로드 경로는 기존 것을 그대로 쓴다.
 
 const rand = (min: number, max: number) => min + Math.random() * (max - min);
 const hsl = (h: number, s: number, l: number, a = 1) => `hsla(${h}, ${s}%, ${l}%, ${a})`;
 
-// 배경: 두 조화 색조의 대각선 그라디언트
+// 두 색조의 대각선 그라디언트 배경
 function paintGradientBg(ctx: CanvasRenderingContext2D, size: number, h1: number, h2: number) {
   const g = ctx.createLinearGradient(0, 0, size, size);
   g.addColorStop(0, hsl(h1, 72, 58));
@@ -16,7 +12,7 @@ function paintGradientBg(ctx: CanvasRenderingContext2D, size: number, h1: number
   ctx.fillRect(0, 0, size, size);
 }
 
-// 스타일 A — 떠다니는 소프트 오브
+// 스타일 A: 떠다니는 소프트 오브
 function drawOrbs(ctx: CanvasRenderingContext2D, size: number, h1: number, h2: number) {
   paintGradientBg(ctx, size, h1, h2);
   const n = Math.floor(rand(3, 6));
@@ -35,7 +31,7 @@ function drawOrbs(ctx: CanvasRenderingContext2D, size: number, h1: number, h2: n
   }
 }
 
-// 스타일 B — 동심원 링
+// 스타일 B: 동심원 링
 function drawRings(ctx: CanvasRenderingContext2D, size: number, h1: number, h2: number) {
   const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size * 0.7);
   g.addColorStop(0, hsl(h1, 70, 60));
@@ -53,11 +49,10 @@ function drawRings(ctx: CanvasRenderingContext2D, size: number, h1: number, h2: 
   }
 }
 
-// 스타일 C — 겹치는 기하 도형
+// 스타일 C: 겹치는 기하 도형
 function drawGeometric(ctx: CanvasRenderingContext2D, size: number, h1: number, h2: number) {
   paintGradientBg(ctx, size, h1, h2);
   ctx.globalAlpha = 0.6;
-  // 큰 원
   ctx.beginPath();
   ctx.arc(
     rand(size * 0.3, size * 0.7),
@@ -68,7 +63,6 @@ function drawGeometric(ctx: CanvasRenderingContext2D, size: number, h1: number, 
   );
   ctx.fillStyle = hsl(h2, 85, 70);
   ctx.fill();
-  // 삼각형
   ctx.beginPath();
   ctx.moveTo(rand(0, size), rand(0, size));
   ctx.lineTo(rand(0, size), rand(0, size));
@@ -88,7 +82,7 @@ export async function generateRandomAvatarFile(): Promise<File> {
   if (!ctx) throw new Error('이미지를 생성할 수 없습니다(canvas 미지원).');
 
   const h1 = Math.floor(Math.random() * 360);
-  const h2 = (h1 + Math.floor(rand(25, 120))) % 360; // 조화로운 두 번째 색조
+  const h2 = (h1 + Math.floor(rand(25, 120))) % 360;
 
   const styles = [drawOrbs, drawRings, drawGeometric];
   styles[Math.floor(Math.random() * styles.length)](ctx, size, h1, h2);

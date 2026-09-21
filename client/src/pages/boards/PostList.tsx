@@ -1,4 +1,3 @@
-// src/pages/boards/PostList.tsx - 중복 권한 체크 제거
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
@@ -31,14 +30,12 @@ const PostList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   // 구독 기능이 꺼져 있으면 버튼도 두지 않는다
   const subscriptionsEnabled = useFeature('social.subscriptions');
-  // 업무 상태를 안 쓰는 사이트에서는 필터 줄도 두지 않는다.
-  // 사이트 전체 스위치(관리자) 와 게시판 용도, 둘 다 켜져 있어야 쓴다.
+  // 사이트 전체 스위치와 게시판 용도가 둘 다 켜져야 업무 상태 필터를 쓴다.
   const tasksEnabled = useFeature('post.tasks');
 
-  // 페이지 번호를 URL 쿼리 파라미터에서 읽어 뒤로가기 시 복원
+  // 뒤로가기 복원을 위해 페이지 번호를 URL 쿼리에서 읽는다.
   const currentPage = Math.max(1, Number(searchParams.get('page') ?? '1') || 1);
-  // 한 쪽에 몇 개를 보일지는 관리자 설정(사이트 설정 › 기본 페이지 크기)을 따른다.
-  // 값을 여기에 박아 두면 관리자가 설정을 바꿔도 게시판 목록만 그대로 남는다.
+  // 한 쪽에 보일 수는 관리자 설정(기본 페이지 크기)을 따른다.
   const postsPerPage = useSiteSettings(s => s.settings.defaultPageSize);
   const [localSearch, setLocalSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -51,17 +48,11 @@ const PostList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // 게시판 정보와 글 목록은 React Query 가 가져온다.
-  //
-  // 조건(검색어·태그·상태·페이지)을 캐시 키에 통째로 넣는다. useEffect 안에서 직접
-  // 불러오면 isMounted 플래그와 AbortController 를 써도, 조건이 빠르게 바뀔 때 앞 요청의
-  // 늦은 응답이 화면을 덮는다. 키가 다르면 늦게 온 응답은 지금 화면에 반영되지 않는다.
+  // 조건(검색어·태그·상태·페이지)을 캐시 키에 통째로 넣는다. 키가 다르면 늦게 온 응답이 화면을 덮지 않는다.
   const boardQuery = useQuery({
     queryKey: boardKeys.info(boardType ?? ''),
     queryFn: async () => {
-      // 이 요청이 실패해도 머리글은 나와야 한다 — 권한은 BoardProtectedRoute 가 이미 봤고,
-      // 여기서 가져오는 건 이름·설명 같은 표시용 정보다. 실패하면 게시판 이름 상수로 채운다.
-      // (예전 코드도 그렇게 했다. 캐치를 빼면 통신이 한 번 흔들릴 때 제목이 '게시판' 이 된다.)
+      // 이 요청이 실패해도 머리글은 나와야 한다. 실패하면 게시판 이름 상수로 채운다.
       const fallback: BoardInfo = {
         id: boardType!,
         name: getBoardTitle(boardType!),
@@ -109,20 +100,13 @@ const PostList = () => {
       ) as Promise<PostListResponse>,
     enabled: !!boardType,
     placeholderData: (prev, prevQuery) => keepIfSameBoard(prev, prevQuery?.queryKey, boardType),
-    // 목록으로 돌아올 때마다 다시 읽는다.
-    //
-    // 전역 staleTime 이 5분이라 이것이 없으면 글을 쓰고 돌아와도 옛 목록이 그대로 보인다.
-    //
-    // post-updated 이벤트로는 막을 수 없다. 글을 쓰는 동안 이 화면은 언마운트 상태라
-    // 이벤트를 듣는 쪽이 없다. 그 이벤트는 목록이 떠 있는 동안의 변경(고정·업무 상태)만
-    // 담당한다.
+    // 전역 staleTime 이 5분이라 이것이 없으면 글을 쓰고 돌아와도 옛 목록이 보인다.
     refetchOnMount: 'always',
   });
 
   const posts: Post[] = postsQuery.data?.posts ?? [];
   const pagination = postsQuery.data?.pagination ?? null;
-  // 뼈대(스켈레톤)는 보여 줄 내용이 아예 없을 때만 띄운다.
-  // 같은 게시판 안에서 쪽을 넘길 때는 이전 목록을 그대로 두고 aria-busy 로만 알린다.
+  // 뼈대는 보여 줄 내용이 아예 없을 때만 띄우고, 쪽을 넘길 때는 aria-busy 로만 알린다.
   const loading = postsQuery.isPending;
   const fetching = postsQuery.isFetching;
   const error = postsQuery.isError
@@ -134,9 +118,7 @@ const PostList = () => {
 
   const showTasks = tasksEnabled && !!boardInfo?.taskEnabled;
 
-  // 업무용이 꺼진 게시판에 상태 선택이 남아 있으면 목록이 조용히 빈다.
-  // 선택을 비우는 것으로 처리한다 — 목록을 부르는 effect 가 showTasks 를 보게 하면,
-  // showTasks 는 그 effect 가 채우는 boardInfo 에서 나오므로 목록을 두 번 부르게 된다.
+  // 업무용이 꺼진 게시판에 상태 선택이 남으면 목록이 조용히 빈다. 선택을 비우는 것으로 처리한다.
   useEffect(() => {
     if (!showTasks && statusFilter.length > 0) setStatusFilter([]);
   }, [showTasks, statusFilter.length]);
@@ -145,7 +127,7 @@ const PostList = () => {
   const handlePostClick = useCallback(
     (postId: string) => {
       if (boardType) {
-        // 현재 목록 URL(페이지·검색·태그 포함)을 넘겨, 상세에서 "목록으로" 시 원위치 복귀
+        // 상세에서 '목록으로' 누를 때 원위치하도록 지금 목록 URL 을 넘긴다.
         navigate(`/dashboard/posts/${boardType}/${postId}`, {
           state: { from: `${location.pathname}${location.search}` },
         });
@@ -183,7 +165,7 @@ const PostList = () => {
     [setPage]
   );
 
-  // 검색어 디바운스 (300ms) — localSearch 실제 변경 시에만 페이지 초기화
+  // 검색어 디바운스(300ms). 실제로 바뀔 때만 페이지를 초기화한다.
   const prevLocalSearch = useRef(localSearch);
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -196,23 +178,17 @@ const PostList = () => {
     return () => clearTimeout(timer);
   }, [localSearch, setPage]);
 
-  // 게시판별 태그 로드 + boardType 변경 시 필터 초기화
-  // setPage(1) 불필요: boardType 변경 시 URL이 달라지므로 searchParams의 page도 자동 초기화됨
+  // 게시판이 바뀌면 필터를 초기화한다. page 는 URL 이 달라지며 함께 초기화된다.
   useEffect(() => {
-    // 이미 비어 있으면 그대로 둔다.
-    // 매번 새 배열을 넣으면 값은 같아도 참조가 바뀌고, 이 배열을 의존성으로 쓰는
-    // 목록 조회 effect 가 한 번 더 돈다 — 게시판을 열 때마다 권한 확인과 목록 조회가
-    // 두 번씩 나갔다.
+    // 이미 비어 있으면 그대로 둔다. 매번 새 배열을 넣으면 참조가 바뀌어 목록 조회가 한 번 더 돈다.
     setSelectedTagIds(prev => (prev.length ? [] : prev));
     setStatusFilter(prev => (prev.length ? [] : prev));
-    // 검색어도 함께 비운다. 태그·상태만 비우면 검색창의 글자는 남아, 다른 게시판으로 옮겼는데
-    // 앞 게시판에서 치던 말로 걸러진 목록이 나온다.
+    // 검색어도 함께 비운다. 남겨 두면 다른 게시판에서 앞 게시판의 검색어로 걸러진다.
     setLocalSearch(prev => (prev ? '' : prev));
     setDebouncedSearch(prev => (prev ? '' : prev));
     setAvailableTags([]);
     if (!boardType) return;
-    // 아래 관리 권한 확인 effect 와 같은 이유로 취소 표시를 둔다 — 게시판을 빠르게 옮기면
-    // 앞 게시판의 태그가 늦게 도착해, 지금 게시판의 필터 목록에 남의 태그가 걸렸다.
+    // 게시판을 빠르게 옮기면 앞 게시판의 태그가 늦게 도착하므로 취소 표시를 둔다.
     let mounted = true;
     getTags(boardType)
       .then(tags => {
@@ -224,7 +200,7 @@ const PostList = () => {
     };
   }, [boardType]);
 
-  // 게시판 관리 권한(담당자/관리자) 확인 — 관리 버튼/패널 노출 판단
+  // 관리 버튼·패널을 보일지 정하는 게시판 관리 권한 확인.
   useEffect(() => {
     setCanManage(false);
     if (!boardType) return;
@@ -241,7 +217,7 @@ const PostList = () => {
     };
   }, [boardType]);
 
-  // 관리 패널에서 태그/정보 변경 후 닫힐 때 — 태그 필터 목록 새로고침
+  // 관리 패널을 닫으면 태그 필터 목록을 새로 읽는다.
   const handleManageClose = useCallback(() => {
     setShowManage(false);
     if (boardType) {
@@ -275,8 +251,7 @@ const PostList = () => {
     [setPage]
   );
 
-  // 글을 고치거나 지운 뒤 목록을 다시 읽는다.
-  // 캐시를 무효화하면 되므로 refreshKey 같은 증가 값을 따로 들고 있을 필요가 없다.
+  // 글을 고치거나 지운 뒤 캐시를 무효화해 목록을 다시 읽는다.
   useEffect(() => {
     const handlePostUpdated = () => {
       setPage(1);
@@ -317,7 +292,7 @@ const PostList = () => {
 
   return (
     <PageContainer className="space-y-5">
-      {/* ✅ 표준화된 페이지 헤더 적용 */}
+      {/* 페이지 헤더 */}
       <PageHeader
         breadcrumbs={[
           { label: '대시보드', to: '/dashboard' },
@@ -351,7 +326,7 @@ const PostList = () => {
             className="w-full sm:w-52"
           />
           <div className="flex items-center gap-2">
-            {/* 이 게시판의 새 글 알림을 받을지 — 개인 폴더는 나만 쓰는 곳이라 뺀다 */}
+            {/* 이 게시판의 새 글 알림. 개인 폴더는 나만 쓰는 곳이라 뺀다 */}
             {subscriptionsEnabled && boardType && !boardInfo?.isPersonal && (
               <SubscribeButton targetType="board" targetId={boardType} />
             )}
@@ -432,8 +407,7 @@ const PostList = () => {
         />
       )}
 
-      {/* 거르는 것들은 한 줄에 모은다.
-          상태 줄과 태그 줄을 한 줄에 둔다. 따로 놓으면 목록이 시작되기까지 두 칸을 쓴다. */}
+      {/* 상태 줄과 태그 줄을 한 줄에 모은다 */}
       {(showTasks || availableTags.length > 0) && (
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           {showTasks && <WorkStatusFilter selected={statusFilter} onChange={handleStatusChange} />}
@@ -475,7 +449,7 @@ const PostList = () => {
         </div>
       )}
 
-      {/* ✅ 게시글 목록 카드 — 다크모드는 shadow가 안 보이므로 subtle ring으로 입체감 부여 */}
+      {/* 게시글 목록 카드. 다크모드에서는 shadow 대신 ring 으로 경계를 준다 */}
       <div
         className="card overflow-hidden"
         role="region"
@@ -484,8 +458,7 @@ const PostList = () => {
       >
         {loading && (
           <div>
-            {/* 목록이 도착했을 때와 같은 머리줄을 쓴다 — 손으로 한 벌 더 그리면 어긋난다.
-                담당자 칸은 받아 온 글을 보고 정해지므로 아직 알 수 없다(false). */}
+            {/* 목록이 도착했을 때와 같은 머리줄을 쓴다. 담당자 칸은 아직 알 수 없어 false */}
             <ColumnHeader showAssignee={false} />
             <SkeletonLoader />
           </div>

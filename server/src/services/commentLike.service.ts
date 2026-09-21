@@ -5,18 +5,13 @@ import { sequelize } from '../config/sequelize';
 import { BaseService } from './base.service';
 
 export class CommentLikeService extends BaseService {
-  /**
-   * 댓글 좋아요 토글 (없으면 추가, 있으면 제거)
-   * - 트랜잭션 + LOCK.UPDATE으로 동시 클릭 race condition 방지
-   * - 정렬(추천순)에 쓰이는 비정규화 컬럼 Comment.likeCount를 같은 트랜잭션에서 증감해
-   *   CommentLike 행 수와 항상 일치시킨다. (likeCount는 content 변경이 아니므로 '수정됨' 훅 미발동)
-   */
+  /** 댓글 좋아요 토글. 동시 클릭을 막으려 LOCK.UPDATE 를 쓰고, Comment.likeCount 를 같은 트랜잭션에서 증감한다. */
   async toggleLike(
     commentId: number,
     userId: string
   ): Promise<{ liked: boolean; likeCount: number }> {
     return sequelize.transaction(async t => {
-      // 댓글 존재 확인 (soft-delete된 댓글은 findByPk 기본 제외 → 404)
+      // soft-delete 된 댓글은 findByPk 에서 제외되어 404 가 된다.
       const comment = await Comment.findByPk(commentId, {
         transaction: t,
         lock: t.LOCK.UPDATE,
@@ -37,7 +32,7 @@ export class CommentLikeService extends BaseService {
         await comment.increment('likeCount', { transaction: t });
       }
 
-      // 비정규화 컬럼이 행 수와 어긋날 일은 없지만, 응답은 실제 행 수를 권위값으로 사용
+      // 응답에는 실제 행 수를 쓴다.
       const likeCount = await CommentLike.count({
         where: { CommentId: commentId },
         transaction: t,

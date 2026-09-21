@@ -1,9 +1,4 @@
-// client/src/pages/Messages.tsx
-// 메시지함 — 왼쪽 대화 목록, 오른쪽 선택한 대화.
-//
-// 좁은 화면에서는 두 칸을 나란히 둘 수 없어, 대화를 고르면 목록을 감춘다.
-// 별도 화면으로 나누지 않은 이유: 목록과 대화가 같은 데이터(안 읽은 수, 마지막
-// 메시지)를 공유해서, 화면을 나누면 한쪽에서 읽은 뒤 다른 쪽이 낡은 값을 보인다.
+// 메시지함 — 왼쪽 대화 목록, 오른쪽 선택한 대화. 좁은 화면에서는 대화를 고르면 목록을 감춘다.
 
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -96,12 +91,10 @@ function ConversationRow({
 function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: () => void }) {
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState('');
-  // 지우기는 한 번 묻는다 — 내 목록에서만 사라지지만 되돌릴 수 없다
+  // 지우기는 한 번 묻는다. 내 목록에서만 사라지지만 되돌릴 수 없다
   const [confirmHide, setConfirmHide] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // 서버는 커서로 이전 메시지를 더 주는데 화면에는 그것을 불러올 방법이 없었다.
-  // useInfiniteQuery 로 "이전 대화 불러오기" 를 실제로 눌리게 만든다.
   const { data, isLoading, isError, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
       queryKey: messageKeys.conversation(conversationId),
@@ -109,26 +102,20 @@ function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: 
         fetchConversation(conversationId, pageParam as number | undefined, signal),
       initialPageParam: undefined as number | undefined,
       getNextPageParam: last => last.nextCursor ?? undefined,
-      // 전역 기본값(5분)을 대화창에는 쓸 수 없다. 캐시를 그대로 쓰면 요청이 나가지 않아
-      // 그동안 도착한 메시지가 보이지 않고 서버의 읽음 처리도 일어나지 않는다.
+      // 대화창에는 전역 staleTime(5분)을 쓸 수 없다. 새 메시지와 서버의 읽음 처리가 지연된다.
       staleTime: 0,
       refetchOnMount: 'always',
     });
 
-  // 첫 페이지가 최신 묶음이고 뒤로 갈수록 오래된 묶음이다.
-  // 화면은 위에서 아래로 시간순이라 페이지를 뒤집어 이어 붙인다.
+  // 첫 페이지가 최신 묶음이므로 화면의 시간순에 맞춰 뒤집어 이어 붙인다.
   const partner = data?.pages[0]?.partner;
   const messages: ChatMessage[] = data
     ? [...data.pages].reverse().flatMap(page => page.messages)
     : [];
   const newestId = data?.pages[0]?.messages.at(-1)?.id ?? null;
 
-  // 대화를 열면 서버가 읽음 처리하므로 목록·배지를 다시 받는다. 단 그 응답이 온 뒤에
-  // 물어본다. 마운트 시점에 무효화하면 읽음 처리(UPDATE 가 붙어 가장 늦게 끝난다)보다
-  // 목록·배지 응답이 먼저 도착해 낡은 수를 받는다.
-  //
-  // 한 번만 맞춘다. 매번 걸면 이전 대화를 불러올 때마다 목록·배지까지 다시 받는다.
-  // Chat 은 conversationId 를 key 로 다시 마운트되므로 대화를 바꾸면 ref 도 초기화된다.
+  // 읽음 처리 응답이 온 뒤에 목록·배지를 무효화한다. 먼저 물어보면 낡은 안 읽은 수를 받는다.
+  // 대화당 한 번만 맞춘다. 매번 걸면 이전 대화를 불러올 때마다 목록·배지를 다시 받는다.
   const readSyncedRef = useRef(false);
   useEffect(() => {
     if (isFetching || !data || readSyncedRef.current) return;
@@ -137,9 +124,7 @@ function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: 
     queryClient.invalidateQueries({ queryKey: messageKeys.unread });
   }, [isFetching, data, queryClient]);
 
-  // 새 메시지가 왔을 때만 끝으로 내린다.
-  // 전체 길이에 걸면 "이전 대화 불러오기" 로 위쪽이 늘어날 때도 아래로 튀어,
-  // 방금 읽으려던 옛 메시지를 놓치게 된다.
+  // 새 메시지가 왔을 때만 끝으로 내린다. 전체 길이에 걸면 이전 대화를 펼칠 때도 아래로 튄다.
   useEffect(() => {
     if (newestId === null) return;
     bottomRef.current?.scrollIntoView({ block: 'end' });
@@ -151,9 +136,7 @@ function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: 
     mutationFn: (content: string) => sendMessage(partner!.id, content),
     onSuccess: sent => {
       setDraft('');
-      // 통째로 무효화하면 지금까지 불러온 페이지를 전부 다시 받는다 —
-      // 옛 대화를 다섯 페이지 펼쳐 둔 상태에서 한 통 보내면 다섯 번을 왕복한다.
-      // 서버가 방금 보낸 메시지를 목록과 같은 모양으로 돌려주므로 첫 페이지에 이어 붙인다.
+      // 통째로 무효화하면 펼쳐 둔 페이지를 전부 다시 받으므로, 첫 페이지에만 이어 붙인다.
       queryClient.setQueryData<InfiniteData<ConversationPage>>(
         messageKeys.conversation(conversationId),
         old => {
@@ -190,7 +173,7 @@ function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: 
   const tooLong = draft.length > MESSAGE_MAX_LENGTH;
   const canSend = draft.trim().length > 0 && !tooLong && !send.isPending && partner.active;
 
-  // 더블클릭으로 두 통 가는 것을 막는다 — isPending 은 리렌더 뒤에야 켜진다
+  // 더블클릭으로 두 통 가는 것을 막는다. isPending 은 리렌더 뒤에야 켜진다
   const submit = () => {
     if (!canSend) return;
     runOnce(() => send.mutateAsync(draft.trim()).catch(() => {}));
@@ -273,11 +256,7 @@ function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: 
               value={draft}
               onChange={e => setDraft(e.target.value)}
               onKeyDown={e => {
-                // Enter 로 보내고 Shift+Enter 로 줄바꿈 — 대화창의 관례
-                //
-                // 한글을 치는 중이면 Enter 는 '조합을 끝내는' 키다. 그것까지 전송으로
-                // 받으면 조합을 끝내는 Enter 와 진짜 Enter 가 잇달아 들어와 같은 메시지가
-                // 두 통 간다(실제로 10ms 간격으로 쌍둥이 메시지가 쌓여 있었다).
+                // Enter 로 보내고 Shift+Enter 로 줄바꿈. 한글 조합 중의 Enter 는 전송으로 받지 않는다(중복 전송).
                 if (e.nativeEvent.isComposing) return;
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -329,8 +308,7 @@ export default function Messages() {
   const { data, isLoading, isError } = useQuery({
     queryKey: messageKeys.conversations,
     queryFn: ({ signal }) => fetchConversations(signal),
-    // 헤더 배지는 60초마다 다시 센다. 목록만 전역 기본값(5분)을 따르면 배지에는
-    // 안 읽은 수가 떠 있는데 목록에는 그 대화가 보이지 않는다.
+    // 헤더 배지는 60초마다 다시 센다. 목록이 전역 기본값(5분)이면 배지와 목록이 어긋난다.
     staleTime: 0,
   });
 

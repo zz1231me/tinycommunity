@@ -11,10 +11,7 @@ const REQUEST_BODY_MAX_CHARS = 8000;
 export class ErrorLogService extends BaseService {
   async createLog(data: Omit<ErrorLogAttributes, 'id' | 'createdAt'>): Promise<void> {
     try {
-      // 컬럼 폭에 맞춰 자른 뒤 넣는다. route 는 요청자가 정하는 값이라(originalUrl)
-      // 쿼리스트링을 길게 채우면 STRING(500)을 넘길 수 있고, 그러면 MySQL·PostgreSQL 에서
-      // INSERT 가 거부된다 — 아래 catch 가 삼키므로 흔적 없이 기록만 사라진다.
-      // errorMessage·errorStack 은 TEXT 라 자르지 않는다.
+      // 컬럼 폭에 맞춰 자른 뒤 넣는다. route 는 요청자가 정하는 값이라 길이 초과로 INSERT 가 거부될 수 있다.
       await ErrorLog.create({
         ...data,
         userId: clampText(data.userId, 50),
@@ -26,8 +23,7 @@ export class ErrorLogService extends BaseService {
         requestBody: clampJson(data.requestBody, REQUEST_BODY_MAX_CHARS),
       });
     } catch (error) {
-      // 로그 저장 실패가 앱을 멈춰서는 안 되지만, 조용히 사라지게 두지도 않는다.
-      // 여기가 무음이면 기록이 비어 있는 이유를 영영 알 수 없다.
+      // 로그 저장 실패는 요청을 막지 않되 무음으로 두지도 않는다.
       logError('에러 로그 저장 실패', error);
     }
   }
@@ -47,7 +43,7 @@ export class ErrorLogService extends BaseService {
     if (filters.severity) where.severity = filters.severity;
     if (filters.userId) where.userId = filters.userId;
     if (filters.route) {
-      // LIKE 와일드카드 문자 이스케이프 (%, _, \)
+      // LIKE 와일드카드 이스케이프
       const escapedRoute = filters.route.replace(/[%_\\]/g, '\\$&');
       where.route = { [Op.like]: `%${escapedRoute}%` };
     }
@@ -61,8 +57,7 @@ export class ErrorLogService extends BaseService {
       if (filters.dateTo) {
         const d = new Date(filters.dateTo);
         if (isNaN(d.getTime())) throw new AppError(400, 'dateTo가 유효한 날짜 형식이 아닙니다.');
-        // 날짜만 지정(YYYY-MM-DD)한 경우 해당 일자 끝까지 포함 — Op.lte가 자정을 가리켜
-        // 종료일 당일 레코드가 통째로 빠지는 문제 방지
+        // 날짜만 지정한 경우 그날 끝까지 포함한다. 그러지 않으면 종료일 당일이 빠진다.
         if (/^\d{4}-\d{2}-\d{2}$/.test(filters.dateTo.trim())) d.setUTCHours(23, 59, 59, 999);
         where.createdAt[Op.lte] = d;
       }
@@ -71,7 +66,7 @@ export class ErrorLogService extends BaseService {
     const offset = (page - 1) * limit;
     const { count, rows } = await ErrorLog.findAndCountAll({
       where,
-      // 시각이 같으면 id 로 가른다 — 없으면 페이지 경계에서 행이 중복·누락된다.
+      // 시각이 같으면 id 로 가른다. 없으면 페이지 경계에서 행이 중복·누락된다.
       order: [
         ['createdAt', 'DESC'],
         ['id', 'DESC'],
@@ -87,7 +82,7 @@ export class ErrorLogService extends BaseService {
   }
 
   /**
-   * 오래된 에러 로그 자동 삭제
+   * 오래된 에러 로그 삭제.
    * @param retentionDays 보존 기간 (기본 30일)
    * @returns 삭제된 로그 수
    */
@@ -100,7 +95,7 @@ export class ErrorLogService extends BaseService {
   }
 
   /**
-   * 선택적 조건으로 에러 로그 일괄 삭제
+   * 조건부 에러 로그 일괄 삭제.
    * @param options.before 특정 날짜 이전 로그만 삭제
    * @param options.severity 특정 severity만 삭제 (before와 조합 가능)
    * @param options.ids 특정 ID 목록만 삭제 (지정 시 다른 조건 무시)
@@ -121,7 +116,7 @@ export class ErrorLogService extends BaseService {
       }
       if (options.severity) where.severity = options.severity;
       if (Object.keys(where).length === 0) {
-        // 조건 없는 전체 삭제는 deleteAll()을 명시적으로 사용해야 함
+        // 조건 없는 전체 삭제는 deleteAll() 로만 한다
         throw new AppError(400, '삭제 조건(before, severity, ids)을 최소 하나 이상 지정해주세요.');
       }
     }

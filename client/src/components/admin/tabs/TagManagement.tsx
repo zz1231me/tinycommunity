@@ -11,9 +11,7 @@ import { ConfirmationModal } from '../common/ConfirmationModal';
 import { toast } from '../../../utils/toast';
 import { ListState, ListError } from '../../common/ListState';
 
-// 태그 색 팔레트 — 새 태그마다 여기서 랜덤 기본색을 뽑고, 원클릭 스와치로도 제공.
-// (임의 RGB 대신 큐레이션 팔레트로 대비·톤을 보장)
-// 원색(Tailwind-500 레인보우) 대신 살짝 차분한(muted) 톤 — 촌스럽지 않고 서로 조화롭게.
+// 태그 색 팔레트. 새 태그의 기본색과 원클릭 스와치로 쓰는 차분한 톤 모음.
 const TAG_PALETTE = [
   '#64748b', // slate
   '#4d908e', // muted teal
@@ -51,8 +49,7 @@ const TagManagement = () => {
   const {
     data: tags = [],
     isFetching: loadingTags,
-    // 조회가 실패해도 목록은 빈 배열이다. 그대로 두면 '태그가 없습니다' 가 떠서
-    // 관리자가 이미 있는 태그를 다시 만들게 된다.
+    // 조회가 실패해도 목록은 빈 배열이라 '태그가 없습니다' 로 보인다. 실패는 따로 알린다.
     isError: tagsFailed,
   } = useQuery({
     queryKey: adminKeys.tags.byBoard(selectedBoardId),
@@ -156,8 +153,7 @@ const TagManagement = () => {
               게시판 선택
             </h3>
             <div className="space-y-1.5 max-h-96 overflow-y-auto">
-              {/* 게시판을 못 불러오면 고를 것이 하나도 없는 빈 칸이 된다 — 왜인지 밝힌다
-                  (태그 목록 쪽은 이미 이렇게 한다) */}
+              {/* 게시판을 못 불러오면 고를 것이 없는 빈 칸이 되므로 이유를 밝힌다 */}
               {boardsFailed && <ListError what="게시판 목록" />}
               {!boardsFailed && !loadingBoards && boards.length === 0 && (
                 <ListState>게시판이 없습니다.</ListState>

@@ -8,44 +8,27 @@ import {
 } from 'sequelize';
 import { sequelize } from '../config/sequelize';
 
-/**
- * 퇴근 공격 한 번.
- *
- * 이 행이 살아 있는 동안(expiresAt 전, defendedAt 이 비어 있음) 대상의 화면에서는
- * 퇴근 버튼이 잠겨 보인다. 그뿐이다 — 서버의 퇴근 기록은 이 표를 쳐다보지도 않는다.
- * 눌린 시각은 언제나 그대로 기록된다.
- *
- * 누가 누구를 공격했는지가 이 표에 남는다. 장난이라도 사람 사이의 일이라,
- * "누가 그랬는지 모르겠다" 가 되면 장난이 아니라 괴롭힘이 된다.
- */
+/** 퇴근 공격 기록. 대상 화면의 퇴근 버튼만 잠그며 서버의 퇴근 기록에는 영향을 주지 않는다. */
 class AttendanceAttackModel extends Model<
   InferAttributes<AttendanceAttackModel>,
   InferCreationAttributes<AttendanceAttackModel>
 > {
   declare public id: CreationOptional<number>;
-  /** 공격한 사람 */
   declare public attackerId: ForeignKey<string>;
-  /** 공격받은 사람 */
   declare public targetId: ForeignKey<string>;
-  /** 근무일 (YYYY-MM-DD, 서버 기준) — 하루 몇 번 썼는지를 센다 */
+  /** 근무일 (YYYY-MM-DD, 서버 기준) */
   declare public workDate: string;
   /** 'chaos'(버튼이 도망다닌다) · 'hide'(버튼이 잠깐 사라진다) · 'quiz'(누르면 계산 문제) */
   declare public kind: CreationOptional<string>;
-  /**
-   * 더 이상 쓰지 않는다 — 쪽지 공격을 없애면서 남은 칸.
-   * 칸을 지우는 쪽이 더 위험해서 그대로 둔다(항상 null 로 들어간다).
-   */
+  /** 쪽지 공격 제거로 더 이상 쓰지 않는다. 항상 null 이 들어간다. */
   declare public message: CreationOptional<string | null>;
-  /**
-   * 이 공격이 시작되는 시각. 한 사람에게 공격이 쌓이면 줄을 서서 차례로 걸린다 —
-   * 앞 공격이 끝나야 이 공격이 시작된다. 이 칸이 생기기 전의 행은 null 이고 createdAt 이 시작이다.
-   */
+  /** 공격이 시작되는 시각. 공격이 쌓이면 앞 공격이 끝난 뒤 시작한다. 이 칸 이전 행은 null 이고 createdAt 이 시작이다. */
   declare public startsAt: CreationOptional<Date | null>;
   /** 이 시각이 지나면 방해가 끝난다 */
   declare public expiresAt: Date;
   /** 방어권을 써서 일찍 풀었으면 그 시각 */
   declare public defendedAt: CreationOptional<Date | null>;
-  /** 더 이상 쓰지 않는다 — 쪽지를 봤는지 적던 칸 (message 와 같은 이유로 남겨 둔다) */
+  /** 쪽지 확인 시각. 더 이상 쓰지 않는다. */
   declare public seenAt: CreationOptional<Date | null>;
   declare public readonly createdAt: CreationOptional<Date>;
   declare public readonly updatedAt: CreationOptional<Date>;
@@ -85,9 +68,9 @@ AttendanceAttackModel.init(
     tableName: 'attendance_attacks',
     timestamps: true,
     indexes: [
-      // "나에게 지금 걸린 공격이 있나" — 출근 화면이 열릴 때마다 묻는다
+      // 대상에게 지금 걸린 공격 조회
       { fields: ['targetId', 'expiresAt'] },
-      // "오늘 내가 몇 번 썼나"
+      // 공격자의 하루 사용 횟수 집계
       { fields: ['attackerId', 'workDate'] },
     ],
   }

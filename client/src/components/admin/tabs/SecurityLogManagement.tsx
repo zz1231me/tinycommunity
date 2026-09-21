@@ -49,13 +49,13 @@ export const SecurityLogManagement = () => {
   const [filterUserId, setFilterUserId] = useState('');
   const [filterAction, setFilterAction] = useState('');
   const [filterIp, setFilterIp] = useState('');
-  // 자유 입력 필터는 디바운스 — 키 입력마다 API 호출하지 않도록
+  // 자유 입력 필터는 키 입력마다 호출하지 않도록 디바운스한다.
   const debouncedUserId = useDebouncedValue(filterUserId, 400);
   const debouncedIp = useDebouncedValue(filterIp, 400);
 
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  // 브라우저 기본 confirm 대신 공용 확인 상자를 쓴다 — 나머지 삭제 17곳과 같은 모양으로
+  // 브라우저 기본 confirm 대신 공용 확인 상자를 쓴다.
   const [pendingDelete, setPendingDelete] = useState<DeleteMode | null>(null);
   const [exporting, setExporting] = useState(false);
 

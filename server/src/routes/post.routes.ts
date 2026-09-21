@@ -1,4 +1,3 @@
-// server/src/routes/post.routes.ts - 통합 업로드 미들웨어 사용
 import { Router, RequestHandler } from 'express';
 import asyncHandler from 'express-async-handler';
 import {
@@ -62,7 +61,7 @@ router.get(
   asyncHandler((req, res) => globalSearch(req as AuthRequest, res))
 );
 
-// 최신 게시물 (헤더 드롭다운). '/:boardType' catch-all보다 먼저 선언.
+// '/:boardType' catch-all 보다 먼저 선언해야 한다.
 router.get(
   '/recent',
   authenticate as RequestHandler,
@@ -315,7 +314,6 @@ router.delete(
   asyncHandler((req, res) => deletePost(req as AuthRequest, res))
 );
 
-// 좋아요
 router.get(
   '/:boardType/:id/like',
   authenticate as RequestHandler,
@@ -331,7 +329,6 @@ router.post(
   asyncHandler((req, res) => toggleLike(req as AuthRequest, res))
 );
 
-// 읽음 처리
 router.post(
   '/:boardType/:id/read',
   authenticate as RequestHandler,
@@ -339,7 +336,6 @@ router.post(
   asyncHandler((req, res) => markAsRead(req as AuthRequest, res))
 );
 
-// 게시글 고정 (쓰기 권한 이상 필요)
 router.patch(
   '/:boardType/:id/pin',
   authenticate as RequestHandler,
@@ -367,7 +363,6 @@ router.get(
   asyncHandler((req, res) => getRelatedPosts(req as AuthRequest, res))
 );
 
-// 스크랩(나중에 보기) — 개인 서랍이라 작성자에게 알림이 가지 않는다
 router.get(
   '/:boardType/:id/scrap',
   authenticate as RequestHandler,
@@ -449,8 +444,7 @@ router.get(
   asyncHandler((req, res) => getReaders(req as AuthRequest, res))
 );
 
-// 게시글 태그 — /api/tags 와 같은 스위치를 건다.
-// 한쪽만 막으면 관리 화면에서는 태그가 사라졌는데 글에는 계속 붙는 상태가 된다.
+// /api/tags 와 같은 기능 스위치를 건다. 한쪽만 막으면 상태가 어긋난다.
 router.get(
   '/:boardType/:id/tags',
   authenticate as RequestHandler,

@@ -1,11 +1,8 @@
-// server/src/utils/settingsCache.ts
 import { SiteSettings } from '../models/SiteSettings';
 import { logInfo, logError } from './logger';
 import { LOTTERY_DEFAULTS, type LotteryPrize } from '../config/lottery';
 import { DUEL_DEFAULTS } from '../config/duel';
 import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
-
-// ─── 허용 확장자 기본값 ────────────────────────────────────────────────────────
 
 export const DEFAULT_ALLOWED_EXTENSIONS = {
   IMAGE: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.ico'],
@@ -29,7 +26,7 @@ export const DEFAULT_ALLOWED_EXTENSIONS = {
   MEDIA: ['.mp3', '.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm'],
 };
 
-// 보안상 항상 차단되어야 할 확장자 (DB 설정으로 덮어쓸 수 없음)
+// 보안상 항상 차단되는 확장자. DB 설정으로 덮어쓸 수 없다.
 export const BLOCKED_EXTENSIONS_FLOOR = [
   '.php',
   '.php3',
@@ -49,11 +46,7 @@ export const BLOCKED_EXTENSIONS_FLOOR = [
   '.jsw',
   '.jsv',
   '.jspf',
-  // 데스크톱 실행파일(.exe .bat .cmd .com .pif .scr .vbs .vbe)은 floor에서 제외.
-  //  - 리눅스 서버에서 실행되지 않아 웹셸 위험 없음
-  //  - 브라우저가 인라인 실행하지 않고 다운로드만 하므로 저장형 XSS도 아님
-  //  → 다운로드받은 사람 PC에서만 위험(=서버 보안과 무관)하여 허용.
-  //  ※ 서버 실행/저장형 XSS 위험이 있는 .js .html .svg 등은 아래에 그대로 유지.
+  // 데스크톱 실행파일(.exe .bat 등)은 제외. 리눅스 서버에서 실행되지 않고 인라인 렌더링도 없다.
   '.js',
   '.jar',
   '.sh',
@@ -80,7 +73,7 @@ export const BLOCKED_EXTENSIONS_FLOOR = [
   '.shtm',
   '.shtml',
   '.stm',
-  // 인라인 렌더링 시 저장형 XSS 벡터 (uploads에서 직접 서빙될 경우 스크립트 실행) — 항상 차단
+  // 인라인 렌더링 시 저장형 XSS 벡터. 항상 차단한다.
   '.htm',
   '.html',
   '.xhtml',
@@ -96,8 +89,6 @@ export const BLOCKED_EXTENSIONS_FLOOR = [
   '.ini',
 ];
 
-// ─── JSON 파싱 헬퍼 ────────────────────────────────────────────────────────────
-
 function parseJsonArray(raw: string | null | undefined, fallback: string[]): string[] {
   if (!raw) return fallback;
   try {
@@ -111,10 +102,7 @@ function parseJsonArray(raw: string | null | undefined, fallback: string[]): str
   }
 }
 
-// ─── 기본값 ────────────────────────────────────────────────────────────────────
-
-// export해서 siteSettings 컨트롤러 등 다른 곳에서 재사용 (중복 정의 방지)
-/** 저장된 상품표를 읽는다. 깨져 있으면 기본값으로 돌아간다 — 뽑기가 멈추는 것보다 낫다 */
+/** 저장된 상품표를 읽는다. 깨져 있으면 기본값으로 돌아간다. */
 function parsePrizes(raw: string | null | undefined): LotteryPrize[] {
   if (!raw) return LOTTERY_DEFAULTS.prizes;
   try {
@@ -126,9 +114,7 @@ function parsePrizes(raw: string | null | undefined): LotteryPrize[] {
           amount: Number((p as LotteryPrize).amount),
           weight: Number((p as LotteryPrize).weight),
         }))
-        // 금액도 저장할 때와 같은 기준으로 다시 본다(0 이상의 정수).
-        // 읽을 때 확인하지 않던 때는, 어떤 이유로든 음수가 들어 있으면 '당첨' 이 잔액을 깎았다 —
-        // 포인트를 더하는 이 자리에는 잔액 확인이 없다(더하는 쪽이라 필요 없었다).
+        // 금액은 저장할 때와 같은 기준으로 다시 검사한다. 음수가 들어오면 당첨이 잔액을 깎는다.
         .filter(
           p =>
             Number.isInteger(p.amount) && p.amount >= 0 && Number.isFinite(p.weight) && p.weight > 0
@@ -140,7 +126,7 @@ function parsePrizes(raw: string | null | undefined): LotteryPrize[] {
 }
 
 export const SETTINGS_DEFAULTS = {
-  /** 업무 상태 표시 이름 — 비워 두면 코드 기본값(workStatus.ts)을 쓴다 */
+  /** 업무 상태 표시 이름. 비워 두면 코드 기본값(workStatus.ts)을 쓴다. */
   workStatusLabels: {} as Record<string, string>,
   lotteryPrizes: LOTTERY_DEFAULTS.prizes,
   lotteryDailyLimit: LOTTERY_DEFAULTS.dailyLimit,
@@ -187,13 +173,11 @@ export const SETTINGS_DEFAULTS = {
   passwordResetTokenHours: 1,
   autoSaveIntervalSeconds: 30,
   draftExpiryMinutes: 60,
-  // ── 신규 ────────────────────────────────────────────────────────────────
   memoMaxPerUser: 200,
   wikiOrder: 9999,
   commentContentMaxLength: 1000,
   eventBodyMaxLength: 10000,
   eventLocationMaxLength: 500,
-  // 허용 확장자 (배열 형태)
   allowedImageExtensions: DEFAULT_ALLOWED_EXTENSIONS.IMAGE,
   allowedDocumentExtensions: DEFAULT_ALLOWED_EXTENSIONS.DOCUMENT,
   allowedArchiveExtensions: DEFAULT_ALLOWED_EXTENSIONS.ARCHIVE,
@@ -202,8 +186,6 @@ export const SETTINGS_DEFAULTS = {
 
 const DEFAULTS = SETTINGS_DEFAULTS;
 let cachedSettings: typeof DEFAULTS = { ...DEFAULTS };
-
-// ─── 캐시 로드 ─────────────────────────────────────────────────────────────────
 
 export async function loadSettingsCache(): Promise<void> {
   try {
@@ -261,14 +243,12 @@ export async function loadSettingsCache(): Promise<void> {
         autoSaveIntervalSeconds:
           settings.autoSaveIntervalSeconds ?? DEFAULTS.autoSaveIntervalSeconds,
         draftExpiryMinutes: settings.draftExpiryMinutes ?? DEFAULTS.draftExpiryMinutes,
-        // ── 신규 ────────────────────────────────────────────────────────
         memoMaxPerUser: settings.memoMaxPerUser ?? DEFAULTS.memoMaxPerUser,
         wikiOrder: settings.wikiOrder ?? DEFAULTS.wikiOrder,
         commentContentMaxLength:
           settings.commentContentMaxLength ?? DEFAULTS.commentContentMaxLength,
         eventBodyMaxLength: settings.eventBodyMaxLength ?? DEFAULTS.eventBodyMaxLength,
         eventLocationMaxLength: settings.eventLocationMaxLength ?? DEFAULTS.eventLocationMaxLength,
-        // 허용 확장자 — TEXT(JSON) 파싱
         allowedImageExtensions: parseJsonArray(
           settings.allowedImageExtensions,
           DEFAULTS.allowedImageExtensions
@@ -305,11 +285,7 @@ export function refreshSettingsCache(): Promise<void> {
   return loadSettingsCache();
 }
 
-/**
- * 저장된 업무 상태 이름을 읽는다.
- * 형식이 깨져 있어도 기동을 막지 않는다 — 이름 하나 때문에 게시판이 안 열리면 안 된다.
- * 그 경우 코드 기본값으로 돌아간다.
- */
+/** 저장된 업무 상태 이름을 읽는다. 형식이 깨져 있으면 기본값으로 돌아간다. */
 function parseLabels(raw: unknown): Record<string, string> {
   if (typeof raw !== 'string' || raw.trim() === '') return {};
   try {
@@ -325,9 +301,7 @@ function parseLabels(raw: unknown): Record<string, string> {
   }
 }
 
-// ─── 개별 게터 함수 ────────────────────────────────────────────────────────────
-
-/** 로또 규칙 — 확률·금액·하루 횟수·출석 보너스는 모두 관리자 설정에서 온다 */
+/** 로또 규칙. 확률·금액·하루 횟수·출석 보너스는 모두 관리자 설정에서 온다. */
 export function getLotterySettings() {
   return {
     prizes: cachedSettings?.lotteryPrizes ?? DEFAULTS.lotteryPrizes,
@@ -338,10 +312,8 @@ export function getLotterySettings() {
 }
 
 /**
- * 포인트 대결 규칙 — 판돈 범위·유효 시간·동시 판 수.
- *
- * 부를 때마다 읽는다. 모듈을 불러올 때 한 번 읽어 두면 관리자가 값을 바꿔도
- * 서버를 다시 띄우기 전까지 옛 값으로 동작한다.
+ * 포인트 대결 규칙. 판돈 범위·유효 시간·동시 판 수.
+ * 모듈 로드 시점이 아니라 호출할 때마다 읽어야 관리자 변경이 즉시 반영된다.
  */
 export function getDuelSettings() {
   return {
@@ -352,7 +324,7 @@ export function getDuelSettings() {
   };
 }
 
-/** 퇴근 공격 규칙 — 값·방해 시간·하루 횟수 */
+/** 퇴근 공격 규칙. 값·방해 시간·하루 횟수. */
 export function getAttackSettings() {
   return {
     cost: cachedSettings?.attackCost ?? DEFAULTS.attackCost,
@@ -364,21 +336,18 @@ export function getAttackSettings() {
   };
 }
 
-/** 관리자가 바꾼 업무 상태 이름. 없는 키는 호출부가 코드 기본값으로 채운다 */
+/** 관리자가 바꾼 업무 상태 이름. 없는 키는 호출부가 코드 기본값으로 채운다. */
 export function getWorkStatusLabels(): Record<string, string> {
   return cachedSettings?.workStatusLabels ?? {};
 }
 
-/** 제목 설정이 넘을 수 없는 한계 — 가장 작은 제목 컬럼(WikiPage.title STRING(200)) */
+/** 제목 설정 상한. 가장 작은 제목 컬럼(WikiPage.title STRING(200))에 맞춘다. */
 const TITLE_MAX_CAP = 200;
 
 /**
  * 제목 길이 상한.
- *
- * 이 값 하나가 컬럼 셋을 지배한다 — Post.title(255), PostDraft.title(255),
- * WikiPage.title(200). 그래서 가장 작은 200 을 넘을 수 없다. 넘기면 검증을 통과한
- * 제목이 컬럼 용량을 넘어 내려간다(SQLite 는 그대로 저장하고 MySQL/PG 는 오류).
- * 저장된 설정이 이미 크더라도 여기서 자른다 — getMinPasswordLength 와 같은 방식.
+ * Post.title(255)·PostDraft.title(255)·WikiPage.title(200) 중 가장 작은 값을 넘을 수 없다.
+ * 저장된 설정이 더 크더라도 여기서 자른다.
  */
 export function getPostTitleMaxLength(): number {
   return Math.min(Math.max(cachedSettings?.postTitleMaxLength ?? 200, 10), TITLE_MAX_CAP);
@@ -479,5 +448,3 @@ export function getAvatarSettings(): { sizePx: number; quality: number } {
 export function getPasswordResetTokenMs(): number {
   return (cachedSettings?.passwordResetTokenHours ?? DEFAULTS.passwordResetTokenHours) * 3600000;
 }
-
-/** Rate Limit 설정 */

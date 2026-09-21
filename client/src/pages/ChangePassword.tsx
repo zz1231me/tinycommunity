@@ -1,6 +1,5 @@
-// client/src/pages/ChangePassword.tsx
-// 관리자 초기화 후 강제 비밀번호 변경 페이지. 임시 비밀번호(123456)로 로그인하면
-// ProtectedRoute가 이 페이지로 강제 이동시키고, 변경 완료 전까지 다른 화면 접근이 막힌다.
+// 관리자 초기화 후 강제 비밀번호 변경 페이지.
+// ProtectedRoute 가 여기로 보내며, 변경 전까지 다른 화면 접근이 막힌다.
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/auth';
@@ -20,7 +19,7 @@ const ChangePassword = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // 강제 변경 대상이 아니면(이미 변경했거나 일반 접근) 대시보드로
+  // 강제 변경 대상이 아니면 대시보드로
   if (!isAuthenticated) return <Navigate to="/" replace />;
   if (!mustChange) return <Navigate to="/dashboard" replace />;
 
@@ -47,7 +46,7 @@ const ChangePassword = () => {
     setSubmitting(true);
     try {
       await changePassword(current, next);
-      // 변경 시 서버가 tokenVersion을 증가시켜 현재 세션이 무효화됨 → 새 비밀번호로 재로그인 유도
+      // 서버가 tokenVersion 을 올려 현재 세션이 무효화되므로 재로그인이 필요하다
       clearUser();
       toast.success('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인해주세요.');
       navigate('/', { replace: true });

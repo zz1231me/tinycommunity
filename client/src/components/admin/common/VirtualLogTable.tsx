@@ -13,20 +13,12 @@ interface Props<T> {
   rows: T[];
   /** 행 하나의 <td> 들을 반환한다 (<tr> 은 이 컴포넌트가 감싼다) */
   renderRow: (row: T, index: number) => ReactNode;
-  /**
-   * 펼쳐진 상세 행. 같은 tbody 안에 두 번째 <tr> 로 들어가야 해서
-   * (감사 로그의 변경 전/후 diff) 별도 슬롯으로 받는다. 닫힌 행은 null 을 반환.
-   */
+  /** 펼쳐진 상세 행. 같은 tbody 안 두 번째 <tr> 로 들어간다. 닫힌 행은 null. */
   renderExpandedRow?: (row: T, index: number) => ReactNode | null;
-  /** 행 높이 추정치 — 가상 스크롤 계산용 */
+  /** 행 높이 추정치. 가상 스크롤 계산에 쓴다. */
   estimateRowHeight?: number;
   emptyMessage: string;
-  /**
-   * 조회 실패. 있으면 emptyMessage 대신 실패했다고 알린다.
-   *
-   * 로그 화면에서 '못 불러옴' 과 '기록 없음' 이 같아 보이면 안 된다 — 관리자가
-   * "무슨 일이 있었나" 를 확인하러 오는 화면이라, 실패를 깨끗함으로 읽으면 판단이 뒤집힌다.
-   */
+  /** 조회 실패. 있으면 emptyMessage 대신 실패했다고 알린다. */
   error?: unknown;
   loading: boolean;
   page: number;
@@ -38,12 +30,7 @@ interface Props<T> {
   height?: number;
 }
 
-/**
- * 관리자 로그 4종이 공유하는 가상 스크롤 테이블.
- *
- * 헤더와 각 행이 서로 다른 <table> 이라 칼럼 폭이 어긋나기 쉬운데,
- * 동일한 <colgroup> 을 양쪽에 렌더해 정렬을 맞춘다.
- */
+/** 관리자 로그가 공유하는 가상 스크롤 테이블. 헤더와 행은 같은 colgroup 으로 폭을 맞춘다. */
 export function VirtualLogTable<T>({
   columns,
   rows,
@@ -61,9 +48,7 @@ export function VirtualLogTable<T>({
   height = 500,
 }: Props<T>) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  // 헤더는 본문과 다른 스크롤 상자에 있다. 같은 colgroup 으로 칼럼 '폭' 은 맞췄지만
-  // 가로로 밀면 본문만 움직이고 헤더는 제자리에 남아 칼럼이 통째로 어긋났다
-  // (표가 상자보다 넓어지는 좁은 화면에서는 항상 일어난다).
+  // 헤더는 본문과 다른 스크롤 상자라 가로 스크롤을 따로 맞춰 줘야 한다.
   const headerRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
     count: rows.length,

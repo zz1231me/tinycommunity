@@ -1,6 +1,4 @@
-// src/pages/PasswordResetRequest.tsx
-// 비밀번호 찾기 — 2단계: ①아이디로 요청 → 6자리 인증번호 자동생성(관리자에게 표시)
-//                    ②관리자에게 받은 인증번호 + 새 비밀번호 입력 → 변경
+// 비밀번호 찾기. 아이디로 요청해 인증번호를 받고, 그 번호로 새 비밀번호를 정한다.
 import React, { useState, useEffect } from 'react';
 import { LoadingSpinner } from '../components/common/LoadingStates';
 import { Link } from 'react-router-dom';
@@ -23,7 +21,6 @@ function PasswordResetRequest() {
   const [notice, setNotice] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // 에러는 6초 후 자동 소거
   useEffect(() => {
     if (!error) return undefined;
     const t = setTimeout(() => setError(''), 6000);
@@ -66,7 +63,7 @@ function PasswordResetRequest() {
     if (!/^\d{6}$/.test(code)) return setError('인증번호 6자리를 입력해주세요.');
     if (!password) return setError('새 비밀번호를 입력해주세요.');
     if (password !== confirm) return setError('새 비밀번호가 일치하지 않습니다.');
-    // 길이·복잡도는 서버 정책(minPasswordLength·대소문자·숫자/특수)이 검증 — 서버 메시지를 그대로 노출
+    // 길이·복잡도는 서버가 검증하고 그 메시지를 그대로 보여 준다.
     setError('');
     setIsLoading(true);
     try {
@@ -93,7 +90,6 @@ function PasswordResetRequest() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-900">
       <div className="w-full max-w-md">
-        {/* 알림 배너 */}
         {error && (
           <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
             <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
@@ -101,7 +97,6 @@ function PasswordResetRequest() {
         )}
 
         <div className="card p-8">
-          {/* 헤더 */}
           <div className="text-center mb-7">
             {settings.logoUrl ? (
               <img
@@ -137,7 +132,7 @@ function PasswordResetRequest() {
             </p>
           </div>
 
-          {/* STEP 1 — 아이디 요청 */}
+          {/* 1단계: 아이디 요청 */}
           {step === 'request' && (
             <form onSubmit={submitRequest} className="space-y-4">
               <div>
@@ -173,7 +168,7 @@ function PasswordResetRequest() {
             </form>
           )}
 
-          {/* STEP 2 — 인증번호 + 새 비밀번호 */}
+          {/* 2단계: 인증번호와 새 비밀번호 */}
           {step === 'verify' && (
             <form onSubmit={submitVerify} className="space-y-4">
               {notice && (
@@ -290,7 +285,7 @@ function PasswordResetRequest() {
             </form>
           )}
 
-          {/* STEP 3 — 완료 */}
+          {/* 3단계: 완료 */}
           {step === 'done' && (
             <div className="space-y-5">
               <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl flex items-start gap-3">
@@ -323,7 +318,6 @@ function PasswordResetRequest() {
             </div>
           )}
 
-          {/* 로그인 링크 */}
           {step !== 'done' && (
             <div className="mt-6 text-center">
               <p className="text-sm text-slate-600 dark:text-slate-400">

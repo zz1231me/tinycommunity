@@ -11,7 +11,7 @@ import { USER_THEMES, type UserTheme } from '../config/themes';
 export class UserService extends BaseService {
   async findById(id: string): Promise<UserInstance | null> {
     return User.findByPk(id, {
-      paranoid: false, // ✅ deletedAt 컬럼 마이그레이션 전에도 쿼리 가능
+      paranoid: false, // deletedAt 컬럼 마이그레이션 전에도 쿼리 가능
       include: [
         {
           model: Role,
@@ -24,7 +24,7 @@ export class UserService extends BaseService {
 
   async findByIdWithRole(id: string): Promise<UserInstance | null> {
     return User.findByPk(id, {
-      paranoid: false, // ✅ deletedAt 컬럼 마이그레이션 전에도 쿼리 가능
+      paranoid: false, // deletedAt 컬럼 마이그레이션 전에도 쿼리 가능
       include: [
         {
           model: Role,
@@ -143,7 +143,6 @@ export class UserService extends BaseService {
       if (!role) throw new AppError(400, '존재하지 않는 역할입니다.');
     }
 
-    // 이메일 변경 시 중복 검사
     if (data.email !== undefined && data.email !== null && data.email !== user.email) {
       const existing = await User.findOne({ where: { email: data.email } });
       if (existing) throw new AppError(409, '이미 사용 중인 이메일입니다.');
@@ -156,7 +155,6 @@ export class UserService extends BaseService {
     if (data.roleId !== undefined) allowed.roleId = data.roleId;
     if (data.isActive !== undefined) allowed.isActive = data.isActive;
 
-    // isActive가 true→false로 변경되거나 역할이 변경되면 기존 세션을 즉시 무효화
     if (
       (data.isActive === false && user.isActive) ||
       (data.roleId !== undefined && data.roleId !== user.roleId)
@@ -196,9 +194,7 @@ export class UserService extends BaseService {
   async rejectUser(id: string): Promise<void> {
     const user = await User.findByPk(id);
     if (!user) throw new AppError(404, '사용자를 찾을 수 없습니다.');
-    // 거절은 '승인 대기 중인 가입 신청' 만 대상이다. isActive 만 보면 비활성화해 둔 기존 계정
-    // (isApproved=true, isActive=false)도 대기 중으로 보여 영구 삭제되고, 딸린 포인트·원장·대결이
-    // 함께 사라진다 — 그 사람에게 걸려 있던 대결의 상대는 건 포인트를 돌려받지 못한다.
+    // 거절 대상은 승인 대기 중인 가입 신청뿐이다. isActive 만 보면 비활성 계정까지 영구 삭제된다.
     if (user.isActive || user.isApproved)
       throw new AppError(400, '이미 승인된 사용자는 거부할 수 없습니다. 삭제를 이용해주세요.');
 
@@ -230,14 +226,11 @@ export class UserService extends BaseService {
     const user = await User.findByPk(id);
     if (!user) throw new AppError(404, '사용자를 찾을 수 없습니다.');
 
-    // 이미 삭제된 계정 체크
     if (user.deletedAt) {
       throw new AppError(400, '이미 삭제된 계정입니다.');
     }
 
-    // 발급된 액세스 토큰도 즉시 무효로 만든다(비활성화와 같은 처리).
-    // 이것이 없어서, 삭제 직후에도 그 사람이 들고 있던 토큰으로 30초쯤 글을 쓸 수 있었다 —
-    // 미들웨어의 사용자 캐시가 '멀쩡한 계정' 으로 남아 있었기 때문이다.
+    // 발급된 액세스 토큰도 즉시 무효로 만든다. 없으면 미들웨어 사용자 캐시 때문에 한동안 통과된다.
     await user.increment('tokenVersion').catch(() => {});
 
     // 모든 활성 세션 즉시 만료 (삭제된 계정으로 토큰 갱신 방지)
@@ -252,14 +245,12 @@ export class UserService extends BaseService {
     };
   }
 
-  // 관리자 초기화: 관리자가 입력한 6자리 임시 비밀번호로 설정 + 강제 변경 플래그 + 기존 세션 무효화.
-  // 사용자는 임시 비번으로 로그인 후 비밀번호 변경 전까지 다른 동작이 차단된다.
-  // (tempPassword 형식 검증은 컨트롤러에서 6자리 숫자로 수행)
+  // 관리자 초기화: 임시 비밀번호 설정 + 강제 변경 플래그 + 기존 세션 무효화.
+  // tempPassword 형식 검증은 컨트롤러에서 한다.
   async resetPassword(id: string, tempPassword: string): Promise<string> {
     const user = await User.findByPk(id);
     if (!user) throw new AppError(404, '사용자를 찾을 수 없습니다.');
 
-    // 삭제된 계정 체크
     if (user.isDeletedAccount()) {
       throw new AppError(400, '삭제된 계정의 비밀번호는 변경할 수 없습니다.');
     }
@@ -326,8 +317,7 @@ export class UserService extends BaseService {
     if (!user) throw new AppError(404, '사용자를 찾을 수 없습니다.');
     if (!user.avatar) throw new AppError(400, '삭제할 아바타가 없습니다.');
 
-    // updateAvatar와 동일하게 DB를 먼저 갱신해야 한다.
-    // 파일을 먼저 지우면 DB update가 실패할 경우 깨진 URL이 영구적으로 남는다.
+    // updateAvatar 와 같이 DB 를 먼저 갱신한다. 파일을 먼저 지우면 update 실패 시 깨진 URL 이 남는다.
     const oldAvatar = user.avatar;
     await user.update({ avatar: null });
     await deleteAvatarFile(oldAvatar).catch(() => {});

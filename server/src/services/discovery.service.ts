@@ -1,9 +1,4 @@
-// server/src/services/discovery.service.ts
-// "읽을 만한 글을 어떻게 찾게 할 것인가" 를 담당한다 — 인기글, 관련 글, 태그 클라우드.
-//
-// 세 기능이 한 파일에 있는 이유: 셋 다 "이 사용자가 읽을 수 있는 게시판" 과
-// "비밀글은 본인 것만" 이라는 같은 전제 위에서만 성립한다. 이 전제가 한 곳에
-// 있어야 셋 중 하나만 조건이 어긋나 남의 글이 새는 일이 없다.
+// 탐색 기능(인기글·관련 글·태그 클라우드). 셋 다 읽을 수 있는 게시판과 비밀글 본인 한정이라는 같은 전제를 쓴다.
 
 import { Op, literal } from 'sequelize';
 import { sequelize } from '../config/sequelize';
@@ -24,9 +19,7 @@ const PERIOD_DAYS: Record<PopularPeriod, number | null> = {
 };
 
 /**
- * 인기 점수. 좋아요 > 댓글 > 조회 순으로 가중치를 둔다 —
- * 조회는 실수로도 올라가지만 좋아요와 댓글은 사람이 의도해야 올라간다.
- * 조회수만으로 정렬하면 낚시 제목이 상위를 차지한다.
+ * 인기 점수. 좋아요 > 댓글 > 조회 순 가중치. 조회수만으로 정렬하면 낚시 제목이 상위를 차지한다.
  */
 const SCORE_SQL =
   '(SELECT COUNT(*) FROM PostLikes AS pl WHERE pl.PostId = Post.id) * 3 + ' +
@@ -111,7 +104,7 @@ export const discoveryService = {
       where,
       include: LIST_INCLUDE,
       attributes: [...LIST_ATTRIBUTES, [literal(SCORE_SQL), 'score']],
-      // 점수가 같으면 최신 글을 위로 — 오래된 글이 상단을 영구히 점유하지 않게 한다
+      // 점수가 같으면 최신 글을 위로 올린다
       order: [
         [literal('score'), 'DESC'],
         ['createdAt', 'DESC'],
@@ -120,8 +113,7 @@ export const discoveryService = {
       subQuery: false,
     });
 
-    // 점수가 0 인 글은 제외한다. 활동이 없는 게시판에서 목록을 채우려고 방금 쓴 글을
-    // 올리면 인기글 목록의 의미가 없어진다.
+    // 점수가 0 인 글은 제외한다.
     return posts
       .map(p => p.get({ plain: true }) as unknown as PlainPost)
       .filter(p => Number(p.score) > 0)
@@ -129,9 +121,7 @@ export const discoveryService = {
   },
 
   /**
-   * 관련 글 — 태그가 겹치는 글을 먼저, 없으면 같은 게시판의 최근 글.
-   * 태그가 하나도 안 겹치는데 "관련 글" 이라고 내보내면 추천이 아니라 소음이므로,
-   * 폴백은 같은 게시판이라는 최소한의 근거가 있을 때만 쓴다.
+   * 관련 글. 태그가 겹치는 글을 먼저 쓰고, 없으면 같은 게시판의 최근 글로 메운다.
    */
   async getRelatedPosts(postId: string, userId: string, userRole: string, limit = 5) {
     const post = await Post.findByPk(postId, { attributes: ['id', 'boardType'] });
@@ -235,8 +225,7 @@ export const discoveryService = {
   },
 
   /**
-   * 태그 클라우드 — 태그별로 "내가 볼 수 있는 글" 이 몇 개인지.
-   * 전체 글 수로 세면 접근 못 하는 게시판의 활동량이 태그 크기로 새어 나온다.
+   * 태그 클라우드. 내가 볼 수 있는 글만 세야 접근 못 하는 게시판의 활동량이 새지 않는다.
    */
   async getTagCloud(userId: string, userRole: string, limit = 40) {
     const boardTypes = await getAccessibleBoardTypes(userId, userRole);
@@ -247,13 +236,11 @@ export const discoveryService = {
       `(SELECT COUNT(*) FROM PostTags AS pt JOIN Posts AS p ON p.id = pt.PostId ` +
       `WHERE pt.TagId = Tag.id AND p.deletedAt IS NULL AND p.status = 'published' ` +
       `AND p.boardType IN (${boardList}) ` +
-      // NOT p.isSecret — MySQL(tinyint)/SQLite(0·1)/PostgreSQL(boolean) 어디서나 통하는 형태.
-      // `= 0` 으로 쓰면 PostgreSQL 에서 타입 오류가 난다.
+      // NOT p.isSecret 형태여야 MySQL·SQLite·PostgreSQL 모두에서 통한다. `= 0` 은 PostgreSQL 에서 타입 오류.
       `AND (NOT p.isSecret OR p.UserId = ${sequelize.escape(userId)}))`;
 
     const tags = await Tag.findAll({
       attributes: ['id', 'name', 'color', 'boardId', [literal(countSql), 'postCount']],
-      // 글이 하나도 없는 태그는 클라우드에 띄울 이유가 없다
       having: literal('postCount > 0'),
       group: ['Tag.id'],
       order: [[literal('postCount'), 'DESC']],

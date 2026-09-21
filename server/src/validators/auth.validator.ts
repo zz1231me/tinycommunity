@@ -1,5 +1,3 @@
-// server/src/validators/auth.validator.ts - 인증 관련 유효성 검사 통합 클래스
-
 import { getMinPasswordLength, getPasswordComplexityRules } from '../utils/settingsCache';
 
 /** bcrypt 가 실제로 보는 최대 길이(바이트). 이 뒤는 해시에 반영되지 않는다. */
@@ -53,10 +51,7 @@ export class AuthValidator {
     if (!password || typeof password !== 'string') {
       return { valid: false, error: '비밀번호는 필수입니다.' };
     }
-    // bcrypt 는 72바이트를 넘는 부분을 조용히 버린다. 막지 않으면 뒤쪽을 아무렇게나
-    // 바꿔도 같은 비밀번호가 되고, 앞 72바이트만 아는 사람이 그대로 로그인한다
-    // (실제로 100자로 가입한 계정이 앞 72자만으로 로그인됐다).
-    // 한글은 UTF-8 로 3바이트라 24자면 상한이다 — 글자 수가 아니라 바이트로 센다.
+    // bcrypt 는 72바이트를 넘는 부분을 버리므로 글자 수가 아니라 바이트로 센다.
     if (Buffer.byteLength(password, 'utf8') > MAX_PASSWORD_BYTES) {
       return {
         valid: false,
@@ -97,7 +92,7 @@ export class AuthValidator {
 
   static validateEmail(email: string): { valid: boolean; error?: string } {
     if (!email) return { valid: true }; // 선택 필드
-    // User.email 컬럼이 STRING(100) 이다 — 넘기면 모델 검증기까지 내려간다
+    // User.email 은 STRING(100) 이라 넘기면 모델 검증기에서 걸린다.
     if (email.length > 100) {
       return { valid: false, error: '이메일은 100자를 초과할 수 없습니다.' };
     }

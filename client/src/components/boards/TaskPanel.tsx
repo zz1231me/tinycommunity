@@ -1,10 +1,4 @@
-// client/src/components/boards/TaskPanel.tsx
-// 글 상세의 업무 영역 — 상태와 담당자.
-//
-// 본문 위에 둔다. 업무 게시판에서 먼저 확인하는 값이라 스크롤 아래로 밀지 않는다.
-//
-// 바꿀 수 없는 사람에게는 읽기 전용으로 보여 준다. 감추면 상태가 없는 글과
-// 권한이 없는 글이 구별되지 않는다.
+// 글 상세의 업무 상태·담당자 영역. 권한이 없는 사람에게는 읽기 전용으로 보여 준다.
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -22,7 +16,7 @@ interface Props {
   boardType: string;
   postId: string;
   state: TaskState;
-  /** 상태·담당자를 바꿀 수 있는 사람인지 */
+  /** 상태·담당자를 바꿀 수 있는 사람인지. */
   editable: boolean;
   onChange: (next: TaskState) => void;
 }

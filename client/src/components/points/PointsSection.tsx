@@ -1,8 +1,4 @@
-// client/src/components/points/PointsSection.tsx
-// 포인트 탭의 판(뽑기·대결·공격권·순위)이 함께 쓰는 틀.
-//
-// 판마다 테두리·제목 모양이 제각각이면 한 화면이 조각조각 붙여 놓은 것처럼 보인다.
-// 같은 틀에 색만 달리 입혀, 어느 판인지는 색과 아이콘으로 알아보게 한다.
+// 포인트 탭의 판들이 함께 쓰는 틀. 판 구분은 색과 아이콘으로만 한다.
 
 import type { ReactNode } from 'react';
 
@@ -27,7 +23,7 @@ export function PointsSection({
   icon: ReactNode;
   tone: SectionTone;
   title: string;
-  /** 제목 옆 — 받은 도전장 수 같은 것 */
+  /** 제목 옆에 붙일 뱃지. */
   badge?: ReactNode;
   description?: ReactNode;
   children: ReactNode;

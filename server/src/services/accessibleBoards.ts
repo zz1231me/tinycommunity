@@ -1,11 +1,5 @@
-// server/src/services/accessibleBoards.ts
-// 사용자가 읽을 수 있는 게시판 id 목록.
-//
-// 전역 검색(postSearch.service)과 최근 글 조회(post.service)가 같은 기준을 쓴다.
-// 갈라지면 검색에는 나오는데 목록에는 없는 글이 생긴다.
-//
-// 판정 기준: 역할별 읽기 권한(BoardAccess) + 게시판 담당자(BoardManager) + 본인 개인 폴더.
-// 비활성 게시판은 어느 경로로도 포함하지 않는다.
+// 사용자가 읽을 수 있는 게시판 id 목록. 검색과 목록 조회가 같은 기준을 써야 한다.
+// 기준: 역할별 읽기 권한 + 게시판 담당자 + 본인 개인 폴더. 비활성 게시판은 제외한다.
 
 import Board from '../models/Board';
 import BoardAccess from '../models/BoardAccess';

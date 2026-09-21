@@ -1,4 +1,3 @@
-// client/src/pages/Drafts.tsx
 // 작성하다 만 글 목록. 서버에 저장되므로 다른 기기에서도 이어 쓸 수 있다.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -25,7 +24,7 @@ function DraftRow({
   stale: boolean;
   onDelete: (id: string) => void;
 }) {
-  // 게시판이 사라졌으면 이어쓰기 화면을 열 수 없다 — 내용만 보여 준다
+  // 게시판이 사라졌으면 이어쓰기 화면을 열 수 없어 내용만 보여 준다
   const orphaned = draft.boardName === null;
 
   return (
@@ -55,7 +54,7 @@ function DraftRow({
           <span aria-hidden="true">·</span>
           <span className="shrink-0">{formatRelativeDate(draft.updatedAt)} 저장</span>
           {stale && (
-            // 서버는 초안을 지우지 않는다 — 오래됐다는 사실만 알리고 삭제는 사용자가 정한다
+            // 서버는 초안을 지우지 않는다. 오래됐다는 표시만 하고 삭제는 사용자가 정한다.
             <span className="badge badge-warning shrink-0">오래됨</span>
           )}
         </div>
@@ -75,17 +74,15 @@ function DraftRow({
 
 export default function Drafts() {
   const queryClient = useQueryClient();
-  // 되돌릴 수 없는 삭제라 한 번 묻는다 — 글·메모·일정·관리자 화면은 모두 그렇게 한다.
-  // 예전에는 휴지통을 누르는 즉시 사라져, 잘못 누르면 되찾을 길이 없었다.
+  // 되돌릴 수 없는 삭제라 한 번 묻는다
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
-  // 관리자가 정한 "임시저장 만료 시간" — 자동 삭제 대신 오래된 초안 표시에 쓴다
+  // 관리자가 정한 임시저장 만료 시간. 자동 삭제가 아니라 표시에만 쓴다.
   const expiryMinutes = useSiteSettings(s => s.settings.draftExpiryMinutes) ?? 60;
 
   const { data, isLoading, isError } = useQuery({
     queryKey: draftKeys.all,
     queryFn: ({ signal }) => fetchDrafts(signal),
-    // 초안은 글쓰기 화면이 자동 저장으로 만든다. 그쪽은 이 키를 무효화하지 않으므로
-    // 전역 staleTime(5분)을 따르면 방금 쓰던 글이 목록에 없다.
+    // 글쓰기 화면이 이 키를 무효화하지 않으므로 마운트마다 다시 읽는다.
     refetchOnMount: 'always',
   });
 

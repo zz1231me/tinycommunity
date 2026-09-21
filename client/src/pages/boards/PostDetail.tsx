@@ -1,18 +1,3 @@
-// client/src/pages/boards/PostDetail.tsx
-// 글 상세 — 업무용 정보 구조.
-//
-// 위에서 아래로 "어디에 있나 → 무엇인가 → 어떤 상태인가 → 내용 → 근거 → 확인 → 대화"
-// 순서로 배치한다. 담당자·업무 상태를 지표(조회수·좋아요 등)보다 위에 둔다.
-//
-//  1. 이동 줄     — 게시판 breadcrumb + 목록/수정/삭제
-//  2. 제목 블록   — 고정 표시, 제목, 태그, 작성자·시각·조회
-//  3. 상태 줄     — 담당자·업무 상태 (TaskPanel)
-//  4. 본문
-//  5. 첨부(+개정 이력)
-//  6. 참여 줄     — 좋아요·스크랩·신고 (읽고 난 뒤에 하는 행동이라 본문 끝에 둔다)
-//  7. 활동 기록   — 업무용 게시판만 (누가 언제 무엇을 바꿨나)
-//  8. 읽음 확인   — 작성자·게시판 담당자만
-//  9. 관련 글 → 댓글
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useCodeHighlight } from '../../hooks/useCodeHighlight';
 import { Link, useParams } from 'react-router-dom';
@@ -60,7 +45,7 @@ import { useFeature } from '../../store/features';
 import { useSiteSettings } from '../../store/siteSettings';
 import { Tag } from '../../types/board.types';
 
-// TagBadge/PostListItem과 동일한 색상 안전 검증
+// TagBadge/PostListItem 과 같은 색상 검증
 const isSafeColor = (color: string): boolean =>
   /^#[0-9a-fA-F]{3,8}$/.test(color) ||
   /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/.test(color) ||
@@ -71,30 +56,23 @@ import '../../styles/CKContentView.css';
 import 'highlight.js/styles/atom-one-dark.min.css';
 import { ListState } from '../../components/common/ListState';
 
-// 보안이 강화된 HTML 콘텐츠 렌더링 + 코드 구문 하이라이팅
 const CKContentRenderer: React.FC<{
   content: string;
   attachments: AttachmentRefTarget[];
   onPreviewImage: (url: string, alt: string) => void;
 }> = ({ content, attachments, onPreviewImage }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  // 문단별 첨부가 꺼져 있으면 참조를 카드로 바꾸지 않는다.
-  // 이미 꽂아 둔 참조는 파일명 그대로 본문에 남는다 — 지우면 증적이 있었다는 사실이 사라진다.
+  // 문단별 첨부가 꺼져 있으면 참조를 카드로 바꾸지 않고 파일명 그대로 남긴다.
   const inlineAttachmentsEnabled = useFeature('post.inlineAttachments');
 
-  // 본문에 꽂힌 증적 참조를 첨부 카드로 바꾼다 (정화 이후 DOM 단계)
+  // 정화 이후 DOM 단계에서 증적 참조를 첨부 카드로 바꾼다
   useAttachmentRefs(containerRef, attachments, onPreviewImage, inlineAttachmentsEnabled);
 
-  // 코드 블록 syntax highlight (CKEditor 출력: <pre><code class="language-xxx">)
   useCodeHighlight(containerRef);
 
-  // 정화 이후에 멘션을 강조한다.
-  // 기억해 두는 이유: 이 값이 매번 새로 만들어지면 본문 전체를 다시 정화하고,
-  // dangerouslySetInnerHTML 이 컨테이너의 자식을 통째로 갈아 끼운다.
+  // 정화 이후에 멘션을 강조한다. content 가 바뀔 때만 다시 계산한다.
   const sanitizedContent = useMemo(() => highlightMentions(sanitizeHTML(content)), [content]);
-  // 객체까지 기억해 둔다. React 는 dangerouslySetInnerHTML 을 '객체 참조' 로 비교해서,
-  // 여기서 매번 새 리터럴을 만들면 내용이 한 글자도 안 바뀌었는데도 본문을 통째로
-  // 다시 붙인다 — 그때 코드 색·증적 카드처럼 나중에 손본 것들이 함께 버려진다.
+  // dangerouslySetInnerHTML 은 객체 참조로 비교하므로 객체도 메모해야 본문이 다시 붙지 않는다.
   const contentHtml = useMemo(() => ({ __html: sanitizedContent }), [sanitizedContent]);
 
   if (!content) {
@@ -133,9 +111,7 @@ const PostDetail = () => {
     handleToggleLike,
   } = usePostDetail({ boardType, id });
 
-  // 게시판 이름은 글과 함께 서버가 준다. 접근 가능 게시판 목록에서 찾으면, 그 목록에
-  // 없는 게시판(역할 권한 밖이지만 관리자로 열람되는 경우)에서 게시판 id 가 그대로 나온다.
-  // 목록은 서버 값이 아직 없을 때의 대비책으로만 쓴다.
+  // 게시판 이름은 서버 응답을 우선한다. 접근 가능 목록은 서버 값이 없을 때의 대비책이다.
   const { getBoardById } = useAccessibleBoards();
   const boardTitle =
     post?.board?.name || getBoardById(boardType ?? '')?.name || getBoardTitle(boardType!);
@@ -145,7 +121,7 @@ const PostDetail = () => {
   const [refImage, setRefImage] = useState<{ url: string; alt: string } | null>(null);
   const showRefImage = useCallback((url: string, alt: string) => setRefImage({ url, alt }), []);
   const { getUserRole, getUserId } = useAuth();
-  // 페이지 타이틀에 쓸 사이트 정체성 — 하드코딩 'MyHome' 대신 관리자 설정값을 사용
+  // 페이지 타이틀에 쓸 사이트 이름(관리자 설정값)
   const siteName = useSiteSettings(s => s.settings.siteName);
   const siteTitle = useSiteSettings(s => s.settings.siteTitle);
   const userRole = getUserRole();
@@ -161,15 +137,14 @@ const PostDetail = () => {
   const canPin = userRole === 'admin' || isBoardManager;
 
   const [isPinned, setIsPinned] = useState<boolean>(false);
-  // 고정 만료 시각 — 무기한 고정이면 null
+  // 고정 만료 시각. 무기한이면 null.
   const [pinnedUntil, setPinnedUntil] = useState<string | null>(null);
-  // 업무 상태는 이 화면에서 바꾸므로 로컬로 들고 있는다 (핀과 같은 방식)
+  // 업무 상태는 이 화면에서 바꾸므로 로컬로 들고 있는다
   const [task, setTask] = useState<TaskState>({ workStatus: 'none', assignee: null });
   const [postTags, setPostTags] = useState<Tag[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  // Mark post as read
   useEffect(() => {
     if (boardType && id && post && !loading) {
       markPostRead(boardType, id).catch(() => {});
@@ -177,8 +152,7 @@ const PostDetail = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardType, id, post?.id, loading]);
 
-  // 글이 바뀌면 이 화면이 들고 있는 값들을 새 글의 것으로 맞춘다.
-  // 태그는 상세 응답에 함께 오므로 따로 묻지 않는다.
+  // 글이 바뀌면 화면이 들고 있는 값을 새 글의 것으로 맞춘다. 태그는 상세 응답에 함께 온다.
   useEffect(() => {
     if (!post) return;
     setIsPinned(post.isPinned || false);
@@ -188,7 +162,7 @@ const PostDetail = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post?.id, post?.tags]);
 
-  // 게시글 로드 시 Open Graph 동적 메타 태그 업데이트
+  // Open Graph 메타 태그 갱신
   useEffect(() => {
     if (!post || isLocked) return;
 
@@ -217,11 +191,10 @@ const PostDetail = () => {
     };
   }, [post, isLocked, siteName, siteTitle]);
 
-  // 공통 컴포넌트 사용
   if (loading) return <PageSkeleton />;
   if (error) return <PageError message={error} onBack={handleBack} />;
   if (isLocked && lockedMeta) {
-    // E2EE: ciphertext가 있으면 암호화된 내용 먼저 보여주고 인라인 복호화
+    // E2EE: ciphertext 가 있으면 인라인 복호화 화면으로
     if (lockedMeta.isEncrypted && lockedMeta.ciphertext) {
       return (
         <EncryptedPostView
@@ -235,7 +208,7 @@ const PostDetail = () => {
         />
       );
     }
-    // 일반 비밀글: 기존 모달 방식 유지
+    // 일반 비밀글은 모달
     return (
       <SecretPostModal
         postTitle={lockedMeta.title}
@@ -250,12 +223,12 @@ const PostDetail = () => {
   if (!post) return <PageNotFound onBack={handleBack} />;
 
   const isEdited = new Date(post.updatedAt).getTime() !== new Date(post.createdAt).getTime();
-  // 담당자 본인도 자기 상태를 바꿀 수 있다 — 못 바꾸면 작성자에게 부탁해야 한다
+  // 담당자 본인도 자기 상태를 바꿀 수 있다
   const canManageTask = canEditOrDelete || task.assignee?.id === getUserId();
 
   return (
     <PageContainer className="space-y-5">
-      {/* 1. 이동 줄 — 어디에 있는지와 이 글로 할 수 있는 일 */}
+      {/* 이동 줄 */}
       <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3 dark:border-slate-700/60">
         <nav aria-label="위치" className="flex min-w-0 items-center gap-1.5 text-sm">
           <Link
@@ -271,8 +244,7 @@ const PostDetail = () => {
         </nav>
 
         <div className="flex flex-shrink-0 items-center gap-2">
-          {/* 좁은 화면에서는 옆의 수정·삭제와 같이 아이콘만 남긴다.
-              한쪽만 글자를 유지하면 같은 줄의 버튼 높이가 어긋난다. */}
+          {/* 좁은 화면에서는 아이콘만 남긴다. 한쪽만 글자를 두면 버튼 높이가 어긋난다. */}
           <button onClick={handleBack} aria-label="목록으로 돌아가기" className="btn-secondary">
             <ArrowLeft className="h-4 w-4" />
             <span className="hidden sm:inline">목록</span>
@@ -306,7 +278,7 @@ const PostDetail = () => {
         </div>
       </div>
 
-      {/* 2. 본문 카드 */}
+      {/* 본문 카드 */}
       <main className="card overflow-hidden">
         <header className="card-body border-b border-slate-200 dark:border-slate-700">
           <div className="mb-3 flex items-start gap-2">
@@ -352,7 +324,7 @@ const PostDetail = () => {
             </div>
           )}
 
-          {/* 작성자·시각·조회수 — 한 줄에 모아 "누가 언제" 를 한눈에 */}
+          {/* 작성자·시각·조회수 */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <div className="flex min-w-0 items-center gap-3">
               <Avatar
@@ -365,7 +337,7 @@ const PostDetail = () => {
                 enlargeable
               />
               <div className="min-w-0">
-                {/* 작성자 이름에서 프로필로 — 비밀글은 작성자를 가리므로 user.id 가 없다 */}
+                {/* 비밀글은 작성자를 가리므로 user.id 가 없다 */}
                 {profilesEnabled && post.user?.id ? (
                   <Link
                     to={`/dashboard/users/${post.user.id}`}
@@ -398,7 +370,7 @@ const PostDetail = () => {
                 </span>
               )}
 
-              {/* 수정됨 표시 — 클릭하면 수정 이력을 펼친다 */}
+              {/* 클릭하면 수정 이력을 펼친다 */}
               {revisionsEnabled && isEdited && (
                 <button
                   type="button"
@@ -414,8 +386,7 @@ const PostDetail = () => {
           </div>
         </header>
 
-        {/* 3. 상태 줄 — 업무용으로 켠 게시판에서만. 사이트 전체 스위치와 게시판 용도,
-            둘 다 켜져 있어야 한다. 서버도 같은 선을 지킨다(업무용이 아니면 400). */}
+        {/* 상태 줄. 사이트 스위치와 게시판 용도가 모두 켜져야 한다(서버도 동일). */}
         {tasksEnabled && post.board?.taskEnabled && boardType && id && (
           <TaskPanel
             boardType={boardType}
@@ -442,8 +413,8 @@ const PostDetail = () => {
           </div>
         )}
 
-        {/* 4. 본문 */}
-        {/* 본문만 위아래로 더 연다 — 읽는 자리이기 때문이다 */}
+        {/* 본문 */}
+        {/* 읽는 자리라 위아래 여백을 더 준다 */}
         <section className="px-4 py-6 sm:px-6 sm:py-7">
           {post.content && (
             <CKContentRenderer
@@ -454,10 +425,10 @@ const PostDetail = () => {
           )}
         </section>
 
-        {/* 5. 첨부 — 본문의 근거이므로 본문 바로 뒤 */}
+        {/* 첨부 */}
         <AttachmentList attachments={post.attachments || []} boardType={boardType} postId={id} />
 
-        {/* 6. 참여 줄 — 다 읽고 난 뒤에 하는 행동들 */}
+        {/* 참여 줄 */}
         {(likeEnabled || scrapEnabled || (reportEnabled && !canEditOrDelete)) && (
           <footer className="card-footer">
             {likeEnabled && (
@@ -476,7 +447,7 @@ const PostDetail = () => {
               </button>
             )}
 
-            {/* 스크랩 — 나만 보는 "나중에 보기" */}
+            {/* 스크랩 */}
             {scrapEnabled && boardType && post?.id && (
               <ScrapButton
                 boardType={boardType}
@@ -494,9 +465,7 @@ const PostDetail = () => {
         )}
       </main>
 
-      {/* 7. 활동 기록 — 업무용 게시판에서만. 누가 언제 무엇을 바꿨는지 한 줄기로 본다.
-          일반 게시판에도 기록은 쌓이지만(나중에 업무용으로 바꿔도 이력이 비지 않게)
-          화면에는 업무로 쓰는 곳에서만 꺼낸다. */}
+      {/* 활동 기록. 일반 게시판에도 기록은 쌓이지만 업무용에서만 보여 준다. */}
       {tasksEnabled && post.board?.taskEnabled && boardType && id && (
         <PostActivityLog
           boardType={boardType}
@@ -505,12 +474,12 @@ const PostDetail = () => {
         />
       )}
 
-      {/* 8. 읽음 확인 — 서버도 같은 사람만 허용한다(403). 여기서 감추는 것은 헛된 요청을 줄이기 위함 */}
+      {/* 읽음 확인. 서버도 같은 사람만 허용한다(403). */}
       {readReceiptsEnabled && canEditOrDelete && boardType && id && (
         <ReadReceipts boardType={boardType} postId={id} />
       )}
 
-      {/* 9. 관련 글 — 읽을 것이 없으면 스스로 숨는다 */}
+      {/* 관련 글 */}
       {relatedEnabled && boardType && post?.id && (
         <RelatedPosts boardType={boardType} postId={String(post.id)} />
       )}
@@ -553,7 +522,7 @@ const PostDetail = () => {
         altText={refImage?.alt ?? ''}
       />
 
-      {/* 삭제 확인 모달 — 공용 ConfirmationModal 사용 (포커스 트랩/ESC/포커스 복원 포함) */}
+      {/* 삭제 확인 모달 */}
       <ConfirmationModal
         open={showDeleteConfirm}
         title="게시글 삭제"

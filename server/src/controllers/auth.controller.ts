@@ -1,4 +1,3 @@
-// src/controllers/auth.controller.ts - Service Layer 적용 완료 (AuthService + UserService)
 import { Request, Response, NextFunction } from 'express';
 import { AuthRequest } from '../types/auth-request';
 import { userService } from '../services/user.service';
@@ -22,24 +21,16 @@ import { AppError } from '../middlewares/error.middleware';
 import { getSettings, getMinPasswordLength } from '../utils/settingsCache';
 import { isCookieSecure } from '../utils/cookie';
 
-// 내부 유틸: 쿠키 설정 / 응답 데이터 빌드
-
 /** Access/Refresh 쿠키를 한 번에 설정 */
 const setAuthCookies = (
   res: Response,
   tokens: { accessToken: string; refreshToken?: string | null },
   oldRefreshToken?: string
 ) => {
-  // 프로덕션 secure-by-default (HTTP 인트라넷은 COOKIE_SECURE=false 명시) — isCookieSecure() 참고
+  // 프로덕션은 secure 가 기본이다. HTTP 인트라넷은 COOKIE_SECURE=false 로 끈다.
   const isSecure = isCookieSecure();
   const { jwtRefreshTokenDays } = getSettings();
-  // 쿠키 수명을 access 토큰 자체보다 길게(refresh 토큰과 같게) 잡는다.
-  //
-  // 같은 값으로 두면 토큰이 만료되는 순간 브라우저가 쿠키를 지워, 다음 요청이
-  // "만료된 토큰"(419) 이 아니라 "토큰 없음"(401) 으로 도착한다. 화면은 419 에서만
-  // 갱신을 시도하므로 refresh 토큰이 유효한데도 로그인 화면으로 튕긴다.
-  //
-  // 만료된 토큰이 쿠키에 남아 있어도 서버가 jwt.verify 에서 거르므로 위험하지 않다.
+  // 쿠키 수명은 access 토큰보다 길게 잡는다. 같으면 만료 즉시 401 이 되어 갱신을 못 탄다.
   res.cookie('access_token', tokens.accessToken, {
     httpOnly: true,
     secure: isSecure,
@@ -49,7 +40,6 @@ const setAuthCookies = (
     domain: undefined,
   });
 
-  // Refresh 토큰이 갱신된 경우에만 쿠키 업데이트
   if (tokens.refreshToken && tokens.refreshToken !== oldRefreshToken) {
     res.cookie('refresh_token', tokens.refreshToken, {
       httpOnly: true,
@@ -98,7 +88,6 @@ const buildAuthData = (
   };
 };
 
-// 로그인
 export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id, password, fingerprint } = req.body;
@@ -113,7 +102,6 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       userAgent
     );
 
-    // 2FA 활성화된 사용자: 2단계 인증 필요
     if (result.requires2FA) {
       sendSuccess(
         res,
@@ -141,7 +129,6 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
   }
 };
 
-// 토큰 갱신
 export const refreshToken = async (
   req: Request,
   res: Response,
@@ -155,7 +142,7 @@ export const refreshToken = async (
       return;
     }
 
-    // 재발급 전에 세션의 최초 IP/기기를 확보 (rotate 후엔 옛 토큰으로 조회 불가)
+    // rotate 뒤에는 옛 토큰으로 조회할 수 없어 먼저 확보한다.
     const priorMeta = await userSessionService.getSessionMeta(refresh_token);
 
     const result = await authService.refreshToken(refresh_token);
@@ -170,8 +157,7 @@ export const refreshToken = async (
       buildAuthData(result.user, result.payload?.permissions ?? []),
       '토큰 갱신 성공'
     );
-    // 토큰 재발급은 매우 빈번하므로 정상 갱신은 기록하지 않는다.
-    // 세션 최초 IP/기기와 다른 곳에서 갱신된 "의심스러운" 경우만 보안 로그에 남긴다(토큰 탈취 신호).
+    // 정상 갱신은 너무 잦아 기록하지 않고, 최초 IP/기기와 다를 때만 남긴다.
     if (priorMeta) {
       const curIp = req.ip ?? null;
       const curUa = req.get('user-agent') ?? null;
@@ -199,28 +185,26 @@ export const refreshToken = async (
   }
 };
 
-// 로그아웃
 export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthRequest;
 
-    // 로그인된 사용자라면 tokenVersion을 증가시켜 기존 JWT 토큰을 무효화
+    // tokenVersion 을 올려 기존 JWT 를 무효화한다.
     if (authReq.user) {
       try {
         const { User } = await import('../models/User');
         const user = await User.findByPk(authReq.user.id);
         if (user) {
           await user.increment('tokenVersion');
-          // 인증 캐시 즉시 무효화 — 로그아웃 후 30초 이내 재사용 방지
+          // 인증 캐시를 비우지 않으면 30초 동안 옛 토큰이 살아 있다.
           invalidateUserCache(authReq.user.id);
         }
       } catch (tokenErr) {
         logError('tokenVersion 증가 실패', tokenErr);
-        // 토큰 버전 증가 실패해도 쿠키 삭제는 계속 진행
+        // 실패해도 쿠키 삭제는 계속 진행한다.
       }
     }
 
-    // 세션 만료 처리 (fire-and-forget) — 로그아웃 시 해당 사용자의 모든 세션 만료
     if (authReq.user) {
       userSessionService.expireAllUserSessions(authReq.user.id).catch(() => {});
     } else {
@@ -247,7 +231,6 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// 현재 사용자 정보 조회
 export const getCurrentUser = async (
   req: Request,
   res: Response,
@@ -275,7 +258,6 @@ export const getCurrentUser = async (
   }
 };
 
-// 회원 등록
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id, password, name, email } = req.body;
@@ -308,7 +290,6 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       }
     }
 
-    // 사이트 설정에서 회원가입 허용 여부 확인
     const siteSettings = await SiteSettings.findOne();
     const allowRegistration = siteSettings?.allowRegistration ?? true;
     const requireApproval = siteSettings?.requireApproval ?? false;
@@ -320,8 +301,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
 
     const user = await authService.register({ id, password, name, email });
 
-    // requireApproval이 꺼져 있으면 즉시 활성화·승인, 켜져 있으면 승인 대기(isApproved=false).
-    // isApproved로 '승인 대기'와 '관리자 비활성화'를 구분한다(둘 다 isActive=false지만 목록이 다름).
+    // isApproved 로 '승인 대기' 와 '관리자 비활성화' 를 구분한다. 둘 다 isActive=false 다.
     if (!requireApproval) {
       await user.update({ isActive: true, isApproved: true });
     } else {
@@ -353,7 +333,6 @@ export const register = async (req: Request, res: Response, next: NextFunction):
   }
 };
 
-// 비밀번호 변경
 export const changePassword = async (
   req: Request,
   res: Response,
@@ -381,7 +360,7 @@ export const changePassword = async (
 
     await userService.changePassword(authReq.user.id, currentPassword, newPassword);
     invalidateUserCache(authReq.user.id);
-    // 비밀번호 변경 시 모든 기존 세션 즉시 무효화 (도난된 세션 차단)
+    // 도난된 세션을 끊기 위해 기존 세션을 모두 무효화한다.
     userSessionService.expireAllUserSessions(authReq.user.id).catch(() => {});
     logSecurityEvent(req, 'PASSWORD_CHANGED', { userId: authReq.user.id });
     sendSuccess(res, null, '비밀번호가 변경되었습니다.');
@@ -391,7 +370,6 @@ export const changePassword = async (
   }
 };
 
-// 사용자 권한 조회
 export const getUserPermissions = async (
   req: Request,
   res: Response,
@@ -415,7 +393,6 @@ export const getUserPermissions = async (
   }
 };
 
-// 테마 업데이트
 export const updateTheme = async (
   req: Request,
   res: Response,
@@ -438,7 +415,6 @@ export const updateTheme = async (
   }
 };
 
-// 📸 아바타 업로드
 export const uploadAvatar = async (
   req: Request,
   res: Response,
@@ -465,8 +441,7 @@ export const uploadAvatar = async (
   }
 };
 
-// 비밀번호 초기화 요청 (비로그인) — 아이디로 요청하면 6자리 인증번호가 자동 생성돼 관리자에게 표시된다.
-// 인증번호는 응답에 절대 포함하지 않는다(관리자에게 문의해 전달받는 구조).
+// 비밀번호 초기화 요청. 생성된 인증번호는 응답에 절대 넣지 않는다.
 export const requestPasswordReset = async (req: Request, res: Response): Promise<void> => {
   try {
     const { loginId } = req.body as { loginId?: unknown };
@@ -482,7 +457,7 @@ export const requestPasswordReset = async (req: Request, res: Response): Promise
       details: { loginId: loginId.trim() },
     });
 
-    // 계정 존재 여부와 무관하게 동일한 응답 (아이디 열거 방지)
+    // 아이디 열거를 막기 위해 계정 존재 여부와 무관하게 같은 응답을 준다.
     sendSuccess(
       res,
       null,
@@ -494,7 +469,7 @@ export const requestPasswordReset = async (req: Request, res: Response): Promise
   }
 };
 
-// 비밀번호 재설정 (아이디 + 6자리 인증번호 검증 후 변경). 3회 오입력 시 1시간 잠금(서비스 처리).
+// 비밀번호 재설정. 3회 오입력 시 1시간 잠금은 서비스가 처리한다.
 export const verifyPasswordReset = async (req: Request, res: Response): Promise<void> => {
   try {
     const { loginId, code, password } = req.body as {
@@ -508,7 +483,7 @@ export const verifyPasswordReset = async (req: Request, res: Response): Promise<
       return;
     }
 
-    // 새 비밀번호 복잡도를 먼저 검증 — 잘못된 비밀번호로 오입력 카운트를 소모하지 않도록
+    // 복잡도를 먼저 본다. 아니면 잘못된 비밀번호로 오입력 횟수를 깎는다.
     const pwCheck = AuthValidator.validatePassword(password, true);
     if (!pwCheck.valid) {
       sendValidationError(res, 'password', pwCheck.error!);
@@ -518,13 +493,12 @@ export const verifyPasswordReset = async (req: Request, res: Response): Promise<
     const uid = loginId.trim();
     await passwordResetRequestService.verifyAndReset(uid, code.trim(), password);
 
-    // 캐시/세션 무효화 (tokenVersion 증가와 함께 기존 로그인 전부 종료)
     invalidateUserCache(uid);
     userSessionService.expireAllUserSessions(uid).catch(() => {});
     logSecurityEvent(req, 'PASSWORD_RESET_COMPLETED', { userId: uid });
     sendSuccess(res, null, '비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.');
   } catch (err) {
-    // 서비스가 던지는 AppError(잘못된 인증번호 400 / 잠금·만료 429 등)를 그대로 전달
+    // 서비스가 던지는 AppError 를 그대로 전달한다.
     if (err instanceof AppError && err.statusCode < 500) {
       sendError(res, err.statusCode, err.message);
       return;
@@ -534,7 +508,6 @@ export const verifyPasswordReset = async (req: Request, res: Response): Promise<
   }
 };
 
-// 프로필(이름) 변경
 export const updateProfile = async (
   req: Request,
   res: Response,
@@ -561,7 +534,7 @@ export const updateProfile = async (
     }
 
     const user = await userService.updateMyName(authReq.user.id, name);
-    // 인증 캐시 무효화 — 이름 변경 후 30초 이내 새 글/댓글의 author가 이전 이름으로 저장되는 문제 방지
+    // 캐시를 비우지 않으면 30초 동안 새 글의 author 가 옛 이름으로 저장된다.
     invalidateUserCache(authReq.user.id);
     sendSuccess(res, { name: user.name }, '이름이 변경되었습니다.');
   } catch (err: unknown) {
@@ -570,7 +543,6 @@ export const updateProfile = async (
   }
 };
 
-// 🗑️ 아바타 삭제
 export const deleteAvatar = async (
   req: Request,
   res: Response,

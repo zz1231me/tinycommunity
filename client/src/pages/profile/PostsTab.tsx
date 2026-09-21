@@ -1,8 +1,4 @@
-// client/src/pages/profile/PostsTab.tsx
-// 마이페이지 · 내가 쓴 글.
-//
-// 목록·로딩·에러·페이지 상태를 직접 들지 않고 React Query 에 맡긴다.
-// 탭을 오갈 때 캐시가 남아 매번 다시 부르지 않는다.
+// 마이페이지의 내가 쓴 글 목록.
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -29,11 +25,9 @@ export function PostsTab() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: profileKeys.posts(page),
     queryFn: () => getMyPosts(page, 10),
-    // 글은 다른 화면에서 쓰고 지운다. 전역 staleTime(5분)을 따르면 방금 쓴 글이
-    // 이 목록에 없다.
+    // 전역 staleTime(5분)을 따르면 방금 쓴 글이 목록에 없다.
     refetchOnMount: 'always',
-    // 쪽을 넘길 때 이전 쪽 내용을 유지한다. 없으면 건수가 0건으로,
-    // 쪽수가 1로 잠깐 떨어지면서 아래 페이지 막대가 사라졌다 다시 나타난다.
+    // 쪽을 넘길 때 이전 내용을 유지한다. 없으면 페이지 막대가 잠깐 사라진다.
     placeholderData: prev => prev,
   });
 
@@ -52,7 +46,7 @@ export function PostsTab() {
         <ul className="divide-y divide-slate-100 dark:divide-slate-700">
           {posts.map(post => (
             <li key={post.id}>
-              {/* 진짜 링크다. 클릭만 받는 행이면 키보드로 열 수 없고, 새 탭에서 열기도 안 된다. */}
+              {/* 키보드 접근과 새 탭 열기를 위해 클릭 핸들러가 아니라 링크를 쓴다. */}
               <Link
                 to={`/dashboard/posts/${post.boardType}/${post.id}`}
                 className="flex items-start justify-between gap-3 px-5 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50"

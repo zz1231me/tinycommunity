@@ -1,9 +1,3 @@
-// client/src/components/messages/SendMessageButton.tsx
-// 프로필에서 바로 메시지 보내기.
-//
-// 메시지함으로 보내지 않고 여기서 첫 통을 쓰게 하는 이유: 아직 대화가 없으면
-// 메시지함에 갈 곳이 없다. 보내고 나서 그 대화로 옮겨 준다.
-
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';

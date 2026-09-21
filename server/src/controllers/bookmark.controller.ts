@@ -1,26 +1,20 @@
-// server/src/controllers/bookmark.controller.ts
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types/auth-request';
 import Bookmark from '../models/Bookmark';
 import { sendSuccess, sendError, sendNotFound, sendValidationError } from '../utils/response';
 import { sequelize } from '../config/sequelize';
 
-/**
- * 북마크 주소를 다듬고 검사한다. 'example.com' 처럼 스킴 없이 적는 편의는 유지한다.
- *
- * 스킴을 먼저 붙인 뒤에 검사하면 검사가 항상 통과한다('mailto:a@b.c' → 'https://mailto:a@b.c',
- * '/admin' → 'https:///admin'). 그래서 붙이기 전에 원문을 먼저 본다.
- */
+/** 북마크 주소를 다듬고 검사한다. 스킴을 붙이기 전에 원문을 먼저 봐야 검사가 무력해지지 않는다. */
 function normalizeAndValidateUrl(url: string): { ok: boolean; url?: string; error?: string } {
   const raw = url.trim();
   if (!raw) return { ok: false, error: '유효하지 않은 URL 형식입니다.' };
 
-  // 스킴과 '호스트:포트' 를 가른다 — 콜론 뒤가 숫자뿐이면 포트다(localhost:3000).
+  // 콜론 뒤가 숫자뿐이면 스킴이 아니라 포트다.
   const hasScheme = /^[a-z][a-z0-9+.-]*:(?!\d+(?:[/?#]|$))/i.test(raw);
   if (hasScheme && !/^https?:\/\//i.test(raw)) {
     return { ok: false, error: '유효하지 않은 URL입니다. http 또는 https URL만 허용됩니다.' };
   }
-  // '/admin', '//host', '#frag' 는 주소가 아니라 현재 사이트 기준의 조각이다
+  // '/admin', '//host', '#frag' 는 현재 사이트 기준의 조각이라 주소가 아니다.
   if (/^[/#?]/.test(raw)) {
     return { ok: false, error: '전체 주소를 입력해주세요. (예: example.com)' };
   }
@@ -105,8 +99,7 @@ export const createBookmark = async (
       return;
     }
     const normalizedUrl = urlResult.url!;
-    // url·icon 컬럼은 각각 STRING(500) 이다. 막지 않으면 그대로 내려간다
-    // (SQLite 는 저장하고 MySQL/PG 는 오류).
+    // url·icon 컬럼은 STRING(500) 이다.
     if (normalizedUrl.length > 500) {
       sendValidationError(res, 'url', 'URL은 500자를 초과할 수 없습니다.');
       return;
@@ -116,11 +109,10 @@ export const createBookmark = async (
       return;
     }
 
-    // 파비콘 미사용 — google favicon 자동 생성이 일부 도메인에서 404를 유발해 제거함
+    // 파비콘 자동 생성은 일부 도메인에서 404 가 나 쓰지 않는다.
     const faviconUrl = icon ?? null;
 
-    // order가 명시적으로 주어지지 않은 경우 Sequelize .max()로 계산
-    // — dialect-aware 인용 부호(MySQL/PG/SQLite 공통)
+    // order 가 없으면 Sequelize .max() 로 계산한다.
     let orderExpr: number;
     if (order !== undefined && order !== null) {
       orderExpr = order as number;

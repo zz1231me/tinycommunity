@@ -1,8 +1,4 @@
-// client/src/components/messages/MessageBadge.tsx
-// 헤더의 메시지 아이콘 + 안 읽은 수.
-//
-// 알림 벨과 달리 SSE 를 쓰지 않는다. 메시지는 알림도 함께 오므로 벨이 실시간을 맡고,
-// 여기서는 주기적으로 다시 확인한다. 메시지함에서 읽으면 즉시 무효화된다.
+// 헤더의 메시지 아이콘과 안 읽은 수. 실시간은 알림 벨이 맡고 여기서는 주기적으로 다시 확인한다.
 
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -11,7 +7,7 @@ import { fetchUnreadMessageCount } from '../../api/messages';
 import { messageKeys } from '../../api/queryKeys';
 import { useFeature } from '../../store/features';
 
-/** 다시 확인하는 주기 — 벨이 실시간을 맡으므로 넉넉하게 둔다 */
+/** 다시 확인하는 주기 */
 const REFETCH_MS = 60_000;
 
 export function MessageBadge() {
@@ -22,7 +18,6 @@ export function MessageBadge() {
     queryFn: ({ signal }) => fetchUnreadMessageCount(signal),
     enabled,
     refetchInterval: REFETCH_MS,
-    // 다른 탭에서 읽고 돌아왔을 수 있다
     refetchOnWindowFocus: true,
   });
 

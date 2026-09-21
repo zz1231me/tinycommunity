@@ -1,8 +1,4 @@
-// client/src/components/admin/attendance/ChecklistEditor.tsx
-// 출근 확인 항목 편집.
-//
-// 입력칸은 서버 값과 맞춰 둔다. 저장이 실패하면 화면도 원래 값으로 돌아와야
-// 저장된 것으로 오해하지 않는다.
+// 출근 확인 항목 편집. 입력칸은 항상 서버 값과 맞춘다.
 
 import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
@@ -21,7 +17,7 @@ function ChecklistRow({ item, first, last, onPatch, onMove, onDelete }: RowProps
   const [label, setLabel] = useState(item.label);
   const [description, setDescription] = useState(item.description);
 
-  // 서버 값이 바뀌면(저장 성공·실패 모두) 화면을 그 값으로 되돌린다
+  // 저장 성공·실패와 무관하게 서버 값이 바뀌면 화면을 그 값으로 되돌린다.
   useEffect(() => setLabel(item.label), [item.label]);
   useEffect(() => setDescription(item.description), [item.description]);
 

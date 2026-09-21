@@ -1,19 +1,9 @@
-// client/src/utils/themeColor.ts
-// 관리자가 고른 브랜드 색 하나로 Tailwind 색 계단(50~950)을 만든다.
-//
-// 화면은 primary-50(연한 배경)부터 primary-900(진한 글자)까지 11칸을 쓰는데,
-// 관리자에게는 한 색만 받는다.
-//
-// 고른 색의 색상(H)과 채도(S)를 유지한 채 명도(L)만 디자인 시스템과 같은 곡선으로
-// 배치한다. 600 칸은 고른 색을 그대로 써서 버튼 색이 선택한 색과 일치하게 한다.
+// 브랜드 색 하나로 Tailwind 색 계단(50~950)을 만든다. 600 칸은 고른 색을 그대로 쓴다.
 
 export const SCALE_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as const;
 export type ScaleStep = (typeof SCALE_STEPS)[number];
 
-/**
- * 칸별 목표 명도(%). 기존 design-system 의 primary 계단에서 뽑았다.
- * 이 곡선을 유지해야 색만 바뀌고 명암 구조는 그대로 남는다.
- */
+/** 칸별 목표 명도(%). 이 곡선을 유지해야 색만 바뀌고 명암 구조는 그대로 남는다. */
 const TARGET_LIGHTNESS: Record<ScaleStep, number> = {
   50: 97,
   100: 94,
@@ -132,10 +122,7 @@ export function hslToHex({ h, s, l }: Hsl): string {
   return rgbToHex({ r: (r1 + m) * 255, g: (g1 + m) * 255, b: (b1 + m) * 255 });
 }
 
-/**
- * 브랜드 색 하나로 50~950 계단을 만든다.
- * 형식이 잘못된 색이면 null — 호출부는 기본 색을 그대로 쓴다.
- */
+/** 브랜드 색 하나로 50~950 계단을 만든다. 형식이 잘못된 색이면 null. */
 export function buildColorScale(hex: string): Record<ScaleStep, string> | null {
   const rgb = hexToRgb(hex);
   if (!rgb) return null;
@@ -149,8 +136,7 @@ export function buildColorScale(hex: string): Record<ScaleStep, string> | null {
       l: TARGET_LIGHTNESS[step],
     });
   }
-  // 고른 색은 600 칸에 그대로 둔다 — 버튼 색이 고른 색과 미묘하게 다르면
-  // 관리자는 저장이 안 된 줄 안다.
+  // 고른 색은 600 칸에 그대로 둔다. 버튼 색이 달라지면 저장이 안 된 것처럼 보인다.
   scale[600] = rgbToHex(rgb);
   return scale;
 }
@@ -175,12 +161,7 @@ export function contrastRatio(hexA: string, hexB: string): number | null {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-/**
- * 이 색을 주요 버튼 배경으로 썼을 때 흰 글씨가 읽히는가.
- *
- * 관리자가 노란색을 고르면 버튼 위 흰 글씨가 보이지 않는다.
- * 막지는 않되(브랜드 색은 관리자가 정할 일이다) 저장 전에 알려 준다.
- */
+/** 이 색을 주요 버튼 배경으로 썼을 때 흰 글씨가 읽히는지. 막지는 않고 알리기만 한다. */
 export function isWhiteTextReadable(hex: string): boolean {
   const ratio = contrastRatio(hex, '#ffffff');
   return ratio !== null && ratio >= 4.5;

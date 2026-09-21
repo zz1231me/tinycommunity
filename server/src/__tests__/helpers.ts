@@ -7,16 +7,7 @@ import { Board } from '../models/Board';
 import { BoardAccess } from '../models/BoardAccess';
 import { SiteSettings } from '../models/SiteSettings';
 
-/**
- * 테스트 전체가 함께 쓰는 서버.
- *
- * supertest 는 request(app) 에 넘긴 것이 아직 듣고 있지 않으면 요청마다 임시 서버를
- * 띄웠다 닫는다. 스위트 전체로는 수천 번의 listen/close 가 되고, 그만큼 임시 포트가
- * 빠르게 재사용되면서 가끔 응답이 뒤섞이거나(Parse Error) 소켓이 끊긴다(socket hang up).
- * 전체 실행에서 대여섯 번에 한 번꼴로 아무 테스트나 무작위로 실패했다.
- *
- * 이미 듣고 있는 서버를 넘기면 supertest 는 그것을 그대로 쓰고 닫지도 않는다.
- */
+/** 테스트 전체가 함께 쓰는 서버. 듣고 있는 서버를 넘겨야 supertest 가 요청마다 띄우지 않는다. */
 const app = http.createServer(expressApp);
 
 /** setup.ts 가 스위트마다 호출한다. 이미 듣고 있으면 아무 일도 하지 않는다. */
@@ -29,15 +20,8 @@ export function startTestServer(): Promise<void> {
 
 export { app };
 
-/**
- * 테스트용 기본 데이터 생성
- * - 역할 4개 (admin, manager, user, guest)
- * - admin 계정 1개
- * - 일반 게시판 1개 (notice)
- * - 사이트 설정 1개
- */
+/** 테스트용 기본 데이터(역할·계정·게시판·사이트 설정)를 만든다. */
 export async function seedTestData() {
-  // 역할 생성
   await Role.bulkCreate(
     [
       { id: 'admin', name: '관리자', description: '관리자', isActive: true },
@@ -48,7 +32,6 @@ export async function seedTestData() {
     { ignoreDuplicates: true }
   );
 
-  // admin 계정 생성 (beforeCreate 훅에서 bcrypt 해시 처리)
   const admin = await User.findByPk('admin');
   if (!admin) {
     await User.create({
@@ -61,7 +44,6 @@ export async function seedTestData() {
     });
   }
 
-  // 테스트용 일반 사용자
   const testUser = await User.findByPk('testuser');
   if (!testUser) {
     await User.create({
@@ -74,7 +56,6 @@ export async function seedTestData() {
     });
   }
 
-  // 일반 게시판 + 접근 권한
   const [board] = await Board.findOrCreate({
     where: { id: 'notice' },
     defaults: {
@@ -109,7 +90,6 @@ export async function seedTestData() {
     },
   });
 
-  // 사이트 설정
   await SiteSettings.findOrCreate({
     where: {},
     defaults: {
@@ -125,9 +105,7 @@ export async function seedTestData() {
 /** CSRF 보호 헤더 (테스트에서 공통으로 사용) */
 export const CSRF_HEADER = { 'X-Requested-With': 'XMLHttpRequest' };
 
-/**
- * 로그인하여 쿠키 반환
- */
+/** 로그인해서 쿠키를 돌려준다. */
 export async function loginAs(id: string, password: string): Promise<string> {
   const res = await request(app).post('/api/auth/login').set(CSRF_HEADER).send({ id, password });
 

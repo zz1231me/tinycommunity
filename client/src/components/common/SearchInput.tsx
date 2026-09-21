@@ -11,10 +11,7 @@ interface SearchInputProps {
   maxLength?: number;
 }
 
-/**
- * 공용 검색 입력 — 돋보기 아이콘 + 지우기 버튼이 있는 컴팩트 검색창.
- * 게시판 빠른 검색 / 파일명 검색 등 인라인 검색 UI를 하나로 통일.
- */
+/** 돋보기 아이콘과 지우기 버튼이 있는 공용 검색 입력 */
 export const SearchInput: React.FC<SearchInputProps> = ({
   value,
   onChange,

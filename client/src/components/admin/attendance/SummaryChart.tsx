@@ -1,8 +1,4 @@
-// client/src/components/admin/attendance/SummaryChart.tsx
-// 인원별 하루 평균을 가로 막대로 본다.
-//
-// 표의 숫자만으로는 누가 길고 누가 짧은지 한눈에 안 들어온다. 기준 근무 시간을
-// 눈금으로 세워 두면 "기준을 넘겼는가" 가 위치만으로 읽힌다.
+// 인원별 하루 평균 근무를 가로 막대로 보여 주고, 기준 근무 시간을 눈금으로 세운다.
 
 import { formatMinutes } from '../../../utils/attendance';
 import type { AttendanceSummaryRow } from '../../../types/attendance.types';
@@ -12,14 +8,14 @@ interface Props {
   standardWorkMinutes: number;
 }
 
-/** 막대 눈금의 최대치 — 기준과 실제 중 큰 쪽에 여유를 준다 */
+/** 막대 눈금의 최대치. 기준과 실제 중 큰 쪽에 여유를 준다. */
 function scaleMax(rows: AttendanceSummaryRow[], standard: number): number {
   const longest = Math.max(0, ...rows.map(r => r.averageMinutes));
   return Math.max(standard, longest) * 1.1 || 1;
 }
 
 export function SummaryChart({ rows, standardWorkMinutes }: Props) {
-  // 막대는 긴 것부터 — 표의 정렬을 따라가면 길이가 들쭉날쭉해 순위로 안 읽힌다
+  // 막대는 긴 것부터 정렬한다.
   const worked = rows
     .filter(r => r.days > 0)
     .slice()
@@ -57,8 +53,7 @@ export function SummaryChart({ rows, standardWorkMinutes }: Props) {
                   }`}
                   style={{ width: `${pct}%` }}
                 />
-                {/* 기준선은 막대 칸 안에 그린다. 바깥에 한 줄로 세우면 이름·숫자 칸 폭과
-                    간격을 계산식에 옮겨 적어야 하고, 하나만 어긋나도 엉뚱한 곳에 선다. */}
+                {/* 기준선은 막대 칸 안에 그린다. 바깥에 세우면 칸 폭 계산을 따로 맞춰야 한다. */}
                 <span
                   className="pointer-events-none absolute inset-y-0 border-l border-dashed border-slate-500 dark:border-slate-400"
                   style={{ left: `${standardAt}%` }}

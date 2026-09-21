@@ -1,11 +1,4 @@
-// client/src/components/attendance/QuizGate.tsx
-// 문제 내기 공격 — 퇴근을 누르면 계산 문제가 나온다. 맞혀야 퇴근이 찍힌다.
-//
-// ⚠️ 성가시게 할 뿐 막지는 않는다.
-//   · 초등 사칙연산이고 정답은 늘 0 이상의 정수다 — 못 푸는 문제는 없다
-//   · 틀리면 새 문제가 나올 뿐, 몇 번이든 다시 풀 수 있다
-//   · 키보드만으로 풀 수 있다(열리면 입력칸에 바로 들어간다, Enter 로 확인, Esc 로 닫기)
-// 서버의 퇴근 기록은 이 문제를 보지 않는다. 맞힌 순간 누른 것으로 찍힌다.
+// 문제 내기 공격. 맞혀야 퇴근이 찍히며, 서버의 퇴근 기록은 이 문제를 보지 않는다.
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { X } from 'lucide-react';
@@ -24,7 +17,7 @@ export function QuizGate({
   const [question, setQuestion] = useState(() => makeQuestion(level));
   const [solved, setSolved] = useState(0);
   const [value, setValue] = useState('');
-  // 틀릴 때마다 늘려 흔들림을 다시 건다(같은 값이면 애니메이션이 다시 돌지 않는다)
+  // 같은 값이면 애니메이션이 다시 돌지 않으므로 틀릴 때마다 늘린다.
   const [missKey, setMissKey] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -42,7 +35,7 @@ export function QuizGate({
       }
       setSolved(solved + 1);
     } else {
-      // 틀리면 처음부터 — 쌓인 만큼 연달아 맞혀야 한다
+      // 틀리면 처음부터. 쌓인 만큼 연달아 맞혀야 한다.
       setSolved(0);
       setMissKey(k => k + 1);
     }
@@ -67,8 +60,7 @@ export function QuizGate({
       >
         <X className="h-4 w-4" />
       </button>
-      {/* pr-7: 오른쪽 위 닫기 단추 자리를 비워 둔다 — 좁은 화면에서 '(0/3 — 틀리면 처음부터)' 가
-          닫기 단추 밑으로 파고들었다 */}
+      {/* pr-7 로 오른쪽 위 닫기 단추 자리를 비워 둔다 */}
       <p className="pr-7 text-xs font-medium text-violet-700 dark:text-violet-300">
         🧮 풀어야 퇴근할 수 있어요
         {need > 1 && (

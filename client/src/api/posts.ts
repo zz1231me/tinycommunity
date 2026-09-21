@@ -2,7 +2,7 @@ import axios from './axios';
 import { unwrap } from './utils';
 import type { WorkStatus } from './tasks';
 
-// 접근 가능한 게시판들의 최신 게시글 (헤더 드롭다운)
+// 접근 가능한 게시판들의 최신 게시글(헤더 드롭다운)
 export interface RecentPost {
   id: string;
   title: string;
@@ -10,13 +10,12 @@ export interface RecentPost {
   boardName: string;
   authorName: string;
   isSecret: boolean;
-  isRead: boolean; // 확인(열람) 여부 — 안 읽은 글 강조/카운트에 사용
+  isRead: boolean; // 열람 여부. 안 읽은 글 강조와 카운트에 쓴다.
   createdAt: string;
 }
 export const fetchRecentPosts = (): Promise<RecentPost[]> =>
   axios.get('/posts/recent').then(unwrap);
 
-// 깔끔한 타입 정의
 type PostPayload = {
   title: string;
   content: string;
@@ -66,7 +65,7 @@ export interface FetchPostsOptions {
   workStatus?: WorkStatus[];
 }
 
-// 게시글 목록 조회 - 응답 구조 수정
+// 게시글 목록 조회
 export async function fetchPostsByType(
   boardType: string,
   options: FetchPostsOptions = {},
@@ -89,7 +88,7 @@ export async function fetchPostsByType(
 
   const res = await axios.get(`/posts/${boardType}?${params.toString()}`, { signal });
 
-  // sendSuccess 응답 구조: { success: true, data: { posts, pagination } }
+  // sendSuccess 응답 구조는 { success, data: { posts, pagination } }
   if (!res.data.success || !res.data.data) {
     throw new Error('잘못된 API 응답 구조');
   }
@@ -103,7 +102,7 @@ export async function fetchPostsByType(
   return responseData;
 }
 
-// 게시글 단건 조회 - 비밀글 잠금 상태 포함
+// 게시글 단건 조회. 비밀글 잠금 상태를 포함한다.
 export async function fetchPostById(boardType: string, postId: string) {
   const res = await axios.get(`/posts/${boardType}/${postId}`);
 
@@ -113,7 +112,7 @@ export async function fetchPostById(boardType: string, postId: string) {
 
   const postData = res.data.data;
 
-  // 비밀글 잠금 상태 - 정상 반환 (content 없어도 OK)
+  // 잠긴 비밀글은 content 가 없어도 정상 응답이다
   if (postData.isLocked) {
     return postData;
   }
@@ -125,7 +124,7 @@ export async function fetchPostById(boardType: string, postId: string) {
   return postData;
 }
 
-// 비밀글 비밀번호 검증 (일반 비밀글용 — E2EE 게시글에는 사용하지 않음)
+// 일반 비밀글용 비밀번호 검증. E2EE 글에는 쓰지 않는다.
 export async function verifySecretPost(boardType: string, postId: string, password: string) {
   const res = await axios.post(`/posts/${boardType}/${postId}/verify`, { password });
   if (!res.data.success || !res.data.data) throw new Error('잘못된 응답 구조');
@@ -138,7 +137,7 @@ export async function toggleLike(boardType: string, postId: string) {
   return unwrap(res);
 }
 
-// 게시글 생성 - 한글 파일명 완벽 지원
+// 게시글 생성
 export async function createPost({
   title,
   content,
@@ -169,13 +168,11 @@ export async function createPost({
     }
   }
 
-  // 다중 파일 추가 - 한글 파일명 안전 처리 (개수 제한은 호출부/서버에서 처리)
+  // 한글 파일명이 깨지지 않도록 원본 이름을 JSON 으로 따로 보낸다
   if (files && files.length > 0) {
-    // 원본 파일명을 JSON으로 별도 전송
     const originalNames = files.map(file => file.name);
     formData.append('originalFilenames', JSON.stringify(originalNames));
 
-    // 파일 자체는 그대로 추가 (multer가 처리)
     files.forEach(file => {
       formData.append('files', file);
     });
@@ -191,7 +188,7 @@ export async function createPost({
   return unwrap(res);
 }
 
-// 게시글 수정 - deletedFileNames + 비밀글 지원
+// 게시글 수정
 export async function updatePost(
   boardType: string,
   postId: string,
@@ -219,7 +216,7 @@ export async function updatePost(
   formData.append('title', title);
   formData.append('content', content);
   formData.append('keepExistingFiles', keepExistingFiles.toString());
-  // 게시판 이동: 현재 게시판과 다를 때만 전송
+  // 게시판 이동은 현재와 다를 때만 보낸다
   if (targetBoardType && targetBoardType !== boardType) {
     formData.append('targetBoardType', targetBoardType);
   }
@@ -230,23 +227,20 @@ export async function updatePost(
   if (isSecret && secretType === 'users' && secretUserIds)
     formData.append('secretUserIds', JSON.stringify(secretUserIds));
   if (isSecret) {
-    // isEncrypted는 항상 명시적으로 전송 (absent 시 서버가 false로 강제 처리하여 E2EE 플래그 소실 방지)
+    // isEncrypted 는 항상 명시적으로 보낸다. 빠지면 서버가 false 로 처리해 E2EE 표시가 사라진다.
     formData.append('isEncrypted', isEncrypted ? 'true' : 'false');
     if (isEncrypted && secretSalt) formData.append('secretSalt', secretSalt);
   }
 
-  // 삭제된 파일명 목록 전송
   if (deletedFileNames && deletedFileNames.length > 0) {
     formData.append('deletedFileNames', JSON.stringify(deletedFileNames));
   }
 
-  // 새로운 파일들 추가 - 한글 파일명 안전 처리 (개수 제한은 호출부/서버에서 처리)
+  // 한글 파일명이 깨지지 않도록 원본 이름을 JSON 으로 따로 보낸다
   if (files && files.length > 0) {
-    // 원본 파일명을 JSON으로 별도 전송
     const originalNames = files.map(file => file.name);
     formData.append('originalFilenames', JSON.stringify(originalNames));
 
-    // 파일 자체는 그대로 추가 (multer가 처리)
     files.forEach(file => {
       formData.append('files', file);
     });

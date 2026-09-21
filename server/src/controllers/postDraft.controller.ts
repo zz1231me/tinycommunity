@@ -1,7 +1,3 @@
-// server/src/controllers/postDraft.controller.ts
-// 작성 중인 글의 임시저장. 소유자 판정은 서비스에서 하고,
-// 여기서는 입력을 다듬고 오류를 상태 코드로 옮기는 일만 한다.
-
 import { Response } from 'express';
 import { AuthRequest } from '../types/auth-request';
 import { sendSuccess, sendError, sendServiceError } from '../utils/response';

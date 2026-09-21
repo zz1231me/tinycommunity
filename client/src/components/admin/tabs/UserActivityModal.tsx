@@ -103,10 +103,10 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
   const [deniedPage, setDeniedPage] = useState(1);
   const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
   const [forcingOut, setForcingOut] = useState<string | null>(null);
-  // 브라우저 기본 confirm 은 창 위에 떠 이 대화상자와 따로 논다 — 공용 확인 상자를 쓴다
+  // 브라우저 기본 confirm 은 이 대화상자와 따로 놀아 공용 확인 상자를 쓴다.
   const [pendingLogout, setPendingLogout] = useState<string | null>(null);
 
-  // 각 탭은 실제로 열렸을 때만 조회한다(enabled) — 기존 activeTab 분기 useEffect 와 동일.
+  // 각 탭은 실제로 열렸을 때만 조회한다(enabled).
   const loginQuery = useQuery({
     queryKey: adminKeys.userActivity.loginHistory(userId, loginPage),
     queryFn: () => fetchUserLoginHistory(userId, { page: loginPage, limit: 15 }),
@@ -125,8 +125,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
     enabled: activeTab === 'sessions',
   });
 
-  // 거부당한 시도 — 에러 로그를 이 사용자로 걸러서 본다.
-  // 서버가 이미 userId 필터를 받으므로 전용 엔드포인트를 따로 두지 않는다.
+  // 거부당한 시도는 에러 로그를 이 사용자로 걸러서 본다. 서버가 userId 필터를 받는다.
   const deniedQuery = useQuery({
     queryKey: adminKeys.userActivity.deniedAttempts(userId, deniedPage),
     queryFn: () => fetchErrorLogs({ userId, page: deniedPage, limit: 15 }),
@@ -148,8 +147,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
   const deniedTotalPages: number = deniedQuery.data?.pagination?.totalPages ?? 1;
   const deniedLoading = deniedQuery.isPending;
 
-  // 조회 실패를 '없음' 으로 보여주면 안 된다. 여기는 누가 무엇을 했는지 확인하는
-  // 화면이라, 못 불러온 것과 기록이 깨끗한 것이 같아 보이면 판단을 그르친다.
+  // 조회 실패를 '없음' 으로 보여주면 기록이 깨끗한 것과 구분되지 않는다.
   const FETCH_FAILED = '불러오지 못했습니다. 잠시 후 다시 시도해주세요.';
 
   const handleForceLogout = async (sessionId: string) => {
@@ -168,9 +166,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
     }
   };
 
-  // ESC 로 닫고, 열려 있는 동안 포커스를 안에 가둔다. 이 대화상자는 부모가 열 때만
-  // 그리므로(UserManagement 의 {activityModal && ...}) 항상 켜 둔다.
-  // 가두지 않으면 Tab 이 뒤쪽 사용자 목록으로 새어, 가려진 줄의 단추를 누르게 된다.
+  // ESC 로 닫고 열려 있는 동안 포커스를 안에 가둔다. 가두지 않으면 Tab 이 뒤쪽 사용자 목록으로 샌다.
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, onClose);
 
@@ -238,7 +234,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
 
         {/* 탭 컨텐츠 */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          {/* ─── 로그인 이력 ─── */}
+          {/* 로그인 이력 */}
           {activeTab === 'login' && (
             <div className="space-y-4">
               {loginLoading ? (
@@ -306,7 +302,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
             </div>
           )}
 
-          {/* ─── 관리 작업 이력 ─── */}
+          {/* 관리 작업 이력 */}
           {activeTab === 'audit' && (
             <div className="space-y-4">
               {auditLoading ? (
@@ -410,7 +406,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
             </div>
           )}
 
-          {/* ─── 거부된 시도 ─── */}
+          {/* 거부된 시도 */}
           {activeTab === 'denied' && (
             <div className="space-y-4">
               {deniedLoading ? (
@@ -481,7 +477,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
             </div>
           )}
 
-          {/* ─── 세션 목록 ─── */}
+          {/* 세션 목록 */}
           {activeTab === 'sessions' && (
             <div className="space-y-4">
               {sessionsLoading ? (

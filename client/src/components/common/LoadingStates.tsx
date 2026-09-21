@@ -1,11 +1,9 @@
-// client/src/components/common/LoadingStates.tsx - 재사용 가능한 로딩/에러 상태 컴포넌트
-
 import React from 'react';
 
 interface LoadingSpinnerProps {
   message?: string;
   hint?: string;
-  /** 스피너 크기 — sm: 16px (inline), md: 24px, lg: 48px (page-level 기본) */
+  /** 스피너 크기. sm: 16px (inline), md: 24px, lg: 48px (page-level 기본) */
   size?: 'sm' | 'md' | 'lg';
   /** message 없이 스피너만 렌더 (인라인 사용) */
   inline?: boolean;
@@ -17,13 +15,7 @@ const SIZE_CLASSES: Record<NonNullable<LoadingSpinnerProps['size']>, string> = {
   lg: 'h-12 w-12 border-b-2',
 };
 
-/**
- * 통합 로딩 스피너.
- * - `inline`: 텍스트 없이 작은 스피너 (버튼/리스트 아이템 안 등)
- * - 기본: 메시지 + 페이지 중앙 정렬
- *
- * 프로젝트 전반의 다양한 인라인 스피너를 이 컴포넌트로 대체해 시각 일관성 확보.
- */
+/** 통합 로딩 스피너. inline 은 텍스트 없는 작은 스피너, 기본은 메시지 + 중앙 정렬. */
 export const LoadingSpinner = React.memo(
   ({
     message = '데이터를 불러오는 중...',
@@ -50,9 +42,7 @@ export const LoadingSpinner = React.memo(
 );
 LoadingSpinner.displayName = 'LoadingSpinner';
 
-/**
- * 페이지 전체 스켈레톤 로더
- */
+/** 페이지 전체 스켈레톤 로더 */
 export const PageSkeleton: React.FC = () => (
   <div className="page-container overflow-y-auto">
     <div className="content-wrapper">
@@ -113,9 +103,7 @@ interface PageErrorProps {
   onRetry?: () => void;
 }
 
-/**
- * 페이지 에러 상태 (뒤로가기 + 재시도 버튼 포함)
- */
+/** 페이지 에러 상태 (뒤로가기 + 재시도) */
 export const PageError: React.FC<PageErrorProps> = ({ message, onBack, onRetry }) => (
   <div className="page-container overflow-y-auto">
     <div className="content-wrapper">

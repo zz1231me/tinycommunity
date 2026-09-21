@@ -1,4 +1,3 @@
-// client/src/pages/components/calendar/components/CalendarModal.tsx
 import React, { Suspense, useRef } from 'react';
 import { lazyWithRetry as lazy } from '../../../../utils/lazyWithRetry';
 import { useFocusTrap } from '../../../../hooks/useFocusTrap';
@@ -95,9 +94,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
   onFormChange,
   onCancelEdit,
 }) => {
-  // Esc 로 닫고, 열려 있는 동안 포커스를 안에 가둔다.
-  // 본문의 일정 편집기는 lazy 라 늦게 오지만, 머리글의 닫기 단추는 Suspense 밖이라
-  // 첫 포커스를 줄 곳이 언제나 있다.
+  // Esc 로 닫고 열려 있는 동안 포커스를 안에 가둔다. 닫기 단추는 Suspense 밖이라 첫 포커스 대상이 늘 있다.
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, onClose, isOpen);
 

@@ -1,4 +1,3 @@
-// server/src/models/User.ts - TypeScript 5.8 호환 (override 적용)
 import {
   DataTypes,
   Model,
@@ -18,11 +17,9 @@ import crypto from 'crypto';
 import { logInfo, logError, logSuccess } from '../utils/logger';
 import { generateRandomId } from '../utils/generateId';
 
-// 타입 전용 import
 import type { PostInstance } from './Post';
 import type { RoleInstance } from './Role';
 
-// User 인터페이스 정의 (익명화 필드 추가)
 export interface UserInstance extends Model<
   InferAttributes<UserInstance>,
   InferCreationAttributes<UserInstance>
@@ -34,17 +31,10 @@ export interface UserInstance extends Model<
   roleId: string;
   theme: CreationOptional<string>;
 
-  // 계정 삭제 관련
-  // 이중 소프트 삭제 설계 의도:
-  //   - isDeleted: 계정이 익명화(anonymize) 처리됐음을 나타내는 앱 레벨 플래그
-  //                (이메일/전화번호 등 민감정보 삭제, 닉네임 '삭제된계정_XXXXXX' 변경)
-  //   - deletedAt: Sequelize paranoid 기반 DB 레벨 소프트 삭제 (null이 아니면 쿼리에서 제외)
-  // beforeDestroy 훅에서 anonymizeAccount()로 isDeleted=true 설정 후 Sequelize가 deletedAt을 채움.
-  // paranoid: false 쿼리 시 isDeleted=true 여부로 익명화 상태를 구분할 수 있음.
+  // isDeleted 는 익명화 여부(앱 레벨), deletedAt 은 paranoid 소프트 삭제다.
   isDeleted: CreationOptional<boolean>;
   anonymizedName: CreationOptional<string | null>;
 
-  // 보안 필드
   isActive: CreationOptional<boolean>;
   isApproved: CreationOptional<boolean>;
   mustChangePassword: CreationOptional<boolean>;
@@ -55,26 +45,22 @@ export interface UserInstance extends Model<
   lastLoginAt: CreationOptional<Date | null>;
   lastLoginIp: CreationOptional<string | null>;
 
-  // 프로필
   avatar: CreationOptional<string | null>;
 
-  // 2FA (Two-Factor Authentication)
   twoFactorEnabled: CreationOptional<boolean>;
   twoFactorSecret: CreationOptional<string | null>;
 
-  // 토큰 버전 (로그아웃 시 기존 JWT 무효화)
+  // 로그아웃 시 올려 기존 JWT 를 무효화한다
   tokenVersion: CreationOptional<number>;
 
   createdAt: CreationOptional<Date>;
   updatedAt: CreationOptional<Date>;
   deletedAt: CreationOptional<Date | null>;
 
-  // 관계 데이터
   roleInfo?: NonAttribute<RoleInstance>;
   posts?: NonAttribute<PostInstance[]>;
 }
 
-// User 클래스 정의 (익명화 메서드 추가)
 class UserModel
   extends Model<InferAttributes<UserInstance>, InferCreationAttributes<UserInstance>>
   implements UserInstance
@@ -110,43 +96,35 @@ class UserModel
   declare public readonly updatedAt: Date;
   declare public deletedAt: CreationOptional<Date | null>;
 
-  // 관계 데이터
   declare public roleInfo?: NonAttribute<RoleInstance>;
   declare public posts?: NonAttribute<PostInstance[]>;
 
-  // 관계 메서드 정의
   declare public getPosts: HasManyGetAssociationsMixin<PostInstance>;
   declare public getRoleInfo: BelongsToGetAssociationMixin<RoleInstance>;
 
-  // 이미 해싱된 비밀번호를 저장할 때 beforeUpdate 훅이 재해싱하지 않도록 하는 플래그 (DB에 저장 안됨)
+  // 이미 해싱된 비밀번호를 저장할 때 beforeUpdate 의 재해싱을 건너뛰는 플래그(DB 저장 안 됨)
   public _skipPasswordHash = false;
 
-  // TypeScript 5.8: override 추가
   public static override associations: {
     posts: Association<UserModel, PostInstance>;
     roleInfo: Association<UserModel, RoleInstance>;
   };
 
-  // 비밀번호 검증
   public async comparePassword(candidatePassword: string): Promise<boolean> {
     return bcrypt.compare(candidatePassword, this.password);
   }
 
-  // 계정 잠금 확인
   public isLocked(): boolean {
     return !!(this.lockUntil && this.lockUntil > new Date());
   }
 
-  // 삭제된 계정인지 확인
   public isDeletedAccount(): boolean {
     return this.isDeleted === true;
   }
 
-  // 로그인 시도 증가 (원자적 increment → race condition 방지)
+  // 원자적 increment 로 동시 요청 시 카운터 손실을 막는다
   public async incrementFailedAttempts(): Promise<void> {
-    // DB 레벨 원자적 증가 — 동시 요청 시 카운터 손실 없음
     await this.increment('failedLoginAttempts');
-    // increment 후 최신 값 반영
     await this.reload();
 
     const { maxLoginAttempts, accountLockMinutes } = getSettings();
@@ -155,7 +133,6 @@ class UserModel
     }
   }
 
-  // 로그인 성공 처리
   public async resetFailedAttempts(ipAddress: string): Promise<void> {
     this.failedLoginAttempts = 0;
     this.lockUntil = null;
@@ -164,9 +141,8 @@ class UserModel
     await this.save();
   }
 
-  // 비밀번호 재설정 토큰 생성 (SHA-256 해시 저장, 평문 반환)
-  // transaction 옵션을 받아 save를 같은 트랜잭션에 묶을 수 있다. SQLite는 단일 writer라,
-  // 호출부가 트랜잭션을 잡은 상태에서 트랜잭션 밖 save를 하면 SQLITE_BUSY로 교착된다.
+  // 재설정 토큰 생성(해시 저장, 평문 반환).
+  // transaction 을 받아 같은 트랜잭션에 묶는다. SQLite 는 단일 writer 라 밖에서 save 하면 교착된다.
   public async generatePasswordResetToken(options?: {
     transaction?: Transaction;
   }): Promise<string> {
@@ -177,34 +153,30 @@ class UserModel
     this.passwordResetExpires = new Date(Date.now() + getPasswordResetTokenMs());
     await this.save({ transaction: options?.transaction });
 
-    return token; // 평문 토큰은 관리자 승인 시 발급(링크로 전달)
+    return token; // 평문 토큰은 링크로만 전달한다
   }
 
-  // 계정 익명화 (게시글/댓글 작성자명 변경용)
-  // externalTransaction: beforeDestroy 훅처럼 이미 트랜잭션이 있는 경우 전달해 중첩 트랜잭션 방지
+  // 계정 익명화. externalTransaction 을 받으면 중첩 트랜잭션을 만들지 않는다.
   public async anonymizeAccount(externalTransaction?: any): Promise<string> {
     const anonymizedName = `삭제된계정_${generateRandomId(6)}`;
 
-    // 외부 트랜잭션이 있으면 재사용, 없으면 새로 생성
     const ownTransaction = !externalTransaction;
     const t = externalTransaction ?? (await sequelize.transaction());
 
     try {
-      // 게시글 작성자명 업데이트
       const { Post } = await import('./Post');
       await Post.update(
         { author: anonymizedName },
         { where: { UserId: this.id }, paranoid: false, transaction: t }
       );
 
-      // 댓글 작성자명 업데이트
       const { Comment } = await import('./Comment');
       await Comment.update(
         { author: anonymizedName },
         { where: { UserId: this.id }, paranoid: false, transaction: t }
       );
 
-      // 민감 데이터 삭제 (GDPR)
+      // 민감 데이터 삭제
       this.email = null;
       this.twoFactorSecret = null;
       this.twoFactorEnabled = false;
@@ -215,7 +187,7 @@ class UserModel
       this.isDeleted = true;
       await this.save({ transaction: t });
 
-      // 직접 생성한 트랜잭션만 커밋 (외부 트랜잭션은 호출자가 커밋)
+      // 직접 만든 트랜잭션만 커밋한다
       if (ownTransaction) await t.commit();
     } catch (error) {
       if (ownTransaction) await t.rollback();
@@ -227,7 +199,6 @@ class UserModel
     return anonymizedName;
   }
 
-  // TypeScript 5.8: override 추가
   public override toJSON(): Partial<UserInstance> {
     const values = { ...this.get() } as any;
     const {
@@ -245,7 +216,6 @@ class UserModel
   }
 }
 
-// 모델 초기화
 UserModel.init(
   {
     id: {
@@ -282,10 +252,7 @@ UserModel.init(
       },
     },
     theme: {
-      // ENUM 이 아닌 문자열: 테마는 계속 는다(드라큘라…). ENUM 이면 값을 하나 늘릴 때마다
-      // 이미 만들어진 테이블을 ALTER 해야 하고, sync({alter:false}) 로 뜨는 이 프로젝트에서는
-      // 그게 조용히 실패해 INSERT 만 깨진다. 허용값 검사는 user.service 가 한다.
-      // 기존 설치의 ENUM 컬럼은 bootstrap 의 widenGrowingEnums 가 넓힌다.
+      // ENUM 대신 문자열. 값이 늘어도 ALTER 가 필요 없고 허용값은 user.service 가 검사한다.
       type: DataTypes.STRING(20),
       allowNull: false,
       defaultValue: 'system',
@@ -396,18 +363,17 @@ UserModel.init(
         }
       },
       beforeUpdate: async user => {
-        // _skipPasswordHash 플래그가 있으면 이미 해싱된 값이므로 재해싱 건너뜀
+        // 이미 해싱된 값이면 재해싱을 건너뛴다
         if (user.changed('password') && !user._skipPasswordHash) {
           user.password = await bcrypt.hash(user.password, getBcryptRounds());
         }
-        user._skipPasswordHash = false; // 사용 후 리셋
+        user._skipPasswordHash = false;
       },
       afterCreate: async (user, options) => {
         try {
           const { default: Board } = await import('./Board');
           logInfo(`[User Hook] ${user.name}님의 개인 폴더 생성 시작`);
 
-          // options.transaction이 있으면 같은 트랜잭션 사용
           const t = options?.transaction;
 
           const personalBoardId = `personal_${crypto.randomUUID().split('-').join('')}`;
@@ -428,7 +394,7 @@ UserModel.init(
           logSuccess(`[User Hook] 개인 폴더 생성 완료`, { boardId: personalBoard.id });
         } catch (error) {
           logError('[User Hook] 개인 폴더 생성 실패', error, { userId: user.id });
-          // 에러를 throw해서 트랜잭션 전체를 롤백시킴
+          // throw 해서 트랜잭션 전체를 롤백한다
           throw error;
         }
       },
@@ -444,7 +410,7 @@ UserModel.init(
               isPersonal: true,
               ownerId: user.id,
             },
-            transaction: options?.transaction, // ✅ transaction 전달
+            transaction: options?.transaction,
           });
 
           if (personalBoard) {
@@ -453,18 +419,18 @@ UserModel.init(
             const deletedPosts = await Post.destroy({
               where: { boardType: personalBoard.id },
               force: true,
-              transaction: options?.transaction, // ✅ 외부 트랜잭션 롤백 시 데이터 손실 방지
+              transaction: options?.transaction,
             });
 
             await personalBoard.destroy({
               force: true,
-              transaction: options?.transaction, // ✅ 외부 트랜잭션 롤백 시 데이터 손실 방지
+              transaction: options?.transaction,
             });
             logSuccess(`[User Hook] 개인 폴더 삭제 완료`, { deletedPosts });
           }
 
           if (!user.isDeleted) {
-            // options.transaction을 전달해 중첩 트랜잭션 방지
+            // 중첩 트랜잭션을 만들지 않도록 전달한다
             await user.anonymizeAccount(options?.transaction);
           }
 

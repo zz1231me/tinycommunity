@@ -1,8 +1,4 @@
-// server/src/routes/social.routes.ts
-// /api/social — 구독·팔로우와 알림 설정.
-//
-// 알림 설정은 구독 기능을 꺼도 쓸 수 있어야 한다(댓글·멘션 알림은 남는다).
-// 그래서 requireFeature 는 구독 쪽에만 건다.
+// /api/social 구독·팔로우와 알림 설정. requireFeature 는 구독 쪽에만 건다.
 
 import { Router, RequestHandler } from 'express';
 import asyncHandler from 'express-async-handler';

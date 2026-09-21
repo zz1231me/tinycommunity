@@ -1,8 +1,4 @@
-// client/src/components/attendance/CheckInDialog.tsx
-// 출근을 찍기 전에 확인 항목에 답하는 대화상자.
-//
-// 필수 항목이 남으면 버튼을 막고, 몇 개 남았는지 함께 적는다.
-// 버튼만 비활성으로 두면 왜 안 눌리는지 알 수 없다.
+// 출근 전 확인 항목 대화상자. 필수 항목이 남으면 버튼을 막고 남은 수를 함께 적는다.
 
 import { useMemo, useState } from 'react';
 import { Check, ShieldCheck } from 'lucide-react';
@@ -15,8 +11,6 @@ interface Props {
   requireChecklist: boolean;
   /**
    * 출근 시각 보정(분). 0 보다 크면 그만큼 앞당겨 기록된다는 것을 미리 알린다.
-   * 출근 알림 팝업에만 있고 이 창에는 없어서, 출근 페이지의 '출근' 버튼으로 찍는
-   * 사람은 자기 기록이 당겨진다는 것을 몰랐다.
    */
   graceMinutes?: number;
   submitting: boolean;
@@ -128,8 +122,6 @@ export function CheckInDialog({
       </div>
 
       <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-3 dark:border-slate-700">
-        {/* 남은 필수 항목이 먼저다 — 지금 해야 할 일이다. 없을 때는 보정을 알린다
-            (문구는 출근 알림 팝업 CheckInReminder 와 같다). */}
         <p className="min-w-0 text-xs text-slate-500 dark:text-slate-400">
           {blocked
             ? `확인하지 않은 항목 ${pending.length}개`

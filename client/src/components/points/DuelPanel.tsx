@@ -1,13 +1,4 @@
-// client/src/components/points/DuelPanel.tsx
-// 포인트를 걸고 하는 가위바위보.
-//
-// 신청할 때 손을 함께 정한다 — 상대가 받는 순간 그 자리에서 승부가 나야 하기 때문이다.
-// 신청자가 나중에 손을 내는 방식이면 양쪽이 서로를 기다리며 판이 멈춰 있게 된다.
-//
-// 내 손은 신청하는 순간 서버로 가고, 상대에게는 승부가 날 때까지 내려가지 않는다.
-// 가리는 일은 서버가 한다 — 화면이 숨기는 것은 가린 것이 아니다.
-//
-// 받아 오는 방식은 같은 폴더의 다른 판들과 맞춘다(React Query 대신 useEffect).
+// 포인트를 걸고 하는 가위바위보. 신청할 때 손을 함께 정하고, 상대 손을 가리는 일은 서버가 한다.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Swords, Loader2, Clock } from 'lucide-react';
@@ -38,7 +29,7 @@ const HANDS: DuelHand[] = ['rock', 'paper', 'scissors'];
 const HAND_LABEL: Record<DuelHand, string> = { rock: '바위', paper: '보', scissors: '가위' };
 const HAND_FACE: Record<DuelHand, string> = { rock: '✊', paper: '✋', scissors: '✌️' };
 
-/** 남은 시간을 분으로 — 초 단위로 세어 봐야 눈에 띄지도 않고 1초마다 다시 그리게 된다 */
+/** 남은 시간을 분으로. 초 단위로 세면 1초마다 다시 그리게 된다 */
 function minutesLeft(expiresAt: string): number {
   return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 60_000));
 }
@@ -63,12 +54,9 @@ function HandPick({
   value: DuelHand | null;
   onChange: (hand: DuelHand) => void;
   disabled?: boolean;
-  /** 받은 대결에서는 크게 — 이 판에서 할 일이 이 세 버튼뿐이다 */
+  /** 받은 대결에서는 크게 보여 준다 */
   large?: boolean;
-  /**
-   * 버튼을 읽어 줄 말. 받은 대결에서는 이 버튼이 '고르기' 가 아니라 '포인트를 걸고
-   * 지금 받기' 라, 손 이름만 읽어 주면 무슨 일이 일어나는지 알 수 없다.
-   */
+  /** 버튼을 읽어 줄 말. 받은 대결에서는 누르는 즉시 포인트가 걸리므로 손 이름만으로는 부족하다. */
   labelFor?: (hand: DuelHand) => string;
 }) {
   return (
@@ -79,8 +67,7 @@ function HandPick({
           type="button"
           disabled={disabled}
           onClick={() => onChange(hand)}
-          // 고르는 자리에서만 토글이다. 받은 대결에서는 누르는 즉시 승부가 나므로
-          // '눌린 상태' 라는 개념이 없다.
+          // 고르는 자리에서만 토글이다. 받은 대결은 누르는 즉시 승부가 난다.
           aria-pressed={labelFor ? undefined : value === hand}
           aria-label={labelFor ? labelFor(hand) : HAND_LABEL[hand]}
           className={`flex-1 rounded-lg border transition-colors disabled:opacity-40 ${
@@ -122,16 +109,13 @@ export function DuelPanel({
   myId: string;
   /** 알림이 가리킨 판 (?duel=). 그 판으로 스크롤하고 잠깐 강조한다. */
   focusDuelId?: number | null;
-  /** 알림을 누를 때마다 바뀐다 — 같은 알림을 다시 눌러도 다시 찾아간다 */
+  /** 알림을 누를 때마다 바뀐다. 같은 알림을 다시 눌러도 다시 찾아간다 */
   focusKey?: string;
-  /**
-   * 알림이 가리킨 판을 찾아간 뒤(찾았든 못 찾았든) — 부모가 주소에서 ?duel= 을 지운다.
-   * 남겨 두면 다른 탭에 갔다 돌아올 때마다 다시 스크롤하고 번쩍인다.
-   */
+  /** 알림이 가리킨 판을 찾아간 뒤 부모가 주소에서 ?duel= 을 지운다. */
   onFocusHandled?: () => void;
-  /** 같은 화면의 다른 판이 포인트를 움직이면 바뀐다 — 잔액을 다시 읽는다 */
+  /** 같은 화면의 다른 판이 포인트를 움직이면 바뀐다. 잔액을 다시 읽는다 */
   refreshSignal?: number;
-  /** 이 판에서 포인트가 움직인 뒤 — 같은 화면의 다른 판들이 잔액을 다시 읽게 한다 */
+  /** 이 판에서 포인트가 움직인 뒤 다른 판들이 잔액을 다시 읽게 한다 */
   onSpent?: () => void;
 }) {
   const [board, setBoard] = useState<DuelBoard | null>(null);
@@ -139,39 +123,32 @@ export function DuelPanel({
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  // 신청 폼
   const [picked, setPicked] = useState<UserSuggestion[]>([]);
   const [stake, setStake] = useState('');
   const [hand, setHand] = useState<DuelHand | null>(null);
   const [message, setMessage] = useState('');
 
-  // 이긴 판에 남길 한마디 — 어느 판에 쓰는 중인지
+  // 한마디를 쓰는 중인 판.
   const [tauntFor, setTauntFor] = useState<number | null>(null);
-  /** 이겼을 때 잠깐 터지는 축하 — 딴 포인트 */
+  /** 이겼을 때 잠깐 터지는 축하. 딴 포인트 */
   const [fanfare, setFanfare] = useState<number | null>(null);
   const focusTauntInput = useRef(false);
 
-  /**
-   * 답한 판으로 포커스를 옮긴다. 누른 손·거절 단추는 판이 '받은 대결' 에서 빠지며 사라져,
-   * 그대로 두면 포커스가 페이지 맨 위로 떨어진다 — 키보드·화면 낭독기 사용자는 처음부터 다시다.
-   * 끝난 판은 최근 결과 줄(id=duel-N)로 옮겨 가 있다.
-   */
+  /** 답한 판으로 포커스를 옮긴다. 그대로 두면 판이 사라지며 포커스가 페이지 맨 위로 떨어진다. */
   const focusRow = (id: number) =>
     window.requestAnimationFrame(() =>
       document.getElementById(`duel-${id}`)?.focus({ preventScroll: true })
     );
   const [tauntText, setTauntText] = useState('');
 
-  // 다시 읽는 길이 여럿이다(첫 로딩·주기·알림·동작 뒤·알림에서 넘어온 판 찾기). 응답은
-  // 보낸 순서대로 오지 않으므로, 가장 나중에 보낸 요청의 응답만 화면에 둔다. 그러지 않으면
-  // 받기 전에 떠난 주기 요청이 받은 뒤에 도착해, 이미 끝난 판을 다시 '받은 대결' 로 되살린다.
+  // 다시 읽는 길이 여럿이라 응답 순서가 뒤바뀐다. 가장 나중에 보낸 요청의 응답만 화면에 둔다.
   const requestSeq = useRef(0);
   const reload = useCallback(async (): Promise<DuelBoard> => {
     const mine = ++requestSeq.current;
     const next = await fetchDuels();
     if (mine === requestSeq.current) {
       setBoard(next);
-      // 첫 로딩이 실패했어도 나중에 읽히면 오류 화면에서 벗어난다(예전에는 새로고침 전까지 갇혔다)
+      // 첫 로딩이 실패했어도 나중에 읽히면 오류 화면에서 벗어난다.
       setFailed(false);
     }
     return next;
@@ -192,19 +169,13 @@ export function DuelPanel({
     };
   }, [reload]);
 
-  // 같은 화면의 다른 판(뽑기·공격권·방어권)이 포인트를 쓰면 잔액을 다시 읽는다.
-  // 0 은 첫 렌더라 건너뛴다 — 위의 첫 조회와 겹친다.
+  // 같은 화면의 다른 판이 포인트를 쓰면 잔액을 다시 읽는다. 0 은 첫 렌더라 건너뛴다.
   useEffect(() => {
     if (refreshSignal === 0) return;
     void reload().catch(() => {});
   }, [refreshSignal, reload]);
 
-  // 주기적으로 다시 읽는다. 상대가 답했는지, 시간이 지났는지는 이쪽에서 물어보지 않으면
-  // 알 수 없다. 기다리는 판이 있으면 15초, 없으면 느리게 1분.
-  //
-  // 기다리는 판이 없을 때 아예 묻지 않던 때는, 대결 알림을 꺼 둔 사람에게 도전장이 오면
-  // 영영 보이지 않았다 — 알림을 끄면 서버가 알림 줄을 만들지 않아 도착 신호도 없는데,
-  // 하필 '아무것도 없는' 그 상태에서만 주기 확인까지 쉬고 있었다.
+  // 주기적으로 다시 읽는다. 기다리는 판이 있으면 15초, 없으면 1분(알림을 꺼 둔 사람도 도전장을 본다).
   const waitingCount = (board?.incoming?.length ?? 0) + (board?.outgoing?.length ?? 0);
   useEffect(() => {
     const every = waitingCount > 0 ? 15_000 : 60_000;
@@ -214,8 +185,7 @@ export function DuelPanel({
     return () => window.clearInterval(id);
   }, [waitingCount, reload]);
 
-  // 도전장·결과·한마디 알림이 오면 바로 다시 읽는다. 위의 주기적 확인은 기다리는 판이
-  // 있을 때만 돌아서, 아무것도 없을 때 온 도전장은 새로고침을 해야 보였다.
+  // 도전장·결과·한마디 알림이 오면 바로 다시 읽는다.
   useNotificationArrival(['DUEL'], () => {
     void reload().catch(() => {});
   });
@@ -226,20 +196,14 @@ export function DuelPanel({
     focusHandled.current = onFocusHandled;
   });
 
-  // ── 알림에서 넘어온 판 찾아가기 ──
-  //
-  // 알림은 탭까지만 가리켜서, 받은 사람이 뽑기 판 아래로 내려가며 직접 찾아야 했다.
-  // 이제 판 번호가 오면 그 판으로 스크롤하고 몇 번 빛나게 한다.
-  // n 은 같은 판을 다시 강조할 때 효과를 다시 돌리려는 것이다. id 만 두면 강조가 남아 있는
-  // 4초 안에 같은 알림을 다시 눌렀을 때 값이 같아 스크롤도 포커스도 일어나지 않았다.
+  // 알림이 가리킨 판으로 스크롤하고 강조한다. n 은 같은 판을 다시 강조할 때 효과를 다시 돌리기 위한 값이다.
   const [highlight, setHighlight] = useState<{ id: number; n: number } | null>(null);
   const highlightId = highlight?.id ?? null;
   const boardRef = useRef<DuelBoard | null>(null);
   useEffect(() => {
     boardRef.current = board;
   }, [board]);
-  // focusKey 는 본문에서 쓰지 않지만 의존성에 둔다. 알림을 누를 때마다 바뀌므로,
-  // 같은 판을 가리키는 알림을 다시 눌러도 다시 찾아간다.
+  // focusKey 는 본문에서 쓰지 않지만, 알림을 누를 때마다 바뀌므로 의존성에 둔다.
   useEffect(() => {
     if (loading || focusDuelId === null) return;
 
@@ -250,7 +214,7 @@ export function DuelPanel({
     void (async () => {
       let current = boardRef.current;
       let loadError = false;
-      // 이미 이 화면에 있을 때 알림을 누르면, 목록은 그 사이에 온 판을 모른다 — 다시 읽는다
+      // 이미 이 화면에 있을 때 알림을 누르면 목록에 그 판이 없을 수 있어 다시 읽는다.
       if (!has(current)) {
         try {
           current = await reload();
@@ -260,7 +224,7 @@ export function DuelPanel({
       }
       if (!alive) return;
       if (has(current)) setHighlight({ id: focusDuelId, n: Date.now() });
-      // 못 읽은 것을 '사라진 대결' 이라고 하면, 살아 있는 도전장을 사람이 찾지 않게 된다
+      // 못 읽은 것을 '사라진 대결' 이라고 하면 살아 있는 도전장을 찾지 않게 된다.
       else if (loadError)
         toast.error('대결 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
       else toast.info('이미 끝났거나 시간이 지나 사라진 대결입니다.');
@@ -278,22 +242,19 @@ export function DuelPanel({
     const el = document.getElementById(`duel-${highlightId}`);
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     el?.scrollIntoView?.({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
-    // 포커스는 손 버튼이 아니라 카드에 둔다. 손 버튼에 두면 Enter 한 번에 포인트가 걸린
-    // 승부가 나 버린다. 카드에 두면 화면 낭독기가 누가 얼마를 걸었는지부터 읽어 준다.
+    // 포커스는 손 버튼이 아니라 카드에 둔다. 버튼에 두면 Enter 한 번에 승부가 난다.
     el?.focus({ preventScroll: true });
     const timer = window.setTimeout(() => setHighlight(null), 4000);
     return () => window.clearTimeout(timer);
   }, [highlight]);
 
-  /** 무엇을 하든 끝나면 판을 다시 읽는다 — 포인트와 목록이 함께 바뀐다 */
+  /** 무엇을 하든 끝나면 판을 다시 읽는다 */
   const run = async (action: () => Promise<unknown>, fallback: string) => {
     if (busy) return;
     setBusy(true);
     let done = false;
     try {
-      // 동작과 뒤이은 갱신을 같은 try 에 두지 않는다. 한데 묶으면 신청은 성공했는데
-      // 목록 갱신만 실패했을 때 '신청하지 못했습니다' 가 떠서, 사용자가 사실과 반대로
-      // 알고 다시 걸게 된다 — 판돈은 이미 빠져 있는데 한 번 더 빠진다.
+      // 동작과 갱신을 같은 try 에 두지 않는다. 묶으면 신청 성공·갱신 실패를 '신청 실패' 로 알리게 된다.
       await action();
       done = true;
     } catch (err) {
@@ -303,7 +264,7 @@ export function DuelPanel({
       await reload().catch(() => {});
       setBusy(false);
     }
-    // 포인트가 움직였을 수 있다(신청·응수·취소) — 같은 화면의 다른 판에 알린다
+    // 포인트가 움직였을 수 있으므로 같은 화면의 다른 판에 알린다.
     if (done) onSpent?.();
   };
 
@@ -336,9 +297,8 @@ export function DuelPanel({
       const mine = outcomeOf(settled, myId);
       if (mine === '승') {
         toast.success(`이겼습니다! ${(duel.stake * 2).toLocaleString()}P 획득`);
-        // 이기는 순간이 이 기능에서 제일 기분 좋은 자리다 — 한 줄 토스트로는 심심하다
         setFanfare(duel.stake * 2);
-        // 이긴 김에 한마디 — 최근 결과에 그 판의 입력칸을 바로 열어 둔다
+        // 이긴 판의 한마디 입력칸을 바로 열어 둔다.
         setTauntFor(duel.id);
         setTauntText('');
       } else if (mine === '패')
@@ -393,7 +353,7 @@ export function DuelPanel({
           </>
         }
       >
-        {/* ── 받은 대결 ── 가장 먼저 보여 준다. 시간이 지나면 무효가 되기 때문이다. */}
+        {/* 받은 대결. 시간이 지나면 무효가 되므로 가장 먼저 보여 준다 */}
         {board.incoming.length > 0 && (
           <section className="mt-4">
             <h4 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
@@ -483,7 +443,7 @@ export function DuelPanel({
           </section>
         )}
 
-        {/* ── 신청 ── */}
+        {/* 신청 */}
         <section className="mt-4">
           <h4 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
             대결 신청
@@ -547,7 +507,7 @@ export function DuelPanel({
           </button>
         </section>
 
-        {/* ── 내가 건 대결 ── */}
+        {/* 내가 건 대결 */}
         {board.outgoing.length > 0 && (
           <section className="mt-4">
             <h4 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
@@ -565,8 +525,7 @@ export function DuelPanel({
                       : 'border-slate-200 dark:border-slate-700'
                   }`}
                 >
-                  {/* 남은 시간은 따로 둔다. 한 줄에 몰아 자르면 375px 에서 메시지가 긴 판은
-                    남은 시간이 통째로 잘려 안 보였다 — 내가 건 판의 유일한 시계인데. */}
+                  {/* 남은 시간은 따로 둔다. 한 줄에 몰면 좁은 화면에서 잘린다 */}
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
                       <span className="min-w-0 truncate">
@@ -606,7 +565,7 @@ export function DuelPanel({
           </section>
         )}
 
-        {/* ── 지난 판 ── */}
+        {/* 지난 판 */}
         <section className="mt-4">
           <h4 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
             최근 결과
@@ -674,7 +633,7 @@ export function DuelPanel({
                       </span>
                     </div>
 
-                    {/* 이긴 사람이 남긴 한마디. 진 쪽에서는 약 오르라고 분홍 말풍선으로 */}
+                    {/* 이긴 사람이 남긴 한마디 */}
                     {duel.taunt && (
                       <p
                         className={`mt-1.5 inline-block max-w-full break-words rounded-xl px-2.5 py-1 text-xs ${
@@ -697,8 +656,7 @@ export function DuelPanel({
                       >
                         <label className="relative min-w-0 flex-1">
                           <input
-                            // 사람이 '한마디 남기기' 를 눌러 열었을 때만 포커스를 준다. autoFocus 로 두면
-                            // 이긴 뒤 목록이 늦게 읽혀 칸이 나중에 뜰 때, 다른 칸에 쓰던 커서를 빼앗는다.
+                            // 사람이 눌러 열었을 때만 포커스를 준다. autoFocus 는 다른 칸의 커서를 빼앗는다.
                             ref={el => {
                               if (el && focusTauntInput.current) {
                                 focusTauntInput.current = false;

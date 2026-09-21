@@ -1,9 +1,4 @@
-// server/src/services/postTask.service.ts
-// 게시글의 업무 상태와 담당자.
-//
-// 누가 바꿀 수 있는가: 작성자, 담당자 본인, 게시판 담당자, 관리자.
-// 담당자 본인을 넣는 이유는 "내가 맡았다 / 다 했다" 를 스스로 표시하지 못하면
-// 결국 작성자에게 말해서 바꿔 달라고 해야 하기 때문이다.
+// 게시글의 업무 상태와 담당자. 작성자·담당자 본인·게시판 담당자·관리자가 바꿀 수 있다.
 
 import { Op, type Transaction } from 'sequelize';
 import { Post } from '../models/Post';
@@ -66,12 +61,7 @@ async function assertAssigneeCanSee(assigneeId: string, post: Post) {
     throw new AppError(400, '이 게시판을 볼 수 없는 사용자는 담당자로 지정할 수 없습니다.');
   }
 
-  // 비밀글이면 그 글에 들어갈 수 있는 사람인지까지 본다.
-  //
-  // 게시판만 보던 때는, 명단에서 빠진 사람도 담당자로 지정할 수 있었다 — 그 사람은 알림으로
-  // 제목을 읽고('…님이 "<비밀글 제목>" 의 담당자로 지정했습니다'), '내 업무' 목록에도 제목이
-  // 남았다. 글은 403 이라 열지도 못하면서 상태·담당자는 바꿀 수 있었다(담당자라서).
-  // 멘션 알림은 처음부터 이 검사를 한다(mention.service) — 이 길만 빠져 있었다.
+  // 비밀글이면 게시판 권한만이 아니라 그 글에 들어갈 수 있는지까지 본다
   const secret = checkSecretPostAccess(post, user.id, user.roleId ?? '');
   if (!secret.ok) {
     throw new AppError(400, '이 비밀글을 볼 수 없는 사용자는 담당자로 지정할 수 없습니다.');
@@ -84,7 +74,7 @@ export const postTaskService = {
 
     const post = await Post.findByPk(postId);
     if (!post) throw new AppError(404, '게시글을 찾을 수 없습니다.');
-    // 게시판 용도를 먼저 본다 — 권한이 있어도 업무용이 아닌 곳에는 상태를 붙이지 않는다
+    // 권한이 있어도 업무용이 아닌 게시판에는 상태를 붙이지 않는다
     await assertTaskBoard(post.boardType);
     await assertCanManage(post, actorId, actorRole);
 
@@ -106,17 +96,13 @@ export const postTaskService = {
 
     if (params.workStatus !== undefined) {
       post.workStatus = params.workStatus;
-      // 담당자 없이 '진행 중' 은 앞뒤가 맞지 않는다 — 바꾼 사람이 맡은 것으로 본다
+      // 담당자 없이 '진행 중' 이면 바꾼 사람이 맡은 것으로 본다
       if (params.workStatus === 'doing' && !post.assigneeId) {
         post.assigneeId = actorId;
       }
     }
 
-    // 상태를 손대며 'none' 을 벗어났는데 담당자가 없으면 그대로 둔다 —
-    // '할 일' 은 아직 누가 할지 정하지 않은 상태일 수 있다.
-    //
-    // 저장과 기록을 한 트랜잭션에 묶는다. 따로 하면 "바뀌었는데 기록이 없는" 줄이
-    // 생길 수 있고, 그건 기록을 신뢰할 수 없게 만든다.
+    // 저장과 활동 기록은 한 트랜잭션에 묶는다
     const nextStatus = post.workStatus;
     const nextAssigneeId = post.assigneeId ?? null;
     await sequelize.transaction(async t => {
@@ -154,8 +140,7 @@ export const postTaskService = {
     const accessible = await getAccessibleBoardTypes(userId, userRole);
     if (accessible.length === 0) return [];
 
-    // 업무용을 끈 게시판의 예전 담당은 목록에서 뺀다 — 그 게시판에서는 상태를
-    // 바꿀 수도 없으므로, 남겨 두면 지울 수 없는 항목이 된다
+    // 업무용을 끈 게시판의 예전 담당은 뺀다. 상태를 바꿀 수 없어 지울 수 없는 항목이 된다.
     const taskBoards = await Board.findAll({
       where: { id: { [Op.in]: accessible }, taskEnabled: true },
       attributes: ['id'],
@@ -178,19 +163,18 @@ export const postTaskService = {
         'workStatus',
         'createdAt',
         'updatedAt',
-        // 비밀글 여부를 함께 읽어 아래에서 거른다(제목도 가려야 하는 글이 있다)
+        // 비밀글 여부를 함께 읽어 아래에서 거른다
         'isSecret',
         'secretType',
         'secretUserIds',
         'UserId',
       ],
-      // 오래 걸린 일이 위로 오게 — 방치된 것을 먼저 보여 준다
+      // 오래 방치된 것을 먼저 보여 준다
       order: [['updatedAt', 'ASC']],
       limit: 100,
     });
 
-    // 열 수 없는 비밀글은 목록에서도 뺀다. 지금은 담당자로 지정할 때 막지만, 지정한 뒤에
-    // 글이 비밀글이 되거나 명단에서 빠질 수 있다 — 그때 제목만 남아 보이지 않게 한다.
+    // 지정 이후에 비밀글이 되거나 명단에서 빠질 수 있으므로 목록에서도 다시 거른다
     const visible = posts.filter(p => checkSecretPostAccess(p, userId, userRole).ok);
 
     return visible.map(p => {
@@ -216,7 +200,7 @@ export const postTaskService = {
   },
 };
 
-/** 바뀐 것만 활동 기록에 적는다 — 안 바뀐 값을 적으면 기록이 잡음으로 덮인다 */
+/** 바뀐 것만 활동 기록에 적는다 */
 async function recordChanges(
   transaction: Transaction,
   change: {

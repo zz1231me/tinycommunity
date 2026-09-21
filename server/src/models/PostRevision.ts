@@ -9,9 +9,7 @@ import {
 } from 'sequelize';
 import { sequelize } from '../config/sequelize';
 
-// 게시글 수정 이력. WikiRevision 과 같은 append-only 구조를 따른다.
-// 저장되는 값은 "수정되기 직전"의 제목·본문이다 — 즉 각 행은 그 시점 이전 버전의
-// 스냅샷이고, 현재 버전은 Post 테이블에 있다.
+// 게시글 수정 이력(append-only). 각 행은 수정 직전의 제목·본문이고 현재 버전은 Post 에 있다.
 class PostRevisionModel extends Model<
   InferAttributes<PostRevisionModel>,
   InferCreationAttributes<PostRevisionModel>
@@ -29,10 +27,7 @@ class PostRevisionModel extends Model<
 PostRevisionModel.init(
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    // Post.id 와 똑같은 타입이어야 한다. UUID 로 두면 MySQL/MariaDB 에서
-    //  CHAR(36) BINARY 로 만들어지는데, Posts.id 는 VARCHAR(12) 라 외래키가 붙지 않는다
-    //  (errno 150 → 1005, 테이블 생성 자체가 실패). SQLite 는 타입을 안 따져서
-    //  개발 중에는 드러나지 않다가 운영 DB 로 옮길 때 터진다.
+    // Post.id 와 타입이 같아야 한다. 다르면 MySQL/MariaDB 에서 외래키가 붙지 않는다.
     postId: { type: DataTypes.STRING(12), allowNull: false },
     editorId: { type: DataTypes.STRING(50), allowNull: true },
     title: { type: DataTypes.STRING(255), allowNull: false },

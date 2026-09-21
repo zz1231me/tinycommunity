@@ -1,9 +1,4 @@
-// client/src/pages/UserProfile.tsx
-// 다른 사람의 공개 프로필.
-//
-// 보이는 것은 "내가 어차피 볼 수 있는 것" 뿐이다 — 서버가 보는 사람의 게시판
-// 권한으로 글 수와 최근 글을 걸러서 준다. 프로필이 못 보는 게시판의 활동을
-// 엿보는 통로가 되면 안 된다.
+// 다른 사람의 공개 프로필. 글 수·최근 글은 서버가 보는 사람의 게시판 권한으로 걸러 준다.
 
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -90,7 +85,7 @@ export default function UserProfile() {
                 <p className="mt-0.5 text-xs text-slate-400">{formatDate(data.joinedAt)} 가입</p>
               </div>
 
-              {/* 자기 자신에게는 팔로우도 메시지도 의미가 없다 — 버튼 자체를 두지 않는다 */}
+              {/* 자기 자신에게는 팔로우·메시지 버튼을 두지 않는다 */}
               {!data.isSelf && (
                 <div className="flex flex-shrink-0 items-center gap-2">
                   <SubscribeButton targetType="user" targetId={data.id} />

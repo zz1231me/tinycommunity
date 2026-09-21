@@ -24,14 +24,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
     [onOpenChange]
   );
 
-  // cmdk 가 입력칸에 포커스를 주기는 하지만 Tab 은 아무도 잡지 않는다 — 그대로 두면
-  // Tab 한 번에 팔레트 뒤 화면으로 포커스가 새어, 가려진 곳의 단추를 누르게 된다.
-  //
-  // ESC 도 여기 하나로 모은다. cmdk 의 onKeyDown 은 포커스가 팔레트 안에 있을 때만
-  // 듣는데, 훅은 문서에서 들으므로 포커스가 어디로 빠졌든 닫힌다.
-  //
-  // 훅은 아래 early return 보다 위에 있어야 한다. 조건부 훅 호출은 렌더마다 순서를
-  // 어긋나게 한다. 닫혀 있을 때 ESC 를 먹지 않도록 open 을 그대로 넘긴다.
+  // cmdk 는 Tab 을 잡지 않으므로 포커스 트랩이 필요하다. ESC 처리도 여기로 모은다.
+  // 이 훅은 아래 early return 보다 위에 있어야 한다.
   const panelRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => onOpenChange(false), [onOpenChange]);
   useFocusTrap(panelRef, close, open);

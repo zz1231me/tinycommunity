@@ -27,13 +27,7 @@ export function formatFullDateTime(date: string | Date | null | undefined): stri
   return formatDate(date, 'yyyy.MM.dd HH:mm:ss');
 }
 
-/**
- * 시각 → 보는 사람의 달력 날짜('YYYY-MM-DD').
- *
- * `iso.slice(0, 10)` 은 UTC 날짜다. 한국에서 09시 이전 시각은 하루 전으로 나온다 —
- * 날짜 입력칸(type="date")에 그 값을 넣으면 화면에 하루 전이 뜨고, 그대로 저장하면
- * 실제로 하루가 밀린다(고칠 것이 없어도 저장할 때마다 계속 밀렸다).
- */
+/** 시각 → 로컬 달력 날짜('YYYY-MM-DD'). iso.slice(0, 10) 은 UTC 라 한국에서 09시 이전이 하루 밀린다. */
 export function toLocalDateInput(date: string | Date | null | undefined): string {
   if (!date) return '';
   const d = typeof date === 'string' ? parseISO(date) : date;

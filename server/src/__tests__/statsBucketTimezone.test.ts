@@ -36,10 +36,11 @@ async function loginAtLocalMorning(): Promise<string> {
   );
   // Sequelize 는 createdAt 을 제 값으로 덮어쓴다 — 넣고 나서 직접 고쳐 둔다
   const row = await LoginHistory.findOne({ order: [['createdAt', 'DESC']] });
-  await LoginHistory.update(
-    { createdAt: localEarly } as never,
-    { where: { id: row!.id }, silent: true, fields: ['createdAt'] }
-  );
+  await LoginHistory.update({ createdAt: localEarly } as never, {
+    where: { id: row!.id },
+    silent: true,
+    fields: ['createdAt'],
+  });
   const check = await LoginHistory.findByPk(row!.id);
   // 이 값이 새벽이 아니면 아래 검사는 아무것도 가려내지 못한다
   expect(new Date(check!.createdAt).getHours()).toBe(1);

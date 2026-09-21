@@ -1,10 +1,4 @@
-// client/src/components/boards/WorkStatusBadge.tsx
-// 업무 상태 배지.
-//
-// 상태마다 색을 다르게 쓰되 '완료' 는 채도를 낮춘다. 목록에서 남은 일이 먼저 보여야 한다.
-//
-// 'none' 은 아무것도 그리지 않는다. 업무로 추적하지 않는 글이 대부분이라
-// "없음" 배지가 줄마다 붙으면 목록이 배지로 덮인다.
+// 업무 상태 배지. 'none' 은 아무것도 그리지 않는다.
 
 import type { WorkStatus } from '../../api/tasks';
 

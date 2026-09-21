@@ -1,4 +1,3 @@
-// client/src/hooks/useCommentOperations.ts
 import { useState, useCallback, useRef } from 'react';
 import axios from '../api/axios';
 import { useAuth } from '../store/auth';
@@ -58,27 +57,22 @@ export function useCommentOperations({
   const { getUserId, getUser } = useAuth();
   const currentUserId = getUserId();
   const currentUser = getUser();
-  // 관리자 설정값 동적 사용 — 이전엔 1000 하드코딩
   const MAX_CHARS = useSiteSettings(s => s.settings.commentContentMaxLength);
 
-  // 새 댓글 작성
   const [newComment, setNewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const writeEditorRef = useRef<{ setData: (d: string) => void } | null>(null);
 
-  // 수정
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editContent, setEditContent] = useState('');
   const [editError, setEditError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
 
-  // 삭제
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState('');
 
-  // 대댓글
   const [replyingToId, setReplyingToId] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [replySubmitting, setReplySubmitting] = useState(false);
@@ -124,9 +118,7 @@ export function useCommentOperations({
         setSubmitting(false);
       }
 
-      // 여기부터는 서버에 이미 달렸다. 목록 갱신이 실패했다고 실패로 알리면
-      // 사용자가 다시 올려 같은 댓글이 두 번 달린다. 화면은 낙관적으로 넣어 둔
-      // 댓글을 그대로 두고, 다음 갱신 때 서버 값으로 맞춘다.
+      // 서버에는 이미 달렸다. 갱신 실패를 작성 실패로 알리면 같은 댓글이 두 번 달린다.
       await onRefresh().catch(() => {});
     },
     [newComment, boardType, submitting, postId, currentUser, currentUserId, onRefresh, MAX_CHARS]
@@ -152,7 +144,7 @@ export function useCommentOperations({
         setReplySubmitting(false);
       }
 
-      // 이미 달린 답글이다 — 갱신 실패를 작성 실패로 알리지 않는다
+      // 이미 달린 답글이라 갱신 실패를 작성 실패로 알리지 않는다.
       await onRefresh().catch(() => {});
     },
     [replyContent, boardType, replySubmitting, postId, onRefresh, MAX_CHARS]
@@ -207,7 +199,7 @@ export function useCommentOperations({
         setEditSaving(false);
       }
 
-      // 이미 고쳐졌다 — 갱신 실패를 수정 실패로 알리지 않는다
+      // 이미 고쳐졌으므로 갱신 실패를 수정 실패로 알리지 않는다.
       await onRefresh().catch(() => {});
     },
     [editContent, boardType, editSaving, onRefresh, MAX_CHARS]
@@ -229,14 +221,13 @@ export function useCommentOperations({
         setDeletingId(null);
       }
 
-      // 이미 지워졌다 — 갱신 실패를 삭제 실패로 알리면 다시 누르고 404 를 본다
+      // 이미 지워졌다. 갱신 실패를 삭제 실패로 알리면 다시 눌러 404 를 본다.
       await onRefresh().catch(() => {});
     },
     [boardType, deletingId, onRefresh]
   );
 
   return {
-    // 새 댓글
     newComment,
     setNewComment,
     submitting,
@@ -244,7 +235,6 @@ export function useCommentOperations({
     setSubmitError,
     writeEditorRef,
     handleSubmit,
-    // 수정
     editingCommentId,
     editContent,
     setEditContent,
@@ -253,14 +243,12 @@ export function useCommentOperations({
     handleEditStart,
     handleEditCancel,
     handleEditSave,
-    // 삭제
     deleteConfirmId,
     setDeleteConfirmId,
     deletingId,
     deleteError,
     setDeleteError,
     handleDelete,
-    // 대댓글
     replyingToId,
     setReplyingToId,
     replyContent,
@@ -271,7 +259,6 @@ export function useCommentOperations({
     replyEditorRef,
     handleReplySubmit,
     handleReplyOpen,
-    // 상수
     MAX_CHARS,
   };
 }

@@ -68,10 +68,7 @@ export class BoardManagerService {
     return record !== null;
   }
 
-  /**
-   * 해당 게시판을 관리할 수 있는지 — admin/manager(전역) 또는 해당 게시판 담당자(BoardManager).
-   * 게시판 내 태그/기본정보 관리 인가에 사용.
-   */
+  /** 게시판을 관리할 수 있는지. 전역 admin·manager 이거나 그 게시판 담당자면 된다. */
   async canManage(boardId: string, userId: string, role: string): Promise<boolean> {
     if (role === 'admin' || role === 'manager') return true;
     return this.isManager(boardId, userId);

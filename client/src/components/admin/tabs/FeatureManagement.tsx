@@ -1,9 +1,4 @@
-// client/src/components/admin/tabs/FeatureManagement.tsx
-// 기능 스위치 관리 화면.
-//
-// 다른 관리 화면과 달리 "고친 뒤 저장" 형태다 — 스위치 하나를 누를 때마다 즉시
-// 저장하면 여러 개를 손보는 동안 사이트가 중간 상태로 돌아간다.
-// 저장하지 않은 변경이 있으면 그 사실을 눈에 띄게 알린다.
+// 기능 스위치 관리 화면. 즉시 저장이 아니라 고친 뒤 한 번에 저장한다.
 
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -27,12 +22,11 @@ function FeatureRow({
 }: {
   feature: AdminFeature;
   value: boolean;
-  /** 의존성 키를 사람이 읽는 이름으로 */
+  /** 의존성 키를 사람이 읽는 이름으로 바꾼다. */
   labelOf: (key: string) => string;
   onChange: (key: string, next: boolean) => void;
 }) {
   // 켜 두었지만 선행 기능이 꺼져 실제로는 동작하지 않는 상태.
-  // effective 가 false 라는 것은 requires 중 하나가 꺼졌다는 뜻이다.
   const blocked = value && !feature.effective;
   const blockedBy = blocked ? feature.requires : [];
   const settingsLink = FEATURE_SETTINGS[feature.key];
@@ -70,8 +64,7 @@ function FeatureRow({
           <p className="mt-1 text-xs text-slate-400">마지막 변경: {feature.updatedBy}</p>
         )}
 
-        {/* 이 기능의 세부 설정이 다른 탭에 있으면 그리로 데려간다.
-            켜는 곳과 값을 정하는 곳이 따로 있어 한쪽만 만지고 잊는 일이 잦았다. */}
+        {/* 세부 설정이 다른 탭에 있으면 그리로 보낸다 */}
         {settingsLink && (
           <Link
             to={`${settingsLink.path}#${settingsLink.section}`}
@@ -104,8 +97,7 @@ const FeatureManagement = () => {
   // 저장 전까지의 편집 상태. 서버 값과 다른 키만 저장한다.
   const [draft, setDraft] = useState<Record<string, boolean>>({});
 
-  // 서버 값이 새로 오면 편집 상태를 버린다 —
-  // 저장 직후이거나 다른 관리자가 바꾼 값이며, 어느 쪽이든 서버가 옳다.
+  // 서버 값이 새로 오면 편집 상태를 버린다. 어느 쪽이든 서버 값이 옳다.
   useEffect(() => {
     if (data) setDraft({});
   }, [data]);
@@ -115,7 +107,7 @@ const FeatureManagement = () => {
     return (key: string) => labels.get(key) ?? key;
   }, [data]);
 
-  // 저장값을 Map 으로 한 번만 만들어 둔다 — 키마다 배열을 처음부터 훑지 않는다
+  // 저장값을 Map 으로 한 번만 만들어 둔다
   const savedByKey = useMemo(
     () => new Map((data?.features ?? []).map(f => [f.key, f.enabled])),
     [data]
@@ -130,7 +122,7 @@ const FeatureManagement = () => {
     mutationFn: () => saveFeatures(Object.fromEntries(dirtyKeys.map(k => [k, draft[k]]))),
     onSuccess: catalog => {
       queryClient.setQueryData(adminKeys.features.all, catalog);
-      // 관리자 본인 화면에도 곧바로 반영한다 — 저장했는데 메뉴가 그대로면 안 된 줄 안다
+      // 관리자 본인 화면에도 곧바로 반영한다
       setStoreFeatures(Object.fromEntries(catalog.features.map(f => [f.key, f.effective])));
       setDraft({});
       toast.success('기능 설정을 저장했습니다.');
@@ -184,7 +176,7 @@ const FeatureManagement = () => {
         </div>
       </AdminSection>
 
-      {/* 저장하지 않은 변경이 있으면 화면 아래에 붙여 둔다 — 스크롤해도 사라지지 않게 */}
+      {/* 저장하지 않은 변경은 화면 아래에 고정해 둔다 */}
       {dirtyKeys.length > 0 && (
         <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 shadow-lg dark:border-amber-700 dark:bg-amber-900/30">
           <span className="text-sm text-amber-800 dark:text-amber-200">

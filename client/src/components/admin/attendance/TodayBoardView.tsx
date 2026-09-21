@@ -1,7 +1,4 @@
-// client/src/components/admin/attendance/TodayBoardView.tsx
-// 오늘 누가 나왔는지 한 화면에.
-//
-// 안 찍은 사람이 보여야 하므로 명단 전체를 놓고 상태별로 나눈다.
+// 오늘 출근 현황. 안 찍은 사람도 보여야 하므로 명단 전체를 놓고 상태별로 나눈다.
 
 import { useMemo, useState } from 'react';
 import type { TodayBoard, TodayRow, TodayState } from '../../../types/attendance.types';
@@ -25,7 +22,7 @@ const STATE_META: Record<TodayState, { label: string; dot: string; chip: string 
   },
 };
 
-/** 나온 사람을 위로 — 미출근이 앞을 채우면 오늘 상황이 안 보인다 */
+/** 나온 사람을 위로 정렬 */
 const STATE_ORDER: Record<TodayState, number> = { working: 0, done: 1, absent: 2 };
 
 const FILTERS: Array<{ id: TodayState | 'all'; label: string }> = [
@@ -82,7 +79,7 @@ export function TodayBoardView({
     const byName = (a: TodayRow, b: TodayRow) => a.userName.localeCompare(b.userName);
     if (sort === 'name') return [...list].sort(byName);
     if (sort === 'minutes') {
-      // 오래 일한 사람부터. 안 찍은 사람은 뒤로 — 0분과 섞이면 순서가 뒤엉킨다.
+      // 오래 일한 사람부터. 안 찍은 사람은 0분과 섞이지 않게 뒤로 보낸다.
       return [...list].sort((a, b) => (b.minutes ?? -1) - (a.minutes ?? -1) || byName(a, b));
     }
     return [...list].sort((a, b) => STATE_ORDER[a.state] - STATE_ORDER[b.state] || byName(a, b));

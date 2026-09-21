@@ -1,15 +1,12 @@
-// client/src/api/auth.ts - 보안 강화된 회원가입 시스템 지원
 import api from './axios';
 import { getVisitorId } from '../utils/fingerprint';
 import type { Theme } from '../contexts/ThemeContext';
 
-// DEV 환경에서만 로그 출력
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const devLog = (...args: any[]) => {
   if (import.meta.env.DEV) console.info(...args);
 };
 
-// 🔐 로그인 - 쿠키 기반
 export async function login(id: string, password: string) {
   const fingerprint = await getVisitorId();
   const res = await fetch('/api/auth/login', {
@@ -33,7 +30,6 @@ export async function login(id: string, password: string) {
   return data;
 }
 
-// 🚪 로그아웃 - 쿠키 삭제
 export async function logout() {
   const res = await fetch('/api/auth/logout', {
     method: 'POST',
@@ -52,15 +48,12 @@ export async function logout() {
   return res.json().catch(() => null);
 }
 
-// 👤 현재 사용자 정보 조회
-// api 인스턴스 사용: 419(토큰 만료) 시 axios 인터셉터가 자동으로 갱신 후 재시도
-//    401(토큰 없음)은 AUTH_ENDPOINT 예외 처리로 리다이렉트 없이 에러 전파 → useAuthInit에서 수동 처리
+// api 인스턴스 사용: 419(토큰 만료)는 인터셉터가 갱신 후 재시도하고, 401 은 리다이렉트 없이 전파된다.
 export async function getCurrentUser() {
   const res = await api.get('/auth/me');
   return res.data;
 }
 
-// 🔄 토큰 갱신
 export async function refreshToken() {
   const res = await fetch('/api/auth/refresh', {
     method: 'POST',
@@ -89,7 +82,6 @@ export async function refreshToken() {
   return res.json();
 }
 
-// 🔒 비밀번호 변경
 export async function changePassword(currentPassword: string, newPassword: string) {
   const res = await api.post('/auth/change-password', {
     currentPassword,
@@ -99,13 +91,10 @@ export async function changePassword(currentPassword: string, newPassword: strin
   return res.data;
 }
 
-// 👤 회원가입 (보안 강화) - role 필드 완전 제거, email 추가
 export async function register(id: string, password: string, name: string, email?: string) {
-  // role 필드 완전 제거
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const requestBody: any = { id, password, name };
 
-  // 이메일 추가 (선택사항)
   if (email) {
     requestBody.email = email;
   }
@@ -131,7 +120,7 @@ export async function register(id: string, password: string, name: string, email
   return data;
 }
 
-// 🔑 비밀번호 초기화 요청 (아이디로 요청 → 6자리 인증번호 자동생성 → 관리자에게 문의)
+// 비밀번호 초기화 요청. 6자리 인증번호를 만들고 발급은 관리자를 통한다.
 export async function requestPasswordReset(loginId: string): Promise<{ message: string }> {
   const res = await fetch('/api/auth/password-reset-request', {
     method: 'POST',
@@ -152,7 +141,7 @@ export async function requestPasswordReset(loginId: string): Promise<{ message: 
   });
 }
 
-// 🔑 비밀번호 재설정 (아이디 + 6자리 인증번호 + 새 비밀번호)
+// 비밀번호 재설정 (아이디 + 6자리 인증번호 + 새 비밀번호)
 export async function verifyPasswordReset(
   loginId: string,
   code: string,
@@ -177,19 +166,17 @@ export async function verifyPasswordReset(
   });
 }
 
-// 🧑 프로필(이름) 변경
 export async function updateProfile(name: string) {
   const res = await api.patch('/auth/me/profile', { name });
   return res.data;
 }
 
-// 🎨 테마 업데이트
 export async function updateTheme(theme: Theme) {
   const res = await api.patch('/auth/theme', { theme });
   return res.data;
 }
 
-// 📸 아바타 업로드 (api 인스턴스 사용 → 토큰 만료 시 자동 갱신 인터셉터 적용)
+// api 인스턴스를 써서 토큰 만료 시 자동 갱신 인터셉터를 탄다.
 export async function uploadAvatar(file: File) {
   const formData = new FormData();
   formData.append('avatar', file);
@@ -197,17 +184,16 @@ export async function uploadAvatar(file: File) {
   const res = await api.post('/auth/avatar', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  // sendSuccess 봉투 언래핑: { success, data: { avatarUrl } } → { avatarUrl }
+  // sendSuccess 봉투 언래핑
   return (res.data.data ?? res.data) as { avatarUrl: string };
 }
 
-// 🗑️ 아바타 삭제 (api 인스턴스 사용 → 토큰 만료 시 자동 갱신 인터셉터 적용)
+// api 인스턴스를 써서 토큰 만료 시 자동 갱신 인터셉터를 탄다.
 export async function deleteAvatar() {
   const res = await api.delete('/auth/avatar');
   return res.data;
 }
 
-// 🖥️ 본인 활성 세션
 export interface MySession {
   id: string;
   ipAddress: string | null;

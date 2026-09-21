@@ -26,7 +26,7 @@ export class EventService extends BaseService {
           },
         ],
         order: [['start', 'DESC']],
-        limit: 2000, // 사용자 대면 getEvents와 동일한 상한 (관리자 전체 조회)
+        limit: 2000, // getEvents 와 같은 상한
       });
     } catch (error) {
       logError('이벤트 조회 실패', error);
@@ -36,18 +36,13 @@ export class EventService extends BaseService {
 
   async deleteEvent(id: string): Promise<void> {
     try {
-      // findByPk를 트랜잭션 내 LOCK.UPDATE로 이동 — 동시 삭제 요청의 TOCTOU 방지
+      // 동시 삭제 요청의 TOCTOU 를 막으려고 트랜잭션 안에서 LOCK.UPDATE 로 읽는다.
       await sequelize.transaction(async t => {
         const event = await Event.findByPk(id, { transaction: t, lock: t.LOCK.UPDATE });
         if (!event) {
           throw new AppError(404, '이벤트를 찾을 수 없습니다.');
         }
-        // 반복 이벤트 자식 인스턴스까지 원자적으로 삭제 (고아화 방지).
-        //
-        // ⚠️ 같은 소유자의 자식만 지운다. parentEventId 는 검증 없이 본문으로 설정할 수
-        // 있어서, 범위를 두지 않으면 남이 이 이벤트를 부모로 걸어 둔 경우 그 사람의
-        // 이벤트까지 함께 사라진다. 사용자 경로(event.controller)는 이미 이렇게 막아
-        // 두었는데, 관리자 삭제가 지나는 이 경로만 빠져 있었다.
+        // 같은 소유자의 자식만 지운다. parentEventId 는 검증 없이 설정할 수 있어 남의 이벤트까지 지워진다.
         await Event.destroy({
           where: { parentEventId: id, UserId: event.UserId },
           transaction: t,
@@ -79,13 +74,10 @@ export class EventService extends BaseService {
 
   async getEventPermissionsByRole() {
     try {
-      // 1. 모든 역할 조회
       const roles = await Role.findAll();
 
-      // 2. 설정된 권한 조회
       const existingPermissions = await EventPermission.findAll();
 
-      // 3. 모든 역할에 대해 권한 매핑 (없으면 기본값)
       const result = roles.map(role => {
         const existing = existingPermissions.find(p => p.roleId === role.id);
         if (existing) {
@@ -96,8 +88,8 @@ export class EventService extends BaseService {
         } else {
           return {
             roleId: role.id,
-            canCreate: false, // 기본값: 미설정 역할은 미들웨어와 동일하게 생성 불허
-            canRead: true, // 기본값
+            canCreate: false, // 미설정 역할은 미들웨어와 같이 생성 불허
+            canRead: true,
             canUpdate: false,
             canDelete: false,
             createdAt: new Date(),
@@ -125,7 +117,7 @@ export class EventService extends BaseService {
   ): Promise<void> {
     const t = await sequelize.transaction();
     try {
-      // Promise.all 대신 순차 처리 — 동일 트랜잭션 내 병렬 findOrCreate는 데드락 유발
+      // 같은 트랜잭션에서 병렬 findOrCreate 는 데드락이 나므로 순차 처리한다.
       for (const perm of permissions) {
         const [permission, created] = await EventPermission.findOrCreate({
           where: { roleId: perm.roleId },

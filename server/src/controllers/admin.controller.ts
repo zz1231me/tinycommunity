@@ -1,4 +1,3 @@
-// src/controllers/admin.controller.ts - Service Layer 완전 적용
 import { Response } from 'express';
 
 import XLSX from 'xlsx-js-style';
@@ -23,17 +22,13 @@ import {
 } from '../utils/cache';
 import { invalidateUserCache, clearAllUserCaches } from '../middlewares/auth.middleware';
 
-// 사용자 상태 변경 시 인증 미들웨어 캐시 + HTTP 응답 캐시(boards 등) 둘 다 무효화한다.
-// auth.middleware.invalidateUserCache만 호출하면 cacheMiddleware('boards', 300)에 저장된
-// /api/boards/accessible 사용자별 응답이 최대 5분간 stale 상태로 남는다.
+// 사용자 상태가 바뀌면 인증 캐시와 boards 응답 캐시를 함께 비운다. 한쪽만 비우면 최대 5분간 stale 이 남는다.
 const invalidateAllUserCaches = (userId: string): void => {
   invalidateUserCache(userId);
   invalidateUserResponseCache(userId);
 };
 
-// 역할 변경/삭제는 다수 사용자에게 영향(역할 비활성화·삭제 시 마이그레이션). 영향 사용자를
-// 일일이 열거하지 않고 인증 캐시(roleInfo.isActive/tokenVersion 게이트) + boards 응답 캐시를
-// 전체 무효화해, 취소된 권한이 TTL 동안 stale 하게 통과하지 않도록 한다.
+// 역할 변경·삭제는 영향받는 사용자가 많아 인증 캐시와 boards 응답 캐시를 전체 무효화한다.
 const invalidateRoleAffectedCaches = (): void => {
   clearAllUserCaches();
   invalidateCache('boards');
@@ -50,7 +45,6 @@ function toAppError(err: unknown): AppError | null {
   return err instanceof AppError ? err : null;
 }
 
-/** 감사 로그용 관리자 컨텍스트 추출 */
 const getAdminCtx = (req: Request) => {
   const authReq = req as unknown as AuthRequest;
   return {
@@ -78,7 +72,6 @@ const logAudit = (
     .catch(err => logError('감사 로그 기록 실패', err));
 };
 
-// ===== 사용자 관리 =====
 export const getDeletedUsers = async (_req: Request, res: Response): Promise<void> => {
   try {
     const users = await userService.getDeletedUsers(1000);
@@ -122,8 +115,7 @@ export const getAllUsers = async (_req: Request, res: Response): Promise<void> =
 
     const ids = users.map(u => u.id);
     const deviceByUser = new Map<string, string>();
-    // 각 사용자의 최근 "활동" 시각 — 세션 lastActiveAt는 토큰 자동갱신(rotateSession)마다 갱신되므로
-    // 명시적 로그인 시각(lastLoginAt)보다 실제 접속 활동을 더 정확히 반영한다.
+    // 세션 lastActiveAt 는 토큰 갱신마다 갱신되어 lastLoginAt 보다 실제 활동에 가깝다.
     const lastActiveByUser = new Map<string, Date>();
     if (ids.length > 0) {
       const [histories, sessions] = await Promise.all([
@@ -223,9 +215,7 @@ export const deactivateUser = async (req: Request, res: Response): Promise<void>
     });
     sendSuccess(res, null, '회원이 비활성화되었습니다.');
   } catch (error: unknown) {
-    // 서비스가 던진 AppError 의 statusCode 를 살린다. 500 을 박아 두면 '없는 사용자'(404)가
-    // 서버 장애로 보이고 치명 오류 로그를 채운다 — 메시지만 꺼내 쓰고 상태는 버리고 있었다.
-    // 같은 파일의 다른 핸들러(approveUser·rejectUser·createUser 등)는 이미 이 관례를 따른다.
+    // 서비스가 던진 AppError 의 statusCode 를 살린다. 500 으로 고정하면 404 도 서버 장애로 보인다.
     const appErr = toAppError(error);
     logError('회원 비활성화 실패', error);
     sendError(res, appErr?.statusCode ?? 500, appErr?.message ?? '회원 비활성화 실패');
@@ -240,8 +230,7 @@ export const restoreUser = async (req: Request, res: Response): Promise<void> =>
     logAudit(req, 'restore_user', { targetType: 'user', targetId: userId });
     sendSuccess(res, null, '회원이 복구되었습니다.');
   } catch (error: unknown) {
-    // 위와 같은 이유. 여기는 '삭제된 사용자가 아닙니다'(400)도 있어서, 관리자가 흔히 하는
-    // 실수까지 서버 장애로 보이고 있었다.
+    // 위와 같은 이유로 AppError 의 statusCode 를 살린다.
     const appErr = toAppError(error);
     logError('회원 복구 실패', error);
     sendError(res, appErr?.statusCode ?? 500, appErr?.message ?? '회원 복구 실패');
@@ -270,9 +259,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
   }
 
   try {
-    // validateName 이 trim 기준으로 길이를 봤으므로 저장도 trim 한 값으로 한다.
-    // 원본을 그대로 넣으면 '45자+공백 10개' 가 검증을 통과한 뒤 모델 len[1,50] 에
-    // 걸려 500 이 됐다.
+    // validateName 이 trim 기준으로 길이를 보므로 저장도 trim 한 값으로 한다.
     await userService.createUser({ id, password, name: name.trim(), roleId, isActive: true });
     logAudit(req, 'create_user', {
       targetType: 'user',
@@ -319,9 +306,8 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       }
     }
 
-    // name 길이/빈값 검증
     if (updateData.name !== undefined) {
-      // String() 으로 감싸면 객체가 '[object Object]' 라는 멀쩡한 이름이 되어 그대로 저장됐다
+      // String() 으로 감싸면 객체가 '[object Object]' 라는 이름으로 저장된다.
       if (typeof updateData.name !== 'string') {
         sendError(res, 400, '이름은 문자열이어야 합니다.');
         return;
@@ -334,7 +320,6 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       updateData.name = trimmedName;
     }
 
-    // email lowercase 정규화
     if (updateData.email !== undefined && updateData.email !== null) {
       updateData.email = String(updateData.email).toLowerCase().trim();
     }
@@ -365,8 +350,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
     }
 
     const result = await userService.deleteUser(id);
-    // 형제 처리(비활성화·복구·수정·비밀번호 초기화)와 같게 캐시를 비운다 — 빠뜨리면
-    // 삭제된 계정이 캐시가 만료될 때까지(최대 30초) 그대로 요청을 통과시켰다.
+    // 다른 처리와 같게 캐시를 비운다. 빠뜨리면 삭제된 계정이 캐시 만료까지 요청을 통과한다.
     invalidateAllUserCaches(id);
     logAudit(req, 'delete_user', { targetType: 'user', targetId: id });
     sendSuccess(res, result);
@@ -383,8 +367,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     const { tempPassword: rawTemp } = req.body as { tempPassword?: unknown };
     const adminId = (req as unknown as AuthRequest).user?.id;
 
-    // 자기 자신의 비밀번호를 초기화하면 즉시 세션이 무효화되어 로그아웃됨
-    // deactivateUser/deleteUser와 일관되게 self-action 차단 (클라이언트도 차단하지만 server-side 방어)
+    // 자기 자신의 비밀번호를 초기화하면 즉시 로그아웃되므로 막는다.
     if (adminId && adminId === id) {
       sendError(
         res,
@@ -394,14 +377,13 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // 관리자가 입력한 6자리 숫자 임시 비밀번호 (서버에서도 형식 검증 — 클라 신뢰 안 함)
+    // 6자리 임시 비밀번호. 형식은 서버에서도 검증한다.
     const tempCode = String(rawTemp ?? '');
     if (!/^\d{6}$/.test(tempCode)) {
       sendError(res, 400, '임시 비밀번호는 6자리 숫자로 입력해주세요.');
       return;
     }
 
-    // 임시 비번 설정 + 강제 변경 플래그
     const tempPassword = await userService.resetPassword(id, tempCode);
     invalidateAllUserCaches(id);
     logAudit(req, 'reset_password', {
@@ -418,10 +400,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-// ===== 비밀번호 초기화 요청 (사용자 요청 → 관리자 승인) =====
-
-// 관리자 — 진행 중 초기화 요청 목록(복호화된 6자리 인증번호 포함, 관리자 전용).
-// 인증번호는 이 관리자 인증 엔드포인트에서만 노출되고 사용자 응답에는 절대 포함되지 않는다.
+// 진행 중인 비밀번호 초기화 요청 목록. 인증번호는 이 관리자 엔드포인트에서만 노출하고 사용자 응답에는 넣지 않는다.
 export const getPasswordResetRequests = async (_req: Request, res: Response): Promise<void> => {
   try {
     const requests = await passwordResetRequestService.listActive();
@@ -432,7 +411,7 @@ export const getPasswordResetRequests = async (_req: Request, res: Response): Pr
   }
 };
 
-// 관리자 — 요청 폐기(인증번호를 사용자에게 전달한 뒤 목록에서 정리). 코드 생성은 자동이라 '승인' 단계 없음.
+// 인증번호를 전달한 뒤 요청을 목록에서 정리한다.
 export const dismissPasswordResetRequest = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
@@ -446,7 +425,6 @@ export const dismissPasswordResetRequest = async (req: Request, res: Response): 
   }
 };
 
-// ===== 게시판 관리 =====
 export const getAllBoards = async (_req: Request, res: Response): Promise<void> => {
   try {
     const boards = await boardService.getAllBoards();
@@ -499,7 +477,7 @@ export const createBoard = async (req: Request, res: Response): Promise<void> =>
     sendSuccess(res, null, '게시판 생성 완료', 201);
   } catch (error: unknown) {
     const appErr = toAppError(error);
-    // 중복 ID(409)·예약 ID(400) 등 클라이언트 오류는 해당 상태코드로 전달 (500 오인 방지)
+    // 중복 ID·예약 ID 같은 클라이언트 오류는 원래 상태코드로 전달한다.
     if (appErr?.statusCode && appErr.statusCode < 500) {
       sendError(res, appErr.statusCode, appErr.message);
       return;
@@ -595,7 +573,6 @@ export const deleteBoard = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-// ===== 역할 관리 =====
 export const getAllRoles = async (_req: Request, res: Response): Promise<void> => {
   try {
     const roles = await roleService.getAllRoles();
@@ -675,7 +652,6 @@ export const deleteRole = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// ===== 게시판 권한 관리 =====
 export const getBoardAccessPermissions = async (req: Request, res: Response): Promise<void> => {
   try {
     const { boardId } = req.params;
@@ -687,7 +663,7 @@ export const getBoardAccessPermissions = async (req: Request, res: Response): Pr
   }
 };
 
-// 전체 게시판 권한 일괄 조회 (관리자 권한 화면 — 보드별 N요청 대신 1요청)
+// 전체 게시판 권한을 한 번에 조회한다.
 export const getAllBoardAccessPermissions = async (_req: Request, res: Response): Promise<void> => {
   try {
     const permissions = await roleService.getAllBoardAccessPermissions();
@@ -707,8 +683,7 @@ export const setBoardAccessPermissions = async (req: Request, res: Response): Pr
       return;
     }
     await roleService.setBoardAccessPermissions(boardId, permissions);
-    // invalidateCache('boards')는 boards:userId:url 형태의 사용자별 캐시까지 모두 매치하여 무효화한다.
-    // 서버 측 권한 enforcement는 boardService.checkPermission이 매 요청 DB를 조회하므로 즉시 반영.
+    // invalidateCache('boards') 는 사용자별 캐시까지 함께 무효화한다.
     invalidateCache('boards');
     logAudit(req, 'update_permission', {
       targetType: 'board',
@@ -722,7 +697,6 @@ export const setBoardAccessPermissions = async (req: Request, res: Response): Pr
   }
 };
 
-// ===== 이벤트 관리 =====
 export const getAllEvents = async (_req: Request, res: Response): Promise<void> => {
   try {
     const events = await eventService.getAllEvents();
@@ -749,7 +723,7 @@ export const deleteEventAsAdmin = async (req: Request, res: Response): Promise<v
 export const updateEventAsAdmin = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    // allowlist: UserId·id 등 민감 필드 덮어쓰기 방지
+    // UserId·id 등 민감 필드 덮어쓰기를 막는 allowlist.
     const {
       title,
       start,
@@ -780,9 +754,7 @@ export const updateEventAsAdmin = async (req: Request, res: Response): Promise<v
       title,
       start,
       end,
-      // 사용자 경로(event.controller)는 만들 때도 고칠 때도 본문을 정화하는데,
-      // 관리자 화면으로 고치는 이 경로만 빠져 있었다. 관리자가 넣은 HTML 이 그대로
-      // 저장되어 일정을 보는 모든 사람에게 그려진다.
+      // 관리자 경로에서도 본문을 정화한다.
       body: body ? sanitizeHtmlContent(String(body)) : body,
       location,
       color,
@@ -804,7 +776,6 @@ export const updateEventAsAdmin = async (req: Request, res: Response): Promise<v
   }
 };
 
-// ===== 이벤트 권한 관리 =====
 export const getEventPermissionsByRole = async (_req: Request, res: Response): Promise<void> => {
   try {
     const permissions = await eventService.getEventPermissionsByRole();
@@ -822,7 +793,7 @@ export const setEventPermissions = async (req: Request, res: Response): Promise<
       sendError(res, 400, '권한 배열이 필요합니다.');
       return;
     }
-    // roleId 존재 검증 (존재하지 않는 role에 권한을 부여하면 조용히 실패)
+    // 없는 roleId 에 권한을 주면 조용히 실패하므로 존재를 확인한다.
     const roleIds = (permissions as Array<{ roleId?: unknown }>)
       .map(p => p.roleId)
       .filter((id): id is string => typeof id === 'string');
@@ -837,7 +808,6 @@ export const setEventPermissions = async (req: Request, res: Response): Promise<
         return;
       }
     }
-    // 중복 roleId 제거 후 서비스에 전달
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const uniquePermissions = (permissions as any[]).filter(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -854,8 +824,6 @@ export const setEventPermissions = async (req: Request, res: Response): Promise<
     sendError(res, 500, '이벤트 권한 설정 실패');
   }
 };
-
-// ===== 위키 권한 관리 =====
 
 export const getWikiPermissions = async (_req: Request, res: Response): Promise<void> => {
   try {
@@ -912,8 +880,6 @@ export const setWikiPermissions = async (req: Request, res: Response): Promise<v
   }
 };
 
-// ===== 엑셀 내보내기 헬퍼 =====
-
 interface SheetColumn {
   label: string;
   key: string;
@@ -931,8 +897,7 @@ function xlsxHeaderCell(value: string, rgb: string): XLSX.CellObject {
   };
 }
 
-// CSV/XLSX injection 방지: =, +, -, @, TAB, CR 로 시작하는 셀 값은 앞에 `'`를 붙여
-// Excel/Sheets가 수식으로 해석하지 못하도록 한다.
+// CSV/XLSX 수식 주입 방지. =, +, -, @, TAB, CR 로 시작하는 값 앞에 '를 붙인다.
 function sanitizeCellValue(value: unknown): string {
   if (value === null || value === undefined) return '-';
   const s = String(value);
@@ -981,7 +946,6 @@ function sendXlsx(res: Response, ws: XLSX.WorkSheet, sheetName: string, filename
   res.send(buf);
 }
 
-// ===== 엑셀 내보내기 =====
 export const exportUsersExcel = async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const users = await User.findAll({

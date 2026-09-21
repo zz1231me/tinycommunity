@@ -1,8 +1,4 @@
-// client/src/components/common/notificationKinds.tsx
-// 알림 종류별 모양 — 종(벨) 목록과 새 알림 팝업이 함께 쓴다.
-//
-// 따로 두면 한쪽에만 새 종류가 들어가 같은 알림이 두 곳에서 다른 얼굴을 한다
-// (벨 쪽 표에는 ASSIGNMENT·MESSAGE 가 빠진 채였다).
+// 알림 종류별 모양. 벨 목록과 새 알림 팝업이 함께 쓴다.
 
 import type { ReactNode } from 'react';
 import {
@@ -96,7 +92,7 @@ export const NOTIFICATION_KIND: Record<Notification['type'], NotificationKind> =
   },
 };
 
-/** 모르는 종류(서버가 먼저 늘린 경우)는 공지 모양으로 */
+/** 모르는 종류는 공지 모양으로 그린다. */
 export function kindOf(type: string): NotificationKind {
   return NOTIFICATION_KIND[type as Notification['type']] ?? NOTIFICATION_KIND.SYSTEM;
 }

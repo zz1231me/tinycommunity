@@ -1,9 +1,4 @@
-// client/src/components/boards/PostActivityLog.tsx
-// 이 글에 무슨 일이 있었나 — 작성·수정·첨부 교체·상태·담당자 변경을 한 줄기로.
-//
-// 본문 변경만이 아니라 담당자·업무 상태·첨부 교체까지 한 줄기로 모은다.
-//
-// 접어 둔 상태에서는 최근 몇 줄만 보인다. 오래된 글일수록 기록이 길어져 본문을 밀어낸다.
+// 글의 활동 기록. 작성·수정·첨부 교체·상태·담당자 변경을 한 줄기로 모은다.
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -13,7 +8,7 @@ import { taskKeys } from '../../api/queryKeys';
 import { formatFullDateTime, formatRelativeDate, toISOString } from '../../utils/date';
 import { ListError } from '../common/ListState';
 
-/** 접었을 때 보여 줄 줄 수 — 대부분의 글은 이 안에서 끝난다 */
+/** 접었을 때 보여 줄 줄 수 */
 const COLLAPSED_COUNT = 4;
 
 const ICONS: Record<ActivityEntry['kind'], typeof History> = {
@@ -44,8 +39,7 @@ export function PostActivityLog({ boardType, postId, onOpenRevisions }: Props) {
     staleTime: 30_000,
   });
 
-  // 상태 키('todo')를 사람이 읽는 말('할 일')로 바꾼다. 라벨은 서버 카탈로그가 정한다 —
-  // 화면이 지어내면 상태를 늘렸을 때 여기만 옛 이름으로 남는다.
+  // 상태 라벨은 서버 카탈로그가 정한다. 화면이 지어내면 상태를 늘렸을 때 옛 이름이 남는다.
   const { data: statuses = [] } = useQuery({
     queryKey: taskKeys.statuses,
     queryFn: ({ signal }) => fetchWorkStatuses(signal),
@@ -54,7 +48,7 @@ export function PostActivityLog({ boardType, postId, onOpenRevisions }: Props) {
   const statusLabel = (key: string | null | undefined) =>
     statuses.find(s => s.key === key)?.label ?? key ?? '없음';
 
-  // 실패는 조용히 감추지 않는다. 아무것도 안 그리면 '활동이 없는 글' 과 구분되지 않는다.
+  // 실패를 감추면 '활동이 없는 글' 과 구분되지 않는다.
   if (isError) {
     return (
       <section className="card overflow-hidden">
@@ -131,7 +125,7 @@ export function PostActivityLog({ boardType, postId, onOpenRevisions }: Props) {
   );
 }
 
-/** 한 줄을 사람 말로 — 값이 비어 있는 경우(담당자 해제 등)까지 문장이 되게 */
+/** 한 줄을 사람이 읽는 문장으로. 값이 비어 있는 경우도 문장이 되게 한다 */
 function describe(entry: ActivityEntry, statusLabel: (key?: string | null) => string): string {
   switch (entry.kind) {
     case 'created':

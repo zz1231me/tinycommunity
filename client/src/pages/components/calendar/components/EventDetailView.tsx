@@ -1,4 +1,3 @@
-// client/src/pages/components/calendar/components/EventDetailView.tsx
 import { DEFAULT_EVENT_COLOR } from '../../../../constants/colors';
 import { useCodeHighlight } from '../../../../hooks/useCodeHighlight';
 import React, { useRef, useMemo } from 'react';
@@ -22,7 +21,6 @@ interface EventDetailViewProps {
   onClose: () => void;
 }
 
-// 메타 한 줄 — 아이콘 + 값 (라벨 없이 컴팩트)
 function MetaRow({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-300">
@@ -45,9 +43,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
 }) => {
   const bodyRef = useRef<HTMLDivElement>(null);
 
-  // 정화 결과와 그것을 담은 객체를 모두 기억해 둔다 — React 는
-  // dangerouslySetInnerHTML 을 객체 참조로 비교해서, 매번 새로 만들면 내용이 같아도
-  // 본문을 통째로 다시 붙이고 코드 색 같은 나중 손질이 버려진다.
+  // dangerouslySetInnerHTML 은 객체 참조로 비교되므로 정화 결과 객체를 memo 로 고정한다.
   const bodyHtml = useMemo(() => ({ __html: sanitizeHTML(event.body ?? '') }), [event.body]);
   useCodeHighlight(bodyRef);
 
@@ -57,7 +53,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* 히어로 — 색 틴트 + 카테고리 + 제목 + 날짜(핵심 정보를 상단에 모음) */}
       <div
         className="rounded-2xl px-5 py-4"
         style={{ background: `color-mix(in srgb, ${eventColor} 12%, transparent)` }}
@@ -93,7 +88,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
         </div>
       </div>
 
-      {/* 메타 — 장소·작성자 (라벨 없이 컴팩트 인라인) */}
       <div className="space-y-3 px-1">
         {event.location && (
           <MetaRow
@@ -150,7 +144,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
         </MetaRow>
       </div>
 
-      {/* 본문 — 라벨 + 가벼운 카드 */}
       {event.body && (
         <div className="px-1">
           <p className="mb-1.5 text-xs font-semibold text-slate-400">메모</p>
@@ -169,7 +162,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
         </div>
       )}
 
-      {/* 액션 — 수정/삭제만(닫기는 헤더 X·배경 클릭으로 대체). 권한 없으면 숨김 */}
       {(canEdit || canDelete) && (
         <div className="flex items-center gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
           {canEdit && (

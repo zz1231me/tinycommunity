@@ -1,4 +1,3 @@
-// client/src/api/siteSettings.ts
 import api, { uploadApi } from './axios';
 
 export interface SiteSettings {
@@ -88,7 +87,7 @@ export interface SiteSettings {
   lotteryDrawCost: number;
   /** 하루 한 번 접속 시 주는 포인트 */
   attendanceBonus: number;
-  /** 포인트 대결 — 한 판에 걸 수 있는 금액의 아래위 */
+  /** 포인트 대결에서 한 판에 걸 수 있는 금액의 아래위 */
   duelMinStake: number;
   duelMaxStake: number;
   /** 상대가 답하지 않으면 무효가 되기까지의 시간(분) */
@@ -109,13 +108,7 @@ export interface SiteSettings {
   attackDailyLimit: number;
 }
 
-/**
- * 사이트 설정 조회 (공개).
- *
- * 서버는 로그인 잠금·bcrypt 라운드·토큰 수명·rate limit·로그 보관 기간을 이 응답에서 빼므로
- * 그 값들은 스토어의 기본값으로 채워진다. 실제 값이 필요한 관리자 설정 폼은
- * getAdminSiteSettings() 를 쓴다.
- */
+/** 사이트 설정 조회(공개). 보안 관련 값은 응답에서 빠지므로 관리자 폼은 getAdminSiteSettings() 를 쓴다. */
 export const getSiteSettings = async (): Promise<SiteSettings> => {
   const response = await api.get('/site-settings');
   return response.data.data;
@@ -137,7 +130,7 @@ export const updateSiteSettings = async (data: Partial<SiteSettings>): Promise<S
 export const uploadSiteAsset = async (file: File): Promise<string> => {
   const formData = new FormData();
   formData.append('file', file);
-  // uploadApi: axios 인스턴스 사용 → 토큰 만료 시 자동 갱신 인터셉터 적용
+  // uploadApi 를 써야 토큰 만료 시 자동 갱신 인터셉터가 걸린다.
   const res = await uploadApi.post('/site-settings/upload-asset', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });

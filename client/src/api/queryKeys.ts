@@ -1,9 +1,5 @@
-// client/src/api/queryKeys.ts
-// React Query 캐시 키를 한곳에 모은다. 뮤테이션 쪽에서 무효화할 때 문자열을
-// 손으로 맞추면 오타 하나로 조용히 갱신이 안 되므로, 키는 항상 여기서 가져온다.
-//
-// 규칙: all → 해당 도메인 전체 무효화용 접두사, 나머지는 그 아래 파생.
-//   queryClient.invalidateQueries({ queryKey: adminKeys.roles.all })
+// React Query 캐시 키 모음. 무효화할 때 문자열을 손으로 맞추지 않도록 항상 여기서 가져온다.
+// 규칙: all 은 도메인 전체 무효화용 접두사, 나머지는 그 아래 파생.
 
 /** 메시지 */
 export const messageKeys = {
@@ -39,17 +35,13 @@ export const socialKeys = {
 export const boardKeys = {
   all: ['boards'] as const,
   info: (boardType: string) => ['boards', 'info', boardType] as const,
-  /** 목록은 필터가 바뀌면 다른 결과다 — 조건을 통째로 키에 넣는다.
-   *  이렇게 두면 조건을 바꿨을 때 이전 조건의 응답이 늦게 도착해도 화면에 반영되지 않는다. */
+  /** 목록 키에는 필터 조건을 통째로 넣는다. 늦게 도착한 이전 조건의 응답이 반영되지 않는다. */
   posts: (boardType: string, params: Record<string, unknown>) =>
     ['boards', 'posts', boardType, params] as const,
 } as const;
 
 /**
- * 게시판 목록의 placeholderData 규칙.
- *
- * 페이지·검색·태그를 바꿀 때는 이전 목록을 잠깐 그대로 둬서 화면이 비지 않게 한다.
- * 다만 게시판 자체가 바뀌면 버린다 — 안 그러면 B 게시판 머리글 아래 A 게시판 글이 잠깐 보인다.
+ * 게시판 목록의 placeholderData 규칙. 게시판이 바뀌면 이전 목록을 버린다.
  * boardKeys.posts 의 3번째 칸이 boardType 이다.
  */
 export function keepIfSameBoard<T>(
@@ -60,7 +52,7 @@ export function keepIfSameBoard<T>(
   return prevKey?.[2] === boardType ? prev : undefined;
 }
 
-/** 마이페이지 — 내 글·내 댓글 (접속 기록·세션 탭은 아직 useState 로 관리한다) */
+/** 마이페이지 — 내 글·내 댓글 */
 export const profileKeys = {
   all: ['profile'] as const,
   posts: (page: number) => ['profile', 'posts', page] as const,
@@ -73,7 +65,7 @@ export const draftKeys = {
   detail: (id: string) => ['drafts', id] as const,
 } as const;
 
-/** 탐색·참여(인기글·태그·스크랩) — 관리자 화면과 무효화 범위가 겹치지 않아 따로 둔다 */
+/** 탐색·참여(인기글·태그·스크랩) */
 export const discoveryKeys = {
   all: ['discovery'] as const,
   popular: (period: string) => ['discovery', 'popular', period] as const,
@@ -94,7 +86,7 @@ export const attendanceKeys = {
   all: ['attendance'] as const,
   me: ['attendance', 'me'] as const,
   history: (month: string) => ['attendance', 'history', month] as const,
-  /** 퇴근 공격 — 지금 나에게 걸린 것이 있는지 */
+  /** 퇴근 공격 */
   attack: ['attendance', 'attack'] as const,
 } as const;
 

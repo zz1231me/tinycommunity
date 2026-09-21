@@ -1,31 +1,28 @@
-// server/src/middlewares/maintenance.middleware.ts
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { SiteSettings } from '../models';
 
-// In-memory cache — refreshed on settings update or after TTL
+// 설정 저장 시 또는 TTL 경과 후 갱신되는 인메모리 캐시
 let _mode: boolean | null = null;
 let _message: string | null = null;
 let _expiry = 0;
-const CACHE_TTL = 30_000; // 30 seconds
+const CACHE_TTL = 30_000;
 
-/** Call after saving SiteSettings to immediately reflect the change */
+/** SiteSettings 저장 후 호출해 변경을 즉시 반영한다. */
 export const refreshMaintenanceCache = () => {
   _mode = null;
   _expiry = 0;
 };
 
-/** Blocks non-admin users with 503 when maintenance mode is active */
+/** 점검 모드일 때 관리자가 아닌 요청을 503 으로 막는다. */
 export const maintenanceMiddleware = async (
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Rebuild cache when stale
     if (_mode === null || Date.now() > _expiry) {
-      // findByPk(1)은 SiteSettings 행의 ID가 1이 아닐 때 null 반환 → maintenance 무시되는 버그
-      // siteSettings.ts(#125)와 동일하게 findOne으로 변경
+      // SiteSettings 행의 id 가 1이 아닐 수 있어 findByPk 가 아니라 findOne 을 쓴다.
       const settings = await SiteSettings.findOne({
         attributes: ['maintenanceMode', 'maintenanceMessage'],
       });
@@ -36,13 +33,12 @@ export const maintenanceMiddleware = async (
 
     if (!_mode) return next();
 
-    // Always allow: auth, site-settings (so login + maintenance banner still work), 2FA
-    // NOTE: middleware is mounted at /api, so req.path is relative (e.g. /auth/login, not /api/auth/login)
-    // ⚠️ 세그먼트 경계를 검사해야 한다. 단순 startsWith('/auth')는 /auth-bypass 같은 경로도 통과시킴.
+    // 점검 중에도 로그인·사이트설정·2FA 는 허용한다. 미들웨어가 /api 에 붙어 req.path 는 상대 경로다.
+    // 세그먼트 경계를 검사한다. startsWith('/auth') 만으로는 /auth-bypass 도 통과한다.
     const alwaysAllow = ['/auth', '/site-settings', '/2fa'];
     if (alwaysAllow.some(p => req.path === p || req.path.startsWith(p + '/'))) return next();
 
-    // Decode token from cookie to check role — no DB query needed (role is in JWT payload)
+    // 역할은 JWT 에 있으므로 DB 조회 없이 쿠키 토큰에서 읽는다.
     try {
       const token = req.cookies?.access_token;
       if (token) {
@@ -52,7 +48,7 @@ export const maintenanceMiddleware = async (
         if (decoded.role === 'admin' || decoded.role === 'manager') return next();
       }
     } catch {
-      // Invalid or missing token — fall through to block
+      // 토큰이 없거나 유효하지 않으면 차단으로 넘어간다.
     }
 
     res.status(503).json({
@@ -61,6 +57,6 @@ export const maintenanceMiddleware = async (
       maintenanceMode: true,
     });
   } catch {
-    next(); // Never block on middleware error
+    next(); // 미들웨어 오류로 요청을 막지 않는다
   }
 };

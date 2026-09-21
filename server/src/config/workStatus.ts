@@ -1,10 +1,4 @@
-// server/src/config/workStatus.ts
-// 게시글의 업무 상태.
-//
-// 게시판을 할 일 목록으로 쓸 때 담당자·진행 상태를 본문 밖에서 관리한다.
-//
-// 기본값은 'none' 이다. 공지·자료 게시판처럼 할 일이 아닌 글까지 상태를 갖게 하면
-// 목록이 의미 없는 값으로 채워진다.
+// 게시글의 업무 상태. 기본값은 추적하지 않는 'none'.
 
 export const WORK_STATUSES = {
   none: { label: '없음', description: '업무로 추적하지 않는 일반 글' },

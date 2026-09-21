@@ -47,8 +47,7 @@ export const markAsRead = async (req: AuthRequest, res: Response): Promise<void>
   try {
     const unreadCount = await notificationService.markAsRead(id, userId);
     invalidateCache('notifications:unread', userId);
-    // 서버가 센 수를 함께 준다 — 화면이 스스로 하나 깎으면, 같은 순간 스트림으로 밀어 준
-    // 수에 또 깎여 뱃지가 실제보다 적어졌다.
+    // 서버가 센 수를 함께 준다. 화면이 스스로 깎으면 스트림 값과 겹쳐 두 번 깎인다.
     sendSuccess(res, { unreadCount }, '알림을 읽었습니다.');
   } catch (err: unknown) {
     if (err instanceof AppError && err.statusCode === 404) return sendNotFound(res, '알림');
@@ -102,25 +101,21 @@ export const deleteAllNotifications = async (req: AuthRequest, res: Response): P
   }
 };
 
-// GET /api/notifications/stream — SSE 실시간 알림 스트림
-//
-// EventSource 는 커스텀 헤더를 붙일 수 없지만, 이 앱의 인증은 HttpOnly 쿠키라
-// 브라우저가 자동으로 실어 보낸다(same-origin). 따라서 기존 authenticate 미들웨어가
-// 그대로 동작한다.
+// GET /api/notifications/stream (SSE)
+// EventSource 는 커스텀 헤더를 못 붙이지만 인증이 HttpOnly 쿠키라 그대로 동작한다.
 export const streamNotifications = async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.user?.id;
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
-  // nginx 가 응답을 버퍼링하면 이벤트가 즉시 전달되지 않는다.
-  // nginx.conf 에도 proxy_buffering off 를 두지만, 이 헤더로도 개별 응답에 지시한다.
+  // nginx 가 버퍼링하면 이벤트가 즉시 전달되지 않는다.
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
 
   addConnection(userId, res);
 
-  // 연결 직후 현재 미읽음 수를 한 번 내려보내, 클라이언트가 즉시 뱃지를 맞출 수 있게 한다.
+  // 연결 직후 미읽음 수를 한 번 내려 뱃지를 맞춘다.
   try {
     const count = await notificationService.getUnreadCount(userId);
     res.write(`event: unread-count\ndata: ${JSON.stringify({ count })}\n\n`);

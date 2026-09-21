@@ -1,4 +1,4 @@
-// server/src/controllers/twoFactor.controller.ts - 2FA 인증 컨트롤러
+// 2FA 인증 컨트롤러
 import crypto from 'crypto';
 import { Request, Response } from 'express';
 import speakeasy from 'speakeasy';
@@ -25,9 +25,7 @@ import {
   sendValidationError,
 } from '../utils/response';
 
-/**
- * 2FA 비밀키 생성 및 QR 코드 반환
- */
+/** 2FA 비밀키 생성 및 QR 코드 반환 */
 export const generate2FASecret = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {
@@ -58,8 +56,7 @@ export const generate2FASecret = async (req: AuthRequest, res: Response): Promis
       return;
     }
 
-    // 인증 앱 목록에 보이는 이름이다 — 사이트 이름을 박아 두면 이름을 바꿔도 그대로 남는다.
-    // (이미 등록한 사람의 표시는 바뀌지 않는다. 비밀키가 아니라 이름표일 뿐이다.)
+    // 인증 앱 목록에 보이는 이름. 설정의 사이트 이름을 쓴다.
     const site = await SiteSettings.findOne({ attributes: ['siteName'] });
     const issuer = (site?.siteName || 'TinyCommunity').replace(/[:\s]+/g, ' ').trim();
 
@@ -70,7 +67,7 @@ export const generate2FASecret = async (req: AuthRequest, res: Response): Promis
 
     const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url || '');
 
-    // at-rest 암호화 후 저장 (QR/응답에는 평문 base32를 전달 — 등록 화면에서 1회성으로 필요)
+    // 저장은 암호화, 응답에는 등록 화면용 평문 base32 를 한 번만 내려준다
     user.twoFactorSecret = encryptSecret(secret.base32);
     await user.save();
 
@@ -84,9 +81,7 @@ export const generate2FASecret = async (req: AuthRequest, res: Response): Promis
   }
 };
 
-/**
- * 2FA 활성화 (코드 검증 후)
- */
+/** 2FA 활성화 (코드 검증 후) */
 export const enable2FA = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { token } = req.body;
@@ -135,9 +130,7 @@ export const enable2FA = async (req: AuthRequest, res: Response): Promise<void> 
   }
 };
 
-/**
- * 2FA 비활성화
- */
+/** 2FA 비활성화 */
 export const disable2FA = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { token, currentPassword } = req.body as { token?: string; currentPassword?: string };
@@ -199,8 +192,8 @@ export const disable2FA = async (req: AuthRequest, res: Response): Promise<void>
 };
 
 /**
- * 2FA 로그인 검증 (토큰 발행)
- * 클라이언트가 data.user / data.tokenInfo 를 직접 참조하므로 구조 유지
+ * 2FA 로그인 검증 (토큰 발행).
+ * 클라이언트가 data.user / data.tokenInfo 를 직접 참조하므로 응답 구조를 바꾸지 말 것.
  */
 export const verify2FALogin = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -242,13 +235,13 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // 소프트 삭제된 계정 차단 (paranoid 모드에서 findByPk가 반환할 수도 있는 엣지 케이스)
+    // 소프트 삭제된 계정 차단
     if (user.isDeletedAccount()) {
       sendNotFound(res, '사용자');
       return;
     }
 
-    // tempToken 발급 후 비밀번호 변경/로그아웃이 발생했다면 tv 불일치 → 거부
+    // tempToken 발급 후 비밀번호 변경·로그아웃이 있었다면 tv 가 어긋난다
     const dbTv = user.tokenVersion ?? 0;
     const tvMismatch = decoded.tv === undefined ? dbTv > 0 : decoded.tv !== dbTv;
     if (tvMismatch) {
@@ -256,7 +249,7 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // 일반 로그인과 동일하게 계정/역할 상태 검증 (비활성화된 계정의 2FA 우회 방지)
+    // 일반 로그인과 동일하게 계정·역할 상태를 검증한다
     if (!user.isActive) {
       sendError(res, 403, '비활성화된 계정입니다. 관리자에게 문의하세요.');
       return;
@@ -266,7 +259,7 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // 계정 잠금 확인 (login()과 동일한 검증 순서)
+    // 계정 잠금 확인. login() 과 같은 검증 순서를 유지한다.
     if (user.isLocked()) {
       sendError(res, 403, '계정이 일시적으로 잠겨있습니다. 잠시 후 다시 시도해주세요.');
       return;
@@ -285,14 +278,14 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<void>
     });
 
     if (!verified) {
-      // 2FA 실패도 계정 잠금에 반영 (brute force 방지)
+      // 2FA 실패도 계정 잠금에 반영한다
       try {
         await user.incrementFailedAttempts();
       } catch (err) {
         logWarning('2FA 실패 카운터 증가 실패', { userId: user.id, err });
       }
 
-      // TOTP 실패도 감사 로그/로그인 이력에 기록 (login() 실패와 동일하게 처리)
+      // TOTP 실패도 감사 로그·로그인 이력에 기록한다
       securityLogService
         .createLog({
           userId: user.id,
@@ -332,7 +325,7 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // 2FA 검증 성공 — 이제 실패 카운터/lastLoginIp 갱신
+    // 2FA 검증 성공. 실패 카운터와 lastLoginIp 를 갱신한다.
     const previousLoginIp = user.lastLoginIp ?? null;
     try {
       await user.resetFailedAttempts(ipAddress);
@@ -352,7 +345,6 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<void>
         .catch(err => logError('새 IP 로그인 알림 실패 (2FA)', err));
     }
 
-    // 로그인 완료 - authService로 payload 생성
     const payload = await authService.generateUserPayload(user);
 
     const { jwtAccessTokenHours, jwtRefreshTokenDays } = getSettings();
@@ -364,29 +356,21 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<void>
     );
 
     const refreshToken = jwt.sign(
-      // jti 로 매번 다른 토큰을 만든다 (auth.service 의 로그인 경로와 같은 이유).
-      // 없으면 payload 와 iat(초 단위)가 같아져, 같은 사람이 같은 초에 두 기기에서
-      // 2FA 를 통과하면 토큰이 글자까지 똑같아진다 — 세션 표에서 한 줄로 덮여
-      // 기기 목록에 하나만 보이고, 그 하나를 끊으면 두 기기가 함께 끊긴다.
+      // jti 가 없으면 같은 초에 두 기기에서 통과한 토큰이 동일해져 세션이 한 줄로 덮인다
       { id: user.id, tokenType: 'refresh', tv: user.tokenVersion ?? 0, jti: crypto.randomUUID() },
       process.env.JWT_REFRESH_SECRET!,
       { expiresIn: `${jwtRefreshTokenDays}d`, algorithm: 'HS256' }
     );
 
-    // auth.controller와 동일한 secure-by-default 로직 사용 (isCookieSecure)
+    // auth.controller 와 같은 isCookieSecure 를 쓴다
     const cookieOptions = {
       httpOnly: true,
       secure: isCookieSecure(),
       sameSite: 'lax' as const,
       path: '/',
     };
-    // 쿠키 수명은 access 토큰 자체가 아니라 refresh 토큰에 맞춘다
-    // (auth.controller 의 로그인 경로와 같은 이유).
-    //
-    // 토큰 수명과 같게 두면 만료되는 순간 브라우저가 쿠키를 지워, 다음 요청이
-    // "만료된 토큰"(419) 이 아니라 "토큰 없음"(401) 으로 도착한다. 화면은 419 에서만
-    // 갱신을 시도하므로, refresh 토큰이 멀쩡한데도 로그인 화면으로 튕긴다.
-    // 2FA 를 켠 사람만 그 일을 겪고 있었다.
+    // 쿠키 수명은 access 가 아니라 refresh 토큰에 맞춘다.
+    // access 수명과 같게 두면 만료 시 쿠키가 지워져 419 가 아닌 401 로 도착해 갱신이 안 된다.
     res.cookie('access_token', accessToken, {
       ...cookieOptions,
       maxAge: jwtRefreshTokenDays * 24 * 60 * 60 * 1000,
@@ -408,8 +392,7 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<void>
           roleInfo: user.roleInfo,
           permissions: payload.permissions,
           createdAt: user.createdAt,
-          // 강제 비밀번호 변경 플래그를 일반 로그인(buildAuthData)과 동일하게 포함.
-          // 누락 시 2FA 사용자는 강제변경 화면으로 못 가고 서버 게이트에 막혀 소프트 락아웃됨.
+          // 일반 로그인(buildAuthData)과 동일하게 포함해야 강제변경 화면으로 갈 수 있다
           mustChangePassword: user.mustChangePassword ?? false,
         },
         tokenInfo: {
@@ -420,7 +403,7 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<void>
       '로그인 성공'
     );
 
-    // H1: 2FA 경로 로그인 완료 후 감사 로그/세션 기록 (fire-and-forget)
+    // 로그인 완료 후 감사 로그·세션 기록 (fire-and-forget)
     logSuccess('2FA 로그인 성공', { userName: user.name });
     securityLogService
       .createLog({
@@ -457,9 +440,7 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<void>
   }
 };
 
-/**
- * 2FA 상태 조회
- */
+/** 2FA 상태 조회 */
 export const get2FAStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {

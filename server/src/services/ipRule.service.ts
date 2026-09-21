@@ -1,18 +1,16 @@
-// server/src/services/ipRule.service.ts — IP 규칙 서비스
+// IP 규칙 서비스
 
 import { UniqueConstraintError } from 'sequelize';
 import { IpRule, IpRuleType } from '../models/IpRule';
 import { AppError } from '../middlewares/error.middleware';
 import { logInfo } from '../utils/logger';
 
-// ── IP 매칭 유틸리티 ────────────────────────────────────────────────────────
-
 /** IPv6-mapped IPv4 정규화 */
 function normalizeIp(ip: string): string {
   return ip.startsWith('::ffff:') ? ip.slice(7) : ip;
 }
 
-/** CIDR 범위 내에 IP가 포함되는지 확인 (IPv4 only) */
+/** CIDR 범위 내에 IP 가 포함되는지 확인 (IPv4 only) */
 function ipInCidr(ip: string, cidr: string): boolean {
   try {
     const [base, prefixStr] = cidr.split('/');
@@ -36,7 +34,7 @@ function ipToNum(ip: string): number | null {
   return ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0;
 }
 
-/** 하나의 IP가 규칙 IP(단일 또는 CIDR)에 매칭되는지 */
+/** 하나의 IP 가 규칙 IP(단일 또는 CIDR)에 매칭되는지 */
 export function matchesIpRule(clientIp: string, ruleIp: string): boolean {
   const normalized = normalizeIp(clientIp);
   if (ruleIp.includes('/')) {
@@ -44,8 +42,6 @@ export function matchesIpRule(clientIp: string, ruleIp: string): boolean {
   }
   return normalized === ruleIp;
 }
-
-// ── 서비스 ────────────────────────────────────────────────────────────────
 
 // 규칙 캐시 (미들웨어 DB 조회 최소화)
 interface RuleCache {
@@ -76,8 +72,6 @@ export async function getIpRuleCache(): Promise<RuleCache> {
 export function invalidateIpRuleCache(): void {
   ruleCache = null;
 }
-
-// ── CRUD ────────────────────────────────────────────────────────────────────
 
 export async function listIpRules(type?: IpRuleType) {
   const where = type ? { type } : {};
@@ -110,9 +104,7 @@ export async function createIpRule(data: {
       isActive: true,
     },
   }).catch((error: unknown) => {
-    // findOrCreate 는 '없으면 만든다' 라서, 동시에 들어온 두 요청이 둘 다 없음을
-    // 보고 각자 INSERT 를 시도할 수 있다. 유니크 인덱스가 진 쪽을 거절하면
-    // 여기로 온다 — 500 이 아니라 순차 요청과 같은 409 로 돌려준다.
+    // 동시 요청은 findOrCreate 로 막히지 않는다. 유니크 인덱스가 거절한 쪽도 409 로 돌려준다.
     if (error instanceof UniqueConstraintError) throw duplicate();
     throw error;
   });

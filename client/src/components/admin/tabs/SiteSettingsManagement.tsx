@@ -1,4 +1,3 @@
-// client/src/components/admin/tabs/SiteSettingsManagement.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { FeatureOffNotice } from '../common/FeatureOffNotice';
@@ -16,8 +15,6 @@ import { AdminSection } from '../common/AdminSection';
 import { ToggleSwitch } from '../../common/ToggleSwitch';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { adminInputCls } from '../common/AdminFormField';
-
-// ─── Asset uploader (logo / favicon) ────────────────────────────────────────
 
 interface AssetUploaderProps {
   label: string;
@@ -47,7 +44,7 @@ const AssetUploader: React.FC<AssetUploaderProps> = ({ label, hint, accept, valu
     }
   };
 
-  // 이름·설명은 SettingRow 가 왼쪽 열에 그린다 — 이 화면의 다른 항목들과 같은 줄에 선다.
+  // 이름·설명은 SettingRow 가 왼쪽 열에 그린다.
   return (
     <SettingRow label={label} description={hint}>
       <div className="flex items-center gap-4">
@@ -80,8 +77,7 @@ const AssetUploader: React.FC<AssetUploaderProps> = ({ label, hint, accept, valu
         </div>
 
         <div className="flex-1 space-y-2 min-w-0">
-          {/* type="text" — 업로드가 반환하는 상대경로(/uploads/...)도 허용해야 하므로 type="url" 금지.
-              (type="url"은 절대 URL만 유효로 보고 상대경로를 막아 baseURL 수동입력을 강요함) */}
+          {/* type="url" 은 상대경로(/uploads/...)를 막으므로 type="text" 를 쓴다 */}
           <input
             type="text"
             value={value ?? ''}
@@ -133,8 +129,6 @@ const AssetUploader: React.FC<AssetUploaderProps> = ({ label, hint, accept, valu
   );
 };
 
-// ─── NumberInput helper ───────────────────────────────────────────────────────
-
 interface NumberInputProps {
   label: string;
   description: string;
@@ -165,14 +159,14 @@ const NumberInput: React.FC<NumberInputProps> = ({
     if (!isNaN(n)) {
       const clamped = Math.max(min, Math.min(max, n));
       onChange(clamped);
-      // clamp 결과가 기존 value와 같으면 useEffect가 안 돌아 raw가 입력값에 묶이므로 직접 동기화
+      // clamp 결과가 기존 value 와 같으면 useEffect 가 안 돌아 raw 가 입력값에 묶이므로 직접 동기화한다.
       setRaw(String(clamped));
     } else {
       setRaw(String(value)); // 유효하지 않은 값이면 원래 값으로 복원
     }
   };
 
-  // 이름·설명은 SettingRow 가 왼쪽 열에 그린다 — 이 화면의 다른 항목들과 같은 줄에 선다.
+  // 이름·설명은 SettingRow 가 왼쪽 열에 그린다.
   return (
     <SettingRow label={label} description={description}>
       <div className="flex items-center gap-2">
@@ -195,18 +189,10 @@ const NumberInput: React.FC<NumberInputProps> = ({
   );
 };
 
-// ─── DEFAULT_SETTINGS ─────────────────────────────────────────────────────────
-//
-// 스토어의 기본값을 그대로 쓴다. 같은 항목을 여기에 다시 적으면 설정을 추가할 때마다
-// 두 곳을 고쳐야 하고, 한쪽을 잊으면 어긋난다.
-//
-// 다른 점은 사이트 이름·타이틀뿐이다. 서버 값이 오기 전에 기본 이름이 미리 채워져 있으면
-// 관리자가 그대로 저장해 버릴 수 있어, 빈 칸으로 두고 placeholder 를 보인다.
+// 스토어 기본값을 그대로 쓴다. 사이트 이름·타이틀만 빈 칸으로 둬 placeholder 를 보인다.
 const DEFAULT_SETTINGS: SiteSettings = { ...STORE_DEFAULTS, siteName: '', siteTitle: '' };
 
-// ─── Main component ──────────────────────────────────────────────────────────
-
-/** 상태 키와 기본 이름 — 서버 workStatus.ts 와 짝이다(키가 늘면 여기도 늘린다) */
+/** 상태 키와 기본 이름. 서버 workStatus.ts 와 짝이다(키가 늘면 여기도 늘린다) */
 const WORK_STATUS_FIELDS = [
   { key: 'todo', fallback: '할 일' },
   { key: 'doing', fallback: '진행 중' },
@@ -225,12 +211,9 @@ export const SiteSettingsManagement = () => {
       ? { ...DEFAULT_SETTINGS, ...(storeSettings as unknown as SiteSettings) }
       : DEFAULT_SETTINGS
   );
-  // 스토어에는 보안 설정(잠금 횟수·bcrypt 라운드·토큰 수명·rate limit·로그 보관)이 없다 —
-  // 공개 응답에서 빠지기 때문이다. 그래서 스토어만 믿고 폼을 먼저 열면 그 칸들이 기본값으로
-  // 채워지고, 아래 조회가 돌아오기 전에 다른 칸을 건드리면(isDirty) 기본값이 그대로 저장된다.
-  // 관리자 조회가 끝날 때까지는 폼을 열지 않는다.
+  // 보안 설정은 공개 응답에 없다. 관리자 조회가 끝나기 전에 폼을 열면 기본값이 그대로 저장될 수 있다.
   const [loading, setLoading] = useState(true);
-  /** 불러오기 실패 — 폼을 열지 않는다(기본값으로 진짜 설정을 덮어쓰지 않게) */
+  /** 불러오기 실패. 기본값으로 진짜 설정을 덮어쓰지 않도록 폼을 열지 않는다 */
   const [loadFailed, setLoadFailed] = useState(false);
   const isDirty = useRef(false);
 
@@ -259,7 +242,6 @@ export const SiteSettingsManagement = () => {
   };
 
   // 기능 설정 화면에서 '설정 열기' 로 들어오면 해당 구역까지 데려간다.
-  // 이 페이지는 길어서, 그냥 열어 두면 어디를 보라는 건지 알 수 없다.
   const { hash } = useLocation();
   useEffect(() => {
     if (!hash) return;
@@ -274,7 +256,7 @@ export const SiteSettingsManagement = () => {
     return () => clearTimeout(t);
   }, [hash, loading]);
 
-  // 상품표 편집 — 확률 합계는 화면에서 바로 보여 주고, 최종 검사는 서버가 한다
+  // 상품표 편집. 확률 합계는 화면에서 바로 보여 주고 최종 검사는 서버가 한다.
   const prizeTotal =
     Math.round(
       (settings.lotteryPrizes ?? []).reduce((sum, p) => sum + (Number(p.weight) || 0), 0) * 100
@@ -314,11 +296,7 @@ export const SiteSettingsManagement = () => {
         // 스토어는 항상 최신 서버 값으로 유지
         updateStore(data as unknown as Parameters<typeof updateStore>[0]);
       } catch {
-        // 못 불러왔으면 폼을 열지 않는다.
-        //
-        // 예전에는 안내만 띄우고 기본값으로 채운 폼을 그대로 보여 줬다. 관리자는 그 값이
-        // 지금 설정인 줄 알고 저장을 눌렀고, 그 순간 서버의 진짜 설정(보안 설정까지)이
-        // 화면의 기본값으로 덮였다.
+        // 못 불러왔으면 폼을 열지 않는다. 기본값이 진짜 설정을 덮어쓴다.
         setLoadFailed(true);
       } finally {
         setLoading(false);
@@ -342,8 +320,7 @@ export const SiteSettingsManagement = () => {
       isDirty.current = false; // 저장 성공 시 dirty 플래그 초기화
       document.title = updated.siteTitle;
       if (updated.faviconUrl) applyFavicon(updated.faviconUrl);
-      // 캐시도 갱신 — 안 하면 변경 직후 새로고침 시 index.html 인라인 스크립트가 옛 제목을
-      // 잠깐 적용했다 교체하는 깜빡임이 남는다.
+      // 캐시도 갱신한다. 안 하면 새로고침 때 index.html 이 옛 제목을 잠깐 보인다.
       cacheSiteIdentity({
         siteName: updated.siteName,
         siteTitle: updated.siteTitle,
@@ -380,7 +357,7 @@ export const SiteSettingsManagement = () => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* ── Toast message ─────────────────────────────────────────────────── */}
+      {/* 토스트 메시지 */}
       {message && (
         <div
           className={`p-4 rounded-lg border-2 flex items-center justify-between gap-3 ${
@@ -400,7 +377,7 @@ export const SiteSettingsManagement = () => {
         </div>
       )}
 
-      {/* ── 1. 기본 정보 ─────────────────────────────────────────────────── */}
+      {/* 기본 정보 */}
       <AdminSection title="기본 정보">
         <SettingList>
           <SettingRow label="사이트 이름" description="헤더와 사이드바에 표시되는 이름" required>
@@ -408,8 +385,7 @@ export const SiteSettingsManagement = () => {
               type="text"
               value={settings.siteName}
               onChange={e => set('siteName', e.target.value)}
-              // 빈 칸일 때 보이는 힌트는 지금 쓰이는 이름이어야 한다.
-              // 제품 이름을 박아 두면 사이트 이름을 바꿔 둔 곳에서 딴 이름이 비친다.
+              // 빈 칸 힌트는 지금 쓰이는 이름이어야 한다. 제품 이름을 박아 두면 딴 이름이 비친다.
               placeholder={storeSettings.siteName}
               required
               className="input max-w-sm"
@@ -439,7 +415,7 @@ export const SiteSettingsManagement = () => {
         </SettingList>
       </AdminSection>
 
-      {/* ── 2. 브랜딩 ─────────────────────────────────────────────────────── */}
+      {/* 브랜딩 */}
       <AdminSection title="브랜딩">
         <SettingList>
           <AssetUploader
@@ -459,7 +435,7 @@ export const SiteSettingsManagement = () => {
         </SettingList>
       </AdminSection>
 
-      {/* ── 3. 회원가입 설정 ───────────────────────────────────────────────── */}
+      {/* 회원가입 설정 */}
       <AdminSection title="회원가입 설정">
         <SettingList>
           <SettingRow
@@ -491,7 +467,7 @@ export const SiteSettingsManagement = () => {
         </SettingList>
       </AdminSection>
 
-      {/* ── 4. 댓글 설정 ───────────────────────────────────────────────────── */}
+      {/* 댓글 설정 */}
       <AdminSection title="댓글 설정">
         <div className="space-y-4">
           <SettingRow
@@ -561,9 +537,7 @@ export const SiteSettingsManagement = () => {
             />
           </SettingList>
 
-          {/* 업무 상태를 부르는 말.
-              키(todo/doing/done)는 코드가 고정한다 — 저장된 값과 동작('진행 중'이면
-              담당자 자동 지정)이 이름에 흔들리면 안 된다. 화면에 뜨는 말만 팀에 맞춘다. */}
+          {/* 업무 상태를 부르는 말. 키(todo/doing/done)는 코드가 고정하고 화면에 뜨는 말만 바꾼다 */}
           <div className="pt-2">
             <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               업무 상태 이름
@@ -597,7 +571,7 @@ export const SiteSettingsManagement = () => {
         </div>
       </AdminSection>
 
-      {/* ── 포인트 뽑기 ────────────────────────────────────────────────────── */}
+      {/* 포인트 뽑기 */}
       <AdminSection id="lottery" title="포인트 뽑기">
         <FeatureOffNotice feature="tools.lottery" name="포인트 뽑기" />
         <div className="space-y-4">
@@ -802,7 +776,7 @@ export const SiteSettingsManagement = () => {
         </div>
       </AdminSection>
 
-      {/* ── 5. 점검 모드 ───────────────────────────────────────────────────── */}
+      {/* 점검 모드 */}
       <AdminSection title="점검 모드">
         <div className="space-y-4">
           {settings.maintenanceMode && (
@@ -843,7 +817,7 @@ export const SiteSettingsManagement = () => {
         </div>
       </AdminSection>
 
-      {/* ── 6. 로그인 페이지 설정 ─────────────────────────────────────────── */}
+      {/* 로그인 페이지 설정 */}
       <AdminSection title="로그인 페이지 설정">
         <div>
           <label className="form-label" htmlFor="site-login-notice">
@@ -863,7 +837,7 @@ export const SiteSettingsManagement = () => {
         </div>
       </AdminSection>
 
-      {/* ── 7. 시스템 설정 ────────────────────────────────────────────────── */}
+      {/* 시스템 설정 */}
       <AdminSection title="시스템 설정">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* 보안 설정 */}
@@ -1078,7 +1052,7 @@ export const SiteSettingsManagement = () => {
         </div>
       </AdminSection>
 
-      {/* ── 8. 파일 크기 제한 ─────────────────────────────────────────────── */}
+      {/* 파일 크기 제한 */}
       <AdminSection id="file-limits" title="파일 크기 제한 (카테고리별)">
         <FeatureOffNotice feature="post.attachments" name="파일 첨부" />
         <SettingList>
@@ -1103,7 +1077,7 @@ export const SiteSettingsManagement = () => {
         </SettingList>
       </AdminSection>
 
-      {/* ── 10. 보안 고급 설정 ────────────────────────────────────────────── */}
+      {/* 보안 고급 설정 */}
       <AdminSection title="보안 고급 설정">
         <div className="space-y-4">
           <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs">
@@ -1125,7 +1099,7 @@ export const SiteSettingsManagement = () => {
         </div>
       </AdminSection>
 
-      {/* ── 11. 아바타 처리 설정 ─────────────────────────────────────────── */}
+      {/* 아바타 처리 설정 */}
       <AdminSection title="아바타 처리 설정">
         <SettingList>
           <NumberInput
@@ -1149,7 +1123,7 @@ export const SiteSettingsManagement = () => {
         </SettingList>
       </AdminSection>
 
-      {/* ── 13. 에디터 설정 ───────────────────────────────────────────────── */}
+      {/* 에디터 설정 */}
       <AdminSection id="editor" title="에디터 설정">
         <SettingList>
           <NumberInput
@@ -1173,7 +1147,7 @@ export const SiteSettingsManagement = () => {
         </SettingList>
       </AdminSection>
 
-      {/* ── Save bar ──────────────────────────────────────────────────────── */}
+      {/* 저장 바 */}
       <div className="flex justify-end gap-3 pt-2 pb-4">
         <button
           type="button"

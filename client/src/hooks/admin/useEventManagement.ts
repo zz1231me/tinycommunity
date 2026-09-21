@@ -23,7 +23,7 @@ interface EventUpdatePayload {
 export const useEventManagement = () => {
   const queryClient = useQueryClient();
 
-  // 이벤트 목록은 순수 서버 캐시 — React Query 가 소유한다.
+  // 이벤트 목록은 React Query 가 소유한다.
   const {
     data: events = [],
     isPending: loading,
@@ -36,17 +36,15 @@ export const useEventManagement = () => {
 
   const invalidateEvents = () => queryClient.invalidateQueries({ queryKey: adminKeys.events.all });
 
-  // 권한은 낙관적 토글 + 저장 직렬화(coalescing)를 직접 관리하므로 캐시로 옮기지 않는다.
+  // 권한은 낙관적 토글과 저장 직렬화를 직접 관리하므로 캐시로 옮기지 않는다.
   const [permissions, setPermissions] = useState<EventPermission[]>([]);
   const [saving, setSaving] = useState(false);
-  // 권한 조회가 실패했는지. 목록이 비어 있다는 것만으로는 '아직 안 왔다' 와
-  // '못 가져왔다' 를 구분할 수 없어, 실패하면 화면이 영원히 '불러오는 중' 으로 남았다.
+  // 목록이 비었다는 것만으로는 미도착과 실패를 구분할 수 없어 따로 들고 있는다.
   const [permissionsError, setPermissionsError] = useState<string | null>(null);
-  // 저장 직렬화용 — 저장 진행 중 들어온 후속 토글의 최신 상태를 적재(coalescing)해 클릭 유실 방지
+  // 저장 중에 들어온 토글을 모아 두어 클릭이 유실되지 않게 한다.
   const savingRef = useRef(false);
   const pendingRef = useRef<EventPermission[] | null>(null);
-  // permissions의 최신 스냅샷(ref). setState updater의 비동기 실행에 의존해 토글 결과를 읽으면
-  // 저장이 누락될 수 있어, ref에서 동기적으로 최신 상태를 읽어 결정적으로 계산한다.
+  // setState updater 는 비동기라 저장할 값은 이 ref 에서 동기로 읽는다.
   const permissionsRef = useRef<EventPermission[]>([]);
 
   const fetchPermissions = async () => {
@@ -72,7 +70,7 @@ export const useEventManagement = () => {
     onSuccess: invalidateEvents,
   });
 
-  // 최신 권한 상태를 직렬로 저장. 저장 중 쌓인 변경은 끝난 뒤 이어서 저장(클릭 유실/out-of-order 방지)
+  // 저장은 직렬로 하고, 저장 중 쌓인 변경은 끝난 뒤 이어서 저장한다.
   const flushPermissionSave = async (perms: EventPermission[]) => {
     savingRef.current = true;
     setSaving(true);
@@ -86,7 +84,7 @@ export const useEventManagement = () => {
     try {
       await api.put('/admin/events/permissions', { permissions: validPermissions });
     } catch (err) {
-      // 저장 실패 시 서버 상태로 롤백
+      // 저장에 실패하면 서버 상태로 되돌린다.
       if (import.meta.env.DEV) console.error('이벤트 권한 저장 실패 — 서버 상태로 롤백', err);
       pendingRef.current = null; // 서버 상태를 다시 읽으므로 대기분은 폐기
       await fetchPermissions();
@@ -106,9 +104,7 @@ export const useEventManagement = () => {
     roleId: string,
     type: 'canCreate' | 'canRead' | 'canUpdate' | 'canDelete'
   ) => {
-    // ⚠ setState 업데이터의 비동기 실행에 의존하지 않고 ref(최신 스냅샷)에서 동기적으로 계산한다.
-    //    updater 안에서 채운 값을 직후에 동기로 읽으면, 지연 실행 시 빈 배열로 읽혀
-    //    저장이 건너뛰어진다. 저장 중이면 대기열에 넣어 이어서 저장한다.
+    // 저장할 값은 ref 에서 동기로 읽는다. updater 결과를 바로 읽으면 빈 배열이 될 수 있다.
     if (permissionsRef.current.length === 0) return;
     const updated = permissionsRef.current.map(p =>
       p.roleId === roleId ? { ...p, [type]: !p[type] } : p

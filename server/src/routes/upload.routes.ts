@@ -1,4 +1,3 @@
-// server/src/routes/upload.routes.ts - 통합 업로드 미들웨어 사용
 import path from 'path';
 import fs from 'fs';
 
@@ -6,7 +5,7 @@ import { Router, RequestHandler } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { authenticate } from '../middlewares/auth.middleware';
-import { uploadImages } from '../middlewares/upload/image'; // ✅ 직접 import
+import { uploadImages } from '../middlewares/upload/image';
 import { validateUploadedFile } from '../middlewares/upload/validator';
 import { AuthRequest } from '../types/auth-request';
 import { logError, logInfo } from '../utils/logger';
@@ -18,17 +17,15 @@ import { clampText } from '../utils/clamp';
 
 const router = Router();
 
-// 디렉토리 경로
 const filesDir = path.join(__dirname, '../../uploads/files');
 const imagesDir = path.join(__dirname, '../../uploads/images');
 
 /**
- * 파일명 보안 검증 + 경로 이탈 방지 헬퍼
- * @returns 안전한 절대경로 or null (검증 실패 시)
+ * 파일명 검증 + 경로 이탈 방지
+ * @returns 안전한 절대경로, 검증 실패 시 null
  */
 function resolveSecureFilePath(filename: string, baseDir: string): string | null {
-  // Express 5 는 경로 조각을 이미 풀어서 준다. 여기서 또 풀면 '%' 한 글자만 들어와도
-  // URIError 가 나 500 이 됐다(아래 허용 문자 검사가 진짜 방어선이다).
+  // Express 5 는 경로 조각을 이미 풀어서 준다. 여기서 또 풀면 '%' 한 글자에 URIError 가 난다.
   let decoded: string;
   try {
     decoded = decodeURIComponent(filename);
@@ -47,14 +44,12 @@ function resolveSecureFilePath(filename: string, baseDir: string): string | null
   return resolvedPath;
 }
 
-/**
- * 이미지 업로드 엔드포인트 (에디터용)
- */
+/** 에디터용 이미지 업로드 */
 router.post(
   '/images',
   authenticate as RequestHandler,
   uploadImages.single('image'),
-  validateUploadedFile() as RequestHandler, // 에디터 이미지=인라인 서빙: 내용(magic) 검증
+  validateUploadedFile() as RequestHandler, // 인라인 서빙이라 내용(magic)까지 검증한다
   asyncHandler((req, res) => {
     const authReq = req as AuthRequest;
 
@@ -68,14 +63,7 @@ router.post(
   })
 );
 
-/**
- * 첨부 이미지 썸네일
- * GET /api/uploads/thumb/:filename
- *
- * 다운로드와 완전히 동일한 인가를 거친다(비밀글 이미지 유출 방지).
- * 응답은 sharp 가 재인코딩한 JPEG 라 원본 바이트가 그대로 나가지 않는다 —
- * 따라서 inline 서빙이어도 저장형 XSS 위험이 없다.
- */
+// 응답은 sharp 가 재인코딩한 JPEG 라 원본 바이트가 나가지 않는다.
 /**
  * @swagger
  * /api/uploads/thumb/{filename}:
@@ -134,7 +122,7 @@ router.get(
 
     const thumbPath = await getOrCreateThumbnail(resolvedFilePath, savedFilename);
     if (!thumbPath) {
-      // 이미지가 아니거나 손상된 파일 — 클라이언트는 원본으로 폴백한다.
+      // 이미지가 아니거나 손상된 파일이면 클라이언트가 원본으로 폴백한다.
       sendNotFound(res, '썸네일');
       return;
     }
@@ -147,18 +135,14 @@ router.get(
   })
 );
 
-/**
- * 파일 다운로드 엔드포인트
- * GET /api/uploads/download/:filename?originalName=원본파일명.png
- */
+/** GET /api/uploads/download/:filename?originalName=원본파일명.png */
 router.get(
   '/download/:filename',
   authenticate as RequestHandler,
   asyncHandler(async (req, res) => {
     const { filename } = req.params as Record<string, string>;
     const rawOriginalName = req.query.originalName;
-    // clampText 로 자른다. substring 은 이모지(서로게이트 짝) 한가운데를 자를 수 있고,
-    // 짝이 깨진 문자열은 아래 encodeURIComponent 에서 URIError 를 내 500 이 됐다.
+    // substring 은 서로게이트 짝을 쪼개 encodeURIComponent 에서 URIError 를 낸다.
     const originalName =
       typeof rawOriginalName === 'string' ? clampText(rawOriginalName, 255) : undefined;
 
@@ -168,16 +152,14 @@ router.get(
       return;
     }
 
-    // 파일 존재 여부 확인
     if (!fs.existsSync(resolvedFilePath)) {
       sendNotFound(res, '파일');
       return;
     }
 
-    // 다운로드 파일명 결정 (resolvedFilePath에서 basename 추출)
     const savedFilename = path.basename(resolvedFilePath);
 
-    // 첨부파일 인가 — 썸네일 엔드포인트와 동일한 규칙을 공유한다.
+    // 인가 규칙은 썸네일 엔드포인트와 같다.
     const authReq = req as AuthRequest;
     const access = await authorizeAttachmentAccess(
       savedFilename,
@@ -191,11 +173,9 @@ router.get(
     const downloadFilename = originalName || savedFilename;
     const encodedFilename = encodeURIComponent(downloadFilename);
 
-    // 파일 정보 가져오기
     const stats = fs.statSync(resolvedFilePath);
     const fileSize = stats.size;
 
-    // MIME 타입 설정
     const targetName = originalName || savedFilename;
     const ext = path.extname(targetName).toLowerCase();
     const mimeTypes: { [key: string]: string } = {
@@ -220,15 +200,13 @@ router.get(
 
     const mimeType = mimeTypes[ext] || 'application/octet-stream';
 
-    // 응답 헤더 설정
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Length', fileSize);
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFilename}`);
     res.setHeader('Cache-Control', 'no-cache');
-    // 브라우저 MIME 스니핑 차단 — attachment와 함께 임의 확장자 첨부의 인라인 실행 위험 최소화
+    // MIME 스니핑으로 인라인 실행되는 것을 막는다.
     res.setHeader('X-Content-Type-Options', 'nosniff');
 
-    // 파일 스트림으로 전송
     const fileStream = fs.createReadStream(resolvedFilePath);
 
     fileStream.on('error', error => {
@@ -242,9 +220,7 @@ router.get(
   })
 );
 
-/**
- * 파일 정보 조회 엔드포인트
- */
+/** 파일 정보 조회 */
 router.get(
   '/info/:filename',
   authenticate as RequestHandler,
@@ -259,12 +235,7 @@ router.get(
 
     const savedFilename = path.basename(resolvedFilePath);
 
-    // 첨부파일 인가 — download·thumb 와 같은 규칙을 공유한다.
-    // 이것이 빠져 있어서, 읽기 권한을 잃었거나 비밀글로 바뀐 뒤에도 파일명만 알면
-    // 존재 여부와 크기·수정시각을 계속 확인할 수 있었다(내용은 아니지만 탐지 창구다).
-    //
-    // 존재 확인보다 '먼저' 본다. 뒤에 두면 권한 없는 사람에게 404 와 403 이 갈려
-    // 그 자체가 파일이 있는지 알려 주는 신호가 된다.
+    // 인가는 존재 확인보다 먼저 한다. 뒤에 두면 404 와 403 이 갈려 존재가 드러난다.
     const authReq = req as AuthRequest;
     const access = await authorizeAttachmentAccess(
       savedFilename,
@@ -292,8 +263,6 @@ router.get(
   })
 );
 
-// ── 관리자 파일 관리 ─────────────────────────────────────────────────────
-
 function listFilesInDir(dir: string, type: 'file' | 'image') {
   if (!fs.existsSync(dir)) return [];
   return fs
@@ -318,9 +287,7 @@ function listFilesInDir(dir: string, type: 'file' | 'image') {
     .filter(Boolean);
 }
 
-/**
- * GET /api/uploads/admin/list — 업로드 파일 목록 (관리자)
- */
+/** GET /api/uploads/admin/list */
 router.get(
   '/admin/list',
   authenticate as RequestHandler,
@@ -347,12 +314,11 @@ router.get(
       allFiles = allFiles.concat(listFilesInDir(imagesDir, 'image'));
     }
 
-    // 파일명 검색 — 페이지네이션 전에 전체 집합에서 필터 (현재 페이지 한정 버그 방지)
+    // 페이지네이션 전에 전체 집합에서 걸러야 한다.
     if (search) {
       allFiles = allFiles.filter(f => f?.filename.toLowerCase().includes(search));
     }
 
-    // 최신순 정렬
     allFiles.sort((a, b) =>
       a && b ? new Date(b.mtime).getTime() - new Date(a.mtime).getTime() : 0
     );
@@ -372,9 +338,7 @@ router.get(
   })
 );
 
-/**
- * DELETE /api/uploads/admin/:type/:filename — 파일 삭제 (관리자)
- */
+/** DELETE /api/uploads/admin/:type/:filename */
 router.delete(
   '/admin/:type/:filename',
   authenticate as RequestHandler,

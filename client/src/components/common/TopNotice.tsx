@@ -1,12 +1,5 @@
-// client/src/components/common/TopNotice.tsx
-// 화면 맨 위를 가로지르는 알림 띠.
-//
-// 오른쪽 구석 카드로는 눈에 잘 걸리지 않는 것들이 있다 — 공격받았거나 대결 신청을
-// 받았을 때처럼 '지금 움직여야 하는' 알림이다. 그런 것만 이 띠로 띄운다.
-// (보통 알림까지 이걸로 띄우면 하루 종일 위가 출렁여서 오히려 아무도 안 본다.)
-//
-// 머리글(높이 56px) 아래에 놓는다. 위에 겹쳐 두면 로고·메뉴 단추를 덮고, 덮인
-// 자리는 눌러도 띠가 먹는다 — 점검 배너에서 이미 겪은 일이다.
+// 화면 맨 위를 가로지르는 알림 띠. 즉시 대응이 필요한 알림에만 쓴다.
+// 머리글(56px) 아래에 놓아야 로고·메뉴 단추를 덮지 않는다.
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -20,7 +13,7 @@ export function TopNotice({
   action,
   onAction,
   onClose,
-  /** 이 시간이 지나면 스스로 사라진다 (0 이면 남아 있는다) */
+  /** 이 시간이 지나면 스스로 사라진다. 0 이면 남아 있는다. */
   lifeMs = 0,
   tone = 'rose',
 }: {
@@ -39,7 +32,7 @@ export function TopNotice({
     violet: 'bg-violet-600 dark:bg-violet-500',
   }[tone];
 
-  // 읽는 중에 사라지지 않게 — 마우스를 올리거나 키보드로 들어오면 멈춘다
+  // 마우스를 올리거나 키보드로 들어오면 타이머를 멈춘다
   const [paused, setPaused] = useState(false);
   const left = useRef(lifeMs);
   useEffect(() => {
@@ -89,13 +82,8 @@ export function TopNotice({
 }
 
 /**
- * 띠들이 앉는 자리 — 머리글(56px) 바로 아래.
- *
- * 자리는 화면에 하나뿐이다. 띠마다 각자 fixed 상자를 만들면 두 개가 동시에 떴을 때
- * 정확히 같은 자리에 겹쳐 아래 것이 보이지 않는다(공격 알림 + 새 버전 안내가 실제로
- * 그렇게 된다). 한 상자에 모아 세로로 쌓는다.
- *
- * 띠 자체는 클릭을 받고, 사이 공간은 통과시킨다 — 뒤 화면을 가리지 않는다.
+ * 띠들이 앉는 자리. 머리글(56px) 바로 아래, 화면에 하나뿐이다.
+ * 띠마다 fixed 상자를 만들면 동시에 뜬 띠가 같은 자리에 겹친다.
  */
 function noticeHost(): HTMLElement {
   let el = document.getElementById('top-notices');

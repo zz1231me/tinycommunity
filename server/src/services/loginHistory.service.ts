@@ -31,9 +31,7 @@ export class LoginHistoryService extends BaseService {
     try {
       await LoginHistory.create({
         ...data,
-        // userAgent 만 자르고 있었다. 없는 계정으로의 시도를 남기기 시작하면서 userId 에
-        // 요청자가 보낸 아이디가 들어오게 됐다 — 지금은 loginSchema 가 30자로 막지만,
-        // 막는 쪽이 바뀌면 조용히 새는 자리다. 나머지 두 로그 서비스와 같은 방식으로 맞춘다.
+        // userId 에는 요청자가 보낸 아이디가 들어올 수 있어 다른 로그 서비스와 같게 잘라 둔다.
         userId: clampText(data.userId, 50),
         userName: clampText(data.userName, 100),
         userRole: clampText(data.userRole, 50),
@@ -46,9 +44,6 @@ export class LoginHistoryService extends BaseService {
     }
   }
 
-  /**
-   * 로그인 이력 조회
-   */
   async getLoginHistory(params: GetLoginHistoryDTO) {
     const page = Math.min(Math.max(params.page || 1, 1), 10000);
     const limit = Math.min(params.limit || 20, 100);
@@ -103,9 +98,6 @@ export class LoginHistoryService extends BaseService {
     };
   }
 
-  /**
-   * 오래된 로그인 이력 자동 삭제
-   */
   async deleteOldRecords(retentionDays = 90): Promise<number> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);

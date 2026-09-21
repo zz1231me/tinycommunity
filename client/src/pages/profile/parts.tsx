@@ -1,8 +1,4 @@
-// client/src/pages/profile/parts.tsx
 // 마이페이지 탭들이 함께 쓰는 작은 조각들.
-//
-// 목록 자리의 안내(ListState)와 달리 아이콘·재시도 버튼처럼 마이페이지에서만 쓰는
-// 모양이라 공용 컴포넌트로 올리지 않았다.
 
 export function EmptyState({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
@@ -71,7 +67,7 @@ export function Pagination({
   );
 }
 
-/** 마이페이지 목록의 카드 껍데기 — 제목줄 + 건수 */
+/** 마이페이지 목록의 카드 껍데기. 제목줄 + 건수. */
 export function TabCard({
   title,
   count,

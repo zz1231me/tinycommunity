@@ -11,15 +11,11 @@ export interface ReactionSummary {
   reactedByMe: boolean;
 }
 
-// 한 댓글에 허용하는 서로 다른 이모지 종류 수(스팸 방지)
+// 한 댓글에 허용하는 서로 다른 이모지 종류 수
 const MAX_DISTINCT_EMOJIS = 20;
 
 export class CommentReactionService extends BaseService {
-  /**
-   * 댓글 이모지 리액션 토글 — 같은 (댓글, 사용자, 이모지)가 없으면 추가, 있으면 제거.
-   * CommentLike.toggleLike와 동일하게 트랜잭션 + LOCK.UPDATE로 동시 클릭 race를 막는다.
-   * 반환은 해당 댓글의 최신 리액션 요약(요청자 기준 reactedByMe 포함).
-   */
+  /** 댓글 이모지 리액션 토글. LOCK.UPDATE 로 동시 클릭을 막고 최신 요약을 돌려준다. */
   async toggleReaction(
     commentId: number,
     userId: string,
@@ -38,7 +34,7 @@ export class CommentReactionService extends BaseService {
       if (existing) {
         await existing.destroy({ transaction: t });
       } else {
-        // 새 이모지 종류 추가 시에만 종류 수 제한 검사(같은 이모지 반복 토글은 무제한)
+        // 새 종류를 추가할 때만 개수를 검사한다.
         const distinct = await CommentReaction.count({
           where: { CommentId: commentId },
           distinct: true,
@@ -58,7 +54,7 @@ export class CommentReactionService extends BaseService {
     });
   }
 
-  // 댓글의 리액션을 {emoji, count, reactedByMe}[]로 집계(count 내림차순)
+  // 리액션을 count 내림차순으로 집계한다.
   private async summarize(
     commentId: number,
     userId: string | undefined,

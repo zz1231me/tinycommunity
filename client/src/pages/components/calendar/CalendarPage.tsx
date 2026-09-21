@@ -1,6 +1,5 @@
-// client/src/pages/components/calendar/CalendarPage.tsx
+// FullCalendar 기반 일정 화면
 import { DEFAULT_EVENT_COLOR } from '../../../constants/colors';
-// FullCalendar 기반 일정 화면 (구 명칭 MyTUICalendar — TUI Calendar에서 FullCalendar로 이관하며 개명)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -52,7 +51,6 @@ const CalendarPage: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>('view');
-  // 편집 취소 시 복원할 폼 스냅샷
   const formDataSnapshotRef = useRef<EventFormData | null>(null);
   const [todayStr, setTodayStr] = useState(() => dateUtils.toLocalDateString(new Date()));
   const [currentView, setCurrentView] = useState<CalendarView>('dayGridMonth');
@@ -62,8 +60,7 @@ const CalendarPage: React.FC = () => {
   const [calendarTitle, setCalendarTitle] = useState('');
   const [formData, setFormData] = useState<EventFormData>(DEFAULT_FORM);
 
-  // 오늘 날짜만 추적 — 자정에 today-highlight를 갱신하되, 초 단위 리렌더 없이 날짜가 바뀔 때만.
-  // (시계는 CalendarHeader가 자체 상태로 처리해 부모 캘린더 전체 리렌더를 방지)
+  // 날짜가 바뀔 때만 갱신한다. 초 단위 시계는 CalendarHeader 가 따로 들고 있다.
   useEffect(() => {
     const timer = setInterval(() => {
       const s = dateUtils.toLocalDateString(new Date());
@@ -72,18 +69,15 @@ const CalendarPage: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // 로그인 후 이벤트 로드
   useEffect(() => {
     if (user?.id) loadEvents();
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ──── 네비게이션 ──── */
   const handlePrev = useCallback(() => calendarRef.current?.getApi().prev(), []);
   const handleNext = useCallback(() => calendarRef.current?.getApi().next(), []);
   const handleToday = useCallback(() => calendarRef.current?.getApi().today(), []);
 
-  // 이벤트 색을 CSS 변수(--ev)로 노출 → CSS color-mix로 소프트 틴트(라이트/다크 모드별) 렌더.
-  // + 제목이 잘려도 hover 시 전체 제목을 볼 수 있도록 native title 툴팁 부여.
+  // 이벤트 색을 CSS 변수 --ev 로 넘겨 color-mix 로 틴트를 만든다.
   const handleEventDidMount = useCallback(
     (arg: {
       el: HTMLElement;
@@ -101,7 +95,6 @@ const CalendarPage: React.FC = () => {
     setCurrentView(view);
   }, []);
 
-  /* ──── 날짜 선택 (새 일정) ──── */
   const handleDateSelect = useCallback((selectInfo: DateSelectArg) => {
     const startStr = dateUtils.toLocalDateString(selectInfo.start);
     const endStr = dateUtils.subtractDay(dateUtils.toLocalDateString(selectInfo.end));
@@ -112,7 +105,6 @@ const CalendarPage: React.FC = () => {
     selectInfo.view.calendar.unselect();
   }, []);
 
-  /* ──── 이벤트 클릭 (상세보기) ──── */
   const handleEventClick = useCallback((clickInfo: EventClickArg) => {
     const event = clickInfo.event;
     const originalEvent = event.extendedProps.originalEvent as CalendarEvent;
@@ -147,7 +139,6 @@ const CalendarPage: React.FC = () => {
     setIsModalOpen(true);
   }, []);
 
-  // 우측 레일에서 일정 클릭 → 상세 모달 열기 (CalendarEvent 직접 사용)
   const openEventDetail = useCallback((ev: CalendarEvent) => {
     setSelectedEvent(ev);
     const startDate = dateUtils.isoToLocalDate(ev.start);
@@ -167,8 +158,7 @@ const CalendarPage: React.FC = () => {
     setIsModalOpen(true);
   }, []);
 
-  // 우측 레일용 이벤트 — 보이는 달과 무관하게 '오늘~다음 31일'을 독립적으로 로드.
-  // (달력의 loadEvents는 보이는 범위만 가져오므로, 다른 달로 이동하면 오늘 일정이 누락됨)
+  // 달력의 loadEvents 는 보이는 범위만 가져오므로 레일용은 따로 불러온다.
   const [railEvents, setRailEvents] = useState<CalendarEvent[]>([]);
   const loadRail = useCallback(async () => {
     if (!user?.id) return;
@@ -179,15 +169,13 @@ const CalendarPage: React.FC = () => {
     try {
       setRailEvents(await getEvents(start, end));
     } catch {
-      /* 레일은 보조 정보 — 실패해도 달력 흐름을 막지 않는다 */
+      /* 레일은 보조 정보라 실패해도 달력 흐름을 막지 않는다 */
     }
   }, [user?.id]);
-  // 마운트/사용자/날짜(자정) 변경 시 갱신
   useEffect(() => {
     loadRail();
   }, [loadRail, todayStr]);
 
-  /* ──── 드래그/리사이즈 공통 처리 ──── */
   const applyEventDateChange = useCallback(
     async (
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -204,10 +192,7 @@ const CalendarPage: React.FC = () => {
         const startDate = event.start!;
         const endDate = dateUtils.ensureMinimumDuration(startDate, event.end);
         const isAllday = originalEvent.isAllday ?? true;
-        // 종일 이벤트는 생성/모달 수정 경로와 동일하게 "로컬 날짜 → UTC 자정"으로 정규화한다.
-        // FullCalendar의 drag/resize는 event.start를 로컬 자정 Date로 주므로 그대로 toISOString()하면
-        // 15:00Z 같은 비정규 값으로 저장돼(생성 경로의 00:00Z와 불일치) 관리자 표시/기간필터가 어긋난다.
-        // 시간 지정 이벤트는 시각이 의미 있으므로 그대로 둔다.
+        // 종일 이벤트는 로컬 날짜를 UTC 자정으로 정규화한다. 그대로 두면 생성 경로와 값이 어긋난다.
         const startISO = isAllday
           ? new Date(dateUtils.toLocalDateString(startDate) + 'T00:00:00Z').toISOString()
           : startDate.toISOString();
@@ -237,8 +222,7 @@ const CalendarPage: React.FC = () => {
         return;
       }
 
-      // 저장은 끝났다. 목록 갱신이 실패했다고 되돌리면, 서버에는 옮겨졌는데
-      // 화면만 원래 자리로 튄다.
+      // 저장은 이미 끝났으므로 목록 갱신 실패로 되돌리지 않는다.
       await loadEvents().catch(() => {});
       void loadRail();
     },
@@ -255,7 +239,6 @@ const CalendarPage: React.FC = () => {
     [applyEventDateChange]
   );
 
-  /* ──── 폼 제출 ──── */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -282,7 +265,6 @@ const CalendarPage: React.FC = () => {
     }
   };
 
-  /* ──── 삭제 ──── */
   const handleDelete = () => {
     if (!selectedEvent || isDeleting) return;
     setShowDeleteConfirm(true);
@@ -327,17 +309,14 @@ const CalendarPage: React.FC = () => {
     [todayStr]
   );
 
-  /* ──── 렌더 ──── */
   return (
     <div className="h-full flex flex-col lg:flex-row bg-slate-50 dark:bg-slate-900">
-      {/* 캘린더 카드 */}
       <div
         className="flex-1 flex flex-col min-h-0 mx-5 my-5 sm:mx-8 sm:my-7 lg:mr-4
                       bg-white dark:bg-slate-900
                       rounded-2xl border border-slate-200 dark:border-slate-800
                       shadow-sm overflow-hidden relative"
       >
-        {/* 헤더 */}
         <CalendarHeader
           loading={loading}
           title={calendarTitle}
@@ -348,7 +327,7 @@ const CalendarPage: React.FC = () => {
           onViewChange={handleViewChange}
         />
 
-        {/* 캘린더 본체 — 카드 높이를 채우되(하단 빈공간 방지) expandRows로 행을 균등 분배 */}
+        {/* expandRows 로 카드 높이를 채우고 행을 균등 분배한다 */}
         <div className="flex-1 min-h-0 p-3 sm:p-4">
           <div className="calendar-wrapper h-full">
             <FullCalendar
@@ -387,10 +366,9 @@ const CalendarPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 우측 레일 — 오늘/다가오는 일정 (넓은 화면 전용) */}
+      {/* 넓은 화면에서만 보이는 오늘·다가오는 일정 레일 */}
       <TodayRail events={railEvents} todayStr={todayStr} onSelect={openEventDetail} />
 
-      {/* 이벤트 모달 */}
       <CalendarModal
         isOpen={isModalOpen}
         mode={modalMode}
@@ -418,7 +396,6 @@ const CalendarPage: React.FC = () => {
         }}
       />
 
-      {/* 삭제 확인 모달 — ConfirmationModal로 통합 (ESC/focus trap/aria 지원) */}
       <ConfirmationModal
         open={showDeleteConfirm}
         title="일정 삭제"

@@ -1,6 +1,4 @@
-// server/src/controllers/customPage.controller.ts
-// 관리자 커스텀 HTML 페이지 CRUD + 사용자용 조회.
-// 저장 html은 원문 그대로(새니타이즈 X) — 클라이언트가 sandbox iframe으로 격리 렌더한다.
+// 커스텀 HTML 페이지. 저장 html 은 새니타이즈하지 않고 클라이언트가 sandbox iframe 으로 격리한다.
 import { Response } from 'express';
 import path from 'path';
 import fs from 'fs/promises';
@@ -17,10 +15,7 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const MAX_HTML = 500_000; // 원문 HTML 상한 (~500KB)
 const MAX_URL = 2048; // 외부 URL 길이 상한
 
-// 외부 URL 임베드용 URL 정규화/검증.
-// 보안: http(s)만 허용해 `javascript:`·`data:`·`vbscript:` 등 iframe src로 앱 컨텍스트 XSS를 유발하는
-// 스킴을 원천 차단한다. 상대경로/잘못된 형식은 new URL()이 throw → null.
-// 서버가 이 URL을 fetch하지 않고 브라우저가 직접 iframe으로 로드하므로 SSRF는 발생하지 않는다.
+// iframe src 로 쓰이므로 http(s) 만 허용한다. javascript:, data: 등은 XSS 가 된다.
 function normalizeExternalUrl(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
   const s = raw.trim();
@@ -35,13 +30,11 @@ function normalizeExternalUrl(raw: unknown): string | null {
   return u.toString();
 }
 
-// ── 번들(ZIP 폴더 업로드) 상수/헬퍼 ──────────────────────────────────────────
 export const BUNDLE_MAX_ZIP = 100 * 1024 * 1024; // 업로드 zip 자체 상한 100MB
 const BUNDLE_MAX_TOTAL = 300 * 1024 * 1024; // 압축 해제 총량 상한(zip-bomb 방지) 300MB
 const BUNDLE_MAX_FILES = 500; // 파일 개수 상한
 
-// 번들 내부에서 금지할 확장자 — 서버에서 실행될 수 있는 스크립트/설정만 차단.
-// (.html/.js/.css/.svg 등은 sandbox iframe 안에서만 도므로 여기선 허용)
+// 서버에서 실행될 수 있는 확장자만 막는다. .html/.js 등은 sandbox iframe 안에서만 돈다.
 const BUNDLE_BLOCKED_EXTS = new Set([
   '.php',
   '.php3',
@@ -88,9 +81,7 @@ function pickEntry(htmlFiles: string[]): string {
 // Windows 예약 장치명 (확장자 유무 무관)
 const WIN_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i;
 
-// 크로스플랫폼(특히 Windows) 안전한 상대경로인지 세그먼트별 검증.
-// Windows는 < > : " | ? * 와 제어문자, 끝 점/공백, 예약 장치명을 금지하며,
-// name:stream 형태는 NTFS 대체 데이터 스트림(ADS)으로 악용될 수 있어 반드시 차단한다.
+// Windows 금지 문자·예약 장치명·NTFS 대체 데이터 스트림(ADS)을 세그먼트별로 막는다.
 function isUnsafeBundlePath(rel: string): boolean {
   for (const seg of rel.split('/')) {
     if (!seg || seg === '.' || seg === '..') return true;
@@ -101,7 +92,7 @@ function isUnsafeBundlePath(rel: string): boolean {
   return false;
 }
 
-// ZIP 버퍼를 페이지 디렉터리에 안전하게 해제. 검증을 모두 통과한 뒤에만 디스크에 기록한다.
+// 검증을 모두 통과한 뒤에만 디스크에 기록한다.
 async function extractBundle(
   pageId: string,
   zipBuffer: Buffer
@@ -162,7 +153,7 @@ async function extractBundle(
     throw new BundleError('HTML 파일이 없습니다. index.html을 포함해주세요.');
   }
 
-  // 기존 번들 제거 후 새로 기록 (교체 시 잔여 파일 제거)
+  // 교체 시 잔여 파일이 남지 않도록 기존 번들을 먼저 지운다.
   await fs.rm(destDir, { recursive: true, force: true });
   await fs.mkdir(destDir, { recursive: true });
   for (const { rel, data } of toWrite) {
@@ -174,7 +165,7 @@ async function extractBundle(
   return { entryFile: pickEntry(htmlFiles), htmlFiles: htmlFiles.sort() };
 }
 
-// 사용자용 — 게시된 페이지 목록(사이드바용, html 제외)
+// 사이드바용 목록. html 은 빼고 준다.
 export const listPublishedPages = async (_req: Request, res: Response): Promise<void> => {
   try {
     const pages = await CustomPage.findAll({
@@ -192,7 +183,6 @@ export const listPublishedPages = async (_req: Request, res: Response): Promise<
   }
 };
 
-// 사용자용 — slug로 게시된 페이지 원문 조회
 export const getPageBySlug = async (req: Request, res: Response): Promise<void> => {
   try {
     const { slug } = req.params;
@@ -201,7 +191,7 @@ export const getPageBySlug = async (req: Request, res: Response): Promise<void> 
       sendError(res, 404, '페이지를 찾을 수 없습니다.');
       return;
     }
-    // 사용자 응답에는 렌더에 필요한 필드만 — 작성 관리자 ID(createdBy)는 노출하지 않는다.
+    // 작성 관리자 ID(createdBy)는 사용자 응답에 넣지 않는다.
     sendSuccess(res, {
       id: page.id,
       slug: page.slug,
@@ -220,7 +210,7 @@ export const getPageBySlug = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-// 관리자 — 전체 목록(미게시 포함)
+// 미게시 페이지까지 포함한 전체 목록
 export const adminListPages = async (_req: Request, res: Response): Promise<void> => {
   try {
     const pages = await CustomPage.findAll({
@@ -283,10 +273,7 @@ type PageMode = 'html' | 'bundle' | 'url';
 const ORDER_MIN = 0;
 const ORDER_MAX = 9999;
 
-/**
- * 종류. 안 보내면 null(예전 방식대로 값으로 추측).
- * 보냈는데 셋 중 하나가 아니면 오타다 — 조용히 다른 동작을 하면 안 되므로 거절한다.
- */
+/** 종류. 안 보내면 null 이고, 보냈는데 셋 중 하나가 아니면 거절한다. */
 function readMode(
   res: Response,
   raw: unknown
@@ -297,7 +284,7 @@ function readMode(
   return { ok: false };
 }
 
-/** order 는 화면에서 문자열로 올 수 있다 — Number.isFinite 는 문자열을 그대로 거른다 */
+/** order 는 화면에서 문자열로 올 수 있다. Number.isFinite 는 문자열을 거른다. */
 function readOrder(
   res: Response,
   raw: unknown
@@ -315,10 +302,7 @@ function readOrder(
   return { ok: true, order: n };
 }
 
-/**
- * 번들을 쓰지 않게 된 표시. 파일은 여기서 지우지 않고 저장이 끝난 뒤에 지운다 —
- * 먼저 지웠다가 저장이 실패하면, 행은 번들을 가리키는데 파일이 없는 상태가 된다.
- */
+/** 번들 해제 표시. 파일은 저장이 끝난 뒤에 지워야 실패 시 행만 남는 일이 없다. */
 function markBundleDropped(page: CustomPage): boolean {
   if (!page.bundlePath) return false;
   page.bundlePath = null;
@@ -326,7 +310,6 @@ function markBundleDropped(page: CustomPage): boolean {
   return true;
 }
 
-// 관리자 — 생성
 export const createPage = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthRequest;
@@ -352,7 +335,7 @@ export const createPage = async (req: Request, res: Response): Promise<void> => 
     });
     sendSuccess(res, page, '페이지를 만들었습니다.');
   } catch (err) {
-    // 같은 slug 를 동시에 만들면 위 중복 검사를 둘 다 통과한다 — 막는 것은 유니크 인덱스다
+    // 같은 slug 를 동시에 만들면 위 중복 검사를 둘 다 통과한다. 막는 것은 유니크 인덱스다.
     if (err instanceof UniqueConstraintError) {
       sendValidationError(res, 'slug', '이미 사용 중인 주소(slug)입니다.');
       return;
@@ -362,7 +345,6 @@ export const createPage = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// 관리자 — 수정
 export const updatePage = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthRequest;
@@ -384,9 +366,7 @@ export const updatePage = async (req: Request, res: Response): Promise<void> => 
     page.slug = payload.slug;
     page.title = payload.title;
 
-    // 페이지는 셋 중 하나로만 그려진다(HTML·번들·외부 URL). 어느 것인지 명시해서
-    // 받고 나머지 칸을 비운다 — 예전에는 비우지 않아, 종류를 바꿔도 옛 값이 남아
-    // 화면에서 무엇이 보일지 값들의 우선순위로 결정됐다.
+    // 페이지는 HTML·번들·외부 URL 중 하나로만 그려지므로 나머지 칸은 반드시 비운다.
     const parsedMode = readMode(res, req.body.mode);
     if (!parsedMode.ok) return;
     const mode = parsedMode.mode;
@@ -411,7 +391,7 @@ export const updatePage = async (req: Request, res: Response): Promise<void> => 
       page.externalUrl = null;
       page.html = '';
     } else {
-      // mode 를 안 보낸 예전 방식 — 하던 대로 값만 바꾼다
+      // mode 를 안 보내면 받은 값만 바꾼다.
       page.html = payload.html;
       page.externalUrl = payload.externalUrl;
     }
@@ -420,7 +400,7 @@ export const updatePage = async (req: Request, res: Response): Promise<void> => 
     const parsedOrder = readOrder(res, req.body.order);
     if (!parsedOrder.ok) return;
     if (parsedOrder.order !== null) page.order = parsedOrder.order;
-    // 번들 페이지의 진입 파일 변경 — 실제 번들 안에 존재하는 .html만 허용(경로 순회 차단)
+    // 진입 파일은 실제 번들 안에 있는 .html 만 허용한다(경로 순회 차단).
     if (page.bundlePath && typeof req.body.entryFile === 'string') {
       const candidate = req.body.entryFile.trim().replace(/\\/g, '/');
       const dir = bundleDir(page.id);
@@ -436,7 +416,7 @@ export const updatePage = async (req: Request, res: Response): Promise<void> => 
     }
     page.createdBy = authReq.user?.id ?? page.createdBy;
     await page.save();
-    // 저장이 끝난 뒤에 지운다 — 남은 파일은 아무도 참조하지 않는다
+    // 저장이 끝난 뒤에 지운다.
     if (bundleDropped) {
       await fs.rm(bundleDir(page.id), { recursive: true, force: true }).catch(() => {});
     }
@@ -451,7 +431,6 @@ export const updatePage = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// 관리자 — 삭제
 export const deletePage = async (req: Request, res: Response): Promise<void> => {
   try {
     const page = await CustomPage.findByPk(req.params.id);
@@ -462,7 +441,6 @@ export const deletePage = async (req: Request, res: Response): Promise<void> => 
     const hadBundle = !!page.bundlePath;
     const pageId = page.id;
     await page.destroy();
-    // 번들 정적 파일 디렉터리도 정리
     if (hadBundle) {
       await fs.rm(bundleDir(pageId), { recursive: true, force: true }).catch(() => {});
     }
@@ -473,7 +451,7 @@ export const deletePage = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// 관리자 — 번들(ZIP) 업로드: 압축을 안전하게 해제하고 진입 파일을 설정한다.
+// 번들 ZIP 업로드. 압축을 안전하게 풀고 진입 파일을 정한다.
 export const uploadBundle = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthRequest;
@@ -493,7 +471,7 @@ export const uploadBundle = async (req: Request, res: Response): Promise<void> =
     }
 
     const { entryFile, htmlFiles } = await extractBundle(page.id, file.buffer);
-    // 업로드 시 진입 파일을 함께 지정할 수 있음(없으면 자동 감지)
+    // 진입 파일을 함께 지정할 수 있고, 없으면 자동 감지한다.
     const requested = typeof req.body?.entryFile === 'string' ? req.body.entryFile.trim() : '';
     const finalEntry = requested && htmlFiles.includes(requested) ? requested : entryFile;
 
@@ -518,7 +496,7 @@ export const uploadBundle = async (req: Request, res: Response): Promise<void> =
   }
 };
 
-// 관리자 — 번들 안의 HTML 파일 목록(진입 파일 선택용)
+// 진입 파일 선택용 HTML 파일 목록
 async function listHtmlFilesInDir(dir: string): Promise<string[]> {
   const out: string[] = [];
   async function walk(cur: string, prefix: string): Promise<void> {
@@ -556,7 +534,7 @@ export const listBundleFiles = async (req: Request, res: Response): Promise<void
   }
 };
 
-// 번들 정적 파일 서빙 — sandbox iframe에서 로드. 전역 helmet 헤더(DENY/strict CSP)를 개별 오버라이드.
+// 번들 정적 파일 서빙. 전역 helmet 헤더를 여기서만 완화한다.
 export const serveBundle = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthRequest;
@@ -590,8 +568,7 @@ export const serveBundle = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // sandbox iframe(opaque origin)에서 자산/인라인스크립트가 로드되도록, 서빙 오리진을 명시한
-    //   완화 CSP로 전역 helmet 값을 대체. 격리는 iframe sandbox(allow-same-origin 미부여)가 담당.
+    // 격리는 iframe sandbox 가 담당하므로 여기서는 CSP 를 완화해 자산 로드를 허용한다.
     const origin = `${req.protocol}://${req.get('host')}`;
     res.setHeader('X-Frame-Options', 'SAMEORIGIN'); // 전역 DENY 대체 → 앱이 iframe으로 임베드 가능
     res.setHeader(
@@ -607,9 +584,7 @@ export const serveBundle = async (req: Request, res: Response): Promise<void> =>
       ].join('; ')
     );
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    // 번들은 allow-same-origin 없는 sandbox iframe(opaque origin)에서 렌더된다. 전역 helmet의
-    //   Cross-Origin-Resource-Policy: same-origin이 opaque origin의 자산(css/js/img) 요청을
-    //   "not same origin"으로 차단하므로, 번들 응답만 cross-origin으로 완화해 자산 로드를 허용한다.
+    // opaque origin 에서 자산이 차단되지 않도록 번들 응답만 cross-origin 으로 완화한다.
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.sendFile(abs);
   } catch (err) {

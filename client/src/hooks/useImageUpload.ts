@@ -1,4 +1,3 @@
-// client/src/hooks/useImageUpload.ts
 import { useCallback, useState } from 'react';
 import axios from 'axios';
 import { uploadApi } from '../api/axios';
@@ -12,9 +11,7 @@ export interface ImageUploadOptions {
 export const useImageUpload = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // 콜백 패턴(부모 → CKEditor 어댑터)을 유지하되, 어댑터가 abort/progress를 받을 수 있도록
-  // opts.signal / opts.onProgress 를 axios에 전달한다. 실패 시 reject되어 어댑터 promise 도
-  // 정상적으로 reject되도록 throw 한다 (이전엔 무음 catch로 pending 무한 대기 위험).
+  // opts.signal / opts.onProgress 를 axios 에 전달하고, 실패하면 throw 해서 어댑터 promise 도 reject 되게 한다.
   const handleImageUpload = useCallback(
     async (
       blob: Blob,
@@ -26,7 +23,7 @@ export const useImageUpload = () => {
         const formData = new FormData();
         formData.append('image', blob);
 
-        // uploadApi: 무제한 타임아웃 + 동일한 axios 인터셉터(419 자동 갱신, 401 처리) 사용
+        // uploadApi 는 타임아웃 없이 같은 인터셉터(419 갱신·401 처리)를 쓴다.
         const res = await uploadApi.post('/uploads/images', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
           signal: opts.signal,
@@ -46,13 +43,13 @@ export const useImageUpload = () => {
         fileLogger.success('이미지 업로드 완료', { url: imageUrl });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
-        // abort된 경우 — 사용자가 의도적으로 취소했거나 에디터가 언마운트됨. 에러 표시 안 함.
+        // 취소되었거나 에디터가 언마운트된 경우라 에러를 표시하지 않는다.
         if (axios.isCancel(err) || err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') {
           throw err;
         }
         fileLogger.error('이미지 업로드 실패', err);
         setUploadError('이미지 업로드에 실패했습니다.');
-        // CKEditor 어댑터가 reject되어 적절한 에러 노티를 띄울 수 있도록 throw
+        // 어댑터가 reject 되도록 다시 throw 한다.
         throw err;
       }
     },

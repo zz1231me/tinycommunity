@@ -1,4 +1,3 @@
-// client/src/components/admin/tabs/IpManagement.tsx
 import React, { useState } from 'react';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { adminKeys } from '../../../api/queryKeys';
@@ -15,7 +14,6 @@ import {
 } from '../../../api/ipRules';
 import { toast } from '../../../utils/toast';
 
-// ── 통계 카드 ────────────────────────────────────────────────────────────────
 const StatCard = ({ label, value, color }: { label: string; value: number; color: string }) => (
   <div className="card p-4 flex flex-col gap-1">
     <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</span>
@@ -23,7 +21,6 @@ const StatCard = ({ label, value, color }: { label: string; value: number; color
   </div>
 );
 
-// ── 배지 ─────────────────────────────────────────────────────────────────────
 const TypeBadge = ({ type }: { type: IpRuleType }) =>
   type === 'whitelist' ? (
     <span className="badge badge-success">
@@ -35,12 +32,11 @@ const TypeBadge = ({ type }: { type: IpRuleType }) =>
     </span>
   );
 
-// ── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 const IpManagement: React.FC = () => {
   const queryClient = useQueryClient();
   const [filterType, setFilterType] = useState<IpRuleType | 'all'>('all');
 
-  // 규칙 목록은 필터에 따라 키가 갈리고, 통계는 필터와 무관해 캐시가 유지된다.
+  // 규칙 목록은 필터에 따라 키가 갈리고, 통계는 필터와 무관해 캐시가 유지된다
   const [rulesQuery, statsQuery] = useQueries({
     queries: [
       {
@@ -54,13 +50,11 @@ const IpManagement: React.FC = () => {
   const rules: IpRule[] = rulesQuery.data ?? [];
   const stats: IpRuleStats | null = statsQuery.data ?? null;
   const loading = rulesQuery.isPending;
-  // 조회 실패와 '규칙이 하나도 없음' 은 전혀 다른 상태다. 이 화면에서 '없음' 은
-  // "아무나 들어올 수 있다" 로 읽히기 때문에, 실패를 없음으로 보여 주면 안 된다.
+  // 조회 실패와 '규칙 없음' 은 다른 상태다. 이 화면에서 '없음' 은 전면 허용으로 읽힌다.
   const failed = rulesQuery.isError;
 
   const load = () => queryClient.invalidateQueries({ queryKey: adminKeys.ipRules.all });
 
-  // 추가 폼 상태
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<IpRuleType>('blacklist');
   const [formIp, setFormIp] = useState('');
@@ -68,10 +62,8 @@ const IpManagement: React.FC = () => {
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // 삭제 확인
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  // 추가
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
@@ -99,7 +91,6 @@ const IpManagement: React.FC = () => {
     }
   };
 
-  // 활성/비활성 토글
   const handleToggle = async (rule: IpRule) => {
     try {
       await updateIpRule(rule.id, { isActive: !rule.isActive });
@@ -110,7 +101,6 @@ const IpManagement: React.FC = () => {
     }
   };
 
-  // 삭제
   const handleDelete = async (id: string) => {
     try {
       await deleteIpRule(id);
@@ -302,9 +292,7 @@ const IpManagement: React.FC = () => {
           </p>
         </div>
       ) : (
-        // 좁은 화면에서는 표가 상자보다 넓어진다. overflow-hidden 이면 오른쪽 끝의
-        // '관리' 칸이 잘려 나가고, 삭제를 누르면 그 자리에 뜨는 확인·취소 버튼까지
-        // 화면 밖에 남아 되돌릴 수도 없다. 다른 관리자 표들처럼 가로로 넘긴다.
+        // 좁은 화면에서 표가 넓어지므로 overflow-hidden 이 아니라 가로 스크롤로 둔다
         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800/80">

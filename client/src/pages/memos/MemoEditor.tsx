@@ -33,9 +33,7 @@ export const MemoEditor: React.FC<MemoEditorProps> = ({
     setColor(memo?.color || 'yellow');
   }, [memo]);
 
-  // ESC 로 닫고, 열려 있는 동안 포커스를 안에 가둔다. 부모가 열 때만 그리므로 항상 켠다.
-  // 첫 포커스는 제목 칸으로 준다 — 안쪽 첫 요소는 색상 단추라, 그냥 두면 글을 쓰러
-  // 연 사람이 색상 단추에서 시작하게 된다.
+  // ESC 로 닫고 포커스를 안에 가둔다. 첫 포커스는 색상 단추가 아니라 제목 칸으로 준다.
   const panelRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   useFocusTrap(panelRef, onClose, true, titleRef);
@@ -61,8 +59,7 @@ export const MemoEditor: React.FC<MemoEditorProps> = ({
         <form
           onSubmit={handleSubmit}
           onKeyDown={e => {
-            // 단일 라인 input(제목)에서 Enter로 메모가 조기 저장되는 것 방지
-            // (본문 textarea의 줄바꿈과 명시적 저장 버튼은 그대로 동작)
+            // 제목 input 에서 Enter 로 조기 저장되는 것 방지
             if (e.nativeEvent.isComposing) return;
             if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
               e.preventDefault();
@@ -72,7 +69,6 @@ export const MemoEditor: React.FC<MemoEditorProps> = ({
         >
           <h2 className="card-title">{memo ? '메모 수정' : '새 메모'}</h2>
 
-          {/* Color selector */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-slate-600 dark:text-slate-400 mr-1">색상:</span>
             {COLORS.map(c => (
@@ -87,7 +83,6 @@ export const MemoEditor: React.FC<MemoEditorProps> = ({
             ))}
           </div>
 
-          {/* Title */}
           <input
             ref={titleRef}
             type="text"
@@ -98,7 +93,6 @@ export const MemoEditor: React.FC<MemoEditorProps> = ({
             maxLength={200}
           />
 
-          {/* Content */}
           <textarea
             value={content}
             onChange={e => setContent(e.target.value)}
@@ -108,7 +102,6 @@ export const MemoEditor: React.FC<MemoEditorProps> = ({
             maxLength={10000}
           />
 
-          {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary">
               취소

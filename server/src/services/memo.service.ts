@@ -13,11 +13,7 @@ export class MemoService extends BaseService {
         ['order', 'ASC'],
         ['createdAt', 'DESC'],
       ],
-      // 만들 수 있는 상한과 같은 값을 쓴다.
-      //
-      // 500 으로 못 박아 두면, 관리자가 상한을 그보다 크게 올렸을 때(최대 2000) 그 너머의
-      // 메모는 만들어지기만 하고 목록에는 영영 나오지 않는다 — 화면에서 열 수도 지울 수도
-      // 없는 메모가 된다. 상한 자체가 이미 2000 으로 묶여 있어 무제한 조회도 아니다.
+      // 생성 상한과 같은 값을 써야 만들어진 메모가 목록에서 빠지지 않는다
       limit: getSettings().memoMaxPerUser,
     });
   }
@@ -30,13 +26,9 @@ export class MemoService extends BaseService {
       color?: 'yellow' | 'green' | 'blue' | 'pink' | 'purple';
     }
   ): Promise<Memo> {
-    // 관리자가 동적으로 조정 가능 — settingsCache에서 읽음
     const MAX_MEMOS_PER_USER = getSettings().memoMaxPerUser;
 
-    // 사용자당 최대 메모 수 제한 (DoS 방지).
-    // 전체 row를 SELECT FOR UPDATE 잠그는 비용을 피하기 위해 count로 변경.
-    // InnoDB가 gap lock으로 phantom INSERT까지 막아주지는 않지만, 200건 한도는
-    // strict한 invariant가 아니라 사용자 보호용 상한이므로 트레이드오프 수용.
+    // 사용자당 최대 메모 수 제한. 잠금 대신 count 를 쓰므로 phantom INSERT 는 막지 못한다.
     return sequelize.transaction(async t => {
       const existingCount = await Memo.count({
         where: { UserId: userId },
@@ -46,7 +38,7 @@ export class MemoService extends BaseService {
         throw new AppError(400, `메모는 최대 ${MAX_MEMOS_PER_USER}개까지 생성할 수 있습니다.`);
       }
 
-      // Sequelize .max()로 order 계산 — dialect-aware 인용 부호(MySQL/PG/SQLite 공통)
+      // Sequelize .max() 는 dialect 별 인용 부호를 알아서 처리한다
       const maxOrder = (await Memo.max('order', {
         where: { UserId: userId },
         transaction: t,

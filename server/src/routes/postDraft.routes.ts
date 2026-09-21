@@ -1,9 +1,4 @@
-// server/src/routes/postDraft.routes.ts
-// /api/drafts — 작성 중인 글의 임시저장.
-//
-// /api/posts 아래가 아니라 별도 경로인 이유: post.routes 의 '/:boardType' 이
-// catch-all 이라 '/drafts' 가 게시판 id 로 잡힌다. 선언 순서로 피할 수는 있지만
-// 라우트를 하나 추가할 때마다 순서에 기대야 하므로 경로를 분리한다.
+// /api/drafts. post.routes 의 '/:boardType' catch-all 에 '/drafts' 가 잡히므로 경로를 분리한다.
 
 import { Router, RequestHandler } from 'express';
 import asyncHandler from 'express-async-handler';

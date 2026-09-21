@@ -1,16 +1,4 @@
-// client/src/components/attendance/MonthChart.tsx
-// 그 달의 일별 근무 시간 막대.
-//
-// 표만으로는 한 달 흐름이 한눈에 들어오지 않는다.
-//
-// 세 가지를 관리자 화면(DailyChart)과 맞췄다.
-//  - 눈금에 여유를 둔다. 여유가 없으면 가장 긴 날의 막대가 천장에 붙어 선인지
-//    테두리인지 구분되지 않는다.
-//  - 기준 근무 시간을 점선으로 얹는다. '오늘 채웠나' 를 막대 높이만으로는 알 수 없다.
-//  - 주말을 옅게 구분한다. 막대 30개가 균질하게 늘어서면 주 단위가 안 읽힌다.
-//
-// 값은 마우스(title) 뿐 아니라 화면 낭독기에도 전한다 — 예전에는 그림 하나로만
-// 노출돼 날짜별 수치가 보조기기에 전혀 닿지 않았다.
+// 그 달의 일별 근무 시간 막대. 눈금·점선·주말 표시는 관리자 화면(DailyChart)과 맞춘다.
 
 import { daysInMonth, formatMinutes } from '../../utils/attendance';
 import type { AttendanceRecord } from '../../types/attendance.types';

@@ -15,12 +15,12 @@ import { Board } from '../models/Board';
 import { Tag } from '../models/Tag';
 import { boardManagerService } from '../services/boardManager.service';
 
-// HEX 색상: 3자리(#fff) 또는 6자리(#3b82f6)만 허용
+// HEX 색상은 3자리 또는 6자리만 허용한다
 const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 /**
- * 태그 관리 인가 — 전역 태그(boardId=null)는 admin만, 게시판 태그는 admin/manager/해당 게시판 담당자.
- * 통과하면 true, 실패 시 응답을 보내고 false 반환.
+ * 태그 관리 인가. 전역 태그는 admin, 게시판 태그는 admin/manager/담당자만 가능하다.
+ * 실패하면 응답을 보내고 false 를 돌려준다.
  */
 async function ensureTagManagePermission(
   req: AuthRequest,
@@ -46,7 +46,7 @@ async function ensureTagManagePermission(
 
 export const getTags = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    // ?boardId=xxx → 해당 게시판 태그, ?boardId=null → 공용 태그, 없으면 전체
+    // boardId 가 'null' 이나 빈 값이면 공용 태그, 없으면 전체
     const rawBoardId = req.query.boardId;
     const boardId =
       rawBoardId === undefined
@@ -63,17 +63,15 @@ export const getTags = async (req: AuthRequest, res: Response): Promise<void> =>
 };
 
 export const createTag = async (req: AuthRequest, res: Response): Promise<void> => {
-  // 이름·색상·설명의 형식 검증은 라우트의 validateBody(createTagSchema)가 처리한다.
+  // 형식 검증은 라우트의 validateBody(createTagSchema)가 한다.
   const { name, color, description, boardId } = req.body;
   const resolvedBoardId =
     boardId === undefined || boardId === null || boardId === '' ? null : String(boardId);
   try {
-    // boardId가 지정된 경우 해당 게시판 존재 여부 확인
     if (resolvedBoardId !== null) {
       const board = await Board.findByPk(resolvedBoardId, { attributes: ['id'] });
       if (!board) return sendNotFound(res, '게시판');
     }
-    // 인가: 전역 태그는 admin, 게시판 태그는 admin/manager/담당자
     if (!(await ensureTagManagePermission(req, res, resolvedBoardId))) return;
     const tag = await tagService.createTag({ name, color, description, boardId: resolvedBoardId });
     sendSuccess(res, tag, '태그가 생성되었습니다.', 201);
@@ -98,7 +96,6 @@ export const updateTag = async (req: AuthRequest, res: Response): Promise<void> 
     return sendValidationError(res, 'description', '태그 설명은 500자를 초과할 수 없습니다.');
   }
   try {
-    // 대상 태그의 boardId 기준으로 인가
     const target = await Tag.findByPk(id, { attributes: ['id', 'boardId'] });
     if (!target) return sendNotFound(res, '태그');
     if (!(await ensureTagManagePermission(req, res, target.boardId ?? null))) return;
@@ -158,8 +155,7 @@ export const addPostTags = async (req: AuthRequest, res: Response): Promise<void
 export const getPostTags = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { boardType, id } = req.params;
-    // boardType 교차 검증: 미들웨어(checkReadAccess)는 :boardType만 검증하므로, 다른 게시판
-    // 읽기 권한으로 임의 게시글의 태그를 읽는 IDOR을 막기 위해 게시글이 해당 게시판 소속인지 확인
+    // 미들웨어는 :boardType 만 검증하므로 글이 그 게시판 소속인지 확인해 IDOR 을 막는다.
     const post = await Post.findByPk(id, { attributes: ['id', 'boardType'] });
     if (!post || post.boardType !== boardType) {
       sendNotFound(res, '게시글');

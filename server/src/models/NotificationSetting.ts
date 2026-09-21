@@ -1,9 +1,4 @@
-// server/src/models/NotificationSetting.ts
-// 사용자가 끈 알림 종류만 저장한다.
-//
-// 기능 스위치(FeatureFlag)와 같은 방식이다 — 종류 목록은 코드가 들고 있고
-// 여기에는 "기본값과 다르게 바꾼 것" 만 남는다. 종류를 추가해도 기존 사용자
-// 행을 만들어 줄 필요가 없다.
+// 기본값과 다르게 바꾼 알림 설정만 저장한다. 종류 목록은 코드가 들고 있다.
 
 import { DataTypes, Model, InferAttributes, InferCreationAttributes, ForeignKey } from 'sequelize';
 import { sequelize } from '../config/sequelize';

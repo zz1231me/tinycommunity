@@ -1,6 +1,3 @@
-// server/src/middlewares/error.middleware.ts
-// TypeScript 5.8 호환 - override 수정자 적용
-
 import { Request, Response, NextFunction } from 'express';
 import { MulterError } from 'multer';
 import { ValidationError, UniqueConstraintError } from 'sequelize';
@@ -16,7 +13,6 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-// TypeScript 5.8: override 수정자 적용
 export class AppError extends Error {
   public statusCode: number;
   public isOperational: boolean;
@@ -29,12 +25,10 @@ export class AppError extends Error {
     // 프로토타입 체인 복구 (TypeScript inheritance 패턴)
     Object.setPrototypeOf(this, AppError.prototype);
 
-    // 스택 트레이스 캡처
     Error.captureStackTrace(this, this.constructor);
   }
 }
 
-// 에러 핸들러 미들웨어
 export const errorHandler = (
   err: Error,
   req: AuthenticatedRequest,
@@ -48,8 +42,7 @@ export const errorHandler = (
   // 개발 환경 여부: NODE_ENV가 명시적으로 'development'인 경우에만 상세 정보 노출
   const isDev = env.NODE_ENV === 'development';
 
-  // multer 업로드 제한 위반은 사용자 입력 오류다. MulterError에는 status가 없어
-  //    아래 로직에서 500(critical 에러로그 오적재)으로 처리되므로 4xx로 명시 매핑한다.
+  // MulterError 에는 status 가 없어 두면 500 으로 새므로 4xx 로 명시 매핑한다.
   if (err instanceof MulterError) {
     const messages: Record<string, [number, string]> = {
       LIMIT_FILE_SIZE: [413, '파일 크기가 허용 한도를 초과했습니다.'],
@@ -83,25 +76,15 @@ export const errorHandler = (
     res.status(err.statusCode).json({
       success: false,
       message: err.message,
-      // 스택 트레이스는 개발 환경 + 5xx 서버 오류에서만 노출
-      //    4xx 클라이언트 오류(404, 401 등)에는 스택 불필요 & 보안 위험
+      // 스택은 개발 환경 + 5xx 에서만 노출한다.
       ...(isDev && err.statusCode >= 500 && { stack: err.stack }),
     });
     return;
   }
 
-  // Sequelize 검증 오류는 사용자 입력 오류다.
-  //
-  // 이 오류에는 status/statusCode 가 없어 아래 4xx 판정을 빠져나가고, 그대로
-  // generic 500 + critical 에러로그가 된다. 실제로 회원가입에 긴 이메일을 보내면
-  // 모델 검증기(isEmail)에 걸려 500 이 나갔다 — 누구나 부를 수 있는 공개 경로라
-  // 치명 오류 로그까지 함께 더럽혀졌다.
-  //
-  // ⚠️ 순서 주의: UniqueConstraintError 는 ValidationError 를 상속한다.
-  //    먼저 보지 않으면 중복(409)이 검증 실패(400)로 뭉개진다.
-  //
-  // 메시지는 필드 이름까지만 알린다. errors[].message 는 'Validation isEmail on
-  // email failed' 같은 내부 문구라 그대로 내보내지 않는다.
+  // Sequelize 검증 오류는 status 가 없어 그대로 두면 500 + critical 로그가 되므로 4xx 로 매핑한다.
+  // 순서 주의: UniqueConstraintError 가 ValidationError 를 상속하므로 먼저 판정해야 409 가 400 으로 뭉개지지 않는다.
+  // 메시지는 필드 이름까지만 알린다. errors[].message 는 내부 문구다.
   if (err instanceof UniqueConstraintError) {
     const fields = [...new Set(err.errors.map(e => e.path).filter(Boolean))].join(', ');
     res.status(409).json({
@@ -120,9 +103,7 @@ export const errorHandler = (
     return;
   }
 
-  // AppError가 아니지만 4xx status를 가진 오류는 클라이언트 오류로 처리한다.
-  // 예: body-parser의 잘못된 JSON(SyntaxError, type='entity.parse.failed', status=400),
-  //     과대 페이로드(413) 등. generic 500 + critical 에러로그로 오인되는 것을 방지.
+  // AppError 가 아니어도 4xx status 를 가진 오류(잘못된 JSON 400, 과대 페이로드 413)는 클라이언트 오류로 본다.
   const clientStatus =
     (err as { status?: number; statusCode?: number }).status ??
     (err as { statusCode?: number }).statusCode;
@@ -137,7 +118,6 @@ export const errorHandler = (
     return;
   }
 
-  // Log unexpected errors
   void errorLogService.createLog({
     userId,
     userName,
@@ -154,7 +134,6 @@ export const errorHandler = (
   res.status(500).json({
     success: false,
     message: '서버 내부 오류가 발생했습니다.',
-    // 개발 환경에서만 상세 정보 노출
     ...(isDev && {
       error: err.message,
       stack: err.stack,
@@ -162,7 +141,6 @@ export const errorHandler = (
   });
 };
 
-// 404 에러 핸들러
 export const notFoundHandler = (req: Request, _res: Response, next: NextFunction): void => {
   const error = new AppError(404, `경로를 찾을 수 없습니다: ${req.originalUrl}`);
   next(error);

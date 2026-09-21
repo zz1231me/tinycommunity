@@ -1,4 +1,3 @@
-// src/controllers/comment.controller.ts - Service Layer 적용
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types/auth-request';
 import { commentService } from '../services/comment.service';
@@ -20,16 +19,13 @@ import { checkSecretPostAccess, SecretPostFields } from '../utils/postAccess';
 import { Post } from '../models/Post';
 import { Comment } from '../models/Comment';
 
-// 댓글 길이는 클라이언트(useCommentOperations.getTextLength)와 동일하게 태그·&nbsp; 제거 후
-// 텍스트 길이로 센다. raw HTML 길이로 세면 서식이 많은 댓글이 클라 카운터(950/1000)와 다르게
-// 서버에서 거부되는 불일치가 생긴다.
+// 댓글 길이는 클라이언트(getTextLength)와 같게 태그·&nbsp; 를 제거한 텍스트 길이로 센다.
 const commentTextLength = (content: string): number =>
   content
     .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;/g, ' ')
     .trim().length;
 
-// 댓글 작성
 export const createComment = async (
   req: AuthRequest,
   res: Response,
@@ -61,7 +57,7 @@ export const createComment = async (
       return;
     }
 
-    // parentId 타입 검증: 정수만 허용 (소수점, 문자열 등 방지)
+    // parentId 는 정수만 허용한다.
     if (parentId !== undefined && parentId !== null) {
       const parsedParentId = Number(parentId);
       if (!Number.isInteger(parsedParentId) || parsedParentId <= 0) {
@@ -70,7 +66,6 @@ export const createComment = async (
       }
     }
 
-    // 게시글 존재 여부 확인 + 알림용 정보를 한 번에 조회
     const post = await Post.findByPk(postId, {
       attributes: ['id', 'UserId', 'title', 'boardType', 'isSecret', 'secretType', 'secretUserIds'],
     });
@@ -79,9 +74,7 @@ export const createComment = async (
       return;
     }
 
-    // URL의 boardType과 실제 게시글의 boardType 일치 여부 검증
-    // 미들웨어(checkWriteAccess)는 URL 파라미터로만 권한을 확인하므로,
-    // boardType을 조작해 다른 게시판 포스트에 댓글을 다는 공격을 차단
+    // boardType 을 조작해 다른 게시판 글에 댓글을 다는 것을 막는다. 미들웨어는 URL 파라미터만 본다.
     if (post.boardType !== boardType) {
       sendNotFound(res, '게시글');
       return;
@@ -105,7 +98,7 @@ export const createComment = async (
 
     const commenterName = req.user?.name || '누군가';
 
-    // 알림 1: 내 글에 댓글 달린 경우 → 게시글 작성자에게 알림
+    // 내 글에 댓글이 달리면 글쓴이에게 알린다.
     if (post.UserId && post.UserId !== userId) {
       notificationService
         .create({
@@ -120,8 +113,7 @@ export const createComment = async (
 
     sendSuccess(res, comment, '댓글이 작성되었습니다.', 201);
 
-    // 알림 3: 댓글 본문에서 @멘션된 사용자에게 알림 (fire-and-forget, 응답 후 처리)
-    // 게시글 작성자는 위에서 이미 댓글 알림을 받았으므로 제외해 중복을 막는다.
+    // 본문에서 @멘션된 사용자에게 알린다. 글쓴이는 위에서 이미 받았으므로 제외한다.
     void notifyMentions({
       content,
       actorId: userId,
@@ -134,7 +126,7 @@ export const createComment = async (
       relatedId: postId,
     });
 
-    // 알림 2: 내 댓글에 대댓글 달린 경우 → 원댓글 작성자에게 알림 (fire-and-forget, 응답 후 처리)
+    // 내 댓글에 대댓글이 달리면 원댓글 작성자에게 알린다.
     if (parentId) {
       void Comment.findByPk(parentId, { attributes: ['UserId'] })
         .then(parentComment => {
@@ -161,7 +153,6 @@ export const createComment = async (
   }
 };
 
-// 게시글의 댓글 조회
 export const getCommentsByPost = async (
   req: AuthRequest,
   res: Response,
@@ -176,7 +167,7 @@ export const getCommentsByPost = async (
       : 'oldest';
     const userId = req.user?.id;
 
-    // boardType 교차 검증: 다른 게시판의 댓글을 URL 조작으로 읽는 공격 차단
+    // 다른 게시판의 댓글을 URL 조작으로 읽는 것을 막는다.
     const post = await Post.findByPk(postId, {
       attributes: ['id', 'UserId', 'boardType', 'isSecret', 'secretType', 'secretUserIds'],
     });
@@ -205,7 +196,6 @@ export const getCommentsByPost = async (
   }
 };
 
-// 댓글 수정
 export const updateComment = async (
   req: AuthRequest,
   res: Response,
@@ -266,7 +256,6 @@ export const updateComment = async (
   }
 };
 
-// 댓글 삭제
 export const deleteComment = async (
   req: AuthRequest,
   res: Response,
@@ -329,7 +318,6 @@ export const deleteComment = async (
   }
 };
 
-// 댓글 좋아요 토글
 export const likeComment = async (
   req: AuthRequest,
   res: Response,
@@ -370,8 +358,7 @@ export const likeComment = async (
       return;
     }
 
-    // 비밀글 보호: 댓글 작성/조회와 동일하게, 게시판 읽기 권한만으론 부족하고
-    //    비밀글 접근 권한(작성자/허용 사용자/관리자)이 있어야 좋아요 가능
+    // 비밀글은 게시판 읽기 권한만으로는 부족하고, 접근 권한이 있어야 좋아요를 누를 수 있다.
     const access = checkSecretPostAccess(post, userId, req.user?.role);
     if (!access.ok) {
       sendForbidden(res, access.message);
@@ -382,7 +369,7 @@ export const likeComment = async (
 
     sendSuccess(res, result, result.liked ? '좋아요를 눌렀습니다.' : '좋아요를 취소했습니다.');
 
-    // 좋아요를 누른 경우(취소 제외) 댓글 작성자에게 알림 — 게시글 좋아요와 동일 패턴(fire-and-forget)
+    // 좋아요를 누르면(취소 제외) 댓글 작성자에게 알린다.
     if (result.liked && comment.UserId && comment.UserId !== userId) {
       const likerName = req.user?.name || '누군가';
       notificationService
@@ -400,7 +387,7 @@ export const likeComment = async (
   }
 };
 
-// 댓글 이모지 리액션 토글 — likeComment와 동일한 boardType 교차검증 + 비밀글 접근 보호를 적용
+// 이모지 리액션. likeComment 와 같은 boardType 교차검증과 비밀글 보호를 적용한다.
 export const reactToComment = async (
   req: AuthRequest,
   res: Response,
@@ -422,7 +409,7 @@ export const reactToComment = async (
     }
 
     const emoji = typeof req.body?.emoji === 'string' ? req.body.emoji.trim() : '';
-    // 임의 텍스트 저장 방지 — 실제 이모지(Extended_Pictographic)를 포함하고 길이 제한 내여야 함
+    // 임의 텍스트 저장 방지. 실제 이모지(Extended_Pictographic)를 포함하고 길이 제한 안이어야 한다.
     if (!emoji || emoji.length > 32 || !/\p{Extended_Pictographic}/u.test(emoji)) {
       sendValidationError(res, 'emoji', '유효한 이모지가 아닙니다.');
       return;

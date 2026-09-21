@@ -1,4 +1,3 @@
-// server/src/controllers/postTask.controller.ts
 // 게시글의 담당자·업무 상태와 읽음 확인.
 
 import { Response } from 'express';
@@ -18,13 +17,7 @@ import {
 import { postActivityService } from '../services/postActivity.service';
 import { getWorkStatusLabels } from '../utils/settingsCache';
 
-/**
- * 상태 목록은 화면이 라벨을 지어내지 않도록 서버가 함께 준다.
- *
- * 부르는 말은 관리자가 바꿀 수 있다(사이트 설정 › 업무 상태 이름) — 팀마다 '진행 중' 을
- * '검토 중' 이라 부르는데 그걸 바꾸려고 배포할 수는 없다. 키는 코드가 고정한다:
- * 저장된 값과 코드의 분기(예: '진행 중' 이면 담당자 자동 지정)가 이름에 흔들리면 안 된다.
- */
+/** 상태 목록. 라벨은 관리자가 바꿀 수 있고 키는 코드가 고정한다. */
 export const getWorkStatuses = async (_req: AuthRequest, res: Response): Promise<void> => {
   const custom = getWorkStatusLabels();
   sendSuccess(
@@ -41,7 +34,7 @@ export const changeTask = async (req: AuthRequest, res: Response): Promise<void>
   const { id: actorId, role: actorRole, name: actorName } = req.user;
   const body = (req.body ?? {}) as { assigneeId?: unknown; workStatus?: unknown };
 
-  // 아무것도 안 바꾸는 요청은 실수일 가능성이 높다 — 성공으로 넘기지 않는다
+  // 아무것도 바꾸지 않는 요청은 성공으로 넘기지 않는다
   if (body.assigneeId === undefined && body.workStatus === undefined) {
     sendError(res, 400, '바꿀 담당자나 상태를 지정해주세요.');
     return;
@@ -79,7 +72,7 @@ export const changeTask = async (req: AuthRequest, res: Response): Promise<void>
 
 export const getMyTasks = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id: userId, role: userRole } = req.user;
-  // 기본은 아직 끝나지 않은 것 — 완료까지 섞이면 "내가 할 일" 이 아니게 된다
+  // 기본값은 아직 끝나지 않은 상태만
   const raw = req.query.status?.toString();
   const statuses = raw ? raw.split(',').filter(isWorkStatus) : (['todo', 'doing'] as WorkStatus[]);
 
@@ -90,13 +83,7 @@ export const getMyTasks = async (req: AuthRequest, res: Response): Promise<void>
   }
 };
 
-/**
- * GET /api/posts/:boardType/:id/readers
- *
- * 누가 읽었는지는 작성자·게시판 담당자·관리자만 본다.
- * 모두에게 열면 "누가 무엇을 언제 읽었는지" 가 서로에게 드러나, 확인용 기능이
- * 감시 도구가 된다.
- */
+/** GET /api/posts/:boardType/:id/readers — 작성자·게시판 담당자·관리자만 볼 수 있다. */
 export const getReaders = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id: userId, role: userRole } = req.user;
 
@@ -127,12 +114,7 @@ export const getReaders = async (req: AuthRequest, res: Response): Promise<void>
   }
 };
 
-/**
- * GET /api/posts/:boardType/:id/activity
- *
- * 이 글에 무슨 일이 있었는지 — 작성·수정·첨부 교체·상태·담당자 변경을 시간순으로.
- * 글을 볼 수 있으면 기록도 볼 수 있다(판정은 서비스가 getPostById 에 위임한다).
- */
+/** GET /api/posts/:boardType/:id/activity — 글을 볼 수 있으면 기록도 볼 수 있다. */
 export const getActivity = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id: userId, role: userRole } = req.user;
   const { boardType, id } = req.params;

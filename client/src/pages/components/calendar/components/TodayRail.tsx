@@ -1,6 +1,5 @@
-// client/src/pages/components/calendar/components/TodayRail.tsx
-// 캘린더 우측 레일 — '오늘 일정'과 '다가오는 일정'을 모아 보여준다(넓은 화면 전용).
-// 보이는 달과 무관하게 오늘 기준으로 표시하도록, CalendarEvent[]를 직접 받는다.
+// 캘린더 우측 레일. 오늘 일정과 다가오는 일정을 보여준다(넓은 화면 전용).
+// 보이는 달과 무관하게 오늘 기준으로 표시하려고 CalendarEvent[] 를 직접 받는다.
 import { CalendarEvent } from '../types';
 import { categoryColors } from '../constants';
 import { DEFAULT_EVENT_COLOR } from '../../../../constants/colors';
@@ -18,7 +17,7 @@ interface RailItem {
   title: string;
   color: string;
   startD: string; // 'YYYY-MM-DD'
-  endD: string; // 포함되는 마지막 날 (allDay 종료는 배타적이라 하루 뺌)
+  endD: string; // 포함되는 마지막 날. allDay 종료는 배타적이라 하루 뺀다.
   multiDay: boolean;
 }
 

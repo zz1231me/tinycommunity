@@ -1,4 +1,3 @@
-// src/components/AttachmentList.tsx - 파일명 클릭으로 다운로드
 import React, { useState } from 'react';
 import { LoadingSpinner } from './common/LoadingStates';
 import { useQuery } from '@tanstack/react-query';
@@ -22,13 +21,13 @@ interface AttachmentInfo {
 
 interface AttachmentListProps {
   attachments: AttachmentInfo[];
-  /** 개정 이력을 함께 보여 줄 글. 없으면 이력 없이 목록만 그린다(글 작성 미리보기 등) */
+  /** 개정 이력을 함께 보여 줄 글. 없으면 목록만 그린다. */
   boardType?: string;
   postId?: string;
 }
 
 const AttachmentList: React.FC<AttachmentListProps> = ({ attachments, boardType, postId }) => {
-  // 같은 이름으로 다시 올려 밀려난 예전 파일들. 대부분의 글에는 없으므로 빈 배열이 정상이다.
+  // 같은 이름으로 교체되어 밀려난 예전 파일들. 없는 것이 정상이다.
   const { data: versionGroups = [] } = useQuery({
     queryKey: taskKeys.attachmentVersions(boardType ?? '', postId ?? ''),
     queryFn: ({ signal }) => fetchAttachmentVersions(boardType!, postId!, signal),
@@ -46,12 +45,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({ attachments, boardType,
     altText: '',
   });
 
-  // 내려받는 중인 파일들. 파일 전체를 메모리로 받은 뒤에야 저장이 시작되므로,
-  // 큰 파일은 누르고 한참 아무 일도 안 일어나는 것처럼 보인다 — 그동안 표시가 필요하다.
-  //
-  // 하나만 기억하지 않고 집합으로 두는 이유: 첨부가 여러 개면 연달아 누르는 게 자연스럽다.
-  // "지금 뭔가 받는 중이면 무시" 로 두면 두 번째 클릭이 아무 반응 없이 사라진다.
-  // 같은 파일을 두 번 누르는 것만 막는다.
+  // 내려받는 중인 파일들. 여러 개를 동시에 받을 수 있게 집합으로 두고, 같은 파일의 중복 클릭만 막는다.
   const [downloading, setDownloading] = useState<ReadonlySet<string>>(() => new Set());
 
   const runDownload = async (fileInfo: AttachmentInfo) => {
@@ -96,7 +90,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({ attachments, boardType,
     });
   };
 
-  // 파일 클릭 핸들러: 이미지는 확대, 일반 파일은 다운로드
+  // 이미지는 확대, 그 밖의 파일은 다운로드.
   const handleFileClick = async (fileInfo: AttachmentInfo) => {
     const isImage = isImageFile(fileInfo.originalName);
 
@@ -147,7 +141,6 @@ const AttachmentList: React.FC<AttachmentListProps> = ({ attachments, boardType,
                 className="bg-white dark:bg-slate-800 rounded-lg sm:rounded-xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden"
               >
                 <div className="flex items-center gap-3 p-3 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200 group">
-                  {/* ✅ 파일 아이콘 + 정보 영역 - 클릭 가능 */}
                   <div
                     className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
                     onClick={() => handleFileClick(fileInfo)}
@@ -161,14 +154,12 @@ const AttachmentList: React.FC<AttachmentListProps> = ({ attachments, boardType,
                     }}
                     aria-label={isImage ? `${displayName} 이미지 확대` : `${displayName} 다운로드`}
                   >
-                    {/* 파일 아이콘 */}
                     <div
                       className={`flex items-center justify-center w-10 h-10 rounded-lg ${fileConfig.color} flex-shrink-0`}
                     >
                       <FileIcon fileType={fileType} />
                     </div>
 
-                    {/* 파일 정보 */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <div
@@ -186,9 +177,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({ attachments, boardType,
                     </div>
                   </div>
 
-                  {/* 다운로드 버튼 — 파일 종류와 무관하게 항상 둔다.
-                      예전에는 이미지에만 있었고 문서에는 제목 옆 작은 회색 화살표뿐이라,
-                      "이름만 보이고 받을 방법이 없다" 고 읽혔다. */}
+                  {/* 다운로드 버튼은 파일 종류와 무관하게 항상 둔다. */}
                   <button
                     onClick={e => handleDownload(e, fileInfo)}
                     disabled={downloading.has(fileInfo.storedName)}
@@ -223,10 +212,9 @@ const AttachmentList: React.FC<AttachmentListProps> = ({ attachments, boardType,
                   </button>
                 </div>
 
-                {/* ✅ PDF/Word 미리보기 패널 */}
+                {/* PDF·Word 미리보기 */}
                 {!isImage && <FilePreview attachment={fileInfo} />}
 
-                {/* 같은 이름으로 교체된 예전 파일들 — 있을 때만 나타난다 */}
                 <AttachmentVersions
                   group={versionGroups.find(g => g.originalName === displayName)}
                 />
@@ -236,7 +224,6 @@ const AttachmentList: React.FC<AttachmentListProps> = ({ attachments, boardType,
         </div>
       </section>
 
-      {/* 이미지 뷰어 */}
       <ImageViewer
         isOpen={imageViewer.isOpen}
         onClose={closeImageViewer}

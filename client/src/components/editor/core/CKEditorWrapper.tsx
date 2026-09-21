@@ -1,6 +1,3 @@
-// client/src/components/editor/core/CKEditorWrapper.tsx
-// CKEditor 5 게시글 에디터 래퍼 컴포넌트
-
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import { ClassicEditor, type EditorConfig } from 'ckeditor5';
@@ -11,11 +8,7 @@ import AttachmentRefPlugin from '../AttachmentRefPlugin';
 import AttachmentRefPicker, { type AttachmentRefEditor } from '../AttachmentRefPicker';
 import { useFeature } from '../../../store/features';
 
-// Module-level ref for upload function.
-// CKEditor plugins are instantiated once, so we use a module-level ref
-// to avoid stale closure issues when the onImageUpload prop changes.
-// 부모(useImageUpload)가 주입하는 업로드 함수. signal/onProgress 옵션을 받아
-// CKEditor 어댑터의 abort/진행률 표시를 지원한다.
+// 모듈 수준 ref. CKEditor 플러그인은 한 번만 생성되므로 prop 이 바뀌어도 stale closure 가 되지 않게 한다.
 type UploadFn = (
   blob: Blob,
   callback: (url: string, alt?: string) => void,
@@ -55,13 +48,12 @@ class CKEditorUploadAdapter {
           {
             signal: this.controller.signal,
             onProgress: ({ loaded, total }) => {
-              // CKEditor 진행률 표시줄 갱신
               this.loader.uploadTotal = total;
               this.loader.uploaded = loaded;
             },
           }
         );
-        // useImageUpload는 throw 시 Promise를 reject — 어댑터에 전파
+        // useImageUpload 가 throw 하면 reject 되므로 어댑터로 전파한다.
         if (result && typeof (result as Promise<void>).catch === 'function') {
           (result as Promise<void>).catch(err => {
             if (!settled) reject(err);
@@ -122,12 +114,10 @@ const CKEditorWrapper: React.FC<CKEditorWrapperProps> = ({
   // 문단별 첨부가 꺼져 있으면 꽂을 수단 자체를 두지 않는다
   const inlineAttachmentsEnabled = useFeature('post.inlineAttachments');
 
-  // Keep module-level uploadFnRef up to date with the latest prop
   useEffect(() => {
     uploadFnRef.current = onImageUpload;
   }, [onImageUpload]);
 
-  // Sync editorRef whenever it changes
   useEffect(() => {
     if (!editorRef) return;
     editorRef.current = {
@@ -139,7 +129,7 @@ const CKEditorWrapper: React.FC<CKEditorWrapperProps> = ({
     };
   }, [editorRef]);
 
-  // 설정은 단일 팩토리(buildEditorConfig)에서 생성 — placeholder가 바뀔 때만 재생성
+  // placeholder 가 바뀔 때만 설정을 다시 만든다.
   const editorConfig = useMemo<EditorConfig>(
     () =>
       buildEditorConfig('post', {
@@ -152,9 +142,7 @@ const CKEditorWrapper: React.FC<CKEditorWrapperProps> = ({
 
   return (
     <div className="w-full">
-      {/* 라벨과 그 영역을 조작하는 버튼을 한 줄에 둔다.
-          예전에는 분할 보기 토글이 위쪽에 자기 줄을 하나 차지해, 태그와 내용 사이에
-          80px 가까운 빈 띠가 생겼다 — 무엇을 조작하는 버튼인지도 멀어서 알기 어려웠다. */}
+      {/* 라벨과 그 영역을 조작하는 버튼을 한 줄에 둔다. */}
       <div className="mb-2 flex items-center justify-between gap-2">
         <span
           id="post-editor-label"
@@ -178,7 +166,7 @@ const CKEditorWrapper: React.FC<CKEditorWrapperProps> = ({
             editorInstanceRef.current = editor;
             setMentionEditor(editor as unknown as MentionEditor);
             setRefEditor(editor as unknown as AttachmentRefEditor);
-            // a11y: 편집 영역에 한국어 접근성 이름 부여(시각적 라벨과 연결)
+            // a11y: 편집 영역에 한국어 접근성 이름을 준다.
             editor.editing.view.change(writer => {
               const root = editor.editing.view.document.getRoot();
               if (root) writer.setAttribute('aria-label', '내용 입력 영역', root);

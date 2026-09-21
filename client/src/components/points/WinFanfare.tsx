@@ -1,11 +1,4 @@
-// client/src/components/points/WinFanfare.tsx
-// 대결에서 이겼을 때 잠깐 터지는 축하.
-//
-// 이겨도 초록 토스트 한 줄이 전부라 너무 심심했다. 이기는 순간은 이 기능에서 제일
-// 기분 좋은 자리라, 눈에 보이는 보상을 준다.
-//
-// 화면을 막지는 않는다(클릭은 통과시킨다) — 이긴 뒤 바로 한마디를 쓰러 가는 길이
-// 막히면 안 된다. 움직임을 줄여 달라고 한 사람에게는 흩날리는 조각 없이 글자만 띄운다.
+// 대결에서 이겼을 때의 축하 연출. 클릭은 통과시키고, 움직임 줄이기에서는 글자만 띄운다.
 
 import { useEffect, useMemo, useState } from 'react';
 import { prefersReducedMotion } from '../../utils/animations';
@@ -27,7 +20,7 @@ export function WinFanfare({ amount, onDone }: { amount: number; onDone: () => v
     return () => window.clearTimeout(id);
   }, [onDone]);
 
-  // 조각마다 다른 자리·색·기울기. 한 번만 뽑는다 — 매 렌더마다 뽑으면 제자리에서 떤다.
+  // 매 렌더마다 뽑으면 조각이 제자리에서 떨리므로 한 번만 뽑는다.
   const pieces = useMemo(
     () =>
       Array.from({ length: PIECES }, (_, i) => ({
@@ -45,7 +38,7 @@ export function WinFanfare({ amount, onDone }: { amount: number; onDone: () => v
 
   return (
     <div
-      // 축하일 뿐이라 낭독기에는 감춘다 — 이겼다는 말은 토스트가 이미 한다
+      // 이겼다는 말은 토스트가 하므로 낭독기에는 감춘다.
       aria-hidden
       className="pointer-events-none fixed inset-x-0 top-14 z-toast flex justify-center overflow-hidden"
     >
@@ -67,7 +60,7 @@ export function WinFanfare({ amount, onDone }: { amount: number; onDone: () => v
           ))}
         </div>
       )}
-      {/* 알림 띠가 함께 떠 있을 수 있다 — 그 아래에 앉게 여유를 둔다 */}
+      {/* 알림 띠가 함께 떠 있을 수 있어 그 아래에 앉게 여유를 둔다 */}
       <div className="animate-winPop mt-16 rounded-2xl bg-slate-900/85 px-5 py-2.5 text-center text-white shadow-xl backdrop-blur-sm dark:bg-slate-100/90 dark:text-slate-900">
         <div className="text-lg font-extrabold">🎉 이겼습니다!</div>
         <div className="text-sm font-semibold tabular-nums">+{amount.toLocaleString()}P</div>

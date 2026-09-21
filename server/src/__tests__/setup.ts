@@ -1,34 +1,26 @@
-// 테스트 DB 초기화 - 테스트 프레임워크 로드 후 실행됨 (jest setupFilesAfterEnv)
+// 테스트 DB 초기화. jest setupFilesAfterEnv 로 실행된다.
 import { sequelize } from '../config/sequelize';
-import '../models'; // 모든 모델 + 관계 초기화
+import '../models';
 import { initializeUploadDirs } from '../middlewares/upload/utils';
 import { startTestServer } from './helpers';
 
 beforeAll(async () => {
-  // 모든 스위트가 서버 하나를 함께 쓴다. 요청마다 임시 서버를 띄웠다 닫으면
-  // 임시 포트가 빠르게 재사용되면서 응답이 뒤섞이거나 소켓이 끊긴다(helpers.ts 참고).
+  // 모든 스위트가 서버 하나를 함께 쓴다(helpers.ts 참고).
   await startTestServer();
 
-  // 업로드 디렉터리는 startServer() 가 만드는데 테스트는 app 만 가져다 쓴다.
-  // 디렉터리가 없으면 multer 가 저장 단계에서 실패해 업로드가 들어가는 테스트가 전부
-  // 깨진다 — 개발 머신에는 폴더가 남아 있어 드러나지 않고, 새로 받은 저장소에서만 터진다.
+  // 테스트는 startServer() 를 거치지 않으므로 업로드 디렉터리를 여기서 만든다.
   await initializeUploadDirs();
 
-  // SQLite 인메모리 DB 동기화
-  // authenticate()로 연결이 살아있을 때만 sync — --runInBand에서 스위트 간 재사용
+  // 연결이 살아 있을 때만 sync 한다. --runInBand 에서 스위트끼리 연결을 재사용한다.
   try {
     await sequelize.authenticate();
   } catch {
-    // 연결이 닫혀 있으면 재연결 불필요 (SQLite in-memory는 자동 재생성)
+    // SQLite in-memory 는 자동 재생성되므로 재연결하지 않는다.
   }
-  // force-sync는 모든 테이블을 drop 후 재생성한다. FK 강제(foreign_keys=ON) 상태에선
-  // drop 순서에 따라 실패할 수 있어(예: users drop 시 이미 사라진 comments 참조), 모델 집합이
-  // 바뀌면 깨질 수 있다. 파괴적 동기화 동안만 FK를 끄고 끝나면 복구한다.
+  // force-sync 의 drop 순서가 FK 에 걸릴 수 있어 동기화 동안만 FK 를 끈다.
   await sequelize.query('PRAGMA foreign_keys = OFF');
   await sequelize.sync({ force: true });
   await sequelize.query('PRAGMA foreign_keys = ON');
 });
 
-// sequelize.close()를 호출하지 않는다.
-// --runInBand 환경에서 스위트가 공유 연결을 사용하므로 첫 번째 afterAll이
-// 이후 스위트의 DB 접근을 끊는다. Jest --forceExit으로 프로세스 종료 시 정리된다.
+// sequelize.close() 를 부르지 않는다. 연결을 공유하므로 첫 afterAll 이 이후 스위트를 끊는다.

@@ -5,9 +5,6 @@ import { sendSuccess, sendError } from '../utils/response';
 import { logError, logInfo } from '../utils/logger';
 import type { AuthRequest } from '../types/auth-request';
 
-/**
- * 보안 로그 목록 조회
- */
 export const getSecurityLogs = async (
   req: Request,
   res: Response,
@@ -39,13 +36,7 @@ export const getSecurityLogs = async (
   }
 };
 
-/**
- * 보안 로그 일괄 삭제
- * Body: { before?: string (ISO date), ids?: string[] }
- * before만 지정하면 해당 날짜 이전 로그 삭제
- * ids 지정하면 해당 ID 목록만 삭제
- * 둘 다 없으면 전체 삭제
- */
+/** 보안 로그 일괄 삭제. before 이전, ids 목록, 둘 다 없으면 전체를 지운다. */
 export const deleteSecurityLogs = async (req: Request, res: Response): Promise<void> => {
   try {
     const { before, ids } = req.body as { before?: string; ids?: unknown };
@@ -58,7 +49,7 @@ export const deleteSecurityLogs = async (req: Request, res: Response): Promise<v
       sendError(res, 400, 'ids는 최대 1000개까지 처리 가능합니다.');
       return;
     }
-    // before가 들어오면 ISO 형식 검증 — Invalid Date로 DB가 예측 불가 동작하는 것 차단
+    // before 가 Invalid Date 면 DB 동작을 예측할 수 없으므로 형식을 검증한다.
     if (before !== undefined) {
       const parsed = new Date(before);
       if (isNaN(parsed.getTime())) {
@@ -73,7 +64,7 @@ export const deleteSecurityLogs = async (req: Request, res: Response): Promise<v
     });
     logInfo(`보안 로그 삭제: ${deleted}건`, { before, ids });
 
-    // 보안 사고 흔적 삭제는 강력한 admin 행위 — 감사 로그 필수
+    // 보안 로그 삭제는 감사 로그를 남긴다.
     const authReq = req as AuthRequest;
     auditLogService
       .createAuditLog({

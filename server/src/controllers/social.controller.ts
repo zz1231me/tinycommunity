@@ -1,4 +1,3 @@
-// server/src/controllers/social.controller.ts
 // 구독·팔로우, 알림 설정, 다른 사람 프로필.
 
 import { Response } from 'express';
@@ -22,8 +21,6 @@ const RECENT_POST_LIMIT = 5;
 function parseTarget(raw: unknown): SubscriptionTargetType | null {
   return raw === 'board' || raw === 'user' ? raw : null;
 }
-
-// ── 구독 ────────────────────────────────────────────────────────────────────
 
 export const toggleSubscription = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id: userId } = req.user;
@@ -71,8 +68,6 @@ export const listSubscriptions = async (req: AuthRequest, res: Response): Promis
     sendServiceError(res, err, '구독 목록을 불러오지 못했습니다.', { userId });
   }
 };
-
-// ── 알림 설정 ───────────────────────────────────────────────────────────────
 
 export const getNotificationSettings = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id: userId } = req.user;
@@ -130,14 +125,7 @@ export const updateNotificationSettings = async (
   }
 };
 
-// ── 다른 사람 프로필 ────────────────────────────────────────────────────────
-
-/**
- * GET /api/users/:id/profile
- *
- * 보는 사람이 읽을 수 있는 게시판의 공개 글만 센다 —
- * 프로필이 "저 사람이 어느 게시판에서 얼마나 쓰는지" 를 알아내는 통로가 되면 안 된다.
- */
+/** GET /api/users/:id/profile. 보는 사람이 읽을 수 있는 게시판의 공개 글만 센다. */
 export const getUserProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id: viewerId, role: viewerRole } = req.user;
   const targetId = req.params.id;
@@ -157,9 +145,7 @@ export const getUserProfile = async (req: AuthRequest, res: Response): Promise<v
 
     const [postCount, commentCount, recentPosts, counts, isFollowing] = await Promise.all([
       subscriptionService.visiblePostCount(targetId, boardTypes),
-      // 글 수와 같은 기준으로 센다.
-      // 여기만 전체를 세면 화면의 "읽을 수 있는 게시판만 집계합니다" 가 거짓말이 되고,
-      // 못 보는 게시판에서 얼마나 활동하는지가 숫자로 새어 나간다.
+      // 글 수와 같은 기준으로 센다. 전체를 세면 못 보는 게시판의 활동량이 새어 나간다.
       boardTypes.length
         ? Comment.count({
             where: { UserId: targetId },

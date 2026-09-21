@@ -1,13 +1,11 @@
-// server/src/services/postDraft.service.ts
-// 작성 중인 글의 임시저장. 모든 질의는 소유자로 좁힌다 —
-// 초안은 본인 외에는 관리자에게도 보이지 않아야 하는 미완성 글이다.
+// 작성 중인 글의 임시저장. 모든 질의는 소유자로 좁힌다(관리자에게도 보이지 않는다).
 
 import { PostDraft } from '../models/PostDraft';
 import Board from '../models/Board';
 import { AppError } from '../middlewares/error.middleware';
 import { getPostContentMaxLength, getPostTitleMaxLength } from '../utils/settingsCache';
 
-/** 목록에 보여줄 미리보기 길이 — 본문 전체를 목록에 실어 보내지 않는다 */
+/** 목록 미리보기 길이. 본문 전체를 목록에 싣지 않는다 */
 const PREVIEW_LENGTH = 120;
 
 function toPlainPreview(html: string): string {
@@ -21,7 +19,6 @@ function toPlainPreview(html: string): string {
 
 function assertWithinLimits(title: string, content: string) {
   // 초안도 결국 게시글이 되므로 같은 상한을 적용한다.
-  // 여기서 막지 않으면 저장은 되는데 발행이 안 되는 글이 쌓인다.
   if (title.length > getPostTitleMaxLength()) {
     throw new AppError(400, `제목은 ${getPostTitleMaxLength()}자를 초과할 수 없습니다.`);
   }
@@ -39,7 +36,7 @@ export const postDraftService = {
       limit: 50,
     });
 
-    // 게시판 이름을 붙여 준다 — 어느 게시판에 쓰던 글인지 모르면 이어 쓸 수 없다.
+    // 어느 게시판의 글인지 알 수 있게 게시판 이름을 붙인다.
     const boardIds = [...new Set(drafts.map(d => d.boardType))];
     const boards = boardIds.length
       ? await Board.findAll({ where: { id: boardIds }, attributes: ['id', 'name'] })
@@ -49,7 +46,7 @@ export const postDraftService = {
     return drafts.map(d => ({
       id: d.id,
       boardType: d.boardType,
-      // 사라진 게시판의 초안도 목록에는 남긴다 — 내용을 복사해 갈 수 있어야 한다
+      // 사라진 게시판의 초안도 목록에는 남긴다.
       boardName: boardName.get(d.boardType) ?? null,
       title: d.title,
       preview: toPlainPreview(d.content),
@@ -83,8 +80,7 @@ export const postDraftService = {
     if (!draft) throw new AppError(404, '임시저장을 찾을 수 없습니다.');
     draft.title = title;
     draft.content = content;
-    // 내용이 그대로여도 updatedAt 을 올린다 — 자동저장이 살아 있다는 표시이자
-    // 목록의 "마지막 저장" 시각이므로 실제로 저장한 시점이어야 한다.
+    // 내용이 그대로여도 updatedAt 을 올린다. 목록의 '마지막 저장' 시각이다.
     draft.changed('updatedAt', true);
     await draft.save();
     return { id: draft.id, updatedAt: draft.updatedAt };

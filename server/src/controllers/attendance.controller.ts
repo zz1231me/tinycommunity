@@ -31,11 +31,7 @@ function requireUser(req: AuthRequest, res: Response): string | null {
   return userId;
 }
 
-/**
- * 확인 항목·근무 설정 변경을 감사 로그에 남긴다.
- *
- * 확인 항목이 곧 기록의 근거라, 누가 언제 바꿨는지가 없으면 지난 기록을 믿을 수 없다.
- */
+/** 확인 항목·근무 설정 변경을 감사 로그에 남긴다. */
 function recordSettingChange(
   req: AuthRequest,
   targetName: string,
@@ -64,8 +60,6 @@ function parseId(value: string, res: Response): number | null {
   }
   return id;
 }
-
-// ── 본인 ──────────────────────────────────────────────────────────────────
 
 export const getMyAttendance = async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = requireUser(req, res);
@@ -113,8 +107,6 @@ export const getMyAttendanceHistory = async (req: AuthRequest, res: Response): P
   });
 };
 
-// ── 관리자 ────────────────────────────────────────────────────────────────
-
 const asText = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim() ? value.trim() : undefined;
 
@@ -147,8 +139,7 @@ export const getAttendanceSummary = async (req: AuthRequest, res: Response): Pro
 
 export const getAttendanceSettings = async (_req: AuthRequest, res: Response): Promise<void> => {
   await run(res, '출퇴근 설정 조회', {}, async () => {
-    // 필드를 여기서 손으로 다시 고르지 않는다. 그렇게 했더니 출근 시각 보정이 빠져,
-    // 관리자 화면의 입력칸이 늘 비어 보였다. 모양은 서비스의 PolicyView 한 곳이 정한다.
+    // 응답 모양은 서비스의 PolicyView 한 곳에서 정한다. 여기서 필드를 다시 고르지 않는다.
     const [checklist, policy] = await Promise.all([
       attendanceService.listChecklist(),
       attendanceService.getPolicyView(),
@@ -205,8 +196,7 @@ export const deleteAttendanceChecklistItem = async (
 };
 
 export const updateAttendancePolicy = async (req: AuthRequest, res: Response): Promise<void> => {
-  // 본문은 attendancePolicySchema 를 거쳐 아는 키만 남아 있다. 여기서 다시 골라 넘기면
-  // 목록이 두 벌이 되고, 한쪽에만 추가된 필드는 조용히 버려진다(출근 시각 보정이 그랬다).
+  // 본문은 attendancePolicySchema 를 거쳐 아는 키만 남는다. 여기서 다시 고르면 목록이 두 벌이 된다.
   await run(res, '출퇴근 설정 저장', {}, async () => {
     const before = await attendanceService.getPolicyView();
     const after = await attendanceService.updatePolicy(req.body);

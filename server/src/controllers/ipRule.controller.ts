@@ -1,5 +1,3 @@
-// server/src/controllers/ipRule.controller.ts
-
 import { Response } from 'express';
 import { AuthRequest } from '../types/auth-request';
 import { sendSuccess, sendError, sendNotFound } from '../utils/response';
@@ -99,18 +97,16 @@ export const addIpRule = async (req: AuthRequest, res: Response): Promise<void> 
     return;
   }
 
-  // self-lockout 방지 — 현재 접속 중인 본인 IP를 차단 목록에 추가하면 즉시 관리 화면 접근 불가
+  // self-lockout 방지. 본인 IP 를 차단하면 관리 화면에 접근할 수 없다.
   if (type === 'blacklist' && req.ip && matchesIpRule(req.ip, ipTrimmed)) {
     sendError(res, 400, '현재 접속 중인 본인 IP는 차단(blacklist) 목록에 추가할 수 없습니다.');
     return;
   }
 
-  // self-lockout 방지(whitelist) — whitelist가 하나라도 활성화되면 목록에 없는 IP는 전부 차단된다.
-  // 신규 규칙은 즉시 활성(isActive:true)이므로, 본인 IP가 새 규칙·기존 활성 whitelist·환경변수
-  // 어느 것에도 포함되지 않으면 관리 화면(IP 규칙 해제 포함)에 락아웃될 수 있어 거부한다.
+  // self-lockout 방지. whitelist 가 하나라도 활성이면 목록에 없는 IP 는 전부 차단된다.
   if (type === 'whitelist' && req.ip) {
     const selfIp = req.ip.startsWith('::ffff:') ? req.ip.slice(7) : req.ip;
-    let covered = true; // 캐시 조회 실패 시 가드 스킵(fail-open — 편의 안전장치)
+    let covered = true; // 캐시 조회 실패 시 가드 스킵(fail-open)
     try {
       const cache = await getIpRuleCache();
       const envWhitelist = process.env.ALLOWED_ADMIN_IPS
@@ -166,7 +162,7 @@ export const patchIpRule = async (req: AuthRequest, res: Response): Promise<void
     isActive?: boolean;
   };
 
-  // self-lockout 방지 — 본인 IP에 매칭되는 차단 규칙을 활성화하려는 경우 거부
+  // self-lockout 방지. 본인 IP 에 매칭되는 차단 규칙은 활성화할 수 없다.
   if (isActive === true && req.ip) {
     const existing = await IpRule.findByPk(id);
     if (existing && existing.type === 'blacklist' && matchesIpRule(req.ip, existing.ip)) {

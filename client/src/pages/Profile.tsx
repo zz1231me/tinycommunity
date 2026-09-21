@@ -1,4 +1,3 @@
-// client/src/pages/Profile.tsx - 탭 기반 재구성
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -70,7 +69,6 @@ const deviceLabel = (ua: string | null): string => {
   return os ? `${browser} · ${os}` : browser;
 };
 
-// ─── 탭 정의 ────────────────────────────────────────────────────────────────
 type TabId =
   'profile' | 'posts' | 'comments' | 'points' | 'notifications' | 'security' | 'settings';
 /** 기능 스위치로 켜질 때만 보이는 탭 */
@@ -86,17 +84,10 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'settings', label: '계정설정', icon: <Settings className="w-4 h-4" /> },
 ];
 
-/**
- * 주소의 ?tab= 이 실제로 있는 탭인지.
- *
- * 알림 링크가 특정 탭을 가리킨다(예: 포인트 대결 알림 → ?tab=points).
- * 아무 값이나 받아 열면 내용이 비어 있는 탭이 열리므로, 목록에 있는 것만 연다.
- */
+/** 주소의 ?tab= 이 실제로 있는 탭인지. 없는 값을 열면 내용이 빈 탭이 열린다. */
 function isTabId(value: string | null): value is TabId {
   return value !== null && TABS.some(t => t.id === value);
 }
-
-// ─── 타입 정의 ──────────────────────────────────────────────────────────────
 
 interface SecurityLog {
   id: string;
@@ -105,17 +96,13 @@ interface SecurityLog {
   createdAt: string;
 }
 
-// ─── 서브 컴포넌트 ───────────────────────────────────────────────────────────
-
-// ─── 메인 컴포넌트 ───────────────────────────────────────────────────────────
 export default function Profile() {
   const navigate = useNavigate();
   const { getUser, updateUser, clearUser } = useAuth();
   const user = getUser();
   const { settings } = useSiteSettings();
 
-  // 알림에서 넘어올 때 주소가 탭을 가리킨다(?tab=points). 이걸 읽지 않으면
-  // '대결이 신청됐습니다' 를 눌러도 기본 탭이 열려, 알림이 가리킨 곳에 닿지 못한다.
+  // 알림에서 넘어올 때 주소가 탭을 가리킨다(?tab=points).
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState<TabId>(() =>
@@ -127,8 +114,7 @@ export default function Profile() {
   // 알림이 가리킨 대결 (?duel=<id>). 대결 판이 그 판으로 스크롤하고 잠깐 강조한다.
   const duelParam = Number(searchParams.get('duel'));
   const focusDuelId = Number.isInteger(duelParam) && duelParam > 0 ? duelParam : null;
-  // 찾아간 뒤에는 주소에서 지운다. 남겨 두면 다른 탭에 갔다 돌아올 때마다(대결 판이 다시
-  // 그려질 때마다) 또 스크롤하고 번쩍이며, 이미 끝난 판이면 '사라진 대결' 을 다시 띄운다.
+  // 찾아간 뒤에는 주소에서 지운다. 남겨 두면 탭을 오갈 때마다 다시 스크롤하고 강조한다.
   const clearDuelFocus = useCallback(() => {
     setSearchParams(
       prev => {
@@ -142,11 +128,9 @@ export default function Profile() {
   const lotteryEnabled = useFeature('tools.lottery');
   // 대결은 포인트 기능 안에 있지만 따로 끌 수 있다 (서버도 requireFeature 로 막는다)
   const duelEnabled = useFeature('tools.pointDuel');
-  // 퇴근 공격권도 포인트로 산다. 다만 서버 쪽 스위치가 출퇴근 기능까지 함께 요구하므로
-  // 포인트 탭이 열려 있어도 이것만 따로 꺼져 있을 수 있다.
+  // 공격권도 포인트로 사지만, 서버 스위치가 출퇴근 기능까지 요구해 이것만 따로 꺼져 있을 수 있다.
   const attackEnabled = useFeature('tools.attendanceAttack');
-  // 공격권을 쓰면 잔액이 준다. 위쪽 뽑기 판이 들고 있는 잔액도 다시 불러오게 신호를
-  // 보낸다 — 그러지 않으면 한 화면에 서로 다른 잔액이 둘 뜬다.
+  // 공격권을 쓰면 잔액이 준다. 뽑기 판도 다시 읽게 신호를 보내 한 화면에 서로 다른 잔액이 뜨지 않게 한다.
   const [pointsVersion, setPointsVersion] = useState(0);
   const bumpPoints = useCallback(() => setPointsVersion(v => v + 1), []);
   // 꺼진 기능의 탭은 아예 보여주지 않는다 (서버도 requireFeature 로 막는다)
@@ -155,26 +139,17 @@ export default function Profile() {
     return !key || (key === 'tools.lottery' ? lotteryEnabled : true);
   });
 
-  // 이미 이 화면에 있는데 다른 탭을 가리키는 알림을 누르면 주소만 바뀐다 — 그때도 따라간다.
-  // 주소가 그대로인 경우도 있다: 알림으로 포인트 탭에 온 뒤 손으로 다른 탭을 눌렀다가
-  // 같은 알림을 다시 누르면 주소가 변하지 않는다. 그래서 주소가 아니라 이동(key)에도 반응한다.
+  // 같은 화면에서 다른 탭을 가리키는 알림을 눌러도 따라간다. 주소가 그대로일 수 있어 이동(key)에도 반응한다.
   useEffect(() => {
     if (isTabId(requestedTab)) setActiveTab(requestedTab);
   }, [requestedTab, location.key]);
 
-  // 꺼진 기능의 탭으로 링크가 와도 열지 않는다. 보이지도 않는 탭이 열려 있으면
-  // 탭 줄에는 아무것도 선택돼 있지 않은데 내용만 떠 있는 상태가 된다.
-  // visibleTabs 는 매 렌더 새 배열이라 의존성에는 참/거짓만 넣는다.
+  // 꺼진 기능의 탭은 링크로도 열지 않는다. visibleTabs 는 매 렌더 새 배열이라 의존성에는 참/거짓만 넣는다.
   const activeTabVisible = visibleTabs.some(t => t.id === activeTab);
   useEffect(() => {
     if (!activeTabVisible) setActiveTab('profile');
   }, [activeTabVisible]);
 
-  // 내 게시글
-
-  // 내 댓글
-
-  // 접속 기록
   const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);
   const [securityLoading, setSecurityLoading] = useState(false);
   const [securityLoaded, setSecurityLoaded] = useState(false);
@@ -182,26 +157,21 @@ export default function Profile() {
   const [securityPage, setSecurityPage] = useState(1);
   const [securityTotalPages, setSecurityTotalPages] = useState(1);
 
-  // 활성 세션
   const [sessions, setSessions] = useState<MySession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
   const [terminatingId, setTerminatingId] = useState<string | null>(null);
 
-  // 이름 변경
   const [nameInput, setNameInput] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [isChangingName, setIsChangingName] = useState(false);
 
-  // 비밀번호 변경
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-
-  // ─── 데이터 로드 ─────────────────────────────────────────────────────────
 
   const loadSecurity = useCallback(async (page = 1) => {
     setSecurityLoading(true);
@@ -245,8 +215,7 @@ export default function Profile() {
     }
   };
 
-  // 글·댓글 탭은 각자 useQuery 로 스스로 불러온다(캐시가 남아 재진입 시 다시 부르지 않는다).
-  // 접속 기록·세션은 아직 여기서 직접 관리한다 — loaded 플래그는 실패 시 재시도를 위한 것이다.
+  // 글·댓글 탭은 각자 useQuery 로 불러온다. 접속 기록·세션은 아직 여기서 직접 관리한다.
   useEffect(() => {
     if (activeTab === 'security' && !securityLoaded) loadSecurity(1);
     if (activeTab === 'security' && !sessionsLoaded) loadSessions();
@@ -257,7 +226,6 @@ export default function Profile() {
     scrollContentToTop();
   }, [activeTab]);
 
-  // ─── 이름 변경 ───────────────────────────────────────────────────────────
   const handleNameEdit = () => {
     setNameInput(user?.name ?? '');
     setIsEditingName(true);
@@ -292,7 +260,6 @@ export default function Profile() {
     }
   };
 
-  // ─── 비밀번호 변경 ────────────────────────────────────────────────────────
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     const { currentPassword, newPassword, confirmPassword } = passwordForm;
@@ -325,8 +292,7 @@ export default function Profile() {
     try {
       await changePassword(currentPassword, newPassword);
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      // 서버가 비번 변경 시 tokenVersion 증가 + 전 세션 만료 → 현재 토큰도 무효화된다.
-      // 그대로 두면 다음 요청에서 401로 갑자기 로그인 화면으로 튕기므로, 명시적으로 로그아웃 안내 후 이동.
+      // 서버가 tokenVersion 을 올려 현재 토큰도 무효화되므로 안내한 뒤 로그아웃으로 보낸다.
       toast.success('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인해주세요.');
       clearUser();
       navigate('/');
@@ -346,13 +312,10 @@ export default function Profile() {
     );
   }
 
-  // ─── 렌더 ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <PageContainer width="reading">
-        {/* 다른 화면과 같은 머리글을 쓴다. 예전에는 여기만 손으로 그려서 제목이
-            text-2xl font-bold — 나머지 페이지(text-xl font-semibold)보다 한 단계 컸고,
-            뒤로 가기도 이 화면에만 있는 버튼이었다. 되돌아갈 곳은 breadcrumb 이 알려 준다. */}
+        {/* 다른 화면과 같은 머리글(PageHeader)을 쓴다 */}
         <PageHeader
           breadcrumbs={[{ label: '대시보드', to: '/dashboard' }, { label: '마이페이지' }]}
           title="마이페이지"
@@ -378,7 +341,7 @@ export default function Profile() {
           ))}
         </div>
 
-        {/* ── 탭 컨텐츠 ─────────────────────────────────────────────── */}
+        {/* 탭 컨텐츠 */}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -513,9 +476,7 @@ export default function Profile() {
                 {sessionsLoading ? (
                   <LoadingRows />
                 ) : !sessionsLoaded ? (
-                  // 불러오지 못한 것과 '기기가 없는 것' 은 전혀 다르다. 여기는 내 계정에
-                  // 누가 접속해 있는지 보는 자리라, 실패를 '없음' 으로 보여 주면
-                  // "아무도 접속해 있지 않다" 로 읽힌다. 아래 접속 기록 칸과 같은 방식.
+                  // 실패를 '없음' 으로 보여 주면 접속한 기기가 없는 것처럼 읽힌다.
                   <RetryState onRetry={() => void loadSessions()} />
                 ) : sessions.length === 0 ? (
                   <EmptyState icon={<Monitor className="w-6 h-6" />} text="활성 세션이 없습니다." />
@@ -661,12 +622,10 @@ export default function Profile() {
               </div>
             )}
 
-            {/* 5. 계정설정 탭 */}
+            {/* 포인트 탭 */}
             {activeTab === 'points' && lotteryEnabled && (
               <div className="space-y-6">
-                {/* 포인트가 움직이는 판마다 onSpent 로 알리고, 모든 판이 refreshSignal 로 다시
-                    읽는다. 예전에는 공격권만 알려서, 뽑기·대결 뒤에는 다른 판들이 옛 잔액으로
-                    버튼을 막거나 열어 두었다. (공격 두 판은 같은 쿼리 캐시를 함께 쓴다.) */}
+                {/* 포인트가 움직이는 판마다 onSpent 로 알리고, 모든 판이 refreshSignal 로 다시 읽는다 */}
                 <LotteryPanel refreshSignal={pointsVersion} onSpent={bumpPoints} />
                 {duelEnabled && (
                   <DuelPanel
@@ -762,8 +721,6 @@ export default function Profile() {
     </div>
   );
 }
-
-// ─── 헬퍼 컴포넌트 ──────────────────────────────────────────────────────────
 
 function InfoRow({ label, value, note }: { label: string; value: string; note?: string }) {
   return (

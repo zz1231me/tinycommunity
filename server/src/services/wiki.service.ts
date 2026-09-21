@@ -11,9 +11,7 @@ export class WikiService extends BaseService {
     const where = showAll ? {} : { isPublished: true };
     return WikiPage.findAll({
       where,
-      // 본문은 빼고 준다. 이 응답은 사이드바 트리와 breadcrumb 에만 쓰여
-      // 제목·슬러그·부모만 있으면 되는데, 본문까지 실으면 문서가 늘어날수록
-      // 위키를 열 때마다 전체 문서를 통째로 내려받게 된다.
+      // 사이드바 트리와 breadcrumb 에만 쓰이므로 본문은 빼고 준다.
       attributes: [
         'id',
         'slug',
@@ -54,8 +52,7 @@ export class WikiService extends BaseService {
   ): Promise<WikiPage> {
     try {
       return await sequelize.transaction(async t => {
-        // parentId가 들어오면 존재하는 페이지인지 확인 (모델에 FK 없음 — 고아 페이지 방지)
-        // LOCK.UPDATE로 부모 행을 잠가, 동시에 부모가 삭제되어 고아가 생기는 레이스 방지
+        // 모델에 FK 가 없다. LOCK.UPDATE 로 부모를 잠가 동시 삭제로 고아가 생기는 것을 막는다.
         if (data.parentId !== undefined && data.parentId !== null) {
           const parent = await WikiPage.findByPk(data.parentId, {
             attributes: ['id'],
@@ -116,7 +113,6 @@ export class WikiService extends BaseService {
         if (Number(data.parentId) === Number(page.id)) {
           throw new AppError(400, '자기 자신을 상위 페이지로 설정할 수 없습니다.');
         }
-        // parentId가 실제로 존재하는 페이지인지 검증
         const parentExists = await WikiPage.findByPk(data.parentId, {
           attributes: ['id'],
           transaction: t,
@@ -124,7 +120,7 @@ export class WikiService extends BaseService {
         if (!parentExists) {
           throw new AppError(404, '상위 페이지를 찾을 수 없습니다.');
         }
-        // 간접 순환 참조 방지: 새 parentId의 상위 체인을 따라가며 현재 페이지가 나오는지 확인
+        // 상위 체인을 따라가며 순환 참조를 막는다.
         const visited = new Set<number>();
         let currentId: number | null = Number(data.parentId);
         while (currentId !== null && visited.size < 100) {
@@ -145,17 +141,13 @@ export class WikiService extends BaseService {
         }
       }
 
-      // 갱신 전 값을 들고 있는다 — page.update() 가 인스턴스를 그 자리에서 바꾸므로
-      // 뒤에서 비교하려면 미리 떠 둬야 한다.
+      // page.update() 가 인스턴스를 그 자리에서 바꾸므로 갱신 전 값을 미리 떠 둔다.
       const prevTitle = page.title;
       const prevContent = page.content ?? '';
 
       await page.update({ ...data, lastEditorId: editorId }, { transaction: t });
 
-      // 실제로 달라진 경우에만 revision 을 남긴다.
-      // 편집 화면은 저장할 때마다 제목·내용을 함께 보내므로, '값이 왔는가' 로 판단하면
-      // 한 글자도 고치지 않은 저장이나 공개 여부만 바꾼 저장에도 같은 내용의 리비전이
-      // 쌓인다 — 이력이 똑같은 줄로 채워져 어디서 무엇이 바뀌었는지 못 찾게 된다.
+      // 값이 왔는지가 아니라 실제로 달라졌는지로 판단해야 같은 내용의 리비전이 쌓이지 않는다.
       const titleChanged = page.title !== prevTitle;
       const contentChanged = (page.content ?? '') !== prevContent;
       if (titleChanged || contentChanged) {
@@ -189,14 +181,13 @@ export class WikiService extends BaseService {
           model: User,
           as: 'editor',
           attributes: ['id', 'name'],
-          required: false, // LEFT JOIN — 탈퇴 사용자도 이력 유지
+          required: false, // LEFT JOIN 이라 탈퇴 사용자의 이력도 남는다
         },
       ],
     });
   }
 
   // 지워진 페이지가 무엇이었는지 남길 수 있도록 식별 정보를 돌려준다.
-  // sequelize.transaction 은 콜백의 반환값을 그대로 돌려주므로 따로 변수를 끌어낼 필요가 없다.
   async deletePage(slug: string): Promise<{ id: number; title: string; slug: string }> {
     return sequelize.transaction(async t => {
       const page = await WikiPage.findOne({

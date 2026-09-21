@@ -8,8 +8,7 @@ export interface PasswordResetRequestAttributes {
   id: string;
   userId: string; // 로그인 아이디(User.id)
   status: PasswordResetRequestStatus;
-  // ⚠️ 인증번호는 평문으로 저장하지 않는다 — AES-256-GCM(secretCrypto)로 at-rest 암호화.
-  //    관리자 목록에서만 복호화해 표시하고, 검증은 복호화 후 상수시간 비교로 수행.
+  // 인증번호는 AES-256-GCM(secretCrypto)으로 암호화해 저장하고, 검증은 복호화 후 상수시간 비교로 한다.
   code?: string | null;
   expiresAt?: Date | null; // 인증번호 만료(생성 후 30분)
   attempts: number; // 오입력 횟수(3회 시 잠금)
@@ -44,8 +43,7 @@ PasswordResetRequest.init(
   {
     id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     userId: { type: DataTypes.STRING(50), allowNull: false },
-    // ENUM 대신 VARCHAR — MariaDB/MySQL에서 sync(alter:true)가 ENUM 값 변경 시 기존 데이터와
-    // 충돌해 시작이 깨질 수 있어, 제약 없는 문자열로 안전하게 저장한다(값 검증은 애플리케이션에서).
+    // ENUM 대신 VARCHAR. MySQL/MariaDB 에서 sync(alter:true) 가 ENUM 값 변경 시 깨질 수 있다.
     status: {
       type: DataTypes.STRING(20),
       allowNull: false,

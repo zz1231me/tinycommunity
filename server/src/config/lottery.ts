@@ -1,8 +1,4 @@
-// server/src/config/lottery.ts
-// 로또(포인트 뽑기) 규칙의 형태와 기본값.
-//
-// 확률·금액·횟수는 코드가 아니라 관리자 설정에 있다. 여기 있는 값은
-// 아직 아무것도 저장하지 않았을 때 쓰는 출발점일 뿐이다.
+// 로또(포인트 뽑기) 규칙의 형태와 기본값. 실제 값은 관리자 설정에서 온다.
 
 /** 상품 한 칸. weight 는 백분율(%)이며, 합이 100 미만이면 나머지가 꽝이다. */
 export interface LotteryPrize {
@@ -35,9 +31,7 @@ export function blankWeight(prizes: LotteryPrize[]): number {
 
 /**
  * 상품 목록이 쓸 수 있는 형태인지 확인한다.
- *
- * 관리자가 확률을 100 이 넘게 적으면 뒤쪽 상품은 영영 안 나온다 — 화면에는
- * 멀쩡히 보이는데 실제로는 죽은 칸이 되므로, 저장 시점에 막는다.
+ * 확률 합이 100 을 넘으면 뒤쪽 상품이 나오지 않으므로 저장 시점에 막는다.
  */
 export function validatePrizes(value: unknown): LotteryPrize[] {
   if (!Array.isArray(value) || value.length === 0) {
@@ -55,7 +49,7 @@ export function validatePrizes(value: unknown): LotteryPrize[] {
     if (!Number.isFinite(weight) || weight <= 0 || weight > 100) {
       throw new Error('확률은 0 보다 크고 100 이하여야 합니다.');
     }
-    // 소수점 둘째 자리까지만 — 그 아래는 화면에 보이지도 않으면서 합계만 어긋나게 한다
+    // 소수점 둘째 자리까지만. 그 아래는 합계만 어긋나게 한다.
     return { amount, weight: Math.round(weight * 100) / 100 };
   });
   const total = prizes.reduce((sum, p) => sum + p.weight, 0);

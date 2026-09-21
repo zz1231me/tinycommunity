@@ -1,8 +1,4 @@
-// client/src/pages/Explore.tsx
-// 탐색 — 인기글과 태그 클라우드.
-//
-// 게시판을 하나씩 열어 보지 않고도 "지금 이 사이트에서 무슨 일이 있는가" 를
-// 볼 수 있게 하는 화면이다. 태그를 고르면 아래 목록이 그 태그의 글로 바뀐다.
+// 탐색 화면 — 인기글과 태그 클라우드. 태그를 고르면 아래 목록이 그 태그의 글로 바뀐다.
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -60,13 +56,11 @@ function Empty({ children }: { children: React.ReactNode }) {
 export default function Explore() {
   const [period, setPeriod] = useState<PopularPeriod>('week');
   const [tagId, setTagId] = useState<number | null>(null);
-  // 태그를 바꾸면 1페이지부터 다시 본다
   const [tagPage, setTagPage] = useState(1);
 
   const popular = useQuery({
     queryKey: discoveryKeys.popular(period),
     queryFn: ({ signal }) => fetchPopularPosts(period, signal),
-    // 태그를 고르면 아래 목록이 태그 글로 바뀌므로 그동안 인기글은 받아오지 않는다
     enabled: tagId === null,
   });
 
@@ -75,13 +69,11 @@ export default function Explore() {
     queryFn: ({ signal }) => fetchTagCloud(signal),
   });
 
-  // enabled 가 false 라도 키는 만들어진다 — 태그를 안 고른 동안 tagId 0 짜리
-  // 빈 캐시 항목이 남지 않도록 실제로 쓸 때만 조회한다.
+  // enabled 가 false 라도 키는 만들어지므로, 태그를 고른 뒤에만 조회한다.
   const byTag = useQuery({
     queryKey: discoveryKeys.postsByTag(tagId ?? -1, tagPage),
     queryFn: ({ signal }) => fetchPostsByTag(tagId as number, tagPage, signal),
     enabled: tagId !== null,
-    // 태그를 바꿔 가며 둘러볼 때 매번 다시 받지 않게 잠깐 재사용한다
     staleTime: 30_000,
   });
 

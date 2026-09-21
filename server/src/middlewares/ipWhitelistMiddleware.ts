@@ -1,15 +1,11 @@
-// server/src/middlewares/ipWhitelistMiddleware.ts
-// DB 기반 IP 화이트리스트/블랙리스트 + 환경변수 화이트리스트 통합
+// DB 의 IP 화이트리스트·블랙리스트와 환경변수 화이트리스트를 함께 본다.
 
 import { Request, Response, NextFunction } from 'express';
 import { logWarning } from '../utils/logger';
 import { sendForbidden } from '../utils/response';
 import { getIpRuleCache, matchesIpRule } from '../services/ipRule.service';
 
-/** 요청 IP 추출 및 정규화
- *  ⚠️ 반드시 `req.ip`만 사용 — Express의 `trust proxy` 설정을 거친 검증된 값.
- *      `X-Forwarded-For` 헤더를 직접 파싱하면 클라이언트가 헤더를 위조해 IP를 스푸핑할 수 있음.
- */
+/** 요청 IP 추출. req.ip 만 쓴다. X-Forwarded-For 를 직접 파싱하면 스푸핑된다. */
 function extractClientIp(req: Request): string {
   const raw = req.ip || req.socket.remoteAddress || '';
   return raw.startsWith('::ffff:') ? raw.slice(7) : raw;
@@ -23,10 +19,9 @@ export const ipWhitelistMiddleware = async (
   const clientIp = extractClientIp(req);
 
   try {
-    // 1. DB 기반 규칙 로드 (캐시 활용)
     const cache = await getIpRuleCache();
 
-    // 2. 블랙리스트 체크 (가장 먼저)
+    // 블랙리스트를 가장 먼저 본다.
     if (cache.blacklist.length > 0) {
       const blocked = cache.blacklist.some(ruleIp => matchesIpRule(clientIp, ruleIp));
       if (blocked) {
@@ -36,8 +31,7 @@ export const ipWhitelistMiddleware = async (
       }
     }
 
-    // 3. 화이트리스트 체크
-    //    - DB 화이트리스트 또는 환경변수 ALLOWED_ADMIN_IPS 둘 중 하나라도 있으면 검증
+    // DB 또는 환경변수 화이트리스트가 하나라도 있으면 검증한다.
     const envWhitelist = process.env.ALLOWED_ADMIN_IPS
       ? process.env.ALLOWED_ADMIN_IPS.split(',')
           .map(s => s.trim())
@@ -47,7 +41,7 @@ export const ipWhitelistMiddleware = async (
     const combinedWhitelist = [...cache.whitelist, ...envWhitelist];
 
     if (combinedWhitelist.length === 0) {
-      // 화이트리스트 미설정 → 전체 허용 (개발 환경)
+      // 화이트리스트가 없으면 전부 허용한다.
       logWarning('IP 화이트리스트 미설정 — 모든 IP 허용 중', { ip: clientIp });
       next();
       return;
@@ -61,7 +55,7 @@ export const ipWhitelistMiddleware = async (
       sendForbidden(res, '관리자 페이지 접근이 허용되지 않은 IP입니다.');
     }
   } catch {
-    // DB 에러 시 환경변수 폴백
+    // DB 오류 시 환경변수로 폴백한다.
     const envWhitelist = process.env.ALLOWED_ADMIN_IPS
       ? process.env.ALLOWED_ADMIN_IPS.split(',')
           .map(s => s.trim())

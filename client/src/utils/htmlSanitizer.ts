@@ -1,4 +1,3 @@
-// client/src/utils/htmlSanitizer.ts - HTML 콘텐츠 안전화
 import DOMPurify from 'dompurify';
 
 // Safe CSS property allowlist for inline style sanitization
@@ -56,12 +55,7 @@ const SAFE_CSS_PROPS = new Set([
   'font-style',
   'text-indent',
   'white-space',
-  // 렌더러가 생성하는 추가 속성 (서버 contentRenderer 의 list/blockquote/codeBlock/image 등)
-  //
-  // 이 다섯 개가 여기에 없어서, 서버가 허용해 저장한 스타일을 화면에서 다시 벗겨 냈다.
-  // 사용자가 지정한 서식뿐 아니라 서버 렌더러가 스스로 붙이는 것까지 지워졌다 —
-  // 모든 목록이 list-style-type 을 잃어 'a. b. c.' 가 '1. 2. 3.' 으로 보였고,
-  // 코드블록은 border-radius·overflow-x 를 잃었다.
+  // 서버 contentRenderer 가 붙이는 속성. 빠지면 목록 스타일·코드블록 서식이 화면에서 벗겨진다.
   'list-style-type',
   'border-radius',
   'box-shadow',
@@ -154,8 +148,7 @@ DOMPurify.addHook('afterSanitizeAttributes', node => {
     node.setAttribute('loading', 'lazy');
     node.removeAttribute('srcdoc'); // 인라인 문서 주입 차단
   }
-  // 체크리스트의 체크박스는 '표시' 다. 어떤 값이 들어오든 읽기 전용 체크박스로 만든다 —
-  // 서버 contentRenderer 의 transformTags.input 과 같은 규칙이다.
+  // 체크리스트 체크박스는 표시용이다. 서버 contentRenderer 의 transformTags.input 과 같은 규칙.
   if (node.tagName === 'INPUT') {
     const wasChecked = node.hasAttribute('checked');
     for (const attr of [...node.attributes]) node.removeAttribute(attr.name);
@@ -325,12 +318,8 @@ export function sanitizeCommentHTML(dirty: string): string {
 const MENTION_RE = /(^|[^\w@])@([a-zA-Z0-9_]{4,20})\b/g;
 
 /**
- * 정화된 HTML 안의 @아이디를 시각적으로 강조한다.
- *
- * ⚠️ 반드시 sanitize 이후에 호출한다. 그리고 문자열 정규식이 아니라 DOM 을 순회해
- *    텍스트 노드만 바꾼다 — 문자열로 치환하면 href="...@..." 같은 속성값이나
- *    태그 이름 안까지 건드려 마크업이 깨진다.
- *    또한 <a> 안의 텍스트는 건너뛴다(링크 안에 링크 모양을 겹치지 않게).
+ * 정화된 HTML 안의 @아이디를 강조한다.
+ * 반드시 sanitize 이후에 호출하고, 문자열 치환이 아니라 DOM 텍스트 노드만 바꾼다. <a> 안은 건너뛴다.
  */
 export function highlightMentions(safeHtml: string): string {
   if (!safeHtml || typeof safeHtml !== 'string' || !safeHtml.includes('@')) return safeHtml;

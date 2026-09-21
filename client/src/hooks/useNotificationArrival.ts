@@ -1,21 +1,15 @@
-// client/src/hooks/useNotificationArrival.ts
-//
-// 어떤 종류의 알림이 새로 도착하면 콜백을 부른다.
-//
-// 알림은 SSE 로 바로 오는데, 그와 관련된 화면(출근 화면의 공격 효과, 포인트 탭의 대결 판)은
-// 각자 따로 서버에 묻는다. 둘이 이어져 있지 않아서, 공격을 받거나 도전장이 와도 종 숫자만
-// 바뀌고 화면은 새로고침을 해야 바뀌었다. 이 훅이 그 둘을 잇는다.
+// 지정한 종류의 알림이 새로 도착하면 콜백을 부른다. SSE 알림과 화면 갱신을 잇는다.
 
 import { useEffect, useRef } from 'react';
 import { useNotificationStore } from '../store/notifications';
 import type { Notification } from '../api/notifications';
 
 export function useNotificationArrival(
-  /** 볼 종류들, 또는 'all' — 서버가 먼저 늘린 새 종류까지 빠짐없이 본다 */
+  /** 볼 종류들, 또는 'all' */
   types: ReadonlyArray<Notification['type']> | 'all',
   onArrive: () => void
 ): void {
-  // 원하는 종류들의 도착 횟수 합. 이 수가 늘면 새로 온 것이 있다는 뜻이다.
+  // 원하는 종류들의 도착 횟수 합. 이 수가 늘면 새로 온 것이 있다.
   const count = useNotificationStore(s =>
     types === 'all'
       ? Object.values(s.arrivals).reduce((sum: number, v) => sum + (v ?? 0), 0)
@@ -28,7 +22,7 @@ export function useNotificationArrival(
     callback.current = onArrive;
   });
 
-  // 처음 그릴 때 이미 쌓여 있던 수는 신호가 아니다 — 이 화면을 연 뒤에 온 것만 본다
+  // 처음 그릴 때 이미 쌓여 있던 수는 신호가 아니다
   const seen = useRef(count);
   useEffect(() => {
     if (count > seen.current) callback.current();

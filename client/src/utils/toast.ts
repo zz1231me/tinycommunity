@@ -1,9 +1,4 @@
-// client/src/utils/toast.ts
-// 간단한 토스트 유틸리티 — 다수 토스트가 동시에 들어와도 세로로 스택되어 보이도록 컨테이너에서 관리.
-// React 외부에서 호출 가능해야 하므로 DOM 직접 조작 패턴을 유지하되,
-// 단일 컨테이너 + 자식으로 누적/제거하여 이전 토스트를 덮어쓰지 않게 한다.
-//
-// ⚠️ NotificationToast(헤더 아래 알림 팝업)는 top-20에 배치되어 이 toast와 겹치지 않는다.
+// 토스트 유틸리티. React 밖에서도 부를 수 있어야 해서 DOM 을 직접 다룬다.
 
 const CONTAINER_ID = 'app-toast-container';
 const ANIM_STYLE_ID = 'app-toast-animations';
@@ -94,7 +89,7 @@ function showBrowserToast(message: string, type: ToastType, durationMs = 3000): 
   `;
   el.setAttribute('role', type === 'error' ? 'alert' : 'status');
 
-  // textContent로 안전하게 구성 — innerHTML 미사용 (XSS 방지)
+  // innerHTML 대신 textContent 로 구성한다(XSS 방지)
   const iconSpan = document.createElement('span');
   iconSpan.setAttribute('aria-hidden', 'true');
   iconSpan.textContent = ICONS[type];
@@ -113,19 +108,17 @@ function showBrowserToast(message: string, type: ToastType, durationMs = 3000): 
   };
   setTimeout(remove, durationMs);
 
-  // 사용자가 클릭하면 즉시 닫기
   el.addEventListener('click', remove);
 }
 
 const CENTER_ERROR_ID = 'app-center-error';
-// 현재 떠 있는 중앙 오류 팝업의 정리 함수(리스너/타이머 포함). 교체 시 반드시 호출해 누수 방지.
+// 떠 있는 중앙 오류 팝업의 정리 함수. 교체할 때 반드시 불러야 리스너·타이머가 남지 않는다.
 let closeActiveError: ((immediate?: boolean) => void) | null = null;
 
-// 오류만 화면 정중앙에 딤 배경과 함께 크게 표시 — 사용자가 실패를 확실히 인지하도록.
-// (성공/정보/경고는 우측 상단 코너 토스트를 그대로 사용)
+// 오류만 화면 중앙에 크게 띄운다. 성공·정보·경고는 코너 토스트를 쓴다.
 function showCenterError(message: string, durationMs = 6000): void {
   ensureAnimStyle();
-  // 한 번에 하나만 — 기존 팝업을 리스너/타이머까지 정리하고 즉시 제거
+  // 한 번에 하나만 띄운다. 기존 팝업을 리스너·타이머까지 정리한다.
   closeActiveError?.(true);
 
   const dark = document.documentElement.classList.contains('dark');
@@ -201,7 +194,7 @@ function showCenterError(message: string, durationMs = 6000): void {
     document.removeEventListener('keydown', onKey, true);
     closeActiveError = null;
     if (immediate) {
-      backdrop.remove(); // 교체 시 애니메이션 없이 즉시 제거(잔상/이중 배경 방지)
+      backdrop.remove(); // 교체 시에는 애니메이션 없이 즉시 제거한다
       return;
     }
     backdrop.style.animation = 'appToastFadeOut 0.15s ease-out';
@@ -210,19 +203,18 @@ function showCenterError(message: string, durationMs = 6000): void {
   };
   const onKey = (e: KeyboardEvent) => {
     if (e.key !== 'Escape') return;
-    // 이 팝업은 무엇보다 위에 뜬다. 잡아 두지 않으면 같은 ESC 가 뒤에 열려 있던
-    // 대화상자의 닫기까지 함께 불러, 오류 메시지를 지웠을 뿐인데 화면이 사라진다.
+    // ESC 를 여기서 잡지 않으면 뒤에 열린 대화상자까지 함께 닫힌다.
     e.stopImmediatePropagation();
     close();
   };
 
   btn.addEventListener('click', () => close());
   backdrop.addEventListener('click', e => {
-    if (e.target === backdrop) close(); // 배경 클릭 시 닫기(카드 클릭은 유지)
+    if (e.target === backdrop) close(); // 배경 클릭만 닫는다
   });
   document.addEventListener('keydown', onKey, true);
-  timer = window.setTimeout(() => close(), durationMs); // 방치돼도 자동으로 닫히도록 안전장치
-  closeActiveError = close; // 다음 오류가 이 팝업을 정리할 수 있도록 등록
+  timer = window.setTimeout(() => close(), durationMs);
+  closeActiveError = close;
 }
 
 export const toast = {

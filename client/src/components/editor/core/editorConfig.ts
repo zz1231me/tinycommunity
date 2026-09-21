@@ -1,13 +1,5 @@
-// client/src/components/editor/core/editorConfig.ts
-// CKEditor 5 설정 단일 소스(Single Source of Truth).
-// 게시글·댓글·이벤트 세 에디터가 같은 옵션·플러그인·툴바를 공유하고,
-// 차이는 프리셋으로만 표현한다.
-//
-//  - 공통 옵션(link/list/heading/translations 등)은 한 번만 정의해 재사용한다.
-//  - 동적 부분(업로드 어댑터 extraPlugins, 글자수 onUpdate, placeholder)은
-//    컴포넌트가 buildEditorConfig(...) 에 주입한다.
-//  - 댓글 프리셋은 sanitizeCommentHTML 허용 범위(서식/목록/코드/인용/sub·sup)에
-//    맞춘다. 표·이미지·제목·폰트·정렬은 상세보기에서 제거되므로 에디터에도 두지 않는다.
+// CKEditor 5 설정 단일 소스. 게시글·댓글·이벤트 에디터가 옵션·플러그인·툴바를 공유하고 차이는 프리셋으로만 둔다.
+// 동적 부분(업로드 어댑터, 글자수 콜백, placeholder)은 컴포넌트가 buildEditorConfig 에 주입한다.
 
 import {
   Alignment,
@@ -74,8 +66,6 @@ export type EditorPreset = 'post' | 'comment' | 'event';
 type PluginList = NonNullable<EditorConfig['plugins']>;
 // extraPlugins는 문자열 이름을 허용하지 않는 별도 타입(PluginConstructor[] 등)
 type ExtraPluginList = NonNullable<EditorConfig['extraPlugins']>;
-
-/* ── 공통 서브 설정 ─────────────────────────────────────────── */
 
 const LINK_CONFIG: EditorConfig['link'] = {
   defaultProtocol: 'https://',
@@ -246,9 +236,8 @@ const CODEBLOCK_CONFIG: EditorConfig['codeBlock'] = {
   ],
 };
 
-// 동영상 임베드: 저장 데이터에 미리보기(iframe)를 포함(previewsInData) →
-// 상세보기 sanitizer가 신뢰 호스트(YouTube/Vimeo)만 통과시킨다.
-// 신뢰 allowlist 외 제공자는 표시 단계에서 어차피 제거되므로 입력 자체를 막는다.
+// 동영상 임베드: previewsInData 로 저장 데이터에 iframe 을 포함한다.
+// 상세보기 sanitizer 가 신뢰 호스트만 통과시키므로 그 밖의 제공자는 입력 단계에서 막는다.
 const MEDIA_EMBED_CONFIG: EditorConfig['mediaEmbed'] = {
   previewsInData: true,
   removeProviders: [
@@ -263,8 +252,7 @@ const MEDIA_EMBED_CONFIG: EditorConfig['mediaEmbed'] = {
 };
 
 const POST_IMAGE_CONFIG: EditorConfig['image'] = {
-  // 삽입 시 커서 위치에 따라 inline/block 자동 결정 — 글 작성 중 삽입은 inline(좌측 흐름),
-  // 빈 줄 삽입만 block. 생략 시 기본값 'block'이라 무조건 가운데정렬되던 불편을 개선.
+  // 커서 위치에 따라 inline/block 을 자동 결정한다. 생략하면 기본값 'block' 이라 항상 가운데정렬된다.
   insert: { type: 'auto' },
   // 정렬 스타일은 표시 CSS(CKContentView.css)가 처리하는 클래스로 한정 — 에디터↔표시 정합.
   // inline / alignLeft(좌측 플로트) / alignCenter(가운데블록) / alignRight(우측 플로트)
@@ -297,7 +285,6 @@ const EVENT_IMAGE_CONFIG: EditorConfig['image'] = {
   styles: { options: ['inline', 'block', 'side'] },
 };
 
-/* ── 이미지 플러그인 묶음 (업로드/자동임베드/링크이미지 포함) ── */
 // FileRepository는 ImageUpload 의존성으로 자동 포함 — 명시 추가 금지
 const POST_IMAGE_PLUGINS: PluginList = [
   Image,
@@ -320,8 +307,6 @@ const EVENT_IMAGE_PLUGINS: PluginList = [
   ImageToolbar,
   ImageUpload,
 ];
-
-/* ── 프리셋별 플러그인 ─────────────────────────────────────── */
 
 const POST_PLUGINS: PluginList = [
   Essentials,
@@ -370,8 +355,7 @@ const POST_PLUGINS: PluginList = [
   WordCount,
 ];
 
-// 댓글: sanitizeCommentHTML 허용 범위에 정합 — 서식/목록/코드/인용/sub·sup만.
-// 표·이미지·제목·폰트·정렬·hr은 표시 단계에서 제거되므로 에디터에서도 제외.
+// 댓글: sanitizeCommentHTML 허용 범위(서식·목록·코드·인용·sub/sup)에 맞춘다. 나머지는 표시 단계에서 제거된다.
 const COMMENT_PLUGINS: PluginList = [
   Essentials,
   Paragraph,
@@ -415,8 +399,6 @@ const EVENT_PLUGINS: PluginList = [
   PasteFromOffice,
   RemoveFormat,
 ];
-
-/* ── 프리셋별 툴바 ─────────────────────────────────────────── */
 
 const POST_TOOLBAR: string[] = [
   'undo',
@@ -574,7 +556,6 @@ export interface BuildEditorConfigOptions {
 
 /**
  * 프리셋 + 동적 옵션으로 완성된 CKEditor 설정을 만든다.
- * 컴포넌트는 useMemo로 감싸 placeholder가 바뀔 때만 재생성하면 된다.
  */
 export function buildEditorConfig(
   preset: EditorPreset,

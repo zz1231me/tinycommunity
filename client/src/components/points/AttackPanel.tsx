@@ -1,15 +1,4 @@
-// client/src/components/points/AttackPanel.tsx
-// 퇴근 공격권 — 포인트를 주고 남의 퇴근 버튼을 잠깐 성가시게 만든다.
-//
-// 보내는 쪽이다. 받는 쪽은 둘로 나뉜다 — 방어권 구매·경고 띠는 같은 포인트 탭 맨 위
-// (IncomingAttack), 도망다니는 퇴근 버튼과 안내 한 줄은 출근 화면이다.
-//
-// 공격 상태는 그 둘과 같은 쿼리 키(attendanceKeys.attack)로 읽는다. 예전에는 여기만
-// 따로 읽어서, 같은 탭에서 방어권을 산 뒤에도 이 판의 잔액은 그대로 남았다.
-//
-// ⚠️ 방해할 뿐 막지는 않는다. 서버의 퇴근 기록은 이 기능을 쳐다보지도 않고, 퇴근
-// 버튼도 끝까지 살아 있다. 하는 일은 '누르기 성가시게 만드는 것' 이지 '못 누르게
-// 하는 것' 이 아니다.
+// 퇴근 공격권을 보내는 판. 공격 상태는 IncomingAttack·출근 화면과 같은 쿼리 키를 공유한다.
 
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -31,7 +20,7 @@ import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
 import { formatLeft } from '../../hooks/useCountdown';
 
-// 얼굴과 이름은 받는 쪽(경고 띠·출근 안내 줄)과 같은 정의다 — 보낸 것과 받은 것이 이어져 보이게.
+// 얼굴과 이름은 받는 쪽과 같은 정의를 쓴다.
 const KINDS: Array<{ kind: AttackKind; face: string; label: string; hint: string }> = [
   {
     kind: 'chaos',
@@ -54,8 +43,8 @@ const KINDS: Array<{ kind: AttackKind; face: string; label: string; hint: string
 ];
 
 /**
- * @param myId 나 자신은 고를 수 없게 빼기 위한 것
- * @param onSpent 포인트를 쓴 뒤 — 같은 화면의 잔액 표시를 다시 불러오게 한다
+ * @param myId 대상 목록에서 제외할 내 id
+ * @param onSpent 포인트를 쓴 뒤 같은 화면의 잔액을 다시 읽게 한다
  */
 export function AttackPanel({
   myId,
@@ -64,19 +53,17 @@ export function AttackPanel({
 }: {
   myId: string;
   onSpent?: () => void;
-  /** 같은 화면의 다른 판이 포인트를 움직이면 바뀐다 — 잔액을 다시 읽는다 */
+  /** 다른 판이 포인트를 움직이면 바뀐다. 잔액을 다시 읽는 신호. */
   refreshSignal?: number;
 }) {
   const queryClient = useQueryClient();
   const query = useQuery({ queryKey: attendanceKeys.attack, queryFn: fetchAttackState });
   const state = query.data ?? null;
   const loading = query.isLoading;
-  // 실패를 빈 화면으로 두면 '공격권 기능이 없는 화면' 처럼 보인다
   const failed = query.isError;
   const [sending, setSending] = useState(false);
 
-  // 다른 판(뽑기·대결)에서 포인트가 움직이면 잔액을 다시 읽는다. 이것이 없어서 대결에서
-  // 이겨 포인트가 생겨도 여기 버튼은 '포인트가 모자랍니다' 로 막혀 있었다.
+  // 다른 판에서 포인트가 움직이면 잔액을 다시 읽는다.
   useEffect(() => {
     if (refreshSignal === 0) return;
     void queryClient.invalidateQueries({ queryKey: attendanceKeys.attack });
@@ -85,13 +72,12 @@ export function AttackPanel({
   const [picked, setPicked] = useState<UserSuggestion[]>([]);
   const [kind, setKind] = useState<AttackKind>('chaos');
 
-  // 보낸 직후 잠깐 띄우는 '명중' 표시. 토스트 한 줄로는 보낸 맛이 없다.
-  // key 를 함께 둬서 같은 사람에게 연달아 보내도 매번 다시 튀어나오게 한다.
+  // 보낸 직후 잠깐 띄우는 명중 표시. key 를 바꿔 연달아 보내도 다시 나오게 한다.
   const [hit, setHit] = useState<{
     key: number;
     name: string;
     kind: AttackKind;
-    /** 몇 초 뒤에 시작하는가 — 앞에 쌓인 것이 있으면 바로 걸리지 않는다 */
+    /** 몇 초 뒤에 시작하는지. 앞에 쌓인 것이 있으면 바로 걸리지 않는다. */
     startsIn: number;
     /** 이 공격을 포함해 상대에게 쌓인 수 */
     stack: number;
@@ -107,8 +93,7 @@ export function AttackPanel({
     setSending(true);
     try {
       const sent = await sendAttack({ targetId: picked[0].id, kind });
-      // 앞에 쌓인 것이 있으면 지금 걸리지 않는다. '날뛰기 시작합니다' 라고만 말하면
-      // 상대 화면에 아무 일도 없는 것을 보고 고장으로 읽는다.
+      // 앞에 쌓인 것이 있으면 지금 걸리지 않으므로 시작 시각도 함께 알려 준다.
       setHit({
         key: Date.now(),
         name: picked[0].name,
@@ -116,8 +101,7 @@ export function AttackPanel({
         startsIn: Math.max(0, Math.round((new Date(sent.startsAt).getTime() - Date.now()) / 1000)),
         stack: sent.stack,
       });
-      // 보내진 뒤에만 비운다. 한도 초과·포인트 부족처럼 거절당하는 길이 여럿이라,
-      // 미리 비우면 그때마다 상대를 다시 찾아야 한다.
+      // 성공한 뒤에만 비운다. 거절되는 경우가 많아 미리 비우면 상대를 다시 골라야 한다.
       setPicked([]);
       await queryClient.invalidateQueries({ queryKey: attendanceKeys.attack }).catch(() => {});
       onSpent?.();
@@ -135,7 +119,6 @@ export function AttackPanel({
   const chosen = KINDS.find(k => k.kind === kind);
 
   return (
-    // 대결(⚔️)과 같은 아이콘을 쓰면 옆 판과 구분되지 않는다
     <PointsSection
       icon={<Zap className="h-5 w-5" />}
       tone="rose"
@@ -207,8 +190,7 @@ export function AttackPanel({
             type="button"
             disabled={picked.length === 0 || sending || soldOut || !affordable}
             onClick={() => void handleSend()}
-            // 옆 판의 '대결 신청' 과 같은 무게의 주 버튼이다. 한 화면의 핵심 버튼들이
-            // 서로 다른 무게면 어느 쪽이 중요한지 헷갈린다.
+            // 옆 판의 '대결 신청' 과 같은 무게의 주 버튼
             className="btn-primary mt-3 inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}

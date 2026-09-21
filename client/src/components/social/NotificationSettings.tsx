@@ -1,9 +1,4 @@
-// client/src/components/social/NotificationSettings.tsx
-// 알림 종류별 on/off + 내 구독 목록.
-//
-// 스위치를 누르면 바로 저장한다. 기능 스위치(관리자)와 달리 여기서는 한 번에
-// 여러 개를 손볼 일이 드물고, "저장" 버튼을 못 눌러 설정이 안 바뀌는 쪽이
-// 더 자주 겪는 문제다.
+// 알림 종류별 on/off 와 내 구독 목록. 스위치를 누르면 바로 저장한다.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ListLoading, ListError, ListState } from '../common/ListState';
@@ -78,8 +73,7 @@ export function NotificationSettings() {
 
   const save = useMutation({
     mutationFn: (change: Record<string, boolean>) => saveNotificationSettings(change),
-    // 스위치는 누른 즉시 움직여야 한다 — 왕복을 기다리면 눌리지 않은 줄 알고
-    // 다시 누르게 되고, 그러면 두 번 토글돼 원래대로 돌아간다.
+    // 스위치는 누른 즉시 움직여야 한다. 왕복을 기다리면 다시 눌러 두 번 토글된다.
     onMutate: async change => {
       await queryClient.cancelQueries({ queryKey: socialKeys.notificationSettings });
       const previous = queryClient.getQueryData<NotificationKindSetting[]>(

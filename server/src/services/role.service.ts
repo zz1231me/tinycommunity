@@ -24,7 +24,7 @@ export class RoleService extends BaseService {
     name: string;
     description?: string;
   }): Promise<RoleInstance> {
-    // 시스템 보호 역할 ID 사용 차단
+    // 시스템 보호 역할 id 는 쓸 수 없다
     if ((PROTECTED_ROLES as readonly string[]).includes(data.id.trim())) {
       throw new AppError(400, `'${data.id}' 역할은 시스템 보호 역할로 생성할 수 없습니다.`);
     }
@@ -79,14 +79,13 @@ export class RoleService extends BaseService {
 
     try {
       await sequelize.transaction(async t => {
-        // findByPk를 트랜잭션 내 LOCK.UPDATE로 이동 — 동시 삭제 요청의 TOCTOU 방지
+        // 동시 삭제 요청의 TOCTOU 를 막으려고 트랜잭션 안에서 잠그고 읽는다
         const role = await Role.findByPk(id, { transaction: t, lock: t.LOCK.UPDATE });
         if (!role) {
           throw new AppError(404, '역할을 찾을 수 없습니다.');
         }
 
-        // guest 역할이 비활성화 상태면 마이그레이션 대상 사용자가 로그인 불가가 되므로 차단
-        //   (admin이 'guest'를 비활성화한 뒤 다른 역할을 삭제하면 사용자 셀프 락아웃 발생)
+        // guest 가 비활성이면 옮겨 간 사용자가 로그인할 수 없게 되므로 막는다
         const guestRole = await Role.findByPk('guest', {
           transaction: t,
           lock: t.LOCK.UPDATE,
@@ -99,8 +98,7 @@ export class RoleService extends BaseService {
           );
         }
 
-        // 해당 역할 유저를 guest로 마이그레이션 + tokenVersion 증가 (기존 JWT 즉시 무효화)
-        // literal() 대신 dialect-aware increment 사용 (MySQL/PG/SQLite 공통)
+        // 사용자를 guest 로 옮기고 tokenVersion 을 올려 기존 JWT 를 무효화한다
         await User.increment('tokenVersion', { where: { roleId: id }, by: 1, transaction: t });
         await User.update({ roleId: 'guest' }, { where: { roleId: id }, transaction: t });
         await BoardAccess.destroy({ where: { roleId: id }, transaction: t });
@@ -130,9 +128,7 @@ export class RoleService extends BaseService {
     }
   }
 
-  // 전체 게시판 권한을 한 번에 조회 — 관리자 권한 화면이 보드별 N개 요청 대신 1요청으로 받도록
-  // (보드별 fan-out이 adminLimiter에 걸려 일부 보드가 빈 상태로 로드되던 문제 예방).
-  // 단일 조회와 동일한 행 shape(BoardAccess + role)를 반환하고, 클라가 boardId로 그룹핑한다.
+  // 전체 게시판 권한을 한 요청으로 조회한다. 보드별 fan-out 은 관리자 레이트리밋에 걸린다.
   async getAllBoardAccessPermissions() {
     try {
       return await BoardAccess.findAll({
@@ -160,9 +156,7 @@ export class RoleService extends BaseService {
   ): Promise<void> {
     try {
       await sequelize.transaction(async t => {
-        // boardId/roleId 존재 검증을 트랜잭션 내부로 이동 + LOCK.UPDATE 적용.
-        //    트랜잭션 밖에서 검증하면 다른 admin이 동시에 게시판/역할을 삭제할 때
-        //    FK 위반 또는 orphan BoardAccess 가능.
+        // 존재 검증은 트랜잭션 안에서 잠그고 한다. 밖에서 하면 FK 위반이나 orphan 이 생긴다.
         const board = await Board.findByPk(boardId, {
           attributes: ['id'],
           transaction: t,
@@ -186,10 +180,7 @@ export class RoleService extends BaseService {
             throw new AppError(400, `역할 '${invalid}'을(를) 찾을 수 없습니다.`);
           }
 
-          // ⚠️ 전달된 역할의 권한만 교체하고, payload에 없는 역할의 권한은 보존한다.
-          //    보드의 모든 BoardAccess 를 지우고 재생성하면, 관리자 UI 가 권한 로드 실패
-          //    (429·네트워크) 로 부분 매트릭스를 보냈을 때 다른 역할 권한까지 사라진다.
-          //    그래서 전달된 roleId 범위로만 destroy 한다.
+          // 전달된 roleId 범위로만 지운다. 전체를 지우면 부분 전송 시 다른 역할 권한이 사라진다.
           await BoardAccess.destroy({
             where: { boardId, roleId: { [Op.in]: roleIds } },
             transaction: t,
@@ -199,9 +190,7 @@ export class RoleService extends BaseService {
             permissions.map(perm => {
               const canWrite = perm.canWrite ?? false;
               const canDelete = perm.canDelete ?? false;
-              // 쓰기/삭제 권한은 읽기를 전제로 한다. 권한 해석(checkPermission)은 canRead가
-              // false면 canWrite가 true여도 전부 거부하므로, read 없이 write/delete만 저장하면
-              // 관리자가 부여한 권한이 조용히 무력화된다. 저장 시 정규화해 이 footgun을 막는다.
+              // 쓰기/삭제는 읽기를 전제로 한다. canRead 가 false 면 checkPermission 이 전부 거부한다.
               return {
                 boardId,
                 roleId: perm.roleId,

@@ -37,9 +37,7 @@ TagModel.init(
     modelName: 'Tag',
     timestamps: true,
     indexes: [
-      // (name, boardId) 복합 유니크: 같은 게시판 내 태그명 중복 방지
-      // alter:true(MySQL/PostgreSQL)에서는 서버 시작 시 자동 적용;
-      // SQLite(alter:false)는 최초 테이블 생성 시에만 적용됨
+      // (name, boardId) 복합 유니크. SQLite(alter:false)는 최초 테이블 생성 시에만 적용된다.
       { unique: true, fields: ['name', 'boardId'], name: 'idx_tags_name_boardId' },
     ],
   }

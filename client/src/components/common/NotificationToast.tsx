@@ -1,14 +1,4 @@
-// client/src/components/common/NotificationToast.tsx
-// 새 알림이 오면 헤더 아래 오른쪽에 잠깐 뜨는 팝업.
-//
-// 예전 것은 어떤 알림이든 🔔 '새 알림' 한 가지 얼굴에 내용은 한 줄로 잘렸고, 눌러도
-// 아무 데도 가지 않아 결국 종을 열어 다시 찾아야 했다. 읽는 중에도 5초면 사라졌다.
-//  - 종류마다 아이콘·제목·색 (종 목록과 같은 표 — notificationKinds)
-//  - 누르면 읽음으로 하고 그 알림의 자리로 간다
-//  - 마우스를 올리거나 키보드로 들어오면 멈춘다. 남은 시간은 아래 막대로 보인다
-//  - 공격·대결은 받는 사람이 움직여야 하는 알림이라, 더 오래 두고 화면 맨 위를
-//    가로지르는 띠로 띄운다(구석 카드로는 눈에 잘 걸리지 않는다고 했다)
-//  - 그사이 함께 온 알림이 있으면 '외 N건'
+// 새 알림이 오면 헤더 아래 오른쪽에 잠깐 뜨는 팝업. 공격·대결은 맨 위 띠로 띄운다.
 
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -22,7 +12,7 @@ import { kindOf } from './notificationKinds';
 import { TopNotice, TopNoticeSlot } from './TopNotice';
 
 export const TOAST_MS = 6000;
-/** 받는 사람이 곧 움직여야 하는 알림 — 공격은 1분이면 끝나고, 대결은 답을 기다린다 */
+/** 받는 사람이 곧 움직여야 하는 알림의 표시 시간. */
 export const URGENT_TOAST_MS = 10_000;
 const URGENT = new Set<Notification['type']>(['ATTACK', 'DUEL']);
 
@@ -33,8 +23,7 @@ function ToastCard({ n, more, onClose }: { n: Notification; more: number; onClos
   const urgent = URGENT.has(n.type);
   const life = urgent ? URGENT_TOAST_MS : TOAST_MS;
 
-  // 멈추면 흐른 만큼 빼 두고, 다시 가면 남은 만큼만 기다린다 —
-  // 멈췄다 풀 때마다 처음부터 다시 세면 마우스를 스치기만 해도 끝없이 남는다.
+  // 멈추면 흐른 만큼 빼 두고 다시 갈 때 남은 만큼만 기다린다.
   const [paused, setPaused] = useState(false);
   const left = useRef(life);
   useEffect(() => {
@@ -49,8 +38,7 @@ function ToastCard({ n, more, onClose }: { n: Notification; more: number; onClos
 
   const open = () => {
     onClose();
-    // 읽음 처리가 성공했을 때만 종 숫자를 줄인다 — 실패했는데 줄이면 숫자가 거짓말을 한다.
-    // 줄이는 일은 스토어(markRead)가 맡는다 — 같은 알림을 종 목록에서 또 읽어도 한 번만 준다.
+    // 읽음 처리가 성공했을 때만 줄인다. 감소는 스토어가 맡아 중복 감소를 막는다.
     if (!n.isRead) {
       markAsRead(n.id)
         .then(res => markRead(n.id, res?.unreadCount))
@@ -70,7 +58,7 @@ function ToastCard({ n, more, onClose }: { n: Notification; more: number; onClos
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={e => {
-        // 카드 안의 다른 단추로 옮겨 갈 때는 계속 멈춰 있다
+        // 카드 안의 다른 버튼으로 옮겨 갈 때는 계속 멈춰 있다
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setPaused(false);
       }}
       className="pointer-events-auto relative w-full max-w-sm overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/30"
@@ -116,7 +104,7 @@ function ToastCard({ n, more, onClose }: { n: Notification; more: number; onClos
       >
         <X className="h-4 w-4" />
       </button>
-      {/* 남은 시간. 움직임 줄이기에서는 애니메이션이 곧바로 끝나 '다 됐다' 로 읽히므로 감춘다 */}
+      {/* 남은 시간. 움직임 줄이기에서는 애니메이션이 바로 끝나므로 감춘다. */}
       <span
         aria-hidden
         data-testid="toast-life"
@@ -133,19 +121,14 @@ function ToastCard({ n, more, onClose }: { n: Notification; more: number; onClos
 export function NotificationToast() {
   const { newNotification, clearNew } = useRealtimeNotifications();
   const more = useNotificationStore(s => s.toastMore);
-  // 종 목록을 열어 둔 동안에는 띄우지 않는다.
-  //
-  // 둘 다 헤더 오른쪽 아래에 뜨는데 팝업이 더 위층(z-toast 80 > 드롭다운 70)이라, 목록을
-  // 보고 있으면 새 알림이 목록 첫 줄을 덮었다 — 그 줄은 목록이 방금 맨 위에 붙인 바로 그
-  // 알림이다. 목록이 이미 보여 주므로 팝업은 접어 두고, 접는 김에 비워 둔다(목록을 닫은
-  // 뒤에 뒤늦게 튀어나오지 않게).
+  // 종 목록을 열어 둔 동안에는 팝업이 목록 첫 줄을 덮으므로 띄우지 않고 비워 둔다.
   const panelOpen = useUIOverlays(s => s.activeDropdown === 'notifications');
   useEffect(() => {
     if (panelOpen && newNotification) clearNew();
   }, [panelOpen, newNotification, clearNew]);
 
   const show = newNotification && !panelOpen ? newNotification : null;
-  // 지금 움직여야 하는 알림은 맨 위 띠로 — 구석 카드는 놓치기 쉽다
+  // 지금 움직여야 하는 알림은 맨 위 띠로 띄운다
   const urgent = show && URGENT.has(show.type) ? show : null;
 
   return (
@@ -155,9 +138,7 @@ export function NotificationToast() {
           <UrgentNotice key={urgent.id} n={urgent} onClose={clearNew} />
         </TopNoticeSlot>
       )}
-      {/* z-toast: 모달(z-50)보다 위. 같은 값이면 App.tsx 위쪽에서 렌더되는 탓에
-          라우트 안쪽 모달에 덮여, 모달을 열어 둔 동안 온 알림이 보이지 않는다.
-          늘 붙어 있는 알림 영역 — 화면 낭독기가 새로 들어온 내용을 읽어 준다. */}
+      {/* z-toast 는 모달(z-50)보다 위여야 모달 위로 뜬다. 항상 붙어 있어 낭독기가 읽어 준다. */}
       <div
         role="status"
         aria-live="polite"
@@ -165,7 +146,7 @@ export function NotificationToast() {
       >
         <AnimatePresence>
           {show && !urgent && (
-            // 알림마다 새 카드 — 남은 시간·멈춤 상태가 앞 알림에서 이어지지 않는다
+            // 알림마다 새 카드. 남은 시간·멈춤 상태가 앞 알림에서 이어지지 않는다.
             <ToastCard key={show.id} n={show} more={more} onClose={clearNew} />
           )}
         </AnimatePresence>
@@ -174,7 +155,7 @@ export function NotificationToast() {
   );
 }
 
-/** 공격·대결처럼 지금 움직여야 하는 알림 — 맨 위를 가로지르는 띠 */
+/** 공격·대결처럼 지금 움직여야 하는 알림을 맨 위 띠로 보여 준다. */
 function UrgentNotice({ n, onClose }: { n: Notification; onClose: () => void }) {
   const navigate = useNavigate();
   const markRead = useNotificationStore(s => s.markRead);

@@ -1,6 +1,5 @@
-// client/src/pages/CustomPageView.tsx
-// 관리자 커스텀 HTML 페이지 렌더. sandbox iframe으로 앱과 완전 격리.
-// allow-same-origin을 주지 않으므로 iframe 안 스크립트는 앱의 쿠키/localStorage/DOM에 접근 불가.
+// 관리자 커스텀 HTML 페이지를 sandbox iframe 으로 격리해 렌더한다.
+// allow-same-origin 을 주지 않으므로 iframe 안 스크립트는 앱의 쿠키·localStorage·DOM 에 접근하지 못한다.
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchPageBySlug, bundleEntryUrl, type CustomPage } from '../api/customPages';
@@ -50,7 +49,6 @@ export default function CustomPageView() {
 
   return (
     <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-900">
-      {/* 제목바 */}
       <div className="flex flex-shrink-0 items-center gap-3 border-b border-slate-200 bg-white/80 px-5 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
         <svg
           aria-hidden="true"
@@ -67,7 +65,7 @@ export default function CustomPageView() {
           />
         </svg>
         <h1 className="card-title truncate">{page.title}</h1>
-        {/* 외부 URL 페이지 — 임베드가 차단(X-Frame-Options)될 수 있어 새 탭 열기 폴백 제공 */}
+        {/* 외부 URL 페이지는 X-Frame-Options 로 임베드가 막힐 수 있어 새 탭 열기를 함께 둔다 */}
         {page.externalUrl && (
           <a
             href={page.externalUrl}
@@ -93,10 +91,7 @@ export default function CustomPageView() {
           </a>
         )}
       </div>
-      {/* 렌더 우선순위: 외부 URL > 번들 > 단일 HTML.
-          - 외부 URL: 크로스오리진 iframe이라 브라우저 동일출처정책이 앱과 자동 격리(외부 사이트는 자기
-            오리진에서 실행 → 앱 쿠키/DOM 접근 불가). allow-same-origin은 "그 사이트 자신" 기준이라 안전.
-          - 번들/HTML: allow-same-origin 제외로 앱과 격리. */}
+      {/* 렌더 우선순위: 외부 URL > 번들 > 단일 HTML. 번들·HTML 은 allow-same-origin 제외로 앱과 격리한다. */}
       {page.externalUrl ? (
         <iframe
           title={page.title}

@@ -1,4 +1,3 @@
-// client/src/pages/components/calendar/components/EventForm.tsx
 import React, { useId, useMemo } from 'react';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import { ClassicEditor, type EditorConfig } from 'ckeditor5';
@@ -9,10 +8,7 @@ import { categories } from '../constants';
 import { uploadApi } from '../../../../api/axios';
 import { useSiteSettings } from '../../../../store/siteSettings';
 
-// 다른 에디터들(CKEditorWrapper/WikiEditor)와 동일한 axios 기반 어댑터.
-// - 419(액세스 토큰 만료) 자동 갱신 + 재시도 (axios 인터셉터)
-// - AbortController로 컴포넌트 언마운트 시 업로드 취소 (메모리/네트워크 누수 방지)
-// - onUploadProgress로 CKEditor 진행률 표시
+// 다른 에디터와 같은 axios 기반 업로드 어댑터. 토큰 갱신 재시도, 언마운트 시 취소, 진행률 표시를 한다.
 class EventImageUploadAdapter {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private loader: any;
@@ -60,7 +56,7 @@ interface EventFormProps {
   submitting?: boolean;
 }
 
-// 공통 input 클래스 — 디자인 시스템 프리미티브(.input)에 위임
+// 공통 input 클래스. 디자인 시스템 프리미티브(.input)에 위임한다.
 const inputCls = 'input';
 
 function FieldLabel({
@@ -89,7 +85,7 @@ export const EventForm: React.FC<EventFormProps> = ({
   mode,
   submitting = false,
 }) => {
-  // 관리자 설정값 — 서버 검증과 동일 한도를 클라이언트에서도 사전 차단
+  // 관리자 설정값. 서버 검증과 같은 한도를 화면에서도 미리 막는다.
   const fieldId = useId();
   const eventBodyMax = useSiteSettings(s => s.settings.eventBodyMaxLength);
   const eventLocationMax = useSiteSettings(s => s.settings.eventLocationMaxLength);
@@ -106,8 +102,7 @@ export const EventForm: React.FC<EventFormProps> = ({
     <form
       onSubmit={onSubmit}
       onKeyDown={e => {
-        // 단일 라인 input(제목/장소/날짜)에서 Enter로 일정이 조기 생성·수정되는 것 방지
-        // (메모 textarea의 줄바꿈과 명시적 제출 버튼은 그대로 동작)
+        // 한 줄 입력칸에서 Enter 로 일정이 조기 생성·수정되는 것을 막는다.
         if (e.nativeEvent.isComposing) return;
         if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
           e.preventDefault();
@@ -117,14 +112,11 @@ export const EventForm: React.FC<EventFormProps> = ({
     >
       {/* 일정 종류 */}
       <div role="group" aria-labelledby={`${fieldId}-category`}>
-        {/* 입력칸이 아니라 단추 묶음이라 label 로 이을 수 없다 — 묶음 이름으로 알린다 */}
+        {/* 입력칸이 아니라 단추 묶음이라 label 로 이을 수 없어 묶음 이름으로 알린다 */}
         <span className="form-label" id={`${fieldId}-category`}>
           일정 종류<span className="text-red-500 ml-1">*</span>
         </span>
-        {/* 종류 고르기 — 카드마다 왼쪽에 그 종류의 색 띠를 세로로 붙인다.
-            예전에는 고른 칸만 색으로 가득 채웠는데, 고르기 전에는 색을 알 수 없고
-            고른 뒤에는 그 칸만 튀어서 폼 안에서 겉돌았다. 색은 늘 왼쪽 띠로 보여 주고,
-            선택은 테두리와 옅은 배경으로만 표시하면 나머지 입력칸과 톤이 맞는다. */}
+        {/* 종류 고르기. 카드마다 왼쪽에 그 종류의 색 띠를 세로로 붙인다 */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {categories.map(category => {
             const isSelected = formData.category === category.key;
@@ -154,7 +146,7 @@ export const EventForm: React.FC<EventFormProps> = ({
                     : undefined
                 }
               >
-                {/* 왼쪽 색 띠 — 카드 높이를 꽉 채운다 */}
+                {/* 왼쪽 색 띠. 카드 높이를 꽉 채운다 */}
                 <span
                   aria-hidden="true"
                   className="absolute inset-y-0 left-0 w-1.5"
@@ -226,7 +218,7 @@ export const EventForm: React.FC<EventFormProps> = ({
         />
       </div>
 
-      {/* 날짜 · 장소 — 넓은 모달 폭을 활용해 3열 배치 (세로 스크롤 최소화) */}
+      {/* 날짜·장소. 3열 배치 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <FieldLabel required htmlFor={`${fieldId}-start`}>
@@ -301,9 +293,9 @@ export const EventForm: React.FC<EventFormProps> = ({
         </div>
       </div>
 
-      {/* 상세 내용 — CKEditor */}
+      {/* 상세 내용 (CKEditor) */}
       <div role="group" aria-labelledby={`${fieldId}-body`}>
-        {/* CKEditor 는 input 이 아니다 — label 대신 묶음 이름으로 알린다 */}
+        {/* CKEditor 는 input 이 아니라 label 대신 묶음 이름으로 알린다 */}
         <span className="form-label" id={`${fieldId}-body`}>
           상세 내용
         </span>
@@ -316,7 +308,7 @@ export const EventForm: React.FC<EventFormProps> = ({
             config={editorConfig}
             data={formData.body}
             onChange={(_, editor) => {
-              // 서버 검증과 동일 한도 적용 — 초과 입력은 잘라서 서버 400을 사전 차단
+              // 서버와 같은 한도로 잘라 400 을 미리 막는다.
               const data = editor.getData();
               onChange({ body: data.length > eventBodyMax ? data.slice(0, eventBodyMax) : data });
             }}

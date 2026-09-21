@@ -1,5 +1,4 @@
-// client/src/components/attendance/quiz.ts
-// 문제 내기 공격의 문제 — 화면(QuizGate)과 따로 둔다(컴포넌트 파일은 컴포넌트만 내보낸다).
+// 문제 내기 공격의 문제 생성. 화면(QuizGate)과 분리해 둔다.
 
 export interface Question {
   text: string;
@@ -16,8 +15,8 @@ function int(rand: Rand, lo: number, hi: number): number {
 /**
  * 쌓인 공격 수(level)만큼 어려운 문제.
  *  - 1~2: 두 자리 덧셈·뺄셈
- *  - 3~5: 구구단 너머의 곱셈, 또는 세 수의 덧셈·뺄셈
- *  - 6~ : 곱하고 더하거나 빼기 (7 × 8 − 19)
+ *  - 3~5: 곱셈 또는 세 수의 덧셈·뺄셈
+ *  - 6~ : 곱하고 더하거나 빼기
  * 뺄셈의 답이 음수가 되지 않게 큰 수에서 뺀다.
  */
 export function makeQuestion(level: number, rand: Rand = Math.random): Question {
@@ -48,7 +47,7 @@ export function makeQuestion(level: number, rand: Rand = Math.random): Question 
   return { text: `${a} × ${b} + ${c}`, answer: a * b + c };
 }
 
-/** 연달아 맞혀야 하는 수 — 쌓일수록 늘어난다 */
+/** 연달아 맞혀야 하는 수. 쌓일수록 늘어난다. */
 export function quizCount(level: number): number {
   if (level >= 8) return 3;
   if (level >= 4) return 2;

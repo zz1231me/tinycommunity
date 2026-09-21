@@ -1,9 +1,4 @@
-// client/src/components/admin/tabs/AppearanceManagement.tsx
-// 테마(브랜드 색) 관리 화면.
-//
-// 색은 11칸(50~950)이 필요하지만 관리자에게 11개를 고르라고 하지 않는다.
-// 대표색 하나를 받아 계단을 만들고 결과를 그 자리에서 미리 보여 준다.
-// 저장하고 새로고침해야 확인되는 설정은 조정하기 어렵다.
+// 테마(브랜드 색) 관리 화면. 대표색 하나를 받아 11칸(50~950) 계단을 만들고 그 자리에서 미리 보여 준다.
 
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Check, Palette, RotateCcw } from 'lucide-react';
@@ -21,7 +16,7 @@ import { toast } from '../../../utils/toast';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { AdminSection } from '../common/AdminSection';
 
-/** 기본 디자인 시스템 값 — "지정 안 함" 일 때 실제로 쓰이는 색 */
+/** '지정 안 함' 일 때 쓰이는 기본 색 */
 const DEFAULT_PRIMARY = '#545c6b';
 const DEFAULT_SECONDARY = '#0d9488';
 
@@ -114,7 +109,7 @@ const AppearanceManagement = () => {
   const [primary, setPrimary] = useState<string | null>(null);
   const [secondary, setSecondary] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  /** 불러오기 실패 — 편집 화면을 열지 않는다(기본 색이 진짜 테마를 덮어쓰지 않게) */
+  /** 불러오기 실패. 편집 화면을 열지 않는다. */
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -127,8 +122,7 @@ const AppearanceManagement = () => {
         setSecondary(s.themeSecondaryColor);
       })
       .catch(() => {
-        // 못 불러왔으면 편집 화면을 열지 않는다 — 기본 색이 지금 테마인 것처럼 보이고,
-        // 그대로 저장하면 서버의 진짜 테마가 덮인다.
+        // 못 불러온 채로 저장하면 기본 색이 서버의 테마를 덮어쓴다.
         if (!cancelled) setLoadFailed(true);
         toast.error('테마 설정을 불러오지 못했습니다.');
       })
@@ -138,9 +132,7 @@ const AppearanceManagement = () => {
     };
   }, []);
 
-  // 고르는 즉시 화면에 입힌다.
-  // 화면을 떠날 때는 저장된 값으로 되돌린다 — 되돌리지 않으면 저장하지 않은 색이
-  // 그 세션 내내 남아, 관리자는 저장한 줄 알고 다른 화면을 돌아다니게 된다.
+  // 고르는 즉시 적용하고, 화면을 떠날 때 저장된 값으로 되돌린다.
   useEffect(() => {
     if (loading) return;
     applyTheme(primary, secondary);
@@ -185,7 +177,7 @@ const AppearanceManagement = () => {
   const save = async () => {
     setSaving(true);
     try {
-      // 빈 값은 서버에서 "기본색으로" 로 해석한다
+      // 빈 값은 서버에서 기본색으로 해석한다.
       const updated = await updateSiteSettings({
         themePrimaryColor: primary ?? '',
         themeSecondaryColor: secondary ?? '',
@@ -227,7 +219,7 @@ const AppearanceManagement = () => {
             onChange={setSecondary}
           />
 
-          {/* 색을 막지는 않는다 — 브랜드 색은 관리자가 정할 일이다. 대신 결과를 알려 준다. */}
+          {/* 색을 막지 않고 대비 결과만 알려 준다. */}
           <div
             className={`flex items-start gap-2 rounded-lg border px-3 py-3 text-xs ${
               readable

@@ -1,4 +1,4 @@
-// client/src/components/ErrorBoundary.tsx - 전역 에러 바운더리
+// 전역 에러 바운더리
 import { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
@@ -24,7 +24,6 @@ export class ErrorBoundary extends Component<Props, State> {
 
   override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     if (import.meta.env.DEV) {
-      // 구조화된 에러 로깅
       console.error('[ErrorBoundary] 렌더링 에러 발생:', {
         message: error.message,
         stack: error.stack,

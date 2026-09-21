@@ -8,10 +8,7 @@ import { closeUserConnections } from './sse.service';
 
 const MAX_SESSIONS_PER_USER = 10;
 
-// 세션 종료(종료/강제로그아웃)를 액세스 토큰에도 즉시 반영하기 위한 상태 캐시.
-// 인증 미들웨어가 매 요청 isSessionRevoked()로 확인하므로 DB 부하를 줄이려 짧게 캐싱하고,
-// 종료 시점에는 해당 항목을 즉시 무효화해 다음 요청에서 곧바로 차단되게 한다.
-// TTL은 인증 미들웨어 userCache(30초)와 동일하게 맞춘다.
+// 세션 종료를 액세스 토큰에도 즉시 반영하기 위한 상태 캐시. TTL 은 인증 미들웨어 userCache(30초)와 맞춘다.
 const SESSION_STATUS_TTL_MS = 30_000;
 
 export class UserSessionService extends BaseService {
@@ -27,12 +24,7 @@ export class UserSessionService extends BaseService {
     this.statusCache.delete(sessionToken);
   }
 
-  /**
-   * 이 refresh_token이 가리키는 DB 세션이 "종료됨" 상태인지 확인한다(인증 미들웨어용).
-   * - 세션 행이 존재하고 isActive=false이거나 만료됨 → true(종료됨, 요청 거부)
-   * - 세션 행이 없으면 false(미추적/로그인 직후 race → 액세스 토큰 자체 검증에 위임, 오탐 방지)
-   * 결과는 짧게 캐싱하고, 종료 시점엔 invalidateStatus로 즉시 무효화한다.
-   */
+  /** 이 refresh_token 의 DB 세션이 종료 상태인지. 세션 행이 없으면 false(로그인 직후 race 오탐 방지). */
   async isSessionRevoked(rawToken: string): Promise<boolean> {
     const sessionToken = this.hashToken(rawToken);
     const cached = this.statusCache.get(sessionToken);
@@ -44,20 +36,18 @@ export class UserSessionService extends BaseService {
         where: { sessionToken },
         attributes: ['isActive', 'expiresAt'],
       });
-      // 행이 없으면 종료로 보지 않음(로그인 직후 세션 생성 전 race, 미추적 세션 허용)
+      // 행이 없으면 종료로 보지 않는다(로그인 직후 race, 미추적 세션).
       const revoked = session !== null && (!session.isActive || session.expiresAt <= new Date());
       this.statusCache.set(sessionToken, { revoked, at: Date.now() });
       return revoked;
     } catch (error) {
       logError('세션 상태 확인 실패', error);
-      // 조회 실패 시 보수적으로 차단하지 않음(액세스 토큰 자체 검증에 위임 — 가용성 우선)
+      // 조회 실패 시 차단하지 않고 액세스 토큰 자체 검증에 맡긴다.
       return false;
     }
   }
 
-  /**
-   * 세션 생성 (로그인 시 호출)
-   */
+  /** 세션 생성 (로그인 시 호출) */
   async createSession(data: {
     userId: string;
     rawToken: string;
@@ -81,16 +71,13 @@ export class UserSessionService extends BaseService {
         isActive: true,
       });
 
-      // 사용자당 최대 세션 수 초과 시 가장 오래된 세션 비활성화
       await this.enforceSessionLimit(data.userId);
     } catch (error) {
       logError('세션 생성 실패', error);
     }
   }
 
-  /**
-   * 사용자당 최대 세션 수 제한 (초과 시 가장 오래된 활성 세션 만료)
-   */
+  /** 사용자당 최대 세션 수 제한. 초과하면 가장 오래된 활성 세션을 만료시킨다 */
   private async enforceSessionLimit(userId: string): Promise<void> {
     const activeSessions = await UserSession.findAll({
       where: { userId, isActive: true, expiresAt: { [Op.gt]: new Date() } },
@@ -105,16 +92,12 @@ export class UserSessionService extends BaseService {
     }
   }
 
-  /**
-   * 세션 활동 갱신 + 토큰 교체 (refreshToken 시 호출)
-   * 구 토큰 해시 → 신 토큰 해시로 sessionToken 교체 & lastActiveAt 갱신
-   * 세션이 없거나 이미 만료된 경우 조용히 무시 (fire-and-forget 용도)
-   */
+  /** 세션 활동 갱신 + 토큰 교체(refresh 시 호출). 세션이 없거나 이미 만료됐으면 조용히 무시한다. */
   async rotateSession(oldRawToken: string, newRawToken: string): Promise<void> {
     try {
       const oldHash = this.hashToken(oldRawToken);
       const newHash = this.hashToken(newRawToken);
-      // expiresAt도 갱신 — DB 만료시각과 JWT 만료시각이 계속 동기화되도록
+      // DB 만료시각과 JWT 만료시각이 어긋나지 않게 expiresAt 도 갱신한다.
       const newExpiresAt = new Date(
         Date.now() + getSettings().jwtRefreshTokenDays * 24 * 60 * 60 * 1000
       );
@@ -127,10 +110,7 @@ export class UserSessionService extends BaseService {
     }
   }
 
-  /**
-   * DB 세션 유효성 검증 (refreshToken 호출 전 isActive 확인)
-   * forceLogout된 세션은 false 반환 → 토큰 갱신 차단
-   */
+  /** DB 세션 유효성 검증. 강제 로그아웃된 세션은 false 라 토큰 갱신이 막힌다. */
   async validateSession(rawToken: string): Promise<boolean> {
     try {
       const sessionToken = this.hashToken(rawToken);
@@ -141,15 +121,12 @@ export class UserSessionService extends BaseService {
       return session !== null;
     } catch (error) {
       logError('세션 유효성 검증 실패', error);
-      // 검증 실패 시 보수적으로 false 반환 — 강제 로그아웃된 세션이 DB 오류 시 통과하는 것을 방지
+      // 오류 시 false 로 둔다. 강제 로그아웃된 세션이 DB 오류를 틈타 통과하면 안 된다.
       return false;
     }
   }
 
-  /**
-   * 세션의 최초 IP/기기 정보 조회 (재발급 이상 탐지용).
-   * rotateSession은 sessionToken/lastActiveAt만 갱신하므로 여기 값은 로그인 시점 기준이다.
-   */
+  /** 세션의 최초 IP·기기 정보. rotateSession 이 갱신하지 않으므로 로그인 시점 기준이다. */
   async getSessionMeta(
     rawToken: string
   ): Promise<{ ipAddress: string | null; userAgent: string | null } | null> {
@@ -166,9 +143,7 @@ export class UserSessionService extends BaseService {
     }
   }
 
-  /**
-   * 세션 만료 (로그아웃 시 호출)
-   */
+  /** 세션 만료 (로그아웃 시 호출) */
   async expireSession(rawToken: string): Promise<void> {
     try {
       const sessionToken = this.hashToken(rawToken);
@@ -179,31 +154,24 @@ export class UserSessionService extends BaseService {
     }
   }
 
-  /**
-   * 사용자의 모든 세션 만료 (강제 전체 로그아웃)
-   */
+  /** 사용자의 모든 세션 만료 (강제 전체 로그아웃) */
   async expireAllUserSessions(userId: string): Promise<void> {
     try {
-      // 어떤 세션을 끊는지 먼저 읽어 둔다 — 상태 캐시(최대 수십 초)를 그 자리에서 비우기 위해서다.
-      // 비우지 않으면 끊긴 세션이 잠깐 '살아 있음' 으로 캐시에 남아 요청이 통과했다.
+      // 끊을 세션을 먼저 읽어 상태 캐시를 그 자리에서 비운다. 안 비우면 끊긴 세션이 잠시 통과한다.
       const rows = await UserSession.findAll({
         where: { userId, isActive: true },
         attributes: ['sessionToken'],
       });
       await UserSession.update({ isActive: false }, { where: { userId, isActive: true } });
       for (const row of rows) this.invalidateStatus(row.sessionToken);
-      // 열려 있는 알림 스트림도 함께 끊는다 — 끊지 않으면 그 탭은 계속 알림을 받는다
+      // 열려 있는 알림 스트림도 함께 끊는다.
       closeUserConnections(userId);
     } catch (error) {
       logError('전체 세션 만료 처리 실패', error);
     }
   }
 
-  /**
-   * 사용자의 활성 세션 목록 조회.
-   * currentRawToken을 주면(본인 조회) 현재 요청의 세션에 isCurrent=true를 표시한다.
-   * sessionToken은 매칭에만 내부 사용하고 응답에서는 제외한다(노출 금지).
-   */
+  /** 활성 세션 목록. currentRawToken 을 주면 현재 세션에 isCurrent 를 붙이고, sessionToken 은 응답에서 뺀다. */
   async getActiveSessions(userId: string, currentRawToken?: string) {
     const currentHash = currentRawToken ? this.hashToken(currentRawToken) : null;
     const sessions = await UserSession.findAll({
@@ -237,8 +205,7 @@ export class UserSessionService extends BaseService {
   }
 
   /**
-   * 본인 세션 종료 — 소유권 확인 후 비활성화(refresh 차단). tokenVersion은 건드리지 않아
-   * 다른 세션은 영향 없음. 현재 세션은 이 경로로 종료 불가(로그아웃 사용).
+   * 본인 세션 종료. tokenVersion 은 건드리지 않아 다른 세션은 그대로다. 현재 세션은 이 경로로 종료할 수 없다.
    * 반환: 'ok' | 'not_found' | 'forbidden' | 'is_current'
    */
   async terminateOwnSession(
@@ -255,14 +222,12 @@ export class UserSessionService extends BaseService {
       return 'is_current';
     }
     await session.update({ isActive: false });
-    // 종료를 액세스 토큰에도 즉시 반영 — 해당 기기의 다음 요청에서 곧바로 차단됨
+    // 해당 기기의 다음 요청에서 곧바로 막히도록 상태 캐시를 비운다.
     this.invalidateStatus(session.sessionToken);
     return 'ok';
   }
 
-  /**
-   * 특정 세션 강제 종료 (관리자용)
-   */
+  /** 특정 세션 강제 종료 (관리자용) */
   async forceLogout(sessionId: string): Promise<boolean> {
     try {
       const session = await UserSession.findByPk(sessionId);
@@ -270,9 +235,7 @@ export class UserSessionService extends BaseService {
       await session.update({ isActive: false });
       // 강제 종료를 액세스 토큰에도 즉시 반영
       this.invalidateStatus(session.sessionToken);
-      // 그 사람의 알림 스트림도 끊는다. 스트림은 붙을 때 한 번만 인증을 보므로, 끊지 않으면
-      // 세션을 종료해도 그 탭으로 알림이 계속 갔다(어느 연결이 어느 세션인지는 알 수 없어
-      // 그 사람의 연결을 모두 끊는다 — 남은 탭은 다시 열 때 새로 잇는다).
+      // 스트림은 붙을 때 한 번만 인증하므로 그 사람의 알림 연결도 모두 끊는다.
       closeUserConnections(session.userId);
       return true;
     } catch (error) {
@@ -281,9 +244,7 @@ export class UserSessionService extends BaseService {
     }
   }
 
-  /**
-   * 만료된 세션 정리
-   */
+  /** 만료된 세션 정리 */
   async cleanExpiredSessions(): Promise<number> {
     const now = new Date();
     const graceDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);

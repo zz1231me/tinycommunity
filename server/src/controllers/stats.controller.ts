@@ -12,18 +12,8 @@ import { sequelize } from '../config/sequelize';
 import { sendSuccess, sendError } from '../utils/response';
 import { logError } from '../utils/logger';
 
-// 그래프의 칸을 '보는 사람의 달력' 으로 나눈다.
-//
-// SQLite 는 시각을 'YYYY-MM-DD HH:MM:SS.SSS +00:00'(UTC) 로 저장한다. 앞에서 열 글자를
-// 그냥 잘라 쓰면 UTC 날짜라, 한국 시간 09시 이전에 일어난 로그인·가입·글이 모두 전날
-// 칸에 들어갔다(1일 아침이면 지난달 막대에 들어간다). 프로세스 타임존과 무관하게 그랬다.
-// strftime 의 'localtime' 은 그 프로세스의 타임존으로 옮겨 준다 — 서버가 '오늘' 을 세는
-// 기준과 같아진다.
-//
-// MySQL/MariaDB 는 연결을 +09:00 으로 고정해 두어(config/sequelize) 저장된 값이 이미
-// 그 지역 시각이다 — 거기서 옮기면 두 번 옮기는 셈이 된다.
-// Postgres 는 substr 도 DATE_FORMAT 도 timestamp 에 쓸 수 없다 — to_char 로 나눈다.
-// 여기서 옮기는 폭은 연결에 고정해 둔 값(+09:00)과 같아야 한다.
+// 그래프 칸을 지역 시각 기준으로 나눈다. SQLite 는 UTC 저장이라 localtime 변환이 필요하고,
+// MySQL/MariaDB 는 연결이 +09:00 으로 고정돼 이미 지역 시각이다. Postgres 는 to_char 를 쓴다.
 function bucketExpr(unit: 'month' | 'day'): string {
   const sqlite = unit === 'month' ? '%Y-%m' : '%Y-%m-%d';
   const other = unit === 'month' ? '%Y-%m' : '%Y-%m-%d';
@@ -42,10 +32,10 @@ const DAY_EXPR = bucketExpr('day');
 
 type Bucket = { key: string; count: number };
 
-/** "최근" 의 기준 — 게시판 활력과 상위 작성자를 같은 창으로 본다 */
+/** '최근' 의 기준 일수. 게시판 활력과 상위 작성자에 같이 쓴다. */
 const RECENT_DAYS = 30;
 
-// 관리자 대시보드 통계 — 요약 카운트 + 가입/게시글 월별, 로그인 일별, 역할별 분포
+// 관리자 대시보드 통계
 export const getAdminStats = async (_req: Request, res: Response): Promise<void> => {
   try {
     const now = new Date();
@@ -61,7 +51,7 @@ export const getAdminStats = async (_req: Request, res: Response): Promise<void>
         [fn('COUNT', col('id')), 'count'],
       ],
       where: { createdAt: { [Op.gte]: sinceMonths } },
-      // group 타입은 Literal을 명시하지 않지만 런타임은 지원 — 안전하게 캐스팅
+      // group 타입에 Literal 이 없지만 런타임은 지원하므로 캐스팅한다
       group: [literal(MONTH_EXPR) as unknown as string],
       order: [literal(`${MONTH_EXPR} ASC`)],
       raw: true,
@@ -112,7 +102,7 @@ export const getAdminStats = async (_req: Request, res: Response): Promise<void>
         raw: true,
       }),
       Role.findAll({ attributes: ['id', 'name'], raw: true }),
-      // 운영자가 지금 손대야 하는 것들 — 숫자만으로 "할 일이 있는가" 를 알 수 있게 한다
+      // 운영자가 지금 처리해야 하는 항목 수
       Report.count({ where: { status: 'pending' } }),
       PasswordResetRequest.count({ where: { status: 'pending' } }),
       Board.findAll({ where: { isPersonal: false }, attributes: ['id', 'name'], raw: true }),
@@ -155,8 +145,7 @@ export const getAdminStats = async (_req: Request, res: Response): Promise<void>
       })
     );
 
-    // 게시판별 활력 — 전체 글 수만 보면 옛날에 활발했다가 죽은 게시판을 구분할 수 없어
-    // 최근 30일 글 수를 함께 낸다.
+    // 전체 글 수만으로는 죽은 게시판을 구분할 수 없어 최근 글 수를 함께 낸다.
     const totalByBoard = new Map(
       (boardPostRows as unknown as Array<{ boardType: string; count: number }>).map(r => [
         r.boardType,
@@ -199,7 +188,7 @@ export const getAdminStats = async (_req: Request, res: Response): Promise<void>
         totalComments,
         totalBoards,
       },
-      // 대기 중인 처리 항목. 0 이면 지금 할 일이 없다는 뜻이다.
+      // 대기 중인 처리 항목
       pending: {
         userApprovals: pendingUsers,
         reports: pendingReports,

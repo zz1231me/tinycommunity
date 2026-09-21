@@ -1,4 +1,3 @@
-// server/src/routes/auth.routes.ts
 import { Router } from 'express';
 import {
   login,
@@ -21,7 +20,7 @@ import {
   passwordResetRequestLimiter,
   registerLimiter,
 } from '../middlewares/bruteForceGuard';
-import { uploadAvatar } from '../middlewares/upload/avatar'; // ✅ 직접 import
+import { uploadAvatar } from '../middlewares/upload/avatar';
 import { getOwnSessions, terminateOwnSession } from '../controllers/userSession.controller';
 
 import { validateBody, validateUuidParam } from '../middlewares/validate.middleware';
@@ -35,7 +34,6 @@ import {
 
 const router = Router();
 
-// 🔐 인증 관련 (엄격한 Rate Limiting + 입력값 검증 적용)
 /**
  * @swagger
  * /api/auth/login:
@@ -85,9 +83,7 @@ router.post('/login', loginLimiter, validateBody(loginSchema), login);
  */
 router.post('/register', registerLimiter, validateBody(registerSchema), register);
 router.post('/refresh', refreshToken);
-// 로그인 없이 부를 수 있는데 요청 한 번이 남에게 피해를 준다 — 대기 중인 인증번호가
-// 새로 발급되고(= 남의 재설정을 계속 무효로 만들 수 있다), 관리자마다 알림이 쌓인다.
-// 리미터가 아이디로 세므로 validateBody 앞에 둔다(본문은 이미 파싱되어 있다).
+// 리미터가 아이디로 세므로 validateBody 앞에 둔다.
 router.post(
   '/password-reset-request',
   passwordResetRequestLimiter,
@@ -100,22 +96,13 @@ router.get('/me', authenticate, getCurrentUser);
 router.post('/change-password', authenticate, validateBody(changePasswordSchema), changePassword);
 router.get('/permissions', authenticate, getUserPermissions);
 
-// 🧑 프로필(이름) 변경
 router.patch('/me/profile', authenticate, updateProfile);
 
-// 🎨 사용자 설정
 router.patch('/theme', authenticate, updateTheme);
 
-// 📸 아바타 관리
-router.post(
-  '/avatar',
-  authenticate,
-  uploadAvatar.single('avatar'), // ✅ 직접 사용
-  uploadAvatarController
-);
+router.post('/avatar', authenticate, uploadAvatar.single('avatar'), uploadAvatarController);
 router.delete('/avatar', authenticate, deleteAvatar);
 
-// 🖥️ 세션 조회/종료 (본인)
 router.get('/sessions', authenticate, getOwnSessions);
 router.delete(
   '/sessions/:sessionId',

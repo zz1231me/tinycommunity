@@ -1,4 +1,3 @@
-// src/models/SiteSettings.ts
 import {
   DataTypes,
   Model,
@@ -79,7 +78,6 @@ export interface SiteSettingsInstance extends Model<
   attackDefendCost: CreationOptional<number>;
   attackBlockSeconds: CreationOptional<number>;
   attackDailyLimit: CreationOptional<number>;
-  // ── 신규 (관리자 조정 가능) ────────────────────────────────────────────────
   memoMaxPerUser: CreationOptional<number>;
   /** 사이드바에서 위키가 게시판 목록 몇 번째에 오는지 */
   wikiOrder: CreationOptional<number>;
@@ -197,8 +195,7 @@ SiteSettings.init(
       allowNull: true,
       field: 'favicon_url',
     },
-    // 브랜드 색(#rgb / #rrggbb). null 이면 기본 색을 그대로 쓴다 —
-    // 빈 문자열이 아니라 null 이어야 "지정 안 함" 과 "검정" 이 구분된다.
+    // 브랜드 색(#rgb / #rrggbb). null 이어야 '지정 안 함' 과 '검정' 이 구분된다.
     themePrimaryColor: {
       type: DataTypes.STRING(9),
       allowNull: true,
@@ -480,17 +477,14 @@ SiteSettings.init(
       field: 'wiki_edit_roles',
     },
     workStatusLabels: {
-      // 상태 키(todo/doing/done)는 코드가 정하고, 화면에 뜨는 말만 관리자가 정한다.
-      // 팀마다 '진행 중' 을 '검토 중' 이라 부르는데, 그걸 바꾸려고 배포할 수는 없다.
-      // wikiEditRoles 와 같은 방식으로 JSON 문자열을 담는다.
+      // 상태 키는 코드가 정하고 화면에 뜨는 말만 관리자가 정한다. wikiEditRoles 처럼 JSON 문자열로 담는다.
       type: DataTypes.TEXT,
       allowNull: false,
       defaultValue: '{}',
       field: 'work_status_labels',
     },
     lotteryPrizes: {
-      // 확률과 금액을 코드에 박아 두면 바꿀 때마다 배포해야 한다.
-      // workStatusLabels 와 같은 방식으로 JSON 문자열을 담는다.
+      // 확률과 금액을 배포 없이 바꿀 수 있도록 workStatusLabels 처럼 JSON 문자열로 담는다.
       type: DataTypes.TEXT,
       allowNull: false,
       defaultValue: JSON.stringify(LOTTERY_DEFAULTS.prizes),
@@ -514,8 +508,7 @@ SiteSettings.init(
       defaultValue: LOTTERY_DEFAULTS.attendanceBonus,
       field: 'attendance_bonus',
     },
-    // ── 포인트 대결 ─────────────────────────────────────────────────────────
-    // 뽑기와 같은 이유로 관리자 설정에 둔다. 판돈을 바꾸려고 배포할 수는 없다.
+    // 판돈을 배포 없이 바꿀 수 있도록 관리자 설정에 둔다.
     duelMinStake: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -540,16 +533,13 @@ SiteSettings.init(
       defaultValue: DUEL_DEFAULTS.maxOpenPerUser,
       field: 'duel_max_open_per_user',
     },
-    // ── 퇴근 공격 ───────────────────────────────────────────────────────────
     attackCost: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: ATTACK_DEFAULTS.cost,
       field: 'attack_cost',
     },
-    // 쪽지 공격을 숨기기 공격으로 바꾸면서 attack_popup_cost 를 대신한다.
-    // 옛 칸은 ensureAllModelColumns 가 지우지 않으므로 그대로 남는다 — 설정값이라
-    // 잃을 데이터는 없고, 지우는 쪽이 더 위험하다.
+    // attack_popup_cost 를 대신한다. 옛 칸은 ensureAllModelColumns 가 지우지 않고 남긴다.
     attackHideCost: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -580,14 +570,13 @@ SiteSettings.init(
       defaultValue: ATTACK_DEFAULTS.dailyLimitPerAttacker,
       field: 'attack_daily_limit',
     },
-    // ── 신규 (관리자 조정 가능) ────────────────────────────────────────────
     memoMaxPerUser: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 200,
       field: 'memo_max_per_user',
     },
-    // 기본값은 크게 둔다 — 기존 설치에서 위키가 게시판 목록 끝에 남아 지금과 같은 자리가 된다
+    // 기본값을 크게 둬야 기존 설치에서 위키가 게시판 목록 끝에 남는다
     wikiOrder: {
       type: DataTypes.INTEGER,
       allowNull: false,

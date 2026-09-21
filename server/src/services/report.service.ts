@@ -1,4 +1,4 @@
-// server/src/services/report.service.ts - 콘텐츠 신고 서비스
+// 콘텐츠 신고 서비스
 import { Op, UniqueConstraintError } from 'sequelize';
 import { sequelize } from '../config/sequelize';
 import { Report, ReportTargetType, ReportReason, ReportStatus } from '../models/Report';
@@ -20,12 +20,10 @@ export class ReportService extends BaseService {
   }): Promise<Report> {
     const { reporterId, reporterRole, targetType, targetId, reason, description } = params;
 
-    // 대상 존재 확인 + 소속 게시판 파악 (권한 검증용)
     let boardType: string;
     if (targetType === 'post') {
       const post = await Post.findByPk(targetId, { attributes: ['id', 'UserId', 'boardType'] });
       if (!post) throw new AppError(404, '게시글을 찾을 수 없습니다.');
-      // 자신의 글 신고 불가
       if (post.UserId === reporterId)
         throw new AppError(400, '자신의 게시글은 신고할 수 없습니다.');
       boardType = post.boardType;
@@ -39,8 +37,7 @@ export class ReportService extends BaseService {
       boardType = parentPost.boardType;
     }
 
-    // 신고하려면 해당 게시판 읽기 권한이 있어야 한다 — 접근 불가 게시판의 콘텐츠를
-    //    (ID만 알면) 신고하거나 존재 여부를 떠보는 것을 차단(다른 board-scoped 액션과 동일 정책)
+    // 게시판 읽기 권한이 있어야 신고할 수 있다. 없으면 존재 여부를 떠보는 창구가 된다.
     const access = await boardService.checkPermission(
       reporterId,
       reporterRole,
@@ -51,7 +48,6 @@ export class ReportService extends BaseService {
       throw new AppError(403, '접근 권한이 없는 게시판의 콘텐츠는 신고할 수 없습니다.');
     }
 
-    // 중복 신고 확인
     const existing = await Report.findOne({
       where: { reporterId, targetType, targetId },
     });
@@ -89,7 +85,7 @@ export class ReportService extends BaseService {
           required: false,
         },
       ],
-      // 시각이 같으면 id 로 가른다 — 없으면 페이지 경계에서 신고가 중복·누락된다.
+      // 시각이 같을 때 id 로 가르지 않으면 페이지 경계에서 신고가 중복되거나 빠진다.
       order: [
         ['createdAt', 'DESC'],
         ['id', 'DESC'],
@@ -98,7 +94,7 @@ export class ReportService extends BaseService {
       offset: pagination.offset,
     });
 
-    // 각 신고에 대상 정보 추가 (post/comment 제목 등) — N+1 방지용 배치 조회
+    // 대상 정보는 N+1 을 피하려고 한 번에 모아 온다.
     const plains = rows.map(
       report => report.get({ plain: true }) as Report & { reporter?: { id: string; name: string } }
     );
@@ -130,7 +126,7 @@ export class ReportService extends BaseService {
       commentsData.map(c => [String(c.id), c.get({ plain: true }) as { content: string }])
     );
 
-    // 처리자(reviewedBy) 이름 배치 조회 — 목록에 내부 ID 대신 사람 이름을 표시 (N+1 방지)
+    // 처리자 이름도 한 번에 모아 온다.
     const reviewerIds = [
       ...new Set(
         plains
@@ -222,7 +218,6 @@ export class ReportService extends BaseService {
     };
   }
 
-  // 특정 게시글/댓글에 달린 신고 수 조회
   async getTargetReportCount(targetType: ReportTargetType, targetId: string): Promise<number> {
     return Report.count({
       where: {

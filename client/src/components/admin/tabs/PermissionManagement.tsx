@@ -1,4 +1,4 @@
-// PermissionManagement.tsx - 권한 관리 컴포넌트
+// 권한 관리 컴포넌트
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, Loader2, Info, Map, Table2, AlertTriangle, RotateCw } from 'lucide-react';
@@ -11,8 +11,7 @@ import { fetchWikiPermissions, updateWikiPermissions } from '../../../api/admin'
 import { toast } from '../../../utils/toast';
 import { ListState } from '../../common/ListState';
 
-// 토글 스위치 — 체크박스를 대체. 접근성을 위해 role="switch" + aria-checked 사용.
-// 트랙은 단일 <button>이며 내부엔 presentational <span>만 둔다(중첩 인터랙티브 요소 금지).
+// 토글 스위치. 트랙 안에 별도 인터랙티브 요소를 두면 클릭이 두 번 발화한다.
 const Toggle = ({
   checked,
   onChange,
@@ -44,7 +43,7 @@ const Toggle = ({
   </button>
 );
 
-// 위키 자동 저장 상태 표시 — 이모지 대신 lucide 아이콘 + 절제된 색상.
+// 위키 자동 저장 상태 표시
 const WikiSaveStatus = ({ saving }: { saving: boolean }) =>
   saving ? (
     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
@@ -78,10 +77,10 @@ export const PermissionManagement = () => {
   const [showGraph, setShowGraph] = useState(false);
   const [wikiRoles, setWikiRoles] = useState<string[]>([]);
   const [wikiSaving, setWikiSaving] = useState(false);
-  // 저장 직렬화용 — 저장 중 들어온 후속 토글의 최신 상태를 적재(coalescing)해 클릭 유실 방지
+  // 저장 중 들어온 후속 토글을 모아 두어 클릭 유실을 막는다
   const wikiSavingRef = useRef(false);
   const wikiPendingRef = useRef<string[] | null>(null);
-  // wikiRoles의 최신 스냅샷(ref) — setState updater 비동기 실행에 의존하지 않고 동기 계산하기 위함.
+  // wikiRoles 의 최신 스냅샷. setState updater 의 비동기 실행에 의존하지 않기 위함.
   const wikiRolesRef = useRef<string[]>([]);
 
   const loadWikiPermissions = useCallback(async () => {
@@ -95,14 +94,14 @@ export const PermissionManagement = () => {
     }
   }, []);
 
-  // 최신 위키 역할 목록을 직렬로 저장. 저장 중 쌓인 변경은 끝난 뒤 이어서 저장(클릭 유실 방지)
+  // 위키 역할 목록을 직렬로 저장한다. 저장 중 쌓인 변경은 끝난 뒤 이어서 저장한다.
   const flushWikiSave = useCallback(
     async (roles: string[]) => {
       wikiSavingRef.current = true;
       setWikiSaving(true);
       try {
         const data = await updateWikiPermissions(roles);
-        // 대기 중 후속 변경이 없을 때만 서버 정규화 결과를 반영(있으면 그게 최신이므로 덮어쓰지 않음)
+        // 대기 중 후속 변경이 없을 때만 서버 정규화 결과를 반영한다
         if (!wikiPendingRef.current && data.roles) {
           wikiRolesRef.current = data.roles;
           setWikiRoles(data.roles);
@@ -127,8 +126,7 @@ export const PermissionManagement = () => {
   );
 
   const toggleWikiRole = (roleId: string) => {
-    // ref(최신 스냅샷)에서 동기 계산 — setState updater 지연 실행 시 next가 빈 배열로 읽혀
-    // 빈 역할 목록이 저장(전체 위키 권한 삭제)되던 버그 방지. 저장 중이면 대기열에 적재(드롭 방지).
+    // ref 에서 동기 계산해야 한다. setState updater 로 계산하면 빈 목록이 저장될 수 있다.
     const next = wikiRolesRef.current.includes(roleId)
       ? wikiRolesRef.current.filter(r => r !== roleId)
       : [...wikiRolesRef.current, roleId];
@@ -146,10 +144,8 @@ export const PermissionManagement = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 게시판 목록이 새로 들어오면 권한 초안을 그 목록에 맞춰 다시 채운다.
-  // ⚠️ 미저장 변경이 있으면 덮어쓰지 않는다 — fetchBoardPermissions 는 dirtyBoards 를
-  //    초기화하므로, 백그라운드 재조회가 사용자의 편집을 조용히 날려버릴 수 있다.
-  //    (이탈 시 beforeunload 로 경고까지 하는 상태와 보호 수준을 맞춘다)
+  // 게시판 목록이 새로 들어오면 권한 초안을 다시 채운다.
+  // 미저장 변경이 있으면 덮어쓰지 않는다. fetchBoardPermissions 가 dirtyBoards 를 초기화한다.
   useEffect(() => {
     if (boards.length > 0 && dirtyBoards.size === 0) {
       fetchBoardPermissions(boards);
@@ -157,7 +153,7 @@ export const PermissionManagement = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boards]);
 
-  // 미저장 변경이 있으면 페이지 이탈(새로고침/닫기) 시 경고 — 자동저장이 아니므로 유실 방지
+  // 미저장 변경이 있으면 페이지 이탈 시 경고한다
   useEffect(() => {
     if (dirtyBoards.size === 0) return;
     const handler = (e: BeforeUnloadEvent) => {
@@ -227,9 +223,7 @@ export const PermissionManagement = () => {
           <div className="flex flex-wrap gap-3">
             {roles.map(role => {
               const active = wikiRoles.includes(role.id);
-              // 펄(버튼) 자체가 스위치 — 내부에 별도 button을 두면 중첩 인터랙티브 요소가 되어
-              // 클릭 이벤트가 두 번(내부+버블링) 발화해 토글이 상쇄되는 버그가 생긴다.
-              // 따라서 트랙은 presentational <span>으로만 그린다.
+              // 버튼 자체가 스위치다. 안에 button 을 두면 클릭이 두 번 발화해 토글이 상쇄된다.
               return (
                 <button
                   key={role.id}
@@ -321,8 +315,7 @@ export const PermissionManagement = () => {
               return (
                 <div key={board.id} className="card p-6">
                   <div className="mb-4 flex items-center justify-between gap-3">
-                    {/* 게시판 이름은 100자까지 허용된다 — 줄이지 않으면 긴 이름 하나가
-                        관리 화면 전체를 가로로 늘려 옆으로 스크롤하게 만든다 */}
+                    {/* 게시판 이름은 100자까지 허용되므로 줄이지 않으면 화면이 가로로 늘어난다 */}
                     <h3 className="flex min-w-0 items-baseline gap-2 text-base font-semibold text-slate-800 dark:text-slate-100">
                       <span className="truncate" title={board.name}>
                         {board.name}
@@ -345,7 +338,7 @@ export const PermissionManagement = () => {
                   </div>
 
                   <div className="overflow-x-auto">
-                    {/* 칼럼 폭 고정 — 게시판 카드마다 토글 칼럼이 동일 위치로 정렬되도록 */}
+                    {/* 칼럼 폭 고정. 카드마다 토글 칼럼 위치를 맞춘다. */}
                     <table className="w-full table-fixed text-sm">
                       <colgroup>
                         <col />

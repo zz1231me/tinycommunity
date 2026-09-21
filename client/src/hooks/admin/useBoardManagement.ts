@@ -8,7 +8,6 @@ import { Board, BoardPermission, Role } from '../../types/admin.types';
 export const useBoardManagement = () => {
   const queryClient = useQueryClient();
 
-  // ── 서버 상태: React Query 가 소유 ─────────────────────────────────────────
   const {
     data: boards = [],
     isPending,
@@ -21,13 +20,12 @@ export const useBoardManagement = () => {
 
   const invalidateBoards = () => queryClient.invalidateQueries({ queryKey: adminKeys.boards.all });
 
-  // ── 로컬 편집 초안: 체크박스 토글을 모아 '저장' 버튼으로 일괄 반영 ──────────
+  // 로컬 편집 초안. 체크박스 토글을 모아 '저장' 버튼으로 일괄 반영한다.
   const [permissions, setPermissions] = useState<Record<string, BoardPermission[]>>({});
   const [permissionsError, setPermissionsError] = useState<string | null>(null);
-  // permissions의 최신 스냅샷(ref). 토글 시 setState updater의 비동기 실행에 의존하지 않고
-  // ref에서 동기적으로 최신 상태를 읽어 결정적으로 계산한다(연속 클릭 누적 + 누락 방지).
+  // permissions 의 최신 스냅샷. 연속 클릭이 누락되지 않도록 ref 에서 동기적으로 읽는다.
   const permissionsRef = useRef<Record<string, BoardPermission[]>>({});
-  // 변경됐지만 아직 저장 안 된 게시판 id 집합 — 자동저장 대신 '저장' 버튼으로 일괄 저장한다.
+  // 변경됐지만 아직 저장 안 된 게시판 id 집합
   const [dirtyBoards, setDirtyBoards] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
@@ -53,7 +51,7 @@ export const useBoardManagement = () => {
     onSuccess: invalidateBoards,
   });
 
-  // 드래그 정렬 결과를 저장 — 낙관적으로 캐시의 순서를 먼저 반영하고, 실패 시 되돌린다.
+  // 드래그 정렬 결과를 저장한다. 캐시를 먼저 반영하고 실패 시 되돌린다.
   const reorderBoardsMutation = useMutation({
     mutationFn: (orderedIds: string[]) => api.put('/admin/boards/reorder', { orderedIds }),
     onMutate: async (orderedIds: string[]) => {
@@ -78,10 +76,10 @@ export const useBoardManagement = () => {
   });
 
   const fetchBoardPermissions = async (boardList: Board[]) => {
-    // 보드별 N요청 대신 1요청으로 전체 권한을 받아 boardId로 그룹핑(권한 없는 보드도 []로 표시).
+    // 전체 권한을 한 번에 받아 boardId 로 그룹핑한다
     const permissionsState: Record<string, BoardPermission[]> = {};
     for (const board of boardList) permissionsState[board.id] = [];
-    setPermissionsError(null); // 재시도 시 이전 에러를 지워 성공 후 배너가 남지 않도록
+    setPermissionsError(null); // 재시도 시 이전 에러를 지운다
     try {
       const rows = unwrap<Array<BoardPermission & { boardId: string }>>(
         await api.get('/admin/board-permissions')
@@ -99,7 +97,7 @@ export const useBoardManagement = () => {
     setDirtyBoards(new Set()); // 새로 로드하면 미저장 표시 초기화
   };
 
-  // 체크박스 토글 — 로컬 상태만 변경하고 해당 게시판을 dirty로 표시한다(저장은 saveAllPermissions에서 일괄).
+  // 체크박스 토글. 로컬 상태만 바꾸고 dirty 로 표시한다.
   const updatePermission = (
     boardId: string,
     roleId: string,
@@ -113,8 +111,7 @@ export const useBoardManagement = () => {
       updatedPerms = boardPerms.map(p => {
         if (p.roleId !== roleId) return p;
         const next = { ...p, [type]: !p[type] };
-        // 읽기/쓰기/삭제 결합(서버 정규화와 일치): 읽기를 끄면 쓰기/삭제도 해제,
-        // 쓰기/삭제를 켜면 읽기 자동 부여. read 없는 write/delete는 실제로 무력화되기 때문.
+        // 서버 정규화와 같은 규칙. read 없는 write/delete 는 무력화되므로 함께 맞춘다.
         if (type === 'canRead' && !next.canRead) {
           next.canWrite = false;
           next.canDelete = false;
@@ -126,7 +123,7 @@ export const useBoardManagement = () => {
     } else {
       const role = roles.find(r => r.id === roleId);
       if (!role) return;
-      // 새 권한 행: 어떤 항목을 켜든 읽기는 전제이므로 canRead=true
+      // 새 권한 행. 어떤 항목을 켜든 읽기가 전제다.
       updatedPerms = [
         ...boardPerms,
         {
@@ -149,7 +146,7 @@ export const useBoardManagement = () => {
     });
   };
 
-  // 변경된 모든 게시판 권한을 서버에 일괄 저장. 성공한 게시판은 dirty 해제, 실패한 것만 유지한다.
+  // 변경된 게시판 권한을 일괄 저장한다. 실패한 게시판만 dirty 로 남긴다.
   const saveAllPermissions = async (): Promise<{ failed: string[] }> => {
     if (saving) return { failed: [...dirtyBoards] };
     const targets = [...dirtyBoards];
@@ -177,7 +174,7 @@ export const useBoardManagement = () => {
     return { failed };
   };
 
-  // 미저장 변경 폐기 — 서버 상태로 다시 로드.
+  // 미저장 변경 폐기. 서버 상태로 다시 로드한다.
   const discardChanges = async () => {
     await fetchBoardPermissions(boards);
   };

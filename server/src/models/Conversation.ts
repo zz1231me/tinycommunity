@@ -1,11 +1,4 @@
-// server/src/models/Conversation.ts
-// 두 사람 사이의 메시지 대화.
-//
-// 메시지만으로 목록을 만들면 매번 상대별 마지막 메시지를 GROUP BY 로 뽑아야 한다.
-// 자주 열리는 화면이라 대화를 실체로 두고 마지막 메시지를 여기에 비정규화한다.
-//
-// 참가자는 항상 정렬해 저장하고(userAId < userBId) pairKey 로 유일성을 건다.
-// A→B 와 B→A 가 같은 대화로 모인다.
+// 두 사람 사이의 대화. 참가자는 항상 userAId < userBId 로 정렬해 저장하고 pairKey 로 유일성을 건다.
 
 import {
   DataTypes,
@@ -35,10 +28,7 @@ class ConversationModel extends Model<
   /** 목록에 보여 줄 마지막 메시지 미리보기 (평문 일부) */
   declare public lastMessagePreview: CreationOptional<string | null>;
   declare public lastSenderId: CreationOptional<string | null>;
-  /**
-   * 각자 목록에서 숨겼는지.
-   * 한쪽이 숨겨도 상대의 대화는 남는다. 새 메시지가 오면 다시 나타난다.
-   */
+  /** 각자 목록에서 숨겼는지. 한쪽이 숨겨도 상대 대화는 남고, 새 메시지가 오면 다시 나타난다. */
   declare public hiddenByA: CreationOptional<boolean>;
   declare public hiddenByB: CreationOptional<boolean>;
   declare public readonly createdAt: CreationOptional<Date>;

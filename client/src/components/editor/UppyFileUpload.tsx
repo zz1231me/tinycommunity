@@ -1,7 +1,4 @@
-// client/src/components/editor/UppyFileUpload.tsx
-// Uppy-powered drag-and-drop file selector.
-// Files are collected locally and passed to the parent as File[] objects.
-// The actual upload occurs when the parent form is submitted (same flow as FileUploadSection).
+// Uppy 기반 파일 선택기. 파일은 로컬에 모아 두고 실제 업로드는 부모 폼 제출 때 일어난다.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Uppy, { type UppyFile, type Meta, type Body } from '@uppy/core';
 
@@ -39,29 +36,26 @@ const UppyFileUpload: React.FC<UppyFileUploadProps> = ({
   const [uppyFiles, setUppyFiles] = useState<UppyFile<Meta, Body>[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Uppy instance used only for restriction validation and file tracking.
-  // 인스턴스는 한 번만 만든다 — 다시 만들면 담아 둔 파일 목록이 날아간다.
+  // Uppy 인스턴스는 한 번만 만든다. 다시 만들면 담아 둔 파일 목록이 날아간다.
   const uppy = useMemo(
     () =>
       new Uppy({
         restrictions: { maxNumberOfFiles: maxFiles, maxFileSize },
         autoProceed: false,
       }),
-    // 제한값은 아래 effect 가 따로 갱신한다(여기에 넣으면 인스턴스가 새로 만들어진다)
+    // 제한값은 아래 effect 가 갱신한다. 여기에 넣으면 인스턴스가 새로 만들어진다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
-  // 제한값은 사이트 설정에서 오고, 그 설정은 화면이 뜬 뒤에 도착한다.
-  // 처음 값으로 굳혀 두면 관리자가 '최대 10개' 로 올려도 화면은 5개에서 막는다.
+  // 제한값은 화면이 뜬 뒤에 도착하므로 처음 값으로 굳히지 않는다.
   useEffect(() => {
     uppy.setOptions({ restrictions: { maxNumberOfFiles: maxFiles, maxFileSize } });
   }, [uppy, maxFiles, maxFileSize]);
 
   useEffect(() => {
     const syncFiles = () => setUppyFiles([...uppy.getFiles()]);
-    // Uppy 기본 메시지는 영어이므로 한국어로 통일.
-    // 자체 검증(addFiles)에서 대부분의 경우를 처리하므로 여기는 백업.
+    // Uppy 기본 메시지가 영어라 한국어로 바꾼다. 대부분은 addFiles 가 먼저 거른다.
     const onRestrictionFailed = (_file: UppyFile<Meta, Body> | undefined, err: Error) => {
       const msg = err?.message ?? '';
       if (msg.includes('exceeds maximum allowed size') || msg.includes('file size')) {
@@ -94,7 +88,7 @@ const UppyFileUpload: React.FC<UppyFileUploadProps> = ({
 
       const incoming = Array.from(fileList);
 
-      // oversized/valid 분리 — 일부 파일이 크기 초과여도 나머지 정상 파일은 허용 (fix #78)
+      // 일부가 크기를 넘어도 나머지 정상 파일은 받는다
       const oversized: File[] = [];
       const validBySize: File[] = [];
       for (const f of incoming) {
@@ -102,7 +96,7 @@ const UppyFileUpload: React.FC<UppyFileUploadProps> = ({
         else validBySize.push(f);
       }
 
-      // 잔여 슬롯까지만 받고 나머지는 거부 (모두 거부하면 UX 나쁨)
+      // 남은 자리까지만 받고 나머지는 거부한다
       const remainingSlots = Math.max(0, maxFiles - existingFiles.length - files.length);
       const accepted = validBySize.slice(0, remainingSlots);
       const overCount = validBySize.length - accepted.length;
@@ -122,12 +116,11 @@ const UppyFileUpload: React.FC<UppyFileUploadProps> = ({
 
       if (accepted.length === 0) return;
 
-      // Register with Uppy for UI tracking
       accepted.forEach(file => {
         try {
           uppy.addFile({ name: file.name, type: file.type, data: file });
         } catch {
-          // Uppy throws if restriction fails — already handled by restriction-failed event
+          // 제한 위반은 restriction-failed 이벤트에서 이미 처리한다
         }
       });
 
@@ -180,7 +173,7 @@ const UppyFileUpload: React.FC<UppyFileUploadProps> = ({
       </div>
 
       <div className="space-y-3" role="group" aria-labelledby="uppy-label">
-        {/* Existing attachments (edit mode) */}
+        {/* 기존 첨부(수정 모드) */}
         {isEditMode && existingFiles.length > 0 && (
           <div className="space-y-1">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -224,7 +217,7 @@ const UppyFileUpload: React.FC<UppyFileUploadProps> = ({
           </div>
         )}
 
-        {/* Newly added files */}
+        {/* 새로 추가한 파일 */}
         {files.length > 0 && (
           <div className="space-y-1">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -264,12 +257,8 @@ const UppyFileUpload: React.FC<UppyFileUploadProps> = ({
           </div>
         )}
 
-        {/* Drag & drop zone */}
-        {/* 끌어다 놓는 자리.
-            예전에는 이 영역(670x229px) 전체에 onClick 을 걸어 아무 데나 누르면 파일 창이 떴다.
-            안에 '파일 선택' 버튼이 따로 있으니 같은 동작이 두 벌이었고, 글을 저장하려다
-            빗나간 클릭까지 파일 창을 여는 바람에 "저장했는데 파일 추가가 뜬다" 가 됐다.
-            여는 길은 아래 버튼 하나로 두고, 여기서는 드래그만 받는다. */}
+        {/* 끌어다 놓는 자리 */}
+        {/* 파일 창을 여는 길은 안쪽 버튼 하나로 두고 여기서는 드래그만 받는다 */}
         <div
           onDrop={handleDrop}
           onDragOver={handleDragOver}

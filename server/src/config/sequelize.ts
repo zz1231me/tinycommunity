@@ -1,14 +1,9 @@
-// server/src/config/sequelize.ts
-// Sequelize 연결 설정.
-//
-// - 다중 DB 지원 (SQLite/MySQL/MariaDB/PostgreSQL)
-// - 연결 풀·트랜잭션 격리 수준 설정
+// Sequelize 연결 설정. SQLite/MySQL/MariaDB/PostgreSQL 을 지원한다.
 
 import { Sequelize, Dialect, Transaction, Options as SequelizeOptions } from 'sequelize';
 import { env, DatabaseType, printDatabaseInfo } from './env';
 import { logInfo, logError, logWarning, logSuccess } from '../utils/logger';
 
-// DB 타입을 Sequelize Dialect로 변환
 function getSequelizeDialect(dbType: DatabaseType): Dialect {
   const dialectMap: Record<DatabaseType, Dialect> = {
     mysql: 'mysql',
@@ -21,30 +16,24 @@ function getSequelizeDialect(dbType: DatabaseType): Dialect {
   return dialectMap[dbType] ?? 'sqlite';
 }
 
-// Sequelize 6.37 최적화 설정
 function createSequelizeConfig(): SequelizeOptions {
   const dialect = getSequelizeDialect(env.DB_TYPE);
 
-  // 공통 설정
   const commonConfig: Partial<SequelizeOptions> = {
     dialect,
     logging: env.NODE_ENV === 'development' ? (msg: string) => logInfo(msg) : false,
 
-    // 테이블 설정 최적화
     define: {
       timestamps: true,
       underscored: false,
       freezeTableName: false,
       paranoid: false,
-      // 인덱스 자동 생성
       indexes: [],
     },
 
-    // 쿼리 성능 최적화
     benchmark: env.NODE_ENV === 'development',
     logQueryParameters: env.NODE_ENV === 'development',
 
-    // 재시도 설정
     retry: {
       max: 3,
       match: [
@@ -62,16 +51,12 @@ function createSequelizeConfig(): SequelizeOptions {
     },
   };
 
-  // SQLite 최적화 설정
   if (dialect === 'sqlite') {
     return {
       ...commonConfig,
       storage: env.DB_STORAGE,
 
-      // ⚠️ SQLite는 타임존을 지원하지 않음 (UTC 고정)
-      // timezone: '+09:00', // ❌ 제거
-
-      // SQLite 연결 풀 최적화 (단일 연결)
+      // SQLite 는 타임존을 지원하지 않아 UTC 로 고정되며, 연결은 하나만 쓴다.
       pool: {
         max: 1,
         min: 1,
@@ -80,20 +65,12 @@ function createSequelizeConfig(): SequelizeOptions {
         evict: 10000,
       },
 
-      // SQLite 전용 설정
       dialectOptions: {
-        // 외래 키 활성화
         foreignKeys: true,
-        // 바쁜 타임아웃 (5초)
         busyTimeout: 5000,
       },
 
-      // 연결마다 PRAGMA 재적용
-      //    SQLite의 이 설정들은 연결 단위라, 풀 연결이 재생성되면 초기값으로 돌아간다.
-      //    - foreign_keys: OFF 로 돌아가면 FK cascade(게시글 삭제 시 자식 정리)가 조용히 멈춘다.
-      //    - busy_timeout: 위 dialectOptions.busyTimeout 은 드라이버가 첫 연결에만 적용할 수 있어
-      //      여기서 못박는다. 없으면 쓰기 잠금이 겹칠 때 기다리지 않고 즉시 SQLITE_BUSY 로 실패한다 —
-      //      같은 사람이 버튼을 빠르게 두 번 누르면 500 이 나가는 식이다.
+      // PRAGMA 는 연결 단위라 풀 연결이 재생성되면 초기값으로 돌아간다. 연결마다 다시 적용한다.
       hooks: {
         afterConnect: async (connection: {
           run?: (sql: string, cb: (err: Error | null) => void) => void;
@@ -108,12 +85,11 @@ function createSequelizeConfig(): SequelizeOptions {
         },
       },
 
-      // SQLite 쿼리 최적화
+      // IMMEDIATE 로 트랜잭션 시작 시점에 쓰기 잠금을 잡는다.
       transactionType: Transaction.TYPES.IMMEDIATE,
     };
   }
 
-  // MySQL/MariaDB/PostgreSQL 최적화 설정
   return {
     ...commonConfig,
     database: env.DB_NAME,
@@ -122,23 +98,20 @@ function createSequelizeConfig(): SequelizeOptions {
     host: env.DB_HOST,
     port: env.DB_PORT,
 
-    // 타임존 설정 (MySQL/PostgreSQL만 지원)
+    // 타임존은 MySQL/PostgreSQL 에서만 지원된다.
     timezone: '+09:00',
 
-    // 연결 풀 최적화 (프로덕션 환경)
     pool: {
       max: env.NODE_ENV === 'production' ? 20 : 10,
       min: env.NODE_ENV === 'production' ? 5 : 2,
-      acquire: 60000, // 60초
-      idle: 30000, // 30초
-      evict: 10000, // 10초마다 유휴 연결 확인
+      acquire: 60000,
+      idle: 30000,
+      evict: 10000,
     },
 
-    // DB별 최적화 설정
     dialectOptions:
       dialect === 'postgres'
         ? {
-            // PostgreSQL 설정
             ssl: env.DB_SSL
               ? {
                   require: true,
@@ -146,17 +119,13 @@ function createSequelizeConfig(): SequelizeOptions {
                   ...(env.DB_SSL_CA && { ca: env.DB_SSL_CA }),
                 }
               : false,
-            // 타임아웃 설정
             statement_timeout: 30000,
             query_timeout: 30000,
-            // 연결 타임아웃
             connectionTimeoutMillis: 5000,
             idle_in_transaction_session_timeout: 10000,
           }
         : {
-            // MySQL/MariaDB 설정
             connectTimeout: 10000,
-            // SSL 설정
             ...(env.DB_SSL && {
               ssl: {
                 rejectUnauthorized: env.NODE_ENV === 'production',
@@ -165,10 +134,8 @@ function createSequelizeConfig(): SequelizeOptions {
             }),
           },
 
-    // 트랜잭션 격리 수준 설정
     isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED,
 
-    // 자동 재연결
     retry: {
       max: 5,
       match: [
@@ -188,23 +155,12 @@ function createSequelizeConfig(): SequelizeOptions {
   };
 }
 
-// Sequelize 인스턴스 생성
 export const sequelize = new Sequelize(createSequelizeConfig());
 
-/**
- * 연결의 시간대와 프로세스의 시간대가 어긋나면 알린다.
- *
- * MySQL/PG 연결은 위에서 +09:00 으로 못박혀 있는데, '오늘' 을 정하는 쪽
- * (point.service 의 today, 그리고 그것을 쓰는 출퇴근의 workDate)은 프로세스의
- * 로컬 시간을 본다. 호스트가 UTC 면 둘이 아홉 시간 어긋나서, 한국 시간으로 오전
- * 아홉 시 전에 찍은 출근이 어제 날짜로 들어가고 뽑기 하루 한도도 그때 초기화된다.
- *
- * 코드로 조용히 맞추지 않는다. 날짜의 뜻을 바꾸는 일이라 이미 쌓인 기록의 해석까지
- * 달라진다. 고칠 자리는 배포의 TZ 설정이다.
- */
+/** DB 연결(+09:00)과 프로세스 시간대가 다르면 경고한다. 날짜 경계가 어긋나며, 고칠 자리는 배포의 TZ 설정이다. */
 function warnIfTimezoneMismatch(): void {
   if (env.DB_TYPE === 'sqlite') return;
-  // getTimezoneOffset 은 UTC 기준 분 차이를 부호 반대로 준다 — KST(+09:00)는 -540.
+  // getTimezoneOffset 은 부호가 반대다. KST(+09:00)는 -540.
   const processOffsetMinutes = -new Date().getTimezoneOffset();
   if (processOffsetMinutes === 540) return;
 
@@ -216,7 +172,6 @@ function warnIfTimezoneMismatch(): void {
   });
 }
 
-// 데이터베이스 연결 테스트
 export async function testDatabaseConnection(): Promise<boolean> {
   try {
     logInfo('데이터베이스 연결 테스트 중...');
@@ -226,7 +181,6 @@ export async function testDatabaseConnection(): Promise<boolean> {
     logSuccess(`${env.DB_TYPE.toUpperCase()} 데이터베이스 연결 성공`);
     warnIfTimezoneMismatch();
 
-    // 연결 풀 상태 확인
     if (env.NODE_ENV === 'development') {
       const pool = (sequelize.connectionManager as any).pool;
       if (pool) {
@@ -246,7 +200,6 @@ export async function testDatabaseConnection(): Promise<boolean> {
   }
 }
 
-// 데이터베이스 초기화 (최적화 포함)
 export async function initializeDatabase(): Promise<void> {
   const isConnected = await testDatabaseConnection();
 
@@ -254,28 +207,20 @@ export async function initializeDatabase(): Promise<void> {
     throw new Error('데이터베이스 연결에 실패했습니다.');
   }
 
-  // SQLite 최적화
   if (env.DB_TYPE === 'sqlite') {
     try {
-      // 외래 키 활성화
       await sequelize.query('PRAGMA foreign_keys = ON');
 
-      // WAL 모드 (Write-Ahead Logging) - 동시성 향상
       await sequelize.query('PRAGMA journal_mode = WAL');
 
-      // 동기화 모드 최적화 (안전성 유지하면서 성능 향상)
       await sequelize.query('PRAGMA synchronous = NORMAL');
 
-      // 캐시 크기 최적화 (10MB)
       await sequelize.query('PRAGMA cache_size = -10000');
 
-      // 임시 저장소를 메모리로 설정
       await sequelize.query('PRAGMA temp_store = MEMORY');
 
-      // 메모리 매핑 I/O (32MB)
       await sequelize.query('PRAGMA mmap_size = 33554432');
 
-      // 자동 VACUUM 설정
       await sequelize.query('PRAGMA auto_vacuum = INCREMENTAL');
 
       logSuccess('SQLite 최적화 설정 완료');
@@ -285,10 +230,8 @@ export async function initializeDatabase(): Promise<void> {
     }
   }
 
-  // PostgreSQL 최적화
   if (env.DB_TYPE === 'postgresql' || env.DB_TYPE === 'postgres') {
     try {
-      // 쿼리 플래너 최적화
       await sequelize.query('SET work_mem = "16MB"');
       await sequelize.query('SET maintenance_work_mem = "64MB"');
 
@@ -299,7 +242,6 @@ export async function initializeDatabase(): Promise<void> {
     }
   }
 
-  // MySQL/MariaDB 최적화
   if (env.DB_TYPE === 'mysql' || env.DB_TYPE === 'mariadb') {
     logSuccess('MySQL/MariaDB 최적화 설정 완료');
     logInfo('MySQL 타임존: +09:00 (한국 시간)');
@@ -308,10 +250,8 @@ export async function initializeDatabase(): Promise<void> {
   logSuccess('데이터베이스 초기화 완료');
 }
 
-// 연결 종료 함수 (Graceful Shutdown)
 export async function closeDatabaseConnection(): Promise<void> {
   try {
-    // 모든 연결 종료 대기
     await sequelize.close();
 
     logSuccess('데이터베이스 연결 종료');
@@ -321,7 +261,6 @@ export async function closeDatabaseConnection(): Promise<void> {
   }
 }
 
-// 헬스 체크 함수 (모니터링용)
 export async function checkDatabaseHealth(): Promise<{
   status: 'healthy' | 'unhealthy';
   details: Record<string, any>;

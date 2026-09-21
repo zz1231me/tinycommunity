@@ -1,4 +1,3 @@
-// server/src/controllers/post.controller.ts
 import { Response } from 'express';
 import { AuthRequest } from '../types/auth-request';
 import {
@@ -51,11 +50,8 @@ interface PostLike {
 
 /**
  * 이 글을 보는 사람의 상태 — 좋아요·스크랩·관리 권한.
- *
- * 글과 함께 내려 준다. 따로 물으면 /like, /scrap, /board-managers/check 세 요청이
- * 인증·게시판 권한 검사를 각각 다시 해서 글 하나를 여는 데 왕복이 넷이 된다.
- *
- * 꺼진 기능은 묻지 않는다 — 좋아요를 끈 사이트에서 좋아요 수를 세지 않는다.
+ * 글과 함께 내려 준다. 따로 물으면 요청이 셋 더 늘고 권한 검사도 그만큼 반복된다.
+ * 꺼진 기능은 묻지 않는다.
  */
 async function loadViewerState(
   postId: string,
@@ -78,13 +74,9 @@ async function loadViewerState(
 }
 
 /**
- * '지정한 사람만' 비밀글의 허용 목록 — 이 글을 고칠 수 있는 사람에게만 준다.
- *
- * 응답에서 빼면 편집 화면의 사람 고르기 칸이 비어 있게 되고, 거기서 한 명을 추가해
- * 저장하면 목록이 그 한 명으로 교체돼 원래 허용됐던 사람들이 빠진다.
- *
- * 누가 이 비공개 글을 읽을 수 있는지는 그 자체로 민감하므로, 이미 그 목록을 바꿀 수 있는
- * 사람(작성자·관리자/매니저·게시판 담당자)에게만 내려준다.
+ * '지정한 사람만' 비밀글의 허용 목록. 이 글을 고칠 수 있는 사람에게만 준다.
+ * 응답에서 빼면 편집 화면의 목록이 비어 저장 시 기존 허용자가 날아간다.
+ * 누가 읽을 수 있는지 자체가 민감하므로 목록을 바꿀 수 있는 사람에게만 내려준다.
  */
 async function loadSecretAllowedUsers(
   post: {
@@ -112,16 +104,14 @@ async function loadSecretAllowedUsers(
 
 /**
  * 이 글에 붙은 태그.
- *
  * 글을 읽을 때 함께 조인해 오므로 상세 화면에서 추가 조회가 없다.
- * 태그 기능이 꺼져 있으면 빈 배열이다(전용 라우트도 같은 스위치로 막혀 있다).
+ * 태그 기능이 꺼져 있으면 빈 배열이다.
  */
 async function pickTags(postData: { tags?: unknown[] }): Promise<unknown[]> {
   if (!(await featureFlagService.isEnabled('post.tags'))) return [];
   return postData.tags ?? [];
 }
 
-// 게시글 데이터를 응답 형식으로 변환하는 헬퍼
 function formatPostResponse(
   post: PostLike,
   user: PostLike['user'],
@@ -143,8 +133,7 @@ function formatPostResponse(
     boardType: post.boardType,
     viewCount: post.viewCount || 0,
     isPinned: post.isPinned || false,
-    // 목록과 마찬가지로 만료 시각도 내려준다. 상세에서 빠지면 기간을 정해 고정해도
-    // 글을 열었을 때 남은 기간을 알 수 없다.
+    // 상세에도 만료 시각을 내려야 글을 열었을 때 남은 고정 기간을 알 수 있다.
     pinnedUntil: post.pinnedUntil ?? null,
     isSecret: post.isSecret || false,
     secretType: post.secretType || null,
@@ -153,13 +142,12 @@ function formatPostResponse(
     secretSalt: post.isEncrypted ? post.secretSalt || null : null,
     // 고칠 수 있는 사람에게만 채워진다 (loadSecretAllowedUsers 주석 참고)
     secretAllowedUsers,
-    // 업무 상태와 담당자는 글을 열자마자 보여야 한다 — 별도 요청으로 미루면
-    // 본문은 떠 있는데 상태 줄만 뒤늦게 나타나 화면이 흔들린다
+    // 업무 상태와 담당자는 글을 열자마자 보여야 한다. 별도 요청으로 미루면 화면이 흔들린다.
     workStatus: post.workStatus || 'none',
     assignee: post.assignee
       ? { id: post.assignee.id, name: post.assignee.name, avatar: post.assignee.avatar ?? null }
       : null,
-    // 게시판 이름과 용도 — 화면이 게시판 목록을 따로 뒤지지 않아도 되게
+    // 게시판 이름과 용도. 화면이 게시판 목록을 따로 뒤지지 않아도 되게 함께 내린다.
     board: post.board
       ? { id: post.board.id, name: post.board.name, taskEnabled: !!post.board.taskEnabled }
       : null,
@@ -173,12 +161,8 @@ function formatPostResponse(
 
 /**
  * 허용 사용자 목록을 읽는다.
- *
- * 글 작성·수정은 첨부 때문에 multipart 로 나가고 multipart 필드는 전부 문자열이라,
- * 화면이 JSON.stringify 로 보낸 배열이 서버에서는 문자열로 도착한다.
- * 그래서 JSON 본문(배열)과 multipart(문자열) 양쪽을 받는다.
- *
- * 형식이 아니면 undefined 로 두어 "건드리지 않음" 이 되게 한다(수정 시 기존 목록 유지).
+ * multipart 필드는 전부 문자열이라 JSON 본문(배열)과 multipart(문자열) 양쪽을 받는다.
+ * 형식이 아니면 undefined 로 두어 수정 시 기존 목록을 유지한다.
  */
 function parseUserIdList(value: unknown): string[] | undefined {
   const raw = typeof value === 'string' ? safeJsonArray(value) : value;
@@ -199,7 +183,6 @@ function toAppError(err: unknown): AppError | null {
   return err instanceof AppError ? err : null;
 }
 
-// 글로벌 검색
 export const globalSearch = async (req: AuthRequest, res: Response): Promise<void> => {
   const searchTerm = (req.query.q?.toString() ?? '').trim();
   const { id: userId, role: userRole } = req.user;
@@ -230,7 +213,6 @@ export const getRecentPosts = async (req: AuthRequest, res: Response): Promise<v
   }
 };
 
-// 게시글 목록 조회
 export const getPosts = async (req: AuthRequest, res: Response): Promise<void> => {
   const boardType = req.params.boardType;
   const { page, limit } = parsePagination(req);
@@ -273,7 +255,6 @@ export const getPosts = async (req: AuthRequest, res: Response): Promise<void> =
   }
 };
 
-// 게시글 상세 조회
 export const getPostById = async (req: AuthRequest, res: Response): Promise<void> => {
   const { boardType, id } = req.params;
   const userId = req.user?.id;
@@ -347,16 +328,12 @@ export const getPostById = async (req: AuthRequest, res: Response): Promise<void
   }
 };
 
-// 비밀글 비밀번호 검증
 export const verifySecretPost = async (req: AuthRequest, res: Response): Promise<void> => {
   const { boardType, id } = req.params;
   const { password } = req.body;
   const userId = req.user?.id;
-  // req.ip 만 쓴다. x-forwarded-for 를 직접 파싱하면 클라이언트가 헤더를 붙여
-  // 기록될 IP 를 스스로 정할 수 있다 — 비밀번호를 맞혀 보는 쪽이 정작 자기 주소를
-  // 지운 감사 기록을 남기게 된다. (시도 횟수 제한은 이미 req.ip 로 세고 있어,
-  //  위조로 이득을 보는 곳이 '기록' 하나뿐이었다.)
-  // Express 는 trust proxy 설정(운영: 첫 프록시만 신뢰)을 거친 값을 req.ip 로 준다.
+  // req.ip 만 쓴다. x-forwarded-for 를 직접 파싱하면 클라이언트가 기록될 IP 를 스스로 정할 수 있다.
+  // Express 는 trust proxy 설정을 거친 값을 req.ip 로 준다.
   const ipAddress = req.ip || 'unknown';
 
   if (typeof password !== 'string' || !password) {
@@ -366,7 +343,6 @@ export const verifySecretPost = async (req: AuthRequest, res: Response): Promise
   try {
     const result = await postService.verifySecretPost(id, password, boardType, userId);
 
-    // 비밀글 인증 성공 보안 로그
     securityLogService
       .createLog({
         userId,
@@ -409,7 +385,6 @@ export const verifySecretPost = async (req: AuthRequest, res: Response): Promise
     const appErr = toAppError(err);
     if (appErr?.statusCode === 404) return sendNotFound(res, '게시글');
     if (appErr?.statusCode === 401) {
-      // 비밀번호 틀림 보안 로그
       securityLogService
         .createLog({
           userId,
@@ -433,7 +408,6 @@ export const verifySecretPost = async (req: AuthRequest, res: Response): Promise
   }
 };
 
-// 게시글 생성
 export const createPost = async (req: AuthRequest, res: Response): Promise<void> => {
   const {
     title,
@@ -530,7 +504,6 @@ export const createPost = async (req: AuthRequest, res: Response): Promise<void>
   }
 };
 
-// 게시글 수정
 // 주의: boardAccess 미들웨어(checkWriteAccess)가 이미 게시판 쓰기 권한을 확인함
 export const updatePost = async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body;
@@ -607,7 +580,6 @@ export const updatePost = async (req: AuthRequest, res: Response): Promise<void>
   }
 };
 
-// 게시글 삭제
 // 주의: boardAccess 미들웨어(checkDeleteAccess)가 이미 게시판 삭제 권한을 확인함
 export const deletePost = async (req: AuthRequest, res: Response): Promise<void> => {
   const { boardType, id } = req.params;
@@ -617,8 +589,7 @@ export const deletePost = async (req: AuthRequest, res: Response): Promise<void>
     const deleted = await postService.deletePost(id, userId, userRole, boardType);
     logSuccess('게시글 삭제 완료', { userId, postId: id });
 
-    // 되돌릴 수 없는 삭제라 누가 무엇을 지웠는지 남긴다. 제목은 지운 뒤에는 알 수 없으므로
-    // 서비스가 돌려준 값을 쓴다. 기록 실패가 삭제를 되돌리지는 않으므로 기다리지 않는다.
+    // 되돌릴 수 없는 삭제라 감사 기록을 남긴다. 제목은 서비스가 돌려준 값을 쓰고 기다리지 않는다.
     auditLogService
       .createAuditLog({
         actorId: userId,
@@ -641,7 +612,6 @@ export const deletePost = async (req: AuthRequest, res: Response): Promise<void>
   }
 };
 
-// 게시글 고정/해제 (admin 또는 해당 게시판 담당자)
 export const togglePin = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id: postId } = req.params;
   const { id: userId, role: userRole } = req.user;

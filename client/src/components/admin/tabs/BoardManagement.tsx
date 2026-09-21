@@ -44,13 +44,10 @@ interface BoardRowProps {
   onDelete: (boardId: string) => void;
 }
 
-/** 정렬 목록에서 위키 행을 가리키는 id — 게시판 id 와 겹치지 않게 */
+/** 정렬 목록에서 위키 행을 가리키는 id. 게시판 id 와 겹치면 안 된다. */
 const WIKI_ROW_ID = '__wiki__';
 
-/**
- * 위키 행. 사이드바에서 게시판과 한 목록에 늘어서므로 여기서 함께 끌어 옮긴다.
- * 게시판이 아니라 이름·설명·상태를 고칠 것이 없어 자리만 차지한다.
- */
+/** 위키 행. 사이드바에서 게시판과 한 목록에 서므로 순서만 함께 정한다. */
 function SortableWikiRow({ dragDisabled, order }: { dragDisabled: boolean; order: number }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: WIKI_ROW_ID,
@@ -94,8 +91,7 @@ function SortableWikiRow({ dragDisabled, order }: { dragDisabled: boolean; order
   );
 }
 
-// 드래그로 순서를 바꿀 수 있는 게시판 행. 편집 중(=dragDisabled)에는 드래그를 막아
-// 입력 도중 행이 튀지 않게 한다.
+// 드래그로 순서를 바꾸는 게시판 행. 편집 중에는 드래그를 막는다.
 function SortableBoardRow({
   board,
   editing,
@@ -276,7 +272,7 @@ export const BoardManagement = () => {
       setBoardForm({ id: '', name: '', description: '', order: 0, taskEnabled: false });
       toast.success('게시판이 추가되었습니다.');
     } catch (err: unknown) {
-      // 서버 검증 메시지(ID 형식 등)를 그대로 노출해 사용자가 원인을 알 수 있게 함
+      // 서버 검증 메시지를 그대로 보여 준다.
       const e = err as { response?: { data?: { message?: string } } };
       toast.error(e.response?.data?.message ?? '게시판 추가에 실패했습니다.');
     }
@@ -331,7 +327,6 @@ export const BoardManagement = () => {
     }
   };
 
-  // 위키도 사이드바에서 같은 목록에 늘어서므로 여기서 함께 순서를 정한다
   const wikiEnabled = useFeature('tools.wiki');
   const wikiOrderSetting = useSiteSettings(st => st.settings.wikiOrder);
   const applySettings = useSiteSettings(st => st.updateSettings);
@@ -341,7 +336,7 @@ export const BoardManagement = () => {
     applySettings(saved);
   };
 
-  // 정렬 목록 = 게시판 + 위키. 사이드바와 같은 규칙으로 자리를 잡는다.
+  // 정렬 목록은 게시판과 위키를 합친 것이고, 사이드바와 같은 규칙을 쓴다.
   const rowIds = useMemo<string[]>(() => {
     const ids = boards.map(b => b.id);
     if (!wikiEnabled) return ids;
@@ -365,7 +360,7 @@ export const BoardManagement = () => {
 
     try {
       await reorderBoards(orderedIds);
-      // 게시판 order 는 방금 0,1,2… 로 다시 매겨졌으므로 자리 번호가 곧 order 값이다
+      // order 가 0,1,2… 로 다시 매겨지므로 자리 번호가 곧 order 값이다.
       if (wikiAt !== -1) await saveWikiOrder(wikiAt);
       toast.success('순서가 저장되었습니다.');
     } catch {
@@ -373,7 +368,7 @@ export const BoardManagement = () => {
     }
   };
 
-  // 최초 로드 시에만 전체 스피너 — 수정/삭제 후 재조회 시 목록이 깜빡이지 않도록
+  // 최초 로드에만 전체 스피너를 쓴다. 재조회 때 목록이 깜빡이지 않게.
   if (loading && !dataLoaded) return <LoadingSpinner message="게시판 목록을 불러오는 중..." />;
 
   return (
@@ -387,7 +382,6 @@ export const BoardManagement = () => {
         onCancel={() => setConfirmDeleteId(null)}
       />
 
-      {/* 게시판 추가 */}
       <AdminSection title="게시판 추가">
         <div className="flex flex-wrap gap-3 items-end">
           <AdminFormField label="게시판 ID" labelNote="(영문/숫자)">
@@ -451,7 +445,6 @@ export const BoardManagement = () => {
         </div>
       </AdminSection>
 
-      {/* 게시판 목록 */}
       <AdminSection title={`게시판 목록 (${boards.length}개)`}>
         <p className="text-xs text-slate-400 mb-2">
           왼쪽 손잡이를 드래그해 표시 순서를 바꿀 수 있습니다.

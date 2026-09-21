@@ -1,9 +1,4 @@
-// client/src/components/admin/common/FeatureOffNotice.tsx
-// "이 설정이 딸린 기능이 지금 꺼져 있습니다" 안내.
-//
-// 사이트 설정에서 로또 확률을 정성껏 맞춰 놓고도 기능 스위치가 꺼져 있으면
-// 화면 어디에도 나타나지 않는다. 값을 만지는 자리에서 그 사실을 알려 주고,
-// 켜러 갈 수 있는 길을 같이 둔다.
+// 이 설정이 딸린 기능이 꺼져 있다는 안내와 켜러 가는 링크.
 
 import { Link } from 'react-router-dom';
 import { PowerOff } from 'lucide-react';

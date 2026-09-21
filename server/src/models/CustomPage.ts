@@ -1,20 +1,17 @@
-// server/src/models/CustomPage.ts — 관리자가 직접 작성하는 커스텀 HTML 페이지.
-// 렌더는 클라이언트에서 sandbox iframe(srcdoc)으로 앱과 격리해 표시하므로,
-// 여기 저장되는 html은 새니타이즈하지 않고 원문 그대로 보관한다(관리자 전용 CRUD).
+// 관리자 커스텀 HTML 페이지. 렌더가 sandbox iframe 이라 html 은 새니타이즈 없이 원문 그대로 보관한다.
 
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../config/sequelize';
 
 export interface CustomPageAttributes {
   id: string;
-  slug: string; // URL 식별자 (예: 'guide') — /dashboard/pages/:slug
+  slug: string; // URL 식별자 (예: 'guide')
   title: string;
-  html: string; // 관리자가 넣은 원문 HTML (sandbox iframe에서 격리 렌더). 번들/URL 페이지면 '' 유지.
-  // 번들(ZIP 폴더 업로드) 페이지: 압축 해제된 정적 파일 디렉터리(uploads 기준 상대경로). null이면 단일 HTML 페이지.
+  html: string; // 원문 HTML. 번들/URL 페이지면 '' 유지.
+  // 번들 페이지의 정적 파일 디렉터리(uploads 기준 상대경로). null 이면 단일 HTML 페이지.
   bundlePath: string | null;
   entryFile: string; // 번들 진입 파일 (기본 index.html)
-  // 외부 URL 임베드 페이지: 이 값이 있으면 사용자 화면에서 해당 URL을 iframe으로 표시(html/번들보다 우선).
-  // http(s)만 허용(컨트롤러에서 검증). null이면 URL 페이지가 아님.
+  // 외부 URL 임베드. 값이 있으면 html/번들보다 우선하며 http(s)만 허용한다.
   externalUrl: string | null;
   isPublished: boolean;
   order: number; // 사이드바 정렬

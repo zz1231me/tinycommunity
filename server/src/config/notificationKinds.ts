@@ -1,8 +1,4 @@
-// server/src/config/notificationKinds.ts
-// 알림 종류와 "사용자가 끌 수 있는가".
-//
-// 종류 목록을 코드에 두는 이유는 기능 스위치와 같다 — 종류를 추가할 때
-// 기존 사용자마다 설정 행을 만들어 줄 필요가 없다. 저장된 값이 없으면 기본값을 쓴다.
+// 알림 종류와 사용자가 끌 수 있는지 여부. 저장된 값이 없으면 기본값을 쓴다.
 
 export interface NotificationKindDefinition {
   label: string;
@@ -10,9 +6,7 @@ export interface NotificationKindDefinition {
   /** 저장된 값이 없을 때 */
   defaultEnabled: boolean;
   /**
-   * 사용자가 끌 수 있는 종류인지.
-   * 운영 공지(SYSTEM)는 끌 수 없다 — 점검·계정 관련 안내를 못 받으면
-   * 알림을 껐다는 사실조차 모른 채 서비스가 멈춘 것처럼 보인다.
+   * 사용자가 끌 수 있는 종류인지. 운영 공지(SYSTEM)는 끌 수 없다.
    */
   configurable: boolean;
 }
@@ -94,8 +88,7 @@ export function resolveNotificationSettings(
   const state = {} as Record<NotificationKind, boolean>;
   for (const kind of NOTIFICATION_KIND_KEYS) {
     const def = NOTIFICATION_KINDS[kind];
-    // 끌 수 없는 종류는 저장값이 무엇이든 켜진 것으로 본다 —
-    // 예전에 저장된 값이나 직접 만든 요청 때문에 공지가 막히면 안 된다.
+    // 끌 수 없는 종류는 저장값과 무관하게 켜진 것으로 본다.
     state[kind] = def.configurable ? (stored[kind] ?? def.defaultEnabled) : true;
   }
   return state;

@@ -1,4 +1,3 @@
-// server/src/services/point.service.ts
 import crypto from 'crypto';
 import { Op, Transaction } from 'sequelize';
 import { sequelize } from '../config/sequelize';
@@ -23,15 +22,7 @@ function dayRange(day: string): { start: Date; end: Date } {
   return { start, end };
 }
 
-/**
- * 가중치 추첨.
- *
- * Math.random 대신 crypto 를 쓰는 이유: 포인트가 걸린 추첨이라 예측 가능성이
- * 남아 있으면 안 된다. 결과는 오직 서버에서만 정해진다 — 화면이 보내온 값은
- * 어떤 것도 결과에 관여하지 않는다.
- *
- * 반환값이 null 이면 꽝(확률 합이 100 미만일 때 남는 몫)이다.
- */
+/** 가중치 추첨. 결과는 서버에서만 정한다. 반환값이 null 이면 꽝이다. */
 export function drawPrize(
   prizes: LotteryPrize[],
   rng: () => number = cryptoRandom
@@ -53,20 +44,14 @@ function cryptoRandom(): number {
   return crypto.randomInt(0, 2 ** 30) / 2 ** 30;
 }
 
-/**
- * 잔액 행이 있는지 보장한다. 트랜잭션 '밖에서' 부른다.
- *
- * 트랜잭션 안에서 findOrCreate 를 부르면 Sequelize 가 세이브포인트를 따로 열고,
- * SQLite 에서는 그 중첩이 같은 커넥션의 쓰기 잠금과 부딪혀 SQLITE_BUSY 로 떨어졌다
- * (버튼을 빠르게 두 번 누르면 500). 행 만들기는 잠금이 필요 없는 일이므로 밖으로 뺀다.
- */
+/** 잔액 행 보장. 반드시 트랜잭션 밖에서 호출한다(안에서 하면 SQLite 에서 SQLITE_BUSY). */
 async function ensureBalanceRow(userId: string): Promise<void> {
   const existing = await UserPoint.findByPk(userId, { attributes: ['UserId'] });
   if (existing) return;
   try {
     await UserPoint.create({ UserId: userId });
   } catch {
-    // 동시에 둘이 만들면 한쪽은 중복 오류 — 이미 있으면 그걸로 충분하다
+    // 동시 생성 시 중복 오류는 무시한다
   }
 }
 
@@ -78,18 +63,9 @@ async function lockBalance(userId: string, t: Transaction): Promise<UserPointMod
 }
 
 /**
- * 두 사람의 잔액을 늘 같은 차례로 잠근다.
- *
- * A→B 와 B→A 두 건이 같은 순간에 처리되면, 서로 상대가 쥔 잠금을 기다리며 멈춘다(교착).
- * 아이디 순으로 고정하면 그런 짝이 아예 생기지 않는다.
- *
- * 포인트가 움직이지 않는 쪽도 함께 잠그는 쓰임이 있다. 퇴근 공격은 대상의 포인트를
- * 건드리지 않지만, '이 사람에게 이미 걸린 공격이 있는가' 를 세는 동안 다른 공격자가
- * 끼어들지 못하게 하려면 잠금이 대상 쪽에도 있어야 한다 — 세는 것만으로는 아무도
- * 막히지 않는다. 잔액 행은 그 사람을 가리키는, 이미 있는 유일한 잠금 지점이다.
- *
- * 두 사람 모두 ensureBalanceRow 로 행이 만들어져 있어야 한다. 없으면 lockBalance 가
- * 500 을 던진다.
+ * 두 사람의 잔액 행을 아이디 순으로 잠근다(교착 방지).
+ * 포인트가 움직이지 않는 쪽도 함께 잠가야 중간에 다른 요청이 끼어들지 않는다.
+ * 두 사람 모두 ensureBalanceRow 가 선행되어야 한다.
  */
 async function lockBothBalances(
   a: string,
@@ -102,27 +78,13 @@ async function lockBothBalances(
   return { [first]: firstRow, [second]: secondRow };
 }
 
-/**
- * 쓰기 잠금이 겹쳤을 때만 잠깐 쉬었다 다시 한다.
- *
- * SQLite 는 잠금이 잡혀 있으면 기다리지 않고 SQLITE_BUSY 로 실패한다(MySQL/PG 는
- * 대기하다 데드락이면 실패). 뽑기 버튼을 연타하면 쉽게 겹치므로 짧게 다시 시도한다.
- *
- * 한도 초과(AppError) 같은 정상적인 거절은 재시도하지 않는다.
- */
+/** 쓰기 잠금 충돌 여부. 한도 초과 같은 AppError 는 재시도 대상이 아니다. */
 function isLockConflict(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
   return /SQLITE_BUSY|database is locked|deadlock|Lock wait timeout/i.test(message);
 }
 
-/**
- * 잠금을 기다리다 시간이 초과된 경우.
- *
- * 교착(deadlock)은 DB 가 곧바로 한쪽을 물러나게 하므로 여러 번 다시 해도 금방 끝난다.
- * 그런데 '잠금 대기 시간 초과' 는 한 번에 기본 50초를 기다린 뒤에야 실패한다 — 이것까지
- * 열두 번 다시 하면 요청 하나가 10분 가까이 연결을 붙잡고, 그동안 다른 포인트 요청이
- * 연결을 못 얻어 함께 느려진다. 이 경우는 한 번만 더 해 보고 포기한다.
- */
+/** 잠금 대기 시간 초과. 한 번에 50초를 붙잡으므로 재시도 횟수를 따로 줄인다. */
 function isLockWaitTimeout(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
   return /Lock wait timeout/i.test(message);
@@ -135,7 +97,7 @@ async function withLockRetry<T>(run: () => Promise<T>, attempts = 12): Promise<T
     } catch (err) {
       const limit = isLockWaitTimeout(err) ? Math.min(attempts, 2) : attempts;
       if (i >= limit - 1 || !isLockConflict(err)) throw err;
-      // 조금씩 늘려 가며 기다린다. 같은 순간에 몰린 요청이 다시 같은 순간에 몰리지 않도록 흔든다.
+      // 지수적 대기에 흔들림을 더해 재충돌을 줄인다
       const wait = Math.min(20 * (i + 1), 150) + Math.floor(Math.random() * 40);
       await new Promise(resolve => setTimeout(resolve, wait));
     }
@@ -160,14 +122,7 @@ async function apply(
   return next;
 }
 
-/**
- * 포인트를 움직이는 다른 서비스(대결·퇴근 공격)가 같은 잠금 규칙을 그대로 쓰도록 내보낸다.
- *
- * 복사해서 두 벌로 두면 한쪽만 고쳐졌을 때 잔액과 원장이 어긋난다 —
- * 그 어긋남은 테스트가 아니라 사용자의 잔액에서 처음 발견된다.
- * (lockBothBalances 가 실제로 그렇게 갈라져 있었다. 대결에만 사적으로 있어서,
- *  공격은 잠금 없이 세기만 하고 있었다.)
- */
+// 포인트를 움직이는 다른 서비스가 같은 잠금 규칙을 쓰도록 내보낸다. 복제하지 말 것.
 export { ensureBalanceRow, lockBalance, lockBothBalances, apply, withLockRetry };
 
 export const pointService = {
@@ -191,31 +146,22 @@ export const pointService = {
       drawsLeft: Math.max(0, dailyLimit - drawsToday),
       attendanceBonus,
       drawCost,
-      /** 지금 잔액으로 한 번 더 뽑을 수 있는가 (비용이 0 이면 항상 true) */
+      /** 지금 잔액으로 한 번 더 뽑을 수 있는가 */
       canAfford: (row?.balance ?? 0) >= drawCost,
       attendanceClaimedToday: row?.lastAttendanceOn === day,
-      // 확률표는 숨길 이유가 없다 — 오히려 공개해야 신뢰할 수 있다
       prizes,
       blankWeight: blankWeight(prizes),
     };
   },
 
-  /**
-   * 하루 한 번 출석 보너스.
-   *
-   * lastAttendanceOn 을 잠근 채 확인하고 바꾸므로, 같은 사람이 여러 창에서
-   * 동시에 눌러도 하루 한 번만 지급된다.
-   */
+  /** 하루 한 번 출석 보너스. lastAttendanceOn 을 잠근 채 확인·갱신해 중복 지급을 막는다. */
   async claimAttendance(
     userId: string
   ): Promise<{ granted: boolean; amount: number; balance: number }> {
     const { attendanceBonus } = getLotterySettings();
     await ensureBalanceRow(userId);
 
-    // 이미 오늘 받았으면 잠금까지 갈 것 없이 돌아간다.
-    // 토큰 갱신마다 불리는 자리라, 대부분의 호출은 "이미 받음" 이다 —
-    // 그때마다 쓰기 트랜잭션을 여는 건 아무것도 바꾸지 않으면서 잠금만 붙잡는 일이다.
-    // 판단의 근거는 아래 트랜잭션 안에서 다시 확인하므로, 여기서 틀려도 이중 지급은 없다.
+    // 대부분의 호출은 이미 받은 경우라 잠금 전에 걸러낸다. 아래 트랜잭션에서 다시 확인한다.
     const seen = await UserPoint.findByPk(userId, {
       attributes: ['UserId', 'balance', 'lastAttendanceOn'],
     });
@@ -237,15 +183,10 @@ export const pointService = {
     );
   },
 
-  /**
-   * 로또 한 번.
-   *
-   * 하루 한도 확인과 지급을 같은 트랜잭션·같은 잠금 안에서 한다. 확인만 밖에서 하면
-   * 동시에 열 번을 넘겨 뽑을 수 있다(확인과 기록 사이에 다른 요청이 끼어든다).
-   */
+  /** 로또 한 번. 하루 한도 확인과 지급을 같은 트랜잭션·잠금 안에서 해야 한도를 넘지 않는다. */
   async draw(userId: string): Promise<{
     amount: number;
-    /** 이번 뽑기에 든 비용 (0 이면 공짜) */
+    /** 이번 뽑기에 든 비용 */
     cost: number;
     isBlank: boolean;
     balance: number;
@@ -275,8 +216,7 @@ export const pointService = {
           );
         }
 
-        // 참가비. 잔액 확인과 차감을 같은 잠금 안에서 한다 —
-        // 밖에서 확인하면 빠르게 여러 번 눌렀을 때 잔액보다 많이 쓸 수 있다.
+        // 참가비. 잔액 확인과 차감은 같은 잠금 안에서 해야 한다.
         const cost = Math.max(0, drawCost);
         if (cost > 0) {
           if (row.balance < cost) {
@@ -313,7 +253,7 @@ export const pointService = {
       where: { UserId: userId },
       order: [['id', 'DESC']],
       limit: safeLimit,
-      // 위쪽 상한이 없으면 아주 큰 page 에서 offset 이 지수 표기가 되어 DB 오류가 난다
+      // page 상한이 없으면 offset 이 지수 표기가 되어 DB 오류가 난다
       offset: (Math.min(1000, Math.max(1, page)) - 1) * safeLimit,
     });
     return {
@@ -332,25 +272,15 @@ export const pointService = {
   },
 
   /**
-   * 포인트 순위 — 상위 몇 명과 호출한 본인의 자리.
-   *
-   * 비활성·삭제된 계정은 뺀다. 지워진 사람이 순위표에 되살아나면 안 된다.
-   * 거르는 일은 조인에서 한다 — 가져온 뒤 걸러 내면 빠진 사람이 상위 자리를
-   * 차지한 채 목록만 짧아진다. (User 는 paranoid 라 삭제된 행은 조인에서 빠지고,
-   * isActive·isDeleted 기준은 다른 사용자 목록들과 같게 맞춘다.)
-   *
-   * 같은 잔액일 때의 차례는 UserId 로 고정한다. 정하지 않으면 새로고침할 때마다
-   * 등수가 뒤바뀐다.
-   *
-   * 본인 순위는 상위 목록 밖이어도 늘 함께 내려준다 — 위쪽만 보이면 대부분의
-   * 사람에게는 남의 이야기가 된다.
+   * 포인트 순위 — 상위 목록과 본인의 자리.
+   * 비활성·삭제 계정 제외는 조인에서 해야 한다(가져온 뒤 거르면 목록만 짧아진다).
+   * 동점 순서는 UserId 로 고정해야 새로고침해도 등수가 바뀌지 않는다.
    */
   async ranking(userId: string) {
     /** 순위표에 보이는 사람의 조건 */
     const visible = {
       model: User,
       as: 'user',
-      // 사진도 함께 — 순위표에 이름만 있으면 누가 누군지 한눈에 들어오지 않는다
       attributes: ['id', 'name', 'avatar'],
       required: true,
       where: { isActive: true, isDeleted: false },
@@ -366,7 +296,6 @@ export const pointService = {
         ['balance', 'DESC'],
         ['UserId', 'ASC'],
       ],
-      // 상한은 서버가 정한다 — 화면이 정하게 두면 한 번에 전부 끌어갈 수 있다
       limit: 10,
     });
 
@@ -384,8 +313,7 @@ export const pointService = {
     const already = top.find(t => t.userId === userId);
     if (already) return { top, me: already };
 
-    // 나보다 위에 있는 사람 수 + 1. 같은 잔액이면 UserId 가 앞서는 쪽이 위다 —
-    // 목록의 정렬 기준과 같아야 등수와 자리가 어긋나지 않는다.
+    // 나보다 위에 있는 사람 수 + 1. 정렬 기준과 동일해야 등수가 어긋나지 않는다.
     const above = await UserPoint.count({
       include: [visible],
       where: {

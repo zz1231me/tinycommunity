@@ -24,7 +24,7 @@ interface BoardManagePanelProps {
 
 const DEFAULT_COLOR = DEFAULT_TAG_COLOR;
 
-/** 색상 빠른 선택 — 추천 팔레트 스와치 + 직접 선택(커스텀). 매번 수동으로 고르는 번거로움 해소. */
+/** 색상 빠른 선택 — 추천 팔레트 스와치 + 직접 선택 */
 function ColorSwatches({ value, onChange }: { value: string; onChange: (c: string) => void }) {
   const isPreset = TAG_COLOR_PALETTE.some(c => c.toLowerCase() === value.toLowerCase());
   return (
@@ -44,7 +44,6 @@ function ColorSwatches({ value, onChange }: { value: string; onChange: (c: strin
           style={{ backgroundColor: c }}
         />
       ))}
-      {/* 커스텀 색상 직접 선택 */}
       <label
         title="직접 선택"
         className={`relative w-6 h-6 rounded-full cursor-pointer overflow-hidden border border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center ${
@@ -74,13 +73,11 @@ export function BoardManagePanel({
   onClose,
   onBoardUpdated,
 }: BoardManagePanelProps) {
-  // 게시판 정보
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
   const [taskEnabled, setTaskEnabled] = useState(initialTaskEnabled);
   const [savingInfo, setSavingInfo] = useState(false);
 
-  // 태그
   const [tags, setTags] = useState<Tag[]>([]);
   const [loadingTags, setLoadingTags] = useState(true);
   const [newTag, setNewTag] = useState({ name: '', color: suggestTagColor([]) });
@@ -99,20 +96,13 @@ export function BoardManagePanel({
   const [managerSearch, setManagerSearch] = useState('');
   const [addingManagerId, setAddingManagerId] = useState<string | null>(null);
   const [removeManagerTarget, setRemoveManagerTarget] = useState<BoardManagerRecord | null>(null);
-  // 후보 목록을 이미 받았는지. 상태가 아니라 ref 인 이유 —
-  // 상태로 두고 effect 에서 켜면, 그 값이 의존성이라 effect 가 정리되면서 방금 보낸
-  // 요청의 응답을 스스로 버린다. 키를 한 글자 더 쳐도 같은 일이 일어난다.
+  // 상태가 아니라 ref 다. 상태로 두면 effect 의존성이 되어 방금 보낸 요청의 응답을 스스로 버린다.
   const candidatesLoadedRef = useRef(false);
 
   const panelRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
-  // 접근성: ESC 닫기 + 첫 포커스(닫기 단추) + Tab 가두기.
-  // 손으로 하던 앞의 둘을 공용 훅으로 옮기고, 없던 가두기를 함께 얻는다.
-  // 부모(PostList)가 열 때만 그리므로 항상 켠다.
-  //
-  // 맨 아래 확인 대화상자 둘은 이 패널 바깥(오버레이 밑)에 그려진다. 그래서 가두기의
-  // 대상에서 빠지고, 그쪽이 뜨면 자기 단추 둘을 따로 가둔다 — 서로 싸우지 않는다.
+  // ESC 닫기 + 첫 포커스 + Tab 가두기. 맨 아래 확인 대화상자는 오버레이 밖이라 따로 가둔다.
   useFocusTrap(panelRef, onClose, true, closeBtnRef);
 
   useEffect(() => {
@@ -220,12 +210,7 @@ export function BoardManagePanel({
     }
   };
 
-  // ── 게시판 담당자 ─────────────────────────────────────────────────────────
-  //
-  // 이 패널은 담당자 본인도 연다(canManage = admin · manager · 그 게시판 담당자).
-  // 그런데 서버는 담당자 추가·삭제를 admin 전용으로 막아 둔다. 그대로 노출하면
-  // 눌러도 403 이 나는 버튼이 보이고, 반대로 서버를 열어 주면 담당자가 스스로
-  // 담당자를 늘릴 수 있게 된다. 그래서 화면에서도 관리자에게만 보인다.
+  // 담당자 추가·삭제는 서버가 admin 전용이라 화면에서도 관리자에게만 보인다.
   useEffect(() => {
     if (!canAssignManagers) return;
     let mounted = true;
@@ -246,10 +231,7 @@ export function BoardManagePanel({
   }, [boardType, canAssignManagers]);
 
   // 후보(전체 사용자)는 검색을 시작할 때 한 번만 받는다.
-  // 패널을 열 때마다 받으면, 담당자를 건드릴 생각이 없는 사람도 그 비용을 치른다.
-  //
-  // effect 가 아니라 입력 시점에 부른다 — effect 로 두면 키 입력마다 정리·재실행되면서
-  // 방금 보낸 요청의 응답이 버려진다. 실패하면 표시를 되돌려 다음 입력에서 다시 시도한다.
+  // effect 가 아니라 입력 시점에 부른다. effect 로 두면 키 입력마다 재실행되며 응답이 버려진다.
   const ensureCandidates = () => {
     if (candidatesLoadedRef.current) return;
     candidatesLoadedRef.current = true;
@@ -297,8 +279,7 @@ export function BoardManagePanel({
     }
   };
 
-  // 검색어를 넣었을 때만 후보를 보여 준다 — 패널이 좁아 전체 목록을 상시 펼치면
-  // 태그 영역이 밀려난다. 이미 담당자인 사람은 후보에서 뺀다.
+  // 검색어를 넣었을 때만 후보를 보여 준다. 이미 담당자인 사람은 뺀다.
   const managerUserIds = new Set(managers.map(m => m.userId));
   const managerQuery = managerSearch.trim().toLowerCase();
   const managerCandidates = managerQuery
@@ -332,7 +313,6 @@ export function BoardManagePanel({
         transition={{ duration: 0.15 }}
         className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto"
       >
-        {/* 헤더 */}
         <div className="sticky top-0 bg-white dark:bg-slate-800 px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <h2 className="card-title">게시판 관리</h2>
           <button
@@ -359,7 +339,6 @@ export function BoardManagePanel({
         </div>
 
         <div className="p-6 space-y-8">
-          {/* 게시판 기본정보 */}
           <section className="space-y-3">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">기본 정보</h3>
             <div>
@@ -388,7 +367,6 @@ export function BoardManagePanel({
                 className={`${inputCls} resize-none`}
               />
             </div>
-            {/* 게시판 용도 — 이 게시판을 실제로 쓰는 사람이 정하는 편이 맞다 */}
             <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
               <input
                 type="checkbox"
@@ -417,14 +395,12 @@ export function BoardManagePanel({
 
           <hr className="border-slate-200 dark:border-slate-700" />
 
-          {/* 태그 관리 */}
           <section className="space-y-3">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               태그 관리
               <span className="ml-1.5 text-xs font-normal text-slate-400">이 게시판 전용</span>
             </h3>
 
-            {/* 새 태그 추가 — 색상은 자동 추천(팔레트 스와치 + 직접 선택) */}
             <div className="space-y-2">
               <ColorSwatches
                 value={newTag.color}
@@ -458,7 +434,6 @@ export function BoardManagePanel({
               </div>
             </div>
 
-            {/* 태그 목록 */}
             {loadingTags ? (
               <p className="text-sm text-slate-400 py-2">태그를 불러오는 중...</p>
             ) : tags.length === 0 ? (
@@ -551,7 +526,6 @@ export function BoardManagePanel({
                   있습니다.
                 </p>
 
-                {/* 추가 — 이름이나 아이디로 찾아 누르면 바로 지정된다 */}
                 <div className="space-y-2">
                   <input
                     type="text"
@@ -589,7 +563,6 @@ export function BoardManagePanel({
                   )}
                 </div>
 
-                {/* 현재 담당자 */}
                 {loadingManagers ? (
                   <p className="py-2 text-sm text-slate-400">담당자를 불러오는 중...</p>
                 ) : managers.length === 0 ? (

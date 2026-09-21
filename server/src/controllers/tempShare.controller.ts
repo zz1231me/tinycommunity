@@ -1,6 +1,4 @@
-// server/src/controllers/tempShare.controller.ts
-// 임시 파일 공유: 업로드(인증) → 공유 링크 반환. 링크는 TTL(기본 15분) 동안 공개 접근 가능,
-// 만료되면 스케줄러가 디스크 파일 + 레코드를 삭제한다.
+// 임시 파일 공유. 링크는 TTL 동안 공개 접근이 가능하고 만료되면 스케줄러가 지운다.
 import { Response, Request } from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -19,7 +17,7 @@ function ensureTempDir(): void {
 }
 ensureTempDir();
 
-// 업로드 (multer가 파일을 uploads/temp에 저장한 뒤 호출됨)
+// multer 가 uploads/temp 에 저장한 뒤 호출된다
 export const uploadTempFile = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as unknown as AuthRequest;
@@ -30,8 +28,7 @@ export const uploadTempFile = async (req: Request, res: Response): Promise<void>
     }
     const expiresAt = new Date(Date.now() + TEMP_TTL_MS);
     const record = await TempShare.create({
-      // 열 너비(255·150)에 맞춰 자른다. SQLite 는 그냥 넣지만 MySQL 은 거절해 500 이 된다.
-      // 이모지 한가운데를 자르지 않는 clampText 를 쓴다 — 받을 때 파일 이름을 인코딩한다.
+      // 열 너비에 맞춰 자른다. MySQL 은 초과분을 거절한다.
       originalName: clampText(file.originalname, 255),
       storedName: file.filename,
       size: file.size,
@@ -52,7 +49,7 @@ export const uploadTempFile = async (req: Request, res: Response): Promise<void>
   }
 };
 
-// 공개 다운로드 (토큰만으로 접근, 인증 불필요). 만료 시 410.
+// 토큰만으로 접근하는 공개 다운로드. 만료면 410.
 export const downloadTempFile = async (req: FlatRequest, res: Response): Promise<void> => {
   try {
     const { token } = req.params;
@@ -62,13 +59,13 @@ export const downloadTempFile = async (req: FlatRequest, res: Response): Promise
       return;
     }
     if (record.expiresAt.getTime() <= Date.now()) {
-      // 만료 — 즉시 정리
+      // 만료된 것은 즉시 정리한다
       void deleteRecord(record);
       sendError(res, 410, '만료된 링크입니다.');
       return;
     }
     const filePath = path.join(tempDir, record.storedName);
-    // 경로 안전: storedName은 서버 생성값이지만 방어적으로 tempDir 경계 확인
+    // storedName 은 서버 생성값이지만 tempDir 경계를 다시 확인한다
     if (!path.resolve(filePath).startsWith(tempDir + path.sep) || !fs.existsSync(filePath)) {
       sendError(res, 404, '파일을 찾을 수 없습니다.');
       return;
@@ -96,7 +93,7 @@ async function deleteRecord(record: TempShare): Promise<void> {
   await record.destroy().catch(() => {});
 }
 
-// 만료된 임시 파일 정리 — 스케줄러가 주기 호출.
+// 만료된 임시 파일 정리. 스케줄러가 주기적으로 부른다.
 export async function cleanupExpiredTempShares(): Promise<number> {
   try {
     const expired = await TempShare.findAll({ where: { expiresAt: { [Op.lte]: new Date() } } });

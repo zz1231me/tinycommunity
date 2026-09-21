@@ -10,13 +10,8 @@ import { getCommentSettings } from '../utils/settingsCache';
 import { sanitizeHtmlContent } from '../utils/contentRenderer';
 import { sequelize } from '../config/sequelize';
 
-// Note: User is still needed for the include in findByPk responses
-
 export class CommentService extends BaseService {
-  /**
-   * 댓글 생성
-   * authorName: controller가 req.user.name 을 전달하므로 별도 User 조회 불필요
-   */
+  /** 댓글 생성. authorName 은 컨트롤러가 넘기므로 User 를 따로 조회하지 않는다. */
   async createComment(
     postId: string,
     userId: string,
@@ -27,7 +22,7 @@ export class CommentService extends BaseService {
     const { maxDepth, maxCount } = getCommentSettings();
 
     const newComment = await sequelize.transaction(async t => {
-      // 게시글당 최대 댓글 수 체크 (DoS 방지) — 관리자 설정값 사용
+      // 게시글당 최대 댓글 수는 관리자 설정값을 쓴다.
       const currentCount = await Comment.count({
         where: { PostId: postId },
         transaction: t,
@@ -36,7 +31,7 @@ export class CommentService extends BaseService {
         throw new AppError(400, `이 게시글의 댓글은 최대 ${maxCount}개까지 작성할 수 있습니다.`);
       }
 
-      // 대댓글 깊이 체크 — LOCK.UPDATE으로 부모 존재/깊이 TOCTOU 방지
+      // LOCK.UPDATE 로 부모 존재·깊이의 TOCTOU 를 막는다.
       let depth = 0;
       let path = '';
       if (parentId !== undefined && parentId !== null) {
@@ -51,7 +46,7 @@ export class CommentService extends BaseService {
         if (String(parentComment.PostId) !== String(postId)) {
           throw new AppError(400, '다른 게시글의 댓글에는 대댓글을 달 수 없습니다.');
         }
-        // depth는 0-based이므로 maxDepth단계 = depth(maxDepth-1)까지 허용
+        // depth 는 0-based 라 maxDepth 단계는 depth(maxDepth-1) 까지다.
         if ((parentComment.depth ?? 0) >= maxDepth - 1) {
           throw new AppError(
             400,
@@ -68,10 +63,7 @@ export class CommentService extends BaseService {
 
       return Comment.create(
         {
-          // 댓글도 HTML 로 다룬다(길이를 셀 때 태그를 걷어내는 것이 그 증거다).
-          // 그런데 이 앱의 다른 본문(위키·일정·게시글)과 달리 여기만 서버에서 정화하지
-          // 않고 화면의 DOMPurify 에 기대고 있었다. 화면을 거치지 않는 소비자가 하나라도
-          // 생기면(알림 미리보기·내보내기·미리보기 카드) 그 순간 XSS 가 된다.
+          // 댓글도 HTML 이므로 화면의 DOMPurify 에만 기대지 않고 서버에서 정화한다.
           content: sanitizeHtmlContent(content.trim()),
           PostId: postId,
           UserId: userId,
@@ -84,7 +76,6 @@ export class CommentService extends BaseService {
       );
     });
 
-    // 응답용 데이터 조회 — 트랜잭션 성공 후 User 포함 재조회
     const commentWithUser = await Comment.findByPk(newComment.id, {
       attributes: [
         'id',
@@ -145,14 +136,11 @@ export class CommentService extends BaseService {
       { model: User, as: 'user', attributes: ['id', 'name', 'avatar'], required: false },
     ];
 
-    // 1) 살아있는 댓글 조회
     const live = await Comment.findAll({
       where: { PostId: postId },
       attributes: ATTRS,
       include: userInclude,
-      // DoS 방지: 게시글당 최대 개수는 관리자 설정값 사용.
-      // 정렬을 함께 걸어야 상한에 걸렸을 때 잘려 나가는 대상이 정해진다 —
-      // 정렬이 없으면 DB 가 임의 순서로 주고, 최종 정렬은 아래에서 다시 한다.
+      // 상한에 걸렸을 때 잘려 나가는 대상이 정해지도록 정렬을 함께 건다.
       order: [['id', 'ASC']],
       limit: getCommentSettings().maxCount,
     });
@@ -163,8 +151,7 @@ export class CommentService extends BaseService {
     }));
     const present = new Set<number>(result.map(c => c.id as number));
 
-    // 2) 삭제된 '부모' 댓글 복원 — 자식이 살아있으면 트리 계층 보존을 위해 마스킹해 포함한다.
-    //    부모가 또 삭제된 부모를 가질 수 있어 더 이상 누락이 없을 때까지 반복(상한 10회 안전장치).
+    // 자식이 살아 있으면 삭제된 부모도 마스킹해 넣는다. 부모의 부모도 있을 수 있어 반복한다.
     for (let depth = 0; depth < 10; depth += 1) {
       const missing = [
         ...new Set(
@@ -179,7 +166,7 @@ export class CommentService extends BaseService {
         where: { id: { [Op.in]: missing }, PostId: postId },
         attributes: [...ATTRS, 'deletedAt'],
         include: userInclude,
-        paranoid: false, // 소프트 삭제된 부모도 포함
+        paranoid: false,
       });
       if (parents.length === 0) break;
 
@@ -187,7 +174,7 @@ export class CommentService extends BaseService {
         const plain = p.get({ plain: true }) as Record<string, unknown>;
         present.add(plain.id as number);
         if (plain.deletedAt) {
-          // 삭제된 부모 — 내용/작성자 마스킹 + isDeleted 플래그(클라가 액션 없이 음영 처리)
+          // 삭제된 부모는 내용·작성자를 가리고 isDeleted 로 표시한다.
           result.push({
             ...plain,
             content: '삭제된 댓글입니다.',
@@ -201,14 +188,13 @@ export class CommentService extends BaseService {
             isDeleted: true,
           });
         } else {
-          // 삭제는 아니나 limit으로 잘려 빠졌던 부모 — 그대로 복원
+          // limit 에 잘려 빠졌던 부모는 그대로 복원한다.
           result.push({ ...plain, deletedAt: undefined, isDeleted: false });
         }
       }
     }
 
-    // 2.5) 현재 사용자의 좋아요 여부 — 표시된 댓글 id에 대해 1쿼리로 일괄 조회 후 liked 플래그 부여
-    //      (삭제 placeholder는 항상 false. 비로그인은 모두 false)
+    // 좋아요 여부는 표시된 댓글 id 를 한 번에 조회해 채운다.
     if (userId) {
       const likableIds = result.filter(c => !c.isDeleted).map(c => c.id as number);
       const likedIds =
@@ -229,8 +215,7 @@ export class CommentService extends BaseService {
       for (const c of result) c.liked = false;
     }
 
-    // 2.6) 이모지 리액션 — 표시 댓글의 리액션을 1쿼리로 모아 {emoji,count,reactedByMe}[]로 집계
-    //      (비로그인도 count는 보이되 reactedByMe는 항상 false. 삭제 placeholder는 빈 배열)
+    // 이모지 리액션도 한 번에 모아 집계한다. 비로그인은 reactedByMe 가 항상 false 다.
     const reactableIds = result.filter(c => !c.isDeleted).map(c => c.id as number);
     const reactionByComment = new Map<number, Map<string, { count: number; me: boolean }>>();
     if (reactableIds.length > 0) {
@@ -264,7 +249,7 @@ export class CommentService extends BaseService {
         : [];
     }
 
-    // 3) 정렬 — 마스킹 부모를 끼워넣었으므로 정렬 기준에 맞춰 다시 정렬(클라 트리 빌더의 root 순서 보존)
+    // 마스킹 부모를 끼워 넣었으므로 정렬 기준에 맞춰 다시 정렬한다.
     const byTime = (a: Record<string, unknown>, b: Record<string, unknown>): number =>
       new Date(a.createdAt as string).getTime() - new Date(b.createdAt as string).getTime();
     if (sortBy === 'newest') {
@@ -278,9 +263,6 @@ export class CommentService extends BaseService {
     return result;
   }
 
-  /**
-   * 댓글 수정
-   */
   async updateComment(
     commentId: number,
     userId: string,
@@ -288,14 +270,13 @@ export class CommentService extends BaseService {
     content: string
   ): Promise<CommentInstance> {
     const updatedComment = await sequelize.transaction(async t => {
-      // LOCK.UPDATE으로 동시 수정 TOCTOU 방지
+      // LOCK.UPDATE 로 동시 수정의 TOCTOU 를 막는다.
       const comment = await Comment.findByPk(commentId, { transaction: t, lock: t.LOCK.UPDATE });
 
       if (!comment) {
         throw new AppError(404, '댓글을 찾을 수 없습니다.');
       }
 
-      // 권한 확인 (admin, manager 또는 작성자 본인)
       const isPrivileged = isAdminOrManager(userRole);
       const isOwner = comment.UserId === userId;
 
@@ -303,11 +284,10 @@ export class CommentService extends BaseService {
         throw new AppError(403, '수정 권한이 없습니다.');
       }
 
-      // beforeUpdate 훅이 isEdited/editedAt 자동 설정하므로 content만 전달
-      // 정화는 만들 때와 같은 자리에서 한다 — 한쪽만 하면 수정으로 우회된다
+      // beforeUpdate 훅이 isEdited/editedAt 을 채우므로 content 만 넘긴다.
+      // 정화는 생성과 같은 자리에서 한다. 한쪽만 하면 수정으로 우회된다.
       await comment.update({ content: sanitizeHtmlContent(content.trim()) }, { transaction: t });
 
-      // 응답용 데이터 조회
       const updated = await Comment.findByPk(commentId, {
         attributes: [
           'id',
@@ -344,19 +324,15 @@ export class CommentService extends BaseService {
     return updatedComment;
   }
 
-  /**
-   * 댓글 삭제
-   */
   async deleteComment(commentId: number, userId: string, userRole: string): Promise<void> {
     await sequelize.transaction(async t => {
-      // LOCK.UPDATE으로 동시 삭제 TOCTOU 방지 (updateComment와 동일한 패턴)
+      // LOCK.UPDATE 로 동시 삭제의 TOCTOU 를 막는다.
       const comment = await Comment.findByPk(commentId, { transaction: t, lock: t.LOCK.UPDATE });
 
       if (!comment) {
         throw new AppError(404, '댓글을 찾을 수 없습니다.');
       }
 
-      // 권한 확인 (admin, manager 또는 작성자 본인)
       const isPrivileged = isAdminOrManager(userRole);
       const isOwner = comment.UserId === userId;
 
@@ -364,15 +340,11 @@ export class CommentService extends BaseService {
         throw new AppError(403, '삭제 권한이 없습니다.');
       }
 
-      // 좋아요 정리: Comment는 paranoid(소프트 삭제)라 comment.destroy()가 FK CASCADE를
-      // 발동시키지 않으므로, 남는 CommentLike 행을 같은 트랜잭션에서 명시적으로 제거한다.
-      // (소프트 삭제된 댓글은 좋아요 토글 불가(404)이고 표시 시 likeCount 0으로 마스킹되지만,
-      //  고아 행이 쌓이지 않도록 정리)
+      // Comment 는 soft delete 라 CASCADE 가 돌지 않으므로 CommentLike 를 직접 지운다.
       await CommentLike.destroy({ where: { CommentId: commentId }, transaction: t });
-      // 이모지 리액션도 동일 이유로 명시적 정리(고아 행 방지)
+      // 이모지 리액션도 같은 이유로 직접 지운다.
       await CommentReaction.destroy({ where: { CommentId: commentId }, transaction: t });
 
-      // soft delete가 model에 설정되어 있으므로 destroy 호출
       await comment.destroy({ transaction: t });
     });
   }

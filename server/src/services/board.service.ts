@@ -28,29 +28,22 @@ export interface PermissionCheckResult {
   reason?: string;
   board?: Board;
   permissions?: { canRead: boolean; canWrite: boolean; canDelete: boolean };
-  /**
-   * 이 게시판을 관리할 수 있는가(관리자·매니저·게시판 담당자).
-   * 여기서 함께 내주는 이유: 이 함수가 이미 BoardManager 를 조회한다.
-   * 화면이 따로 물어보면 같은 판정을 위해 같은 조회가 한 번 더 나간다.
-   */
+  /** 이 게시판을 관리할 수 있는가. 이미 BoardManager 를 조회하므로 함께 내준다. */
   canManage?: boolean;
 }
 
 export class BoardService extends BaseService {
-  // 모든 게시판 목록 조회 (관리자용 포함)
   async getAllBoards() {
     return await Board.findAll({
       order: [['order', 'ASC']],
       where: {
-        isPersonal: false, // 개인 폴더 제외
+        isPersonal: false,
       },
       limit: 100,
     });
   }
 
-  // 사용자가 접근 가능한 게시판 목록 조회
   async getAccessibleBoards(userRole: string): Promise<Board[]> {
-    // 1. 역할에 부여된 게시판 접근 권한 조회
     const accesses = await BoardAccess.findAll({
       where: {
         roleId: userRole,
@@ -73,12 +66,10 @@ export class BoardService extends BaseService {
     return accesses.map(access => access.board).filter((board): board is Board => !!board);
   }
 
-  // 특정 게시판 정보 조회
   async getBoardById(boardId: string) {
     return await Board.findByPk(boardId);
   }
 
-  // 게시판 생성 (관리자용)
   async createBoard(data: {
     id: string;
     name: string;
@@ -106,7 +97,6 @@ export class BoardService extends BaseService {
           { transaction: t }
         );
 
-        // 기본적으로 관리자에게 모든 권한 부여
         await BoardAccess.create(
           {
             boardId: newBoard.id,
@@ -130,7 +120,6 @@ export class BoardService extends BaseService {
     }
   }
 
-  // 게시판 수정
   async updateBoard(
     boardId: string,
     updates: {
@@ -150,8 +139,7 @@ export class BoardService extends BaseService {
     return board;
   }
 
-  // 게시판 표시 순서 일괄 저장 — 전달된 id 배열 순서대로 order를 0,1,2…로 재부여.
-  //    단일 writer(SQLite)라 한 트랜잭션 안에서 각 update에 {transaction}을 넘겨 SQLITE_BUSY를 피한다.
+  // SQLite 는 단일 writer 라 한 트랜잭션 안에서 각 update 에 transaction 을 넘겨야 한다.
   async reorderBoards(orderedIds: string[]) {
     await sequelize.transaction(async t => {
       for (let i = 0; i < orderedIds.length; i++) {
@@ -160,7 +148,6 @@ export class BoardService extends BaseService {
     });
   }
 
-  // 게시판 삭제
   async deleteBoard(boardId: string) {
     const board = await Board.findByPk(boardId);
     if (!board) {
@@ -171,9 +158,7 @@ export class BoardService extends BaseService {
       throw new AppError(403, '개인 폴더는 일반 삭제로 제거할 수 없습니다.');
     }
 
-    // 게시판 내 게시글 첨부파일 목록을 미리 수집 (DB 삭제 후 파일 정리용)
-    // ⚠️ paranoid:false — 아래 Post.destroy(force:true)는 soft-deleted 글까지 hard-delete 하므로,
-    //    postIds도 soft-deleted 글을 포함해야 그 자식(댓글/좋아요 등)까지 정리된다(orphan 방지).
+    // paranoid:false 로 soft-deleted 글까지 모아야 그 자식 행들도 함께 정리된다.
     const posts = await Post.findAll({
       where: { boardType: boardId },
       attributes: ['id', 'attachments'],
@@ -190,26 +175,14 @@ export class BoardService extends BaseService {
               ? (post.attachments as Attachment[])
               : [];
         filesToDelete.push(...attachments);
-      } catch {
-        // 파싱 실패 시 해당 게시글 첨부파일만 건너뜀
-      }
+      } catch {}
     }
 
-    // 게시글 + 게시판 삭제를 한 트랜잭션으로 처리한다(중간 실패 시 롤백).
-    //
-    // Post 는 paranoid 라 force:true 가 없으면 deletedAt 만 채워지고 행이 남아,
-    // Post.boardType 의 FK(onDelete: RESTRICT) 위반으로 board.destroy() 가 실패한다.
-    // 그래서 게시판을 지울 때는 게시글을 hard-delete 한다.
-    //
-    // 자식 데이터(댓글·좋아요·조회기록·북마크·태그)도 직접 정리한다. SQLite 는 FK 를
-    // 강제하지 않아, 정리하지 않으면 사라진 게시글을 가리키는 orphan 행이 남는다.
+    // Post 는 paranoid 라 force:true 가 없으면 행이 남아 FK 위반으로 board.destroy() 가 실패한다.
+    // SQLite 는 FK 를 강제하지 않으므로 자식 데이터도 직접 지운다.
     const postIds = posts.map(p => p.id);
 
-    // 같은 이름으로 교체돼 밀려난 예전 첨부들도 함께 지운다. 반드시 삭제 '전' 에 모은다 —
-    // 이 행들은 게시글이 사라질 때 cascade 로 함께 사라지고, 그러면 어떤 파일이었는지
-    // 되짚을 방법이 없어져 아무도 열 수 없는 파일이 업로드 폴더에 영원히 남는다.
-    // 글 하나를 지우는 경로(post.service)는 이미 이렇게 하고 있었는데, 게시판을 통째로
-    // 지우는 이 경로만 빠져 있었다.
+    // 밀려난 예전 첨부 목록은 삭제 전에 모아야 한다. 삭제 뒤에는 파일명을 되짚을 수 없다.
     if (postIds.length > 0) {
       const versions = await PostAttachmentVersion.findAll({
         where: { postId: { [Op.in]: postIds } },
@@ -221,8 +194,7 @@ export class BoardService extends BaseService {
     await sequelize.transaction(async t => {
       if (postIds.length > 0) {
         const childWhere = { PostId: { [Op.in]: postIds } };
-        // CommentLike는 댓글 soft/hard 삭제로 CASCADE가 보장되지 않으므로(constraints:false+SQLite)
-        // 댓글 id를 먼저 모아 명시 정리한다(deletePost와 동일). IN 변수 상한 회피 위해 청크 분할.
+        // CommentLike 는 CASCADE 가 보장되지 않아 직접 지운다. IN 변수 상한 때문에 청크로 나눈다.
         const comments = await Comment.findAll({
           where: childWhere,
           attributes: ['id'],
@@ -241,22 +213,18 @@ export class BoardService extends BaseService {
         await PostLike.destroy({ where: childWhere, transaction: t });
         await PostRead.destroy({ where: childWhere, transaction: t });
         await PostTag.destroy({ where: childWhere, transaction: t });
-        // 이 글들을 가리키는 알림(댓글/좋아요)도 링크가 죽으므로 정리(deletePost와 동일).
+        // 이 글들을 가리키는 알림도 링크가 죽으므로 함께 지운다.
         await Notification.destroy({
           where: { relatedId: { [Op.in]: postIds } },
           transaction: t,
         });
       }
       await Post.destroy({ where: { boardType: boardId }, transaction: t, force: true });
-      // 게시판 권한(BoardAccess) + 담당자(BoardManager) + 게시판 전용 태그(Tag)도 명시적으로 정리 —
-      // onDelete:CASCADE는 constraints:false + SQLite FK 미강제라 보장되지 않는다. 안 지우면 같은
-      // id로 게시판 재생성 시 옛 권한/담당자/태그가 되살아나 의도치 않게 부활한다.
-      // (PostTag 조인 행은 위 게시글 정리에서 제거됨. 전역 태그(boardId=null)는 영향 없음.)
+      // CASCADE 가 보장되지 않는다. 안 지우면 같은 id 로 게시판을 다시 만들 때 옛 권한이 되살아난다.
       await BoardAccess.destroy({ where: { boardId }, transaction: t });
       await BoardManager.destroy({ where: { boardId }, transaction: t });
       await Tag.destroy({ where: { boardId }, transaction: t });
-      // 구독도 같은 이유로 지운다. 남겨 두면 같은 id 로 게시판을 다시 만들었을 때, 예전에
-      // 구독했던 사람에게 알림이 다시 가기 시작한다 — 그 사람은 구독한 적이 없는 게시판이다.
+      // 구독도 같은 이유로 지운다.
       await Subscription.destroy({
         where: { targetType: 'board', targetId: boardId },
         transaction: t,
@@ -264,7 +232,7 @@ export class BoardService extends BaseService {
       await board.destroy({ transaction: t });
     });
 
-    // 첨부파일 삭제 (DB 삭제 성공 후)
+    // DB 삭제가 끝난 뒤에 파일을 지운다.
     const uploadsRoot = path.resolve(process.cwd(), 'uploads');
     for (const att of filesToDelete) {
       try {
@@ -286,7 +254,6 @@ export class BoardService extends BaseService {
     }
   }
 
-  // 개인 폴더 안전한 생성/조회
   private async findOrCreatePersonalFolder(
     userId: string,
     userName: string
@@ -321,7 +288,6 @@ export class BoardService extends BaseService {
     }
   }
 
-  // 사용자가 접근 가능한 모든 게시판 조회 (일반 게시판 + 개인 폴더)
   async getUserAccessibleBoards(
     userId: string,
     userRole: string,
@@ -329,7 +295,6 @@ export class BoardService extends BaseService {
   ): Promise<AccessibleBoard[]> {
     logInfo('사용자 접근 가능한 게시판 조회', { userId, userName, userRole });
 
-    // 1. 일반 게시판 조회 (역할 기반 권한)
     const generalBoards = await BoardAccess.findAll({
       where: { roleId: userRole, canRead: true },
       include: [
@@ -342,14 +307,13 @@ export class BoardService extends BaseService {
       ],
     });
 
-    // 1b. 담당자로 지정된 게시판 — 역할 권한이 없어도 사이드바에 노출 + 전체 권한 자동 부여
+    // 담당자로 지정된 게시판은 역할 권한이 없어도 노출하고 전체 권한을 준다.
     const managedRecords = await BoardManager.findAll({
       where: { userId },
       include: [{ model: Board, as: 'board', where: { isPersonal: false }, required: true }],
     });
     const generalBoardIds = new Set(generalBoards.filter(a => a.board).map(a => a.board!.id));
 
-    // 2. 개인 폴더 처리
     let personalFolderResult: PersonalFolderResult | null = null;
     try {
       personalFolderResult = await this.findOrCreatePersonalFolder(userId, userName);
@@ -362,7 +326,6 @@ export class BoardService extends BaseService {
       }
     } catch (error) {
       logError('개인 폴더 생성/조회 실패', error, { userId, userName });
-      // 개인 폴더 실패해도 일반 게시판은 반환
     }
 
     const result: AccessibleBoard[] = [
@@ -381,7 +344,6 @@ export class BoardService extends BaseService {
             canDelete: access.canDelete,
           },
         })),
-      // 담당자 게시판 (역할 기반 목록에 없는 것만, 전체 권한)
       ...managedRecords
         .map(rec => (rec as BoardManager & { board?: Board }).board)
         .filter((b): b is Board => !!b && !generalBoardIds.has(b.id))
@@ -418,7 +380,6 @@ export class BoardService extends BaseService {
     return result;
   }
 
-  // 사용자별 게시판 권한 확인 (Helper Logic moved here)
   async checkPermission(
     userId: string,
     userRole: string,
@@ -427,9 +388,8 @@ export class BoardService extends BaseService {
   ): Promise<PermissionCheckResult> {
     const isAdmin = userRole === 'admin';
     const isManager = userRole === 'manager';
-    const prepass = isAdmin || isManager; // 전역 관리자/매니저
+    const prepass = isAdmin || isManager;
 
-    // Board + BoardAccess + BoardManager 쿼리 병렬 실행 (전역 관리자/매니저는 추가 조회 불필요)
     const [board, access, managerRecord] = await Promise.all([
       Board.findByPk(boardId),
       prepass
@@ -438,36 +398,30 @@ export class BoardService extends BaseService {
       prepass ? Promise.resolve(null) : BoardManager.findOne({ where: { boardId, userId } }),
     ]);
 
-    // 0. 존재하지 않는 게시판 체크
     if (!board) {
       return { hasAccess: false, reason: '존재하지 않는 게시판입니다.' };
     }
 
     const allPermissions = { canRead: true, canWrite: true, canDelete: true };
 
-    // 1. 개인 폴더 체크
     if (board?.isPersonal) {
-      // 개인 폴더는 소유자만 모든 권한 가짐
       const hasAccess = board.ownerId === userId;
       return {
         hasAccess,
         reason: hasAccess ? undefined : '개인 공간에는 접근할 수 없습니다.',
         board,
         permissions: hasAccess ? allPermissions : undefined,
-        // 개인 공간은 소유자가 곧 관리자다
         canManage: hasAccess,
       };
     }
 
-    // 해당 게시판의 담당자(BoardManager)는 자기 게시판에 대해 전체 권한을 자동 보유
+    // 게시판 담당자는 그 게시판에 대해 전체 권한을 자동으로 갖는다.
     const isBoardManagerOfThis = managerRecord !== null;
 
-    // 2. 비활성 게시판 접근 차단 (관리자/매니저/해당 게시판 담당자 제외)
     if (!board.isPersonal && !board.isActive && !prepass && !isBoardManagerOfThis) {
       return { hasAccess: false, reason: '비활성화된 게시판입니다.', board };
     }
 
-    // 3. 관리자/매니저/해당 게시판 담당자는 프리패스 (읽기/쓰기/삭제 전체)
     if (prepass || isBoardManagerOfThis) {
       return {
         hasAccess: true,
@@ -477,7 +431,6 @@ export class BoardService extends BaseService {
       };
     }
 
-    // 4. 일반 게시판 권한 체크
     if (!access) {
       return {
         hasAccess: false,
@@ -487,7 +440,6 @@ export class BoardService extends BaseService {
     }
 
     if (!access.canRead) {
-      // 읽기 권한이 없으면 아예 접근 불가
       return {
         hasAccess: false,
         reason: '게시판 읽기 권한이 없습니다.',
@@ -495,7 +447,6 @@ export class BoardService extends BaseService {
       };
     }
 
-    // 요청된 액션 확인
     if (!access[action]) {
       return {
         hasAccess: false,

@@ -1,11 +1,4 @@
-// client/src/components/editor/MentionAutocomplete.tsx
-// CKEditor 위에 뜨는 @멘션 자동완성 오버레이.
-//
-// CKEditor 5 공식 Mention 플러그인은 이 프로젝트가 쓰는 umbrella 패키지(ckeditor5@48.2)
-// 번들에 들어 있지 않고, 별도 패키지는 버전이 어긋나 모듈 중복 위험이 있다.
-// 그래서 에디터의 공개 모델 API 만 사용하는 얇은 오버레이로 구현한다.
-//
-// 판단 로직(언제 열고 무엇을 검색할지)은 utils/mentionQuery 에 분리해 테스트한다.
+// CKEditor 위에 뜨는 @멘션 자동완성 오버레이. 공식 Mention 플러그인이 번들에 없어 공개 모델 API 로만 만든다.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { searchUsers, type UserSuggestion } from '../../api/users';
@@ -39,13 +32,7 @@ interface Caret {
   left: number;
 }
 
-/**
- * 현재 캐럿 바로 앞의 텍스트를 읽는다.
- *
- * anchorNode 가 항상 텍스트 노드인 것은 아니다 — CKEditor 는 문단 요소에 커서를
- * 두기도 하고(빈 줄, 프로그램적 선택 이동 등), 그때 anchorOffset 은 자식 인덱스다.
- * 텍스트 노드만 처리하면 자동완성이 아예 뜨지 않으므로 두 경우를 모두 다룬다.
- */
+/** 캐럿 바로 앞의 텍스트. anchorNode 가 텍스트 노드가 아닐 수 있어 요소 노드도 다룬다. */
 function textBeforeCaret(): string | null {
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return null;
@@ -60,8 +47,7 @@ function textBeforeCaret(): string | null {
   if (node.nodeType === Node.ELEMENT_NODE) {
     const children = Array.from(node.childNodes).slice(0, sel.anchorOffset);
     const before = children.map(c => c.textContent ?? '').join('');
-    // offset 이 0 이면(자식 앞) 요소 전체 텍스트를 캐럿 앞으로 볼 수 없다 —
-    // 다만 CKEditor 가 문단 끝에 커서를 둘 때 offset 은 자식 수와 같으므로 위 계산이 맞다.
+    // 문단 끝에 커서를 두면 anchorOffset 이 자식 수와 같아 위 계산이 맞다.
     return before || (sel.anchorOffset === 0 ? '' : (node.textContent ?? ''));
   }
 
@@ -73,7 +59,7 @@ function caretRect(): Caret | null {
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return null;
   const rect = sel.getRangeAt(0).getBoundingClientRect();
-  // 빈 줄에서는 rect 가 0 일 수 있다 — 그때는 위치를 잡지 않는다
+  // 빈 줄에서는 rect 가 0 일 수 있다. 그때는 위치를 잡지 않는다.
   if (rect.top === 0 && rect.left === 0) return null;
   return { top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX };
 }
@@ -97,7 +83,6 @@ export default function MentionAutocomplete({ editor }: Props) {
     setCaret(null);
   }, []);
 
-  // ── 입력 감지 ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const root = editor?.editing.view.domRoots.values().next().value;
     if (!root) return;
@@ -124,7 +109,6 @@ export default function MentionAutocomplete({ editor }: Props) {
     };
   }, [editor]);
 
-  // ── 검색 ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (query === null) return;
     abortRef.current?.abort();
@@ -138,13 +122,12 @@ export default function MentionAutocomplete({ editor }: Props) {
         setActiveIndex(0);
       })
       .catch(() => {
-        // 검색 실패는 조용히 무시 — 자동완성이 없을 뿐 입력은 계속된다
+        // 검색 실패는 무시한다. 자동완성이 없을 뿐 입력은 계속된다.
       });
 
     return () => controller.abort();
   }, [debouncedQuery, query]);
 
-  // ── 선택 반영 ──────────────────────────────────────────────────────────────
   const select = useCallback(
     (user: UserSuggestion) => {
       if (!editor) return;
@@ -163,12 +146,10 @@ export default function MentionAutocomplete({ editor }: Props) {
     [editor, replaceLength, close]
   );
 
-  // ── 키보드 조작 ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      // 한글을 치는 중이면 Enter 는 조합을 끝내는 키다 — 그걸로 고르면 한 글자 덜 들어간
-      // 상태에서 선택되고, 이어 들어오는 진짜 Enter 가 한 번 더 동작한다.
+      // 한글 조합 중 Enter 는 조합을 끝내는 키라 그걸로 고르면 안 된다.
       if (e.isComposing) return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -182,9 +163,7 @@ export default function MentionAutocomplete({ editor }: Props) {
         e.stopPropagation();
         select(items[activeIndex]);
       } else if (e.key === 'Escape') {
-        // Enter·Tab 과 같이 여기서 끝낸다. capture 로 먼저 잡고 그냥 흘려보내면,
-        // 같은 ESC 가 뒤에 열려 있던 대화상자까지 닫는다 — 추천 목록만 접으려던
-        // 한 번의 ESC 에 화면이 함께 사라진다.
+        // capture 로 먼저 잡고 흘려보내면 같은 ESC 가 뒤에 열린 대화상자까지 닫는다.
         e.preventDefault();
         e.stopPropagation();
         close();
@@ -229,7 +208,7 @@ export default function MentionAutocomplete({ editor }: Props) {
                 @{u.id}
               </span>
               {!mentionable && (
-                // 서버는 4~20자 아이디만 멘션으로 인식한다 — 알림이 가지 않음을 미리 알린다
+                // 서버는 4~20자 아이디만 멘션으로 인식한다. 알림이 가지 않음을 미리 알린다.
                 <span
                   className={`ml-auto shrink-0 text-2xs ${i === activeIndex ? 'text-white/70' : 'text-amber-500'}`}
                   title="아이디가 짧아 멘션 알림이 전달되지 않습니다"

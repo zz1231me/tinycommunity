@@ -1,19 +1,5 @@
-// client/src/hooks/useAttachmentRefs.ts
-// 본문에 꽂힌 증적 참조(<span class="attachment-ref" data-attachment="원본파일명">)를
-// 실제 첨부 카드로 바꾼다.
-//
-// 정화된 HTML 을 문자열로 다시 조립하지 않고 이미 붙은 DOM 을 손본다. 문자열을 다시
-// 만들면 정화 이후 단계가 생겨 XSS 표면이 늘어난다. 여기서는 textContent 와
-// addEventListener 만 쓴다.
-//
-// 카드의 다운로드는 기존 /api/uploads/download 를 타고, 그 라우트가 게시판 권한과
-// 비밀글 접근을 다시 검사한다.
-//
-// 본문은 dangerouslySetInnerHTML 로 붙는다. 그래서 상세 화면이 다시 그려질 때마다
-// 컨테이너의 자식이 통째로 새로 만들어지고, 여기서 꾸며 둔 카드는 그대로 버려진다.
-// 마지막 재렌더 뒤에는 이 훅이 다시 돌 계기가 없어, 참조가 꾸며지지 않은 맨 글자로
-// 남는다 — 눌러도 아무 일도 일어나지 않는 상태다.
-// 그래서 컨테이너의 자식이 바뀌는지 지켜보다가 바뀌면 다시 꾸민다.
+// 본문의 증적 참조 span 을 첨부 카드로 바꾼다.
+// HTML 문자열을 다시 조립하지 않고 DOM 만 손댄다(정화 이후 단계를 만들지 않기 위함).
 
 import { useEffect, type RefObject } from 'react';
 import { formatFileSize, isImageFile } from '../utils/fileUtils';
@@ -31,34 +17,30 @@ export interface AttachmentRefTarget {
   url?: string;
 }
 
-/** 처리 완료 표시 — 같은 노드를 두 번 꾸미지 않는다 */
+/** 처리 완료 표시. 같은 노드를 두 번 꾸미지 않는다. */
 const DONE_ATTR = 'data-ref-ready';
 
 export function useAttachmentRefs(
   containerRef: RefObject<HTMLElement | null>,
   attachments: AttachmentRefTarget[],
   onPreviewImage?: (url: string, alt: string) => void,
-  /** 이 기능이 꺼져 있으면 참조를 손대지 않는다 (기본값: 켜짐) */
+  /** 꺼져 있으면 참조를 손대지 않는다 */
   enabled = true
 ) {
   useEffect(() => {
     const container = containerRef.current;
-    // 꺼져 있을 때 빈 목록을 넘겨 받는 것과는 다르다 —
-    // 빈 목록이면 모든 참조가 "삭제된 첨부" 가 되어 버린다.
-    // 기능이 꺼진 것은 첨부가 사라진 것이 아니므로 아무것도 하지 않는다.
+    // 기능이 꺼진 것은 빈 목록과 다르다. 빈 목록이면 모든 참조가 '삭제된 첨부' 가 된다.
     if (!container || !enabled) return;
 
     const byName = new Map(attachments.map(a => [a.originalName, a]));
     let cleanups: Array<() => void> = [];
 
     const decorate = () => {
-      // 이전 회차에 걸어 둔 리스너는 그 노드와 함께 사라졌다 — 목록만 비운다
+      // 이전 회차 리스너는 노드와 함께 사라졌으므로 목록만 비운다
       cleanups = [];
       container
         .querySelectorAll<HTMLElement>(
-          // 클래스·속성 이름은 에디터 플러그인이 정한 것을 그대로 쓴다.
-          // 여기에 문자열을 다시 적어 두면, 저장 마크업을 바꿨을 때 읽기 화면만 조용히
-          // 참조를 못 알아보는 상태가 된다.
+          // 클래스·속성 이름은 에디터 플러그인 상수를 그대로 쓴다. 문자열로 복제하지 말 것.
           `span.${ATTACHMENT_REF_CLASS}[${ATTACHMENT_REF_ATTR}]:not([${DONE_ATTR}])`
         )
         .forEach(el => {
@@ -66,8 +48,7 @@ export function useAttachmentRefs(
           const target = byName.get(name);
           el.setAttribute(DONE_ATTR, 'true');
 
-          // 첨부가 지워졌는데 본문 참조만 남은 경우 — 조용히 사라지면 증적이 있었다는
-          // 사실 자체가 지워지므로, 무엇이 없어졌는지 남겨 둔다.
+          // 첨부가 지워지고 참조만 남은 경우, 무엇이 없어졌는지 남겨 둔다
           if (!target) {
             el.classList.add('attachment-ref--missing');
             el.textContent = `삭제된 첨부: ${name}`;
@@ -137,9 +118,7 @@ export function useAttachmentRefs(
 
     decorate();
 
-    // 본문이 다시 그려지면(자식이 통째로 교체되면) 다시 꾸민다.
-    // 카드 안쪽(아이콘·이름)은 참조 span 의 자식이라 subtree 를 보지 않는 이 감시에
-    // 걸리지 않는다 — 스스로를 다시 부르는 일이 없다.
+    // 본문이 다시 그려지면 다시 꾸민다. subtree 를 보지 않아야 자기 자신을 다시 부르지 않는다.
     const observer = new MutationObserver(() => decorate());
     observer.observe(container, { childList: true });
 

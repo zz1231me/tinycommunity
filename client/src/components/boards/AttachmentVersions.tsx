@@ -1,11 +1,4 @@
-// client/src/components/boards/AttachmentVersions.tsx
-// 첨부의 이전 버전.
-//
-// 같은 이름으로 다시 올리면 예전 파일은 지워지지 않고 이력으로 남는다. 여기서 그걸
-// 다시 받을 수 있다 — "지난 주에 보낸 그 버전" 을 되찾는 것이 개정 이력의 존재 이유다.
-//
-// 이력이 없는 첨부에는 아무것도 그리지 않는다. 대부분의 첨부는 한 번 올리고 끝이라
-// "이전 버전 0개" 줄이 파일마다 붙으면 목록만 길어진다.
+// 첨부의 이전 버전 목록. 이력이 없는 첨부에는 아무것도 그리지 않는다.
 
 import { useState } from 'react';
 import { History, Download } from 'lucide-react';
@@ -25,7 +18,7 @@ export function AttachmentVersions({ group }: Props) {
 
   const download = async (filename: string, index: number) => {
     try {
-      // 받은 파일이 현재 첨부와 같은 이름이면 어느 쪽인지 알 수 없다 — 버전 번호를 붙인다
+      // 현재 첨부와 이름이 같으면 구분되지 않으므로 버전 번호를 붙인다.
       const dot = group.originalName.lastIndexOf('.');
       const version = group.versions.length - index;
       const name =

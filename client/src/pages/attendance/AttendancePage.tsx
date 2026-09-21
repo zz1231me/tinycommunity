@@ -1,7 +1,4 @@
-// client/src/pages/attendance/AttendancePage.tsx
-// 출근 확인 — 직접 출근·퇴근을 찍고, 달마다 내 기록을 본다.
-//
-// 하루 한 번씩만 찍힌다. 이미 찍은 뒤에는 버튼 대신 찍힌 시각과 흐른 시간을 보여 준다.
+// 출근·퇴근을 직접 찍고 달마다 내 기록을 보는 화면.
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -52,8 +49,7 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
 export default function AttendancePage() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
-  // 달은 서버가 알려 준 근무일을 기준으로 잡는다. 브라우저 시계가 하루 어긋나 있으면
-  // 처음 열었을 때 엉뚱하게 빈 달이 보인다.
+  // 달은 서버가 알려 준 근무일을 기준으로 잡는다. 브라우저 시계가 어긋나면 빈 달이 보인다.
   const [pickedMonth, setPickedMonth] = useState<string | null>(null);
 
   const status = useQuery({
@@ -64,16 +60,14 @@ export default function AttendancePage() {
   const month = pickedMonth ?? status.data?.workDate.slice(0, 7) ?? todayString().slice(0, 7);
   const serverToday = status.data?.workDate ?? todayString();
 
-  // status 를 기다리지 않는다. 기다리게 하면 오늘 상태 조회가 실패했을 때
-  // 아래 '내 기록' 이 영영 로딩으로 남는다.
+  // status 를 기다리지 않는다. 기다리면 오늘 상태 조회 실패 시 기록이 계속 로딩으로 남는다.
   const history = useQuery({
     queryKey: attendanceKeys.history(month),
     queryFn: () => fetchMyAttendanceHistory(month),
-    // 달을 넘길 때 표·그래프가 사라졌다 다시 그려지면 화면이 튄다
+    // 달을 넘길 때 표와 그래프가 사라졌다 다시 그려지지 않게 한다.
     placeholderData: prev => prev,
   });
 
-  // 출근·퇴근을 찍으면 오늘 상태와 이번 달 기록이 함께 바뀐다
   const refresh = () => queryClient.invalidateQueries({ queryKey: attendanceKeys.all });
 
   const checkInMutation = useMutation({
@@ -86,9 +80,7 @@ export default function AttendancePage() {
     onError: err => toast.error(getApiErrorMessage(err, '출근을 기록하지 못했습니다.')),
   });
 
-  // 더블클릭으로 두 번 찍히지 않게 — 서버가 409 로 막긴 하지만 성공 뒤에 오류가 따라붙는다
-  // 출근과 퇴근은 잠금을 따로 쓴다. 하나로 묶으면, 어제 기록이 안 닫힌 채 퇴근을 누른 사이
-  // 출근 확인 창의 '출근하기' 가 아무 말 없이 무시되고 창도 그대로 남았다.
+  // 더블클릭으로 두 번 찍히지 않게 막는다. 출근과 퇴근은 서로 막지 않도록 잠금을 따로 쓴다.
   const runCheckIn = useSubmitLock();
   const runCheckOut = useSubmitLock();
 
@@ -103,7 +95,7 @@ export default function AttendancePage() {
     onError: err => toast.error(getApiErrorMessage(err, '퇴근을 기록하지 못했습니다.')),
   });
 
-  // 잘못 누른 퇴근을 되돌린다 — 누른 뒤 10분 안에만. 되돌리면 다시 근무 중이다.
+  // 잘못 누른 퇴근을 10분 안에 되돌린다.
   const runUndo = useSubmitLock();
   const undoMutation = useMutation({
     mutationFn: requestUndoCheckOut,
@@ -112,61 +104,52 @@ export default function AttendancePage() {
       toast.success('퇴근을 취소했습니다. 다시 근무 중입니다.');
     },
     onError: err => {
-      // 마감이 지났거나 그 사이 바뀌었다 — 단추를 거두도록 상태를 다시 읽는다
+      // 마감이 지났거나 상태가 바뀐 경우라 다시 읽는다.
       refresh();
       toast.error(getApiErrorMessage(err, '퇴근을 취소하지 못했습니다.'));
     },
   });
 
-  // ── 퇴근 공격 ──
-  // 잠기는 것은 아래 퇴근 버튼뿐이다. 서버의 퇴근 기록은 이 상태를 보지 않으므로,
-  // 어떤 경로로든 퇴근을 찍으면 그 순간이 그대로 기록된다.
+  // 퇴근 공격은 퇴근 버튼만 잠근다. 서버 기록은 이 상태를 보지 않는다.
   const attackEnabled = useFeature('tools.attendanceAttack');
 
   const attack = useQuery({
     queryKey: attendanceKeys.attack,
     queryFn: fetchAttackState,
     enabled: attackEnabled,
-    // 걸린 공격은 1분이면 저절로 풀리니 짧은 주기로 물어봐야 한다. 다만 근무 중일
-    // 때만 묻는다 — 출근 전이거나 이미 퇴근했으면 방해받을 버튼 자체가 없다.
-    // (공격을 받는 순간은 아래 알림 연결이 바로 잡는다. 이 주기는 알림이 끊겼을 때의 대비다.)
+    // 공격은 1분이면 풀리므로 근무 중일 때만 짧은 주기로 확인한다. 알림이 끊겼을 때의 대비다.
     refetchInterval: () => {
       const live = status.data?.record ?? status.data?.openPrevious ?? null;
       return live && !live.checkOutAt ? 10_000 : false;
     },
-    // 앱 전체 기본값은 창으로 돌아와도 다시 읽지 않는다. 다른 탭에 있다 돌아오면
-    // 그 사이 걸린 공격이 안 보이므로 여기서만 켠다.
+    // 다른 탭에 있다 돌아왔을 때 그 사이 걸린 공격이 보이도록 여기서만 켠다.
     refetchOnWindowFocus: true,
   });
 
   const refreshAttack = () => queryClient.invalidateQueries({ queryKey: attendanceKeys.attack });
 
-  // 공격 알림이 오면 바로 다시 읽는다. 알림(SSE)은 즉시 오는데 이 화면은 따로 물어서,
-  // 종 숫자만 바뀌고 공격은 새로고침을 해야 보였다.
+  // 공격 알림이 오면 바로 다시 읽는다.
   useNotificationArrival(['ATTACK'], () => {
     void refreshAttack();
   });
 
-  // 내 시계와 서버 시계의 차이. 몇 분 빠른 PC 에서는 걸려 있는 공격이 '이미 끝난 것' 으로
-  // 보여 아무 일도 일어나지 않았다 — 공격자의 포인트만 사라지고 받는 쪽은 멀쩡했다.
+  // 내 시계와 서버 시계의 차이. 어긋나면 걸린 공격이 이미 끝난 것으로 보인다.
   const clockOffset =
     attack.data?.now && attack.dataUpdatedAt
       ? new Date(attack.data.now).getTime() - attack.dataUpdatedAt
       : 0;
-  // 지금 걸려 있는 공격은 줄에서 직접 고른다. 서버가 준 incoming 만 보면 앞 것이 끝나고
-  // 다음 것이 시작되는 사이에 퇴근 버튼이 잠깐 멀쩡해졌다가 갑자기 다시 사나워졌다.
+  // 지금 걸린 공격은 큐에서 직접 고른다. incoming 만 보면 공격 사이에 버튼이 잠깐 풀린다.
   const { active: incoming, waiting } = useAttackQueue(attack.data, clockOffset);
   const underAttack = Boolean(incoming);
 
   const record = status.data?.record ?? null;
   const openPrevious = status.data?.openPrevious ?? null;
-  // 자정을 넘겨 이어지는 기록이 있으면 그것이 지금 살아 있는 기록이다.
-  // 그러지 않으면 밤을 새운 사람 화면에만 '출근 전' 이라고 뜬다(관리자 화면은 근무 중).
+  // 자정을 넘겨 이어지는 기록이 있으면 그것이 현재 기록이다.
   const live = record ?? openPrevious;
   const liveWorkDate = openPrevious?.workDate ?? serverToday;
   const standard = status.data?.policy.standardWorkMinutes ?? 480;
   const summary = history.data?.summary;
-  // 오늘은 아직 근무 중이라 퇴근이 없는 것이 정상이다 — 빠뜨린 날에서 뺀다
+  // 오늘은 퇴근이 없는 것이 정상이라 빠뜨린 날에서 뺀다.
   const todayOpen = Boolean(live && !live.checkOutAt && month === live.workDate.slice(0, 7));
   const unclosedDays = Math.max(0, (summary?.openDays ?? 0) - (todayOpen ? 1 : 0));
 
@@ -194,21 +177,16 @@ export default function AttendancePage() {
             </div>
           )}
 
-          {/* 공격받은 자리에서 바로 방어한다 — 경고 띠·남은 시간·방어권 구매. 방어권을 포인트
-              탭에 두었더니, 퇴근 버튼이 도망다니는 그 순간에 다른 화면으로 가야 해서 불편했다.
-              공격권을 '사는' 일은 여전히 포인트 탭에만 있다.
-              퇴근한 뒤에는 거둔다 — 방해받을 버튼이 없는데 방어권을 사게 두면 포인트만 버린다. */}
+          {/* 경고 띠·남은 시간·방어권 구매를 이 자리에서 처리한다. 공격권 구매는 포인트 탭에만 있다. */}
           {attackEnabled && live && !live.checkOutAt && <IncomingAttack />}
 
           <TodayHero
             workDate={serverToday}
             record={live}
             standardWorkMinutes={standard}
-            // 어제 퇴근을 안 찍었어도 오늘 출근은 따로 찍는다. 막으면 어제 것을
-            // 먼저 마감해야 하고, 그 시각이 오늘이라 없던 밤샘 근무가 생긴다.
+            // 어제 퇴근을 안 찍었어도 오늘 출근은 따로 찍는다.
             canCheckIn={!record}
-            // 공격받는 중에도 퇴근은 누를 수 있다. 버튼이 도망다닐 뿐이다 —
-            // 막아 버리면 남이 내 퇴근 기록 시각을 늦출 수 있게 된다.
+            // 공격 중에도 퇴근은 누를 수 있다. 막으면 남이 내 퇴근 시각을 늦출 수 있다.
             canCheckOut={Boolean(live && !live.checkOutAt)}
             attackKind={attackEnabled && underAttack && incoming ? incoming.kind : null}
             attackExpiresAt={attackEnabled && underAttack && incoming ? incoming.expiresAt : null}
@@ -348,7 +326,7 @@ export default function AttendancePage() {
                                 근무 중
                               </span>
                             ) : (
-                              // 이어지지도 않는 지난 날의 열린 기록은 그냥 안 찍은 것이다
+                              // 이어지지 않는 지난 날의 열린 기록은 안 찍은 것으로 본다.
                               <span className="text-amber-600 dark:text-amber-400">
                                 퇴근 안 찍음
                               </span>

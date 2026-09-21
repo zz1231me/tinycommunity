@@ -1,5 +1,4 @@
-// client/src/components/Dashboard/TempShareModal.tsx
-// 파일공유 모달 — 파일 업로드 → 15분짜리 공유 링크 반환(만료 후 서버에서 자동 삭제).
+// 파일공유 모달. 업로드하면 15분짜리 공유 링크를 주고 만료 후 서버가 지운다.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { copyText } from '../../utils/clipboard';
 import { useFeature } from '../../store/features';
@@ -30,15 +29,14 @@ const fmtSize = (n: number) =>
   n < 1024 * 1024 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`;
 
 export function TempShareModal({ open, onClose }: Props) {
-  // 관리자가 이 기능을 껐으면 화면에서도 사라져야 한다.
-  // 호출부마다 조건을 달면 새 호출부가 생길 때 빠뜨린다 — 여기서 스스로 숨는다.
+  // 호출부마다 조건을 달면 빠뜨리기 쉬워 기능이 꺼지면 여기서 스스로 숨는다.
   const featureEnabled = useFeature('tools.tempShare');
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<TempShareResult | null>(null);
   const [remain, setRemain] = useState(0); // 초
   const inputRef = useRef<HTMLInputElement>(null);
-  // 파일 크기 한도는 관리자 설정(maxFileSizeMb)을 따른다(하드코딩 제거).
+  // 파일 크기 한도는 관리자 설정(maxFileSizeMb)을 따른다
   const maxMb = useSiteSettings(s => s.settings.maxFileSizeMb);
   const maxSize = maxMb * 1024 * 1024;
 
@@ -48,27 +46,23 @@ export function TempShareModal({ open, onClose }: Props) {
     setUploading(false);
   }, []);
 
-  // 닫기 = onClose + 상태 초기화 (Esc·배경·X 모두 동일하게 → 재오픈 시 이전 결과가 남지 않도록)
+  // Esc·배경·X 모두 같은 경로로 닫아야 다시 열 때 이전 결과가 남지 않는다.
   const handleClose = useCallback(() => {
     onClose();
     reset();
   }, [onClose, reset]);
 
-  // 열려 있는 동안 배경 스크롤 잠금.
-  // 그리는 조건과 똑같이 건다 — open 만 보고 걸면, 기능이 꺼져 아무것도 그리지 않는
-  // 동안에도 잠금이 남아 페이지가 스크롤되지 않는다(원인이 화면에 보이지 않는다).
+  // 배경 스크롤 잠금은 그리는 조건과 똑같이 건다. open 만 보면 안 그리는 동안에도 잠긴다.
   useEffect(() => {
     if (!featureEnabled || !open) return;
-    // 세어 두는 공용 잠금을 쓴다 — 겹쳐 열렸을 때 안쪽이 닫히며 바깥 잠금을 풀지 않게
+    // 겹쳐 열렸을 때 안쪽이 바깥 잠금을 풀지 않도록 참조 카운트 잠금을 쓴다
     lockScroll();
     return () => {
       unlockScroll();
     };
   }, [featureEnabled, open]);
 
-  // Esc 로 닫고, 열려 있는 동안 포커스를 안에 가둔다.
-  // body 로 포털하지만 ref 가 가리키는 것은 실제 DOM 노드라 가두기는 그대로 동작한다.
-  // 기능이 꺼져 있으면 걸지 않는다 — 그리지도 않은 대화상자가 ESC 를 먹으면 안 된다.
+  // Esc 로 닫고 포커스를 안에 가둔다. 기능이 꺼져 있으면 걸지 않는다.
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, handleClose, featureEnabled && open);
 
@@ -112,13 +106,12 @@ export function TempShareModal({ open, onClose }: Props) {
     else toast.error('복사에 실패했습니다.');
   };
 
-  // 훅 선언이 모두 끝난 뒤에 막는다 — 조건부 훅 호출은 렌더마다 순서를 어긋나게 한다
+  // 훅 선언이 모두 끝난 뒤에 막는다. 조건부 훅 호출은 렌더마다 순서를 어긋나게 한다.
   if (!featureEnabled) return null;
 
   if (!open) return null;
 
-  // 헤더의 backdrop-blur가 position:fixed의 containing block이 되어 모달이 헤더(56px)
-  // 기준으로 찌그러지는 문제 → document.body로 포털해 뷰포트 기준 중앙 정렬을 보장.
+  // 헤더의 backdrop-blur 가 fixed 의 컨테이닝 블록이 되므로 body 로 포털한다.
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim"
@@ -154,7 +147,6 @@ export function TempShareModal({ open, onClose }: Props) {
 
         <div className="px-5 pb-5">
           {uploading ? (
-            // ── 업로드 중 ──────────────────────────────────────────
             <div className="flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-secondary-200 bg-secondary-50/40 py-12 dark:border-secondary-800 dark:bg-secondary-900/10">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary-100 dark:bg-secondary-900/30">
                 <UploadCloud className="h-7 w-7 animate-pulse text-secondary-600 dark:text-secondary-400" />
@@ -170,7 +162,6 @@ export function TempShareModal({ open, onClose }: Props) {
               </div>
             </div>
           ) : !result ? (
-            // ── 드롭존 ────────────────────────────────────────────
             <>
               <div
                 onClick={() => inputRef.current?.click()}
@@ -198,7 +189,6 @@ export function TempShareModal({ open, onClose }: Props) {
               />
             </>
           ) : (
-            // ── 결과(링크 준비) ───────────────────────────────────
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-secondary-600 dark:text-secondary-400">
                 <CheckCircle2 className="h-5 w-5" />

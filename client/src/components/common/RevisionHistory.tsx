@@ -1,13 +1,4 @@
-// client/src/components/common/RevisionHistory.tsx
-// 수정 이력 — 게시글과 위키가 같은 화면을 쓴다.
-//
-// 예전에는 둘이 따로 구현돼 있었다. 한쪽은 목록 줄이 button 이고 다른 쪽은 클릭되는
-// div(키보드로 못 고름), 한쪽은 목록과 차이를 함께 보여주는데 다른 쪽은 둘을 오가는
-// 토글, 로딩 표시도 제각각이었다. 같은 일을 하는 화면이 두 벌이면 한쪽만 고쳐진다.
-//
-// 비교 기준도 하나 늘렸다. 이력을 볼 때 가장 먼저 궁금한 것은 "이 편집에서 무엇이
-// 바뀌었나" 인데, 예전에는 '선택한 판 ↔ 현재' 만 볼 수 있어 중간에 여러 번 고쳐진
-// 문서에서는 그 편집이 무엇을 했는지 알 수 없었다.
+// 수정 이력 화면. 게시글과 위키가 함께 쓴다.
 
 import { useEffect, useMemo, useState } from 'react';
 import { History, RotateCcw, X } from 'lucide-react';
@@ -31,7 +22,7 @@ type DiffMode = 'prev' | 'current';
 interface Props {
   /** 최신순으로 정렬된 이력 */
   revisions: RevisionEntry[];
-  /** 지금 문서의 본문 — '현재와 비교' 의 기준 */
+  /** 지금 문서의 본문. '현재와 비교' 의 기준이다. */
   currentContent: string;
   heading?: string;
   loading?: boolean;
@@ -60,17 +51,17 @@ export function RevisionHistory({
 
   const index = revisions.findIndex(r => r.id === selectedId);
   const selected = index === -1 ? null : revisions[index];
-  // 목록이 최신순이므로 바로 다음 칸이 '그 편집 직전' 이다
+  // 목록이 최신순이라 바로 다음 칸이 그 편집 직전이다.
   const previous = index === -1 ? null : (revisions[index + 1] ?? null);
 
-  // 목록이 바뀌었는데 고른 판이 사라졌으면 선택을 푼다 (복원·편집 후 재조회)
+  // 고른 판이 사라졌으면 선택을 푼다.
   useEffect(() => {
     if (selectedId !== null && !revisions.some(r => r.id === selectedId)) {
       setSelectedId(null);
     }
   }, [revisions, selectedId]);
 
-  // 가장 오래된 판은 직전이 없다 — 그때는 현재와 비교로 넘긴다
+  // 가장 오래된 판은 직전이 없으므로 현재와 비교로 넘긴다.
   const effectiveMode: DiffMode = mode === 'prev' && !previous ? 'current' : mode;
 
   const pair = useMemo(() => {
@@ -143,7 +134,6 @@ export function RevisionHistory({
                     onClick={() => {
                       const next = active ? null : r.id;
                       setSelectedId(next);
-                      // 새로 고른 판은 '이 편집에서 바뀐 것' 부터 본다
                       if (next !== null) setMode('prev');
                     }}
                     className={`w-full rounded-lg px-3 py-2 text-left transition-colors ${

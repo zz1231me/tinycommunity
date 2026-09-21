@@ -1,12 +1,9 @@
-// client/src/api/drafts.ts
 // 작성 중인 글의 서버 임시저장.
-// localStorage 한 칸에만 담으면 다른 기기에서 보이지 않고, 두 번째 글을 쓰기 시작할 때
-// 앞의 초안이 덮어써진다.
 
 import api from './axios';
 import { unwrap } from './utils';
 
-/** 목록용 — 본문 대신 평문 미리보기만 온다 */
+/** 목록용. 본문 대신 평문 미리보기만 온다. */
 export interface DraftSummary {
   id: string;
   boardType: string;

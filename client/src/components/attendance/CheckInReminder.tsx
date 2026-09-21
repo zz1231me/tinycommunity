@@ -1,11 +1,4 @@
-// client/src/components/attendance/CheckInReminder.tsx
-// 오늘 출근을 아직 안 찍었으면 하루에 한 번 알린다.
-//
-// 출근은 '찍으러 들어가기가 번거롭다' 가 문제라 이 창에서 바로 찍을 수 있게 한다.
-// (짝이던 퇴근 기준시간 알림은 뺐다 — 일하는 중에 화면을 가로막는 쪽이 성가셨다.)
-//
-// 확인 항목이 필요한 자리면 이 창에서 곧바로 확인 대화상자로 넘어간다 —
-// 출근 화면까지 들어갔다 나오게 하면 알림을 띄운 보람이 없다.
+// 오늘 출근을 아직 안 찍었으면 하루에 한 번 알리고, 이 창에서 바로 찍게 한다.
 
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -53,7 +46,6 @@ export function CheckInReminder() {
     queryKey: attendanceKeys.me,
     queryFn: fetchMyAttendance,
     enabled,
-    // 출퇴근 화면과 같은 캐시를 쓴다
     staleTime: 5 * 60_000,
   });
 
@@ -76,9 +68,7 @@ export function CheckInReminder() {
     setOpen(true);
   }, [data, enabled, hasRecordToday, workDate]);
 
-  // 어딘가에서 출근을 찍으면 이 창도 닫는다.
-  // 로그아웃해도 닫는다 — 화면만 바뀌고 이 컴포넌트는 그대로 살아 있어서(App 최상단에
-  // 붙어 있다), 열려 있던 창이 로그인 화면 위에 남는다.
+  // 어디서든 출근을 찍거나 로그아웃하면 이 창을 닫는다. App 최상단이라 화면이 바뀌어도 살아 있다.
   useEffect(() => {
     if (hasRecordToday || !enabled) {
       setOpen(false);

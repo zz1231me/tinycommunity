@@ -1,15 +1,13 @@
-// client/src/store/auth.ts
 import { create } from 'zustand';
 import { safeStorage } from '../utils/safeStorage';
 
-// 서버 응답 구조에 맞게 타입 수정 + 아바타 필드 추가
 export interface User {
   id: string;
   name: string;
   role: string;
-  theme?: string; // ✅ 테마 필드 추가
-  avatar?: string | null; // ✅ 아바타 필드 추가
-  createdAt: string; // ✅ 계정 생성일 추가
+  theme?: string;
+  avatar?: string | null;
+  createdAt: string;
   mustChangePassword?: boolean; // 관리자 초기화 후 강제 비밀번호 변경 필요
   roleInfo: {
     id: string;
@@ -52,7 +50,7 @@ interface AuthState {
   tokenInfo: TokenInfo | null;
 
   setUser: (user: User, tokenInfo?: TokenInfo) => void;
-  updateUser: (updates: Partial<User>) => void; // ✅ 사용자 정보 업데이트 함수 추가
+  updateUser: (updates: Partial<User>) => void;
   clearUser: () => void;
   setLoading: (loading: boolean) => void;
 
@@ -64,7 +62,7 @@ interface AuthState {
   getUserId: () => string | null;
   getUserName: () => string | null;
   getUserRole: () => string | null;
-  getUser: () => User | null; // ✅ 전체 사용자 정보 반환 함수 추가
+  getUser: () => User | null;
   isAdmin: () => boolean;
   canAccessBoard: (boardId: string, action: 'read' | 'write' | 'delete') => boolean;
 }
@@ -83,9 +81,7 @@ export const useAuth = create<AuthState>((set, get) => ({
       tokenInfo: tokenInfo || null,
     });
 
-    // 지금 로그인한 사람이 누구인지도 남긴다 — 다른 탭이 '사람이 바뀌었다' 를 알아채는 표식이다.
-    // (탭마다 쿠키를 함께 쓰므로, 한 탭에서 다른 계정으로 로그인하면 남은 탭은 앞 사람의
-    //  이름·권한을 단 채 뒷사람의 데이터를 받아 왔다.)
+    // 다른 탭이 '사람이 바뀌었다' 를 알아채는 표식
     safeStorage.set('authUserId', user.id);
 
     if (tokenInfo) {
@@ -95,7 +91,6 @@ export const useAuth = create<AuthState>((set, get) => ({
     }
   },
 
-  // 사용자 정보 부분 업데이트 함수
   updateUser: updates => {
     const { user } = get();
     if (user) {
@@ -165,7 +160,6 @@ export const useAuth = create<AuthState>((set, get) => ({
     return user?.role || null;
   },
 
-  // 전체 사용자 정보 반환 함수 추가
   getUser: () => {
     const { user } = get();
     return user;
@@ -176,12 +170,10 @@ export const useAuth = create<AuthState>((set, get) => ({
     return user?.role === 'admin' && user?.roleInfo?.isActive !== false;
   },
 
-  // permissions.boards 배열 + personalBoard에서 검색
   canAccessBoard: (boardId: string, action: 'read' | 'write' | 'delete') => {
     const { user } = get();
     if (!user?.permissions) return false;
 
-    // 개인 폴더 확인
     const personal = user.permissions.personalBoard;
     if (personal?.boardId === boardId) {
       switch (action) {
@@ -210,5 +202,4 @@ export const useAuth = create<AuthState>((set, get) => ({
   },
 }));
 
-// 편의 함수 export
 export const useAuthStore = useAuth;

@@ -1,4 +1,3 @@
-// client/src/components/BoardProtectedRoute.tsx
 import { useEffect, useState, type ReactElement } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../store/auth';
@@ -17,16 +16,12 @@ const BoardProtectedRoute = ({ children, action = 'read' }: Props) => {
   const [isAllowed, setIsAllowed] = useState<boolean | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
   useEffect(() => {
-    // 기본 조건 체크 — 미충족 시 대기
     if (authLoading || boardsLoading || !isAuthenticated || !boardType) {
       setIsAllowed(null);
       return;
     }
 
-    // 이 실행에만 속하는 상태로 둔다.
-    // 타임아웃을 ref 하나로 공유하고 응답에 취소 표시를 두지 않으면, 게시판을 빠르게
-    // 옮길 때 앞 게시판의 늦은 응답이 지금 게시판의 판정을 덮어쓴다. 먼저 끝난 실행이
-    // 뒤 실행의 타이머를 지워 뒤 실행에는 타임아웃도 걸리지 않는다.
+    // 취소 표시와 타이머는 이 실행에만 속한다. 공유하면 앞 게시판의 늦은 응답이 지금 판정을 덮어쓴다.
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const clearTimer = () => {
@@ -46,7 +41,7 @@ const BoardProtectedRoute = ({ children, action = 'read' }: Props) => {
 
     const checkAccess = async () => {
       try {
-        // 1단계: 사이드바 캐시에서 즉시 확인
+        // 사이드바 캐시에서 먼저 확인한다.
         const board = boards.find(b => b.id === boardType);
 
         if (board) {
@@ -62,7 +57,7 @@ const BoardProtectedRoute = ({ children, action = 'read' }: Props) => {
           return;
         }
 
-        // 2단계: 서버 API 확인 (사이드바에 없는 경우)
+        // 사이드바에 없으면 서버에 확인한다.
         const res = await checkUserBoardAccess(boardType);
         if (cancelled) return;
         const responseData = res.data.data || res.data;
@@ -93,7 +88,6 @@ const BoardProtectedRoute = ({ children, action = 'read' }: Props) => {
         }
         setIsAllowed(false);
       } finally {
-        // 이 실행의 타이머만 해제한다
         clearTimer();
       }
     };
@@ -104,11 +98,9 @@ const BoardProtectedRoute = ({ children, action = 'read' }: Props) => {
       cancelled = true;
       clearTimer();
     };
-    // boards를 의존성에 포함 — boards.length가 변경될 때 재실행
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardType, action, authLoading, boardsLoading, isAuthenticated, boards.length]);
 
-  // ─── 로딩 중 ────────────────────────────────────────────────────────────────
   if (authLoading || boardsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -122,17 +114,14 @@ const BoardProtectedRoute = ({ children, action = 'read' }: Props) => {
     );
   }
 
-  // ─── 미인증 ─────────────────────────────────────────────────────────────────
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
 
-  // ─── boardType 없음 ──────────────────────────────────────────────────────────
   if (!boardType) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // ─── 권한 확인 중 ─────────────────────────────────────────────────────────
   if (isAllowed === null) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -144,7 +133,6 @@ const BoardProtectedRoute = ({ children, action = 'read' }: Props) => {
     );
   }
 
-  // ─── 접근 거부 ────────────────────────────────────────────────────────────
   if (isAllowed === false) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -177,7 +165,6 @@ const BoardProtectedRoute = ({ children, action = 'read' }: Props) => {
     );
   }
 
-  // ─── 접근 허용 ────────────────────────────────────────────────────────────
   return children;
 };
 

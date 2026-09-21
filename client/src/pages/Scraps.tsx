@@ -1,8 +1,4 @@
-// client/src/pages/Scraps.tsx
-// 내가 스크랩한 글 — 개인 서랍이라 남에게 보이지 않는다.
-//
-// 스크랩한 뒤 게시판 권한이 회수되거나 글이 지워지면 서버가 목록에서 빼기 때문에,
-// 여기 보이는 글은 지금도 읽을 수 있는 글이다.
+// 내가 스크랩한 글 목록. 읽을 수 없게 된 글은 서버가 목록에서 뺀다.
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';

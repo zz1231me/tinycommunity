@@ -1,6 +1,4 @@
 /// <reference path="./types/express/index.d.ts" />
-// server/src/index.ts
-// Express 5.1 + TypeScript 5.8 + 통합 업로드 미들웨어
 
 import express from 'express';
 import cors from 'cors';
@@ -12,31 +10,24 @@ import fs from 'fs';
 import cookieParser from 'cookie-parser';
 import swaggerUi from 'swagger-ui-express';
 
-// 환경변수 먼저 로드 및 검증
 dotenv.config();
 import { validateEnv, env } from './config/env';
 validateEnv();
 
-// 유틸리티
 import { logger, requestLogger, logError } from './utils/logger';
 import { getCacheStats } from './utils/cache';
 import { sendSuccess, sendError } from './utils/response';
-// Swagger 설정
 import { swaggerSpec } from './config/swagger';
 
-// 미들웨어
 import { authenticate } from './middlewares/auth.middleware';
 import { errorHandler, notFoundHandler, AppError } from './middlewares/error.middleware';
 import { maintenanceMiddleware } from './middlewares/maintenance.middleware';
 import { csrfProtection } from './middlewares/csrf.middleware';
 
-// 업로드 디렉토리 초기화
 import { initializeUploadDirs } from './middlewares/upload/utils';
 
-// SSE(실시간 알림) 연결 정리
 import { closeAllConnections as closeAllSseConnections } from './services/sse.service';
 
-// 라우트
 import authRoutes from './routes/auth.routes';
 import postRoutes from './routes/post.routes';
 import postDraftRoutes from './routes/postDraft.routes';
@@ -66,7 +57,6 @@ import tempShareRoutes from './routes/tempShare.routes';
 import attendanceRoutes from './routes/attendance.routes';
 import { cleanupExpiredTempShares } from './controllers/tempShare.controller';
 
-// 데이터베이스 설정
 import {
   sequelize,
   initializeDatabase,
@@ -74,12 +64,9 @@ import {
   checkDatabaseHealth,
 } from './config/sequelize';
 
-// SPA index.html OG 메타 주입(링크 미리보기용)
 import { readAppVersion, renderIndexHtml } from './utils/indexHtml';
 
-// 모든 모델 import (관계 설정 포함)
 import './models';
-// 디버그 엔드포인트에서 직접 참조하기 위한 모델 import
 import { User as UserModel } from './models/User';
 import { Role as RoleModel } from './models/Role';
 import { Post as PostModel } from './models/Post';
@@ -91,14 +78,11 @@ import EventPermission from './models/EventPermission';
 import Bookmark from './models/Bookmark';
 import { SiteSettings as SiteSettingsModel } from './models/SiteSettings';
 
-// DB 인덱스 생성
 import { addDatabaseIndexes } from './scripts/add-indexes';
 
-// 로그 자동 정리
 import { getIpRuleCache } from './services/ipRule.service';
 import { loadSettingsCache, getSettings } from './utils/settingsCache';
 
-// 부팅 시 DB 준비 절차 + 주기적 정리 (config/bootstrap.ts)
 import {
   runLogCleanup,
   ensureAllModelColumns,
@@ -114,7 +98,6 @@ import { sweepAllExpiredDuels } from './services/duel.service';
 const app = express();
 const PORT = env.PORT;
 
-// Express 설정
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -124,17 +107,12 @@ app.use(
           env.NODE_ENV === 'production'
             ? ["'self'"]
             : ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // 개발 모드에서만 허용
-        // 폰트 CDN — client/index.html 이 Pretendard 를 여기서 받는다.
-        // 서버 헤더와 화면의 meta CSP 가 어긋나면 더 좁은 쪽이 이긴다. 여기에 출처가
-        // 빠지면 프로덕션 빌드에서만 폰트가 실리지 않고 시스템 폰트로 떨어진다.
+        // 폰트 CDN. client/index.html 이 Pretendard 를 여기서 받는다. 빠지면 프로덕션에서 시스템 폰트로 떨어진다.
         styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
         imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
         fontSrc: ["'self'", 'data:', 'https://cdn.jsdelivr.net'],
         connectSrc: ["'self'"],
-        // iframe 임베드 허용 — 관리자 커스텀 페이지(외부 URL/번들)와 게시글 동영상 임베드용.
-        // frame-src만 넓게 열되(임의 http/https 프레이밍 허용), 나머지 CSP(script/connect 등 XSS 방어)는
-        // 엄격 유지. 사용자 게시글의 iframe은 sanitizer가 youtube/vimeo만 허용하므로 실질 위험 낮음.
-        // index.html의 meta CSP frame-src와 동일하게 맞춤.
+        // frame-src 만 넓게 연다. 관리자 커스텀 페이지와 게시글 동영상 임베드용이며 index.html 의 meta CSP 와 같게 맞춘다.
         frameSrc: ["'self'", 'https:', 'http:'],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: env.NODE_ENV === 'production' ? [] : null,
@@ -157,7 +135,7 @@ app.use(
 
 app.disable('x-powered-by');
 
-// Proxy 신뢰 설정 (rate limiter가 실제 클라이언트 IP를 올바르게 인식하도록)
+// Proxy 신뢰 설정 (rate limiter 가 실제 클라이언트 IP 를 보게 한다)
 if (env.NODE_ENV === 'production') {
   app.set('trust proxy', 1); // 프로덕션: 첫 번째 프록시(nginx 등)만 신뢰
 } else {
@@ -221,13 +199,8 @@ function isOriginAllowed(origin: string): boolean {
 
 /**
  * 요청이 이 서버 자신에게서 온 것인지(같은 출처인지).
- *
  * 프로덕션에서는 Express 가 client/dist 를 직접 서빙하므로 화면과 API 가 같은 출처다.
- * 허용 목록에 서버 자신의 주소가 없으면 CORS 가 자기 화면의 정적 파일을 막는다.
- * 포트를 나열하는 방식은 배포 주소가 바뀔 때마다 다시 막히므로, 요청이 들어온
- * 호스트와 비교한다. 같은 출처는 원래 CORS 의 대상이 아니므로 정책이 넓어지지 않는다.
- *
- * 프록시 뒤에서 프로토콜이 달라질 수 있어(https 화면 → http 내부 홉) host 만 본다.
+ * 배포 주소가 바뀌어도 막히지 않도록 포트 나열 대신 요청 Host 와 비교하고, 프록시 때문에 host 만 본다.
  */
 function isSameOrigin(origin: string, host: string | undefined): boolean {
   if (!host) return false;
@@ -253,9 +226,7 @@ app.use(
           return callback(null, true);
         }
 
-        // 차단 — 로그에 origin 명시하여 디버깅 용이하게
-        // AppError(403)로 전달해야 errorHandler가 클라이언트 오류(4xx)로 처리한다.
-        // plain Error는 statusCode가 없어 500 + critical 에러로그로 오인된다.
+        // 차단. AppError(403)로 넘겨야 errorHandler 가 4xx 로 처리한다(plain Error 는 500 이 된다).
         logger.warn(`CORS 차단: ${origin}`);
         callback(new AppError(403, `CORS 차단: ${origin}`));
       },
@@ -268,8 +239,7 @@ app.use(
   })
 );
 
-// app.use(cors()) 가 preflightContinue:false(기본값) 로 OPTIONS 응답을 이미 종료하므로
-//    별도의 app.options() 등록은 불필요. 잘못된 인자 없는 cors()는 모든 origin 허용 → 제거.
+// cors() 가 preflightContinue:false 로 OPTIONS 응답을 종료하므로 별도 app.options() 등록은 불필요.
 
 app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -286,10 +256,8 @@ if (env.NODE_ENV === 'development') {
   });
 }
 
-// body 크기 제한을 런타임에 settingsCache에서 읽어 동적으로 적용
-//    관리자가 maxFileSizeMb를 변경해도 재시작 없이 즉시 반영됨 (lazy wrapper 패턴)
-//    매 요청마다 인스턴스를 새로 생성하면 raw-body 등 의존성이 매번 재초기화되어 비용 큼 →
-//    현재 limitMb를 기억하고 변경 시에만 새 미들웨어 인스턴스 생성하는 메모이제이션 적용.
+// body 크기 제한을 런타임에 settingsCache 에서 읽어 재시작 없이 반영한다.
+// 매 요청마다 인스턴스를 만들면 비용이 커서 limitMb 가 바뀔 때만 새로 만든다.
 let _jsonLimitMb = -1;
 let _jsonMiddleware: express.RequestHandler | null = null;
 let _urlLimitMb = -1;
@@ -319,10 +287,7 @@ app.use((req, res, next) => {
   }
   return _urlMiddleware(req, res, next);
 });
-// ⚠️ Express 5 는 본문이 없는 요청(Content-Type 없이 보낸 POST 등)에서 req.body 를
-//    undefined 로 남긴다(Express 4 는 {} 였다). 컨트롤러 40여 곳이 `const { x } = req.body`
-//    형태로 구조분해하므로, 그대로 두면 TypeError 가 나서 검증 실패(400)여야 할 요청이
-//    500 으로 떨어진다. 여기서 한 번 정규화해 각 컨트롤러가 이를 신경 쓰지 않게 한다.
+// Express 5 는 본문 없는 요청에서 req.body 를 undefined 로 남긴다(4 는 {}). 여기서 정규화해 컨트롤러가 500 으로 떨어지지 않게 한다.
 app.use((req, _res, next) => {
   if (req.body === undefined) req.body = {};
   next();
@@ -404,17 +369,14 @@ app.use(
   authenticate as express.RequestHandler,
   express.static(path.resolve(__dirname, '../uploads/images'), imageStaticOptions)
 );
-// ⚠️ 첨부파일(uploads/files)은 정적 서빙하지 않는다.
-//    정적 서빙은 authenticate만 거쳐 게시판 읽기 권한/비밀글 접근 검증을 우회하므로(IDOR),
-//    모든 첨부 다운로드는 인가 로직이 있는 GET /api/uploads/download/:filename 으로만 제공한다.
-//    (fileStaticOptions의 Content-Disposition:attachment 등 보안 헤더는 해당 라우트에서 동일하게 설정됨)
+// 첨부파일(uploads/files)은 정적 서빙하지 않는다. 읽기 권한·비밀글 검증을 우회하므로(IDOR)
+// 다운로드는 인가 로직이 있는 GET /api/uploads/download/:filename 으로만 제공한다.
 app.use(
   '/uploads/avatars',
   express.static(path.resolve(__dirname, '../uploads/avatars'), imageStaticOptions)
 );
 
-// 클라이언트 빌드 서빙 (npm 프로덕션 모드 — 별도 정적 서버 불필요)
-// NODE_ENV !== 'development' 이고 client/dist가 존재하면 Express가 직접 서빙
+// 클라이언트 빌드 서빙 — NODE_ENV !== 'development' 이고 client/dist 가 있으면 Express 가 직접 서빙
 const clientDistPath = path.resolve(__dirname, '../../client/dist');
 const clientIndexPath = path.join(clientDistPath, 'index.html');
 const clientBuildExists = env.NODE_ENV !== 'development' && fs.existsSync(clientIndexPath);
@@ -427,8 +389,7 @@ if (clientBuildExists) {
       etag: true,
     })
   );
-  // 지금 서빙 중인 빌드의 표식. 켜 둔 채로 배포가 일어났는지 화면이 이것으로 알아챈다 —
-  // 열어 둔 탭은 스스로 다시 받아 오지 않아, 배포해도 예전 화면이 남곤 했다.
+  // 지금 서빙 중인 빌드의 표식. 열어 둔 탭이 배포가 일어났는지 이것으로 알아챈다.
   app.get('/api/app-version', (_req, res) => {
     res.set('Cache-Control', 'no-store');
     res.json({ success: true, data: { version: readAppVersion(clientIndexPath) } });
@@ -613,7 +574,6 @@ const startServer = async () => {
   try {
     logger.info('🔄 API 서버 초기화 시작...');
 
-    // 업로드 디렉토리 초기화
     logger.info('📁 업로드 디렉토리 초기화 중...');
     await initializeUploadDirs();
     logger.info('✅ 업로드 디렉토리 초기화 완료');
@@ -624,21 +584,14 @@ const startServer = async () => {
     // 기능 카탈로그가 스스로 모순되지 않는지 먼저 확인한다 (DB 접근 없음)
     verifyFeatureCatalog();
 
-    // ⚠️ 순서 주의: 컬럼 보강이 sync 보다 먼저다.
-    //   sync 는 이미 있는 테이블에 '빠진 인덱스' 를 만드는데, 그 인덱스가 새 컬럼을
-    //   가리키면 컬럼이 아직 없어 CREATE INDEX 가 실패하고 서버가 아예 뜨지 못한다.
-    //   (workStatus 인덱스를 추가했을 때 기존 DB 에서 재현된다.)
-    //   테이블이 없는 새 DB 에서는 보강이 조용히 건너뛰고, 뒤이은 sync 가 컬럼·인덱스를
-    //   한 번에 제대로 만든다.
+    // 순서 주의: 컬럼 보강이 sync 보다 먼저다. 새 컬럼을 가리키는 인덱스를 sync 가 먼저 만들면 실패한다.
     logger.info('🧩 모델 컬럼 보강 중...');
     await ensureAllModelColumns();
 
     logger.info('🔄 테이블 동기화 시작...');
-    // 모든 DB에서 alter:false. alter:true는 위험하다:
-    //   - SQLite: column 변경 시 backup→drop→rename 패턴이라 FK 제약에서 실패 가능.
-    //   - MySQL/MariaDB: 재시작마다 unique/인덱스를 기존 것 감지 못 하고 중복 추가(email_2, email_3 …)
-    //     → 결국 'ER_TOO_MANY_KEYS: max 64 keys' 로 시작이 깨진다(치명).
-    //   누락된 컬럼은 위 ensureAllModelColumns()가 QueryInterface(dialect 무관)로 직접 ADD한다.
+    // 모든 DB에서 alter:false. SQLite 는 FK 제약에서 실패할 수 있고, MySQL/MariaDB 는
+    // 재시작마다 인덱스를 중복 추가해 'ER_TOO_MANY_KEYS' 로 깨진다.
+    // 누락된 컬럼은 위 ensureAllModelColumns()가 직접 ADD 한다.
     const syncOptions = { alter: false, force: false };
     await sequelize.sync(syncOptions);
     logger.info('✅ 테이블 동기화 완료');
@@ -655,8 +608,7 @@ const startServer = async () => {
 
     logger.info('⚙️ 설정 캐시 로드 중...');
     await loadSettingsCache();
-    // 캐시 로드 후 업로더를 재빌드해 DB에 저장된 파일 크기·개수 한도를 반영한다.
-    // (업로더 인스턴스는 import 시점에 기본값으로 빌드되므로 재빌드하지 않으면 DB 설정이 무시된다.)
+    // 캐시 로드 후 업로더를 재빌드해야 DB 에 저장된 파일 크기·개수 한도가 반영된다.
     refreshUploaders();
     logger.info('✅ 설정 캐시 로드 완료');
 
@@ -677,9 +629,7 @@ const startServer = async () => {
     void cleanupExpiredTempShares();
     setInterval(() => void cleanupExpiredTempShares(), 2 * 60 * 1000);
 
-    // 만료된 포인트 대결 환불 (시작 시 1회 + 2분 주기).
-    // 걸어 둔 포인트는 판이 닫혀야 돌아온다. 화면을 여는 사람만 정리하면
-    // 양쪽 다 접속하지 않는 판의 포인트가 묶인 채 남는다.
+    // 만료된 포인트 대결 환불 (시작 시 1회 + 2분 주기). 양쪽 다 접속하지 않으면 걸어 둔 포인트가 묶인다.
     void sweepAllExpiredDuels();
     setInterval(() => void sweepAllExpiredDuels(), 2 * 60 * 1000);
 
@@ -712,8 +662,7 @@ const startServer = async () => {
     });
   } catch (error) {
     logger.error('❌ API 서버 시작 실패:', error);
-    // 시작 실패 원인은 환경(NODE_ENV)과 무관하게 항상 출력. Sequelize DB 에러는 실제 SQL·ER코드가
-    //   error.sql / error.original(parent)에 들어있으므로 그 필드를 직접 뽑아 보여준다.
+    // 시작 실패 원인은 항상 출력한다. Sequelize 에러는 error.sql / error.original 에 실제 SQL·ER코드가 있다.
     console.error('─── 시작 실패 상세 ───');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const e = error as any;
@@ -732,11 +681,8 @@ const startServer = async () => {
 };
 
 /**
- * 종료할 때 처리 중인 요청을 마저 끝낸다.
- *
- * 예전에는 곧바로 process.exit 를 불러, 재시작할 때마다 그 순간 오가던 요청이
- * 그대로 끊겼다(글 저장 중이면 저장이 안 된 채로). 새 연결만 막고 하던 일을
- * 기다리되, 오래 매달린 연결 때문에 배포가 멈추지 않도록 시간 제한을 둔다.
+ * 종료할 때 새 연결만 막고 처리 중인 요청을 마저 끝낸다.
+ * 오래 매달린 연결 때문에 배포가 멈추지 않도록 시간 제한을 둔다.
  */
 const SHUTDOWN_GRACE_MS = 10_000;
 
@@ -758,11 +704,8 @@ async function shutdown(signal: string): Promise<void> {
 process.on('unhandledRejection', (reason, _promise) => {
   logger.error('❌ Unhandled Rejection:', reason);
   console.error(reason instanceof Error ? (reason.stack ?? reason.message) : reason);
-  // 개발·테스트에서는 즉시 죽여 눈에 띄게 한다 — 놓친 .catch 를 그때 잡아야 한다.
-  //
-  // 운영에서는 살려 둔다. 여기 걸리는 것은 대개 응답과 무관하게 던져 둔 일(알림 발송,
-  // 로그 기록)이다. 그것 하나 실패했다고 쓰고 있는 모든 사람의 서버를 내리는 쪽이
-  // 더 나쁘다. 상태가 깨졌을 가능성이 있는 uncaughtException 은 그대로 종료한다.
+  // 개발·테스트에서는 즉시 종료해 눈에 띄게 한다. 운영에서는 살려 둔다(대개 응답과 무관한 백그라운드 작업).
+  // 상태가 깨졌을 수 있는 uncaughtException 은 그대로 종료한다.
   if (env.NODE_ENV !== 'production') process.exit(1);
 });
 
@@ -780,7 +723,6 @@ process.on('SIGINT', () => {
   void shutdown('SIGINT');
 });
 
-// 테스트 환경에서는 서버를 시작하지 않음
 if (require.main === module) {
   void startServer();
 }

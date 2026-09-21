@@ -1,21 +1,13 @@
-// server/src/validators/schemas.ts
-// zod 스키마 정의 — 주요 API 입력값 검증에 사용
-// ⚠️ 비밀번호 최소 길이는 관리자 설정(minPasswordLength)에 따라 동적으로 결정되므로
-//    Zod 스키마에서는 구조(non-empty) 검사만 수행하고 실제 길이/복잡도 검사는 컨트롤러에서 처리
+// zod 스키마. 비밀번호 길이·복잡도는 관리자 설정에 따라 달라지므로 컨트롤러에서 검사한다.
 
 import { z } from 'zod';
 import { DUEL_HANDS, DUEL_MESSAGE_MAX, DUEL_STAKE_HARD_MAX, DUEL_TAUNT_MAX } from '../config/duel';
 import { ATTACK_KINDS } from '../config/attendanceAttack';
 
-// ─── 인증 ─────────────────────────────────────────────────
-
 export const loginSchema = z.object({
   id: z.string().min(1, '아이디는 필수입니다.').max(30),
   password: z.string().min(1, '비밀번호는 필수입니다.').max(100),
-  // 로그인 기록(LOGIN_SUCCESS)에 남기는 기기 식별값. 빠져 있어서 z.object 가 조용히 버렸고,
-  // 컨트롤러는 늘 undefined 를 받아 보안 기록에 기기가 한 번도 남지 않았다.
-  // null 도 받는다(없음으로 본다). 예전에는 이 키를 버렸으므로 어떤 값이 와도 로그인이 됐다 —
-  // 검사를 새로 붙이면서 null 을 보내는 클라이언트가 로그인을 못 하게 되면 안 된다.
+  // 로그인 기록에 남길 기기 식별값. null 도 받아 없음으로 처리한다.
   fingerprint: z
     .string()
     .max(200)
@@ -33,8 +25,7 @@ export const registerSchema = z.object({
   // 길이/복잡도 검사는 register 컨트롤러에서 AuthValidator.validatePassword()로 처리
   password: z.string().min(1, '비밀번호는 필수입니다.').max(100),
   name: z.string().min(1, '이름은 필수입니다.').max(50).trim(),
-  // User.email 컬럼이 STRING(100) 이다. 상한이 없으면 모델 검증기까지 내려가
-  // SequelizeValidationError 가 되고, 그것이 500 으로 나간다.
+  // User.email 은 STRING(100). 상한이 없으면 모델 검증기에서 걸려 500 이 된다.
   email: z
     .string()
     .max(100, '이메일은 100자를 초과할 수 없습니다.')
@@ -53,27 +44,20 @@ export const passwordResetRequestSchema = z.object({
   loginId: z.string().min(1, '아이디를 입력해주세요.').max(50),
 });
 
-// 인증번호(6자리) 기반 재설정 — 아이디 + 인증번호 + 새 비밀번호.
-// 복잡도 검사는 컨트롤러에서 AuthValidator.validatePassword()로 처리.
+// 인증번호(6자리) 기반 재설정. 복잡도 검사는 컨트롤러에서 처리한다.
 export const passwordResetVerifySchema = z.object({
   loginId: z.string().min(1, '아이디를 입력해주세요.').max(50),
   code: z.string().regex(/^\d{6}$/, '인증번호는 6자리 숫자입니다.'),
   password: z.string().min(1, '새 비밀번호는 필수입니다.').max(100),
 });
 
-// ─── 댓글 ─────────────────────────────────────────────────
-// 길이 상한은 사이트 설정(commentContentMaxLength)에서 오는 동적 값이라 컨트롤러에 남긴다.
-// 여기서는 구조(타입·형식)만 확정해 컨트롤러가 값의 모양을 다시 의심하지 않게 한다.
-
-// 구조적 상한. 컨트롤러의 길이 검사는 태그를 걷어낸 '글자 수' 를 세므로, 빈 태그를
-// 수만 번 반복하면 0자로 세어져 그대로 통과한다. 모델의 len [1, 100000] 과 같은 값으로
-// 막아 둔다 — 동적 상한을 대신하는 것이 아니라 그 밑을 받치는 것이다.
+// 길이 상한은 사이트 설정에서 오는 동적 값이라 컨트롤러에서 검사한다.
+// 여기 상한은 태그만 반복해 0자로 세어지는 입력을 막는 구조적 하한선이며, 모델 len 과 같은 값이다.
 const COMMENT_MAX = 100000;
 
 export const createCommentSchema = z.object({
   content: z.string().min(1, '댓글 내용을 입력해주세요.').max(COMMENT_MAX),
-  // INTEGER 컬럼이라 범위를 넘기면 방언에 따라 DB 오류가 된다.
-  // 문자열 분기는 Number 로 바뀌므로 변환 뒤에도 상한을 다시 본다.
+  // INTEGER 컬럼 범위. 문자열 분기는 변환 뒤에도 상한을 다시 확인한다.
   parentId: z
     .union([
       z.number().int().positive().max(2147483647),
@@ -93,8 +77,6 @@ export const updateCommentSchema = z.object({
   content: z.string().min(1, '댓글 내용을 입력해주세요.').max(COMMENT_MAX),
 });
 
-// ─── 메모 ─────────────────────────────────────────────────
-
 // memo.controller 의 VALID_COLORS 와 반드시 일치해야 한다
 const MEMO_COLORS = ['yellow', 'green', 'blue', 'pink', 'purple'] as const;
 
@@ -109,21 +91,17 @@ const memoFields = {
 export const createMemoSchema = z
   .object(memoFields)
   .refine(v => Boolean(v.title?.trim()) || Boolean(v.content?.trim()), {
-    // 제목·내용이 모두 비어 있으면 저장 의미 없음 — 댓글/게시글 검증과 일관
     message: '제목 또는 내용을 입력해주세요.',
     path: ['content'],
   });
 
-// ⚠️ validateBody 는 req.body 를 파싱 결과로 교체하므로, 스키마에 없는 키는 사라진다.
-//    수정 요청은 고정·정렬만 바꾸는 경우가 있어 isPinned·order 를 반드시 포함해야 하고,
-//    "제목 또는 내용 필수" 규칙도 적용하면 안 된다(고정만 토글하는 요청이 막힌다).
+// validateBody 가 req.body 를 파싱 결과로 교체하므로 스키마에 없는 키는 사라진다.
+// 고정만 토글하는 요청 때문에 isPinned·order 를 포함하고 "제목 또는 내용 필수" 는 걸지 않는다.
 export const updateMemoSchema = z.object({
   ...memoFields,
   isPinned: z.boolean().optional(),
   order: z.number().int().min(0, 'order는 0 이상의 정수여야 합니다.').max(2147483647).optional(),
 });
-
-// ─── 태그 ─────────────────────────────────────────────────
 
 // tag.controller 의 HEX_COLOR_REGEX 와 동일 — 3자리 축약형(#f00)도 허용한다
 const HEX_COLOR = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
@@ -141,20 +119,9 @@ export const createTagSchema = z.object({
 
 export const updateTagSchema = createTagSchema.partial();
 
-// ─── 출퇴근 ───────────────────────────────────────────────
-
-/**
- * 포인트 대결 신청.
- *
- * 금액 범위는 config/duel 의 규칙과 같은 값을 쓴다 — 여기서만 막고 서비스에서
- * 안 막으면 API 를 직접 부르는 쪽에 제약이 없고, 두 곳에 숫자를 따로 적어 두면
- * 한쪽만 바뀐다.
- */
 export const duelCreateSchema = z.object({
   opponentId: z.string().trim().min(1, '상대를 골라주세요.').max(50),
-  // 여기서는 '말이 되는 범위' 만 막는다. 관리자가 정한 실제 범위는 서비스가 본다
-  // (duel.service.create) — 이 스키마는 서버가 뜰 때 한 번 만들어져서 바뀐 설정을
-  // 따라갈 수 없기 때문이다. 두 겹 중 안쪽이 진짜 규칙이다.
+  // 여기서는 절대 상한만 막는다. 관리자가 정한 범위는 duel.service.create 가 검사한다.
   stake: z
     .number()
     .int('건 포인트는 정수여야 합니다.')
@@ -172,7 +139,6 @@ export const duelAcceptSchema = z.object({
   hand: z.enum(DUEL_HANDS),
 });
 
-/** 이긴 사람의 한마디 */
 export const duelTauntSchema = z.object({
   message: z
     .string()
@@ -181,12 +147,6 @@ export const duelTauntSchema = z.object({
     .max(DUEL_TAUNT_MAX, `한마디는 ${DUEL_TAUNT_MAX}자까지입니다.`),
 });
 
-/**
- * 퇴근 공격권을 쓸 대상과 종류.
- *
- * 쪽지는 남의 화면에 그대로 뜨는 글이라 길이를 짧게 묶는다. 길게 쓰라고 연 창구가
- * 아니고, 길이를 열어 두면 쪽지가 아니라 메시지 기능이 된다.
- */
 export const attendanceAttackSchema = z.object({
   targetId: z.string().trim().min(1, '대상을 골라주세요.').max(50),
   kind: z.enum(ATTACK_KINDS).optional(),
@@ -215,13 +175,10 @@ export const attendanceChecklistUpdateSchema = z.object({
   order: z.number().int().min(0).max(2147483647).optional(),
 });
 
-// 관리자가 바꿀 수 있는 근무 설정의 목록은 여기 한 곳이다. 컨트롤러는 이 결과를 그대로
-// 서비스로 넘긴다. z.object 는 여기 없는 키를 조용히 버리므로, 필드를 새로 만들면 반드시
-// 여기에 넣어야 한다 — checkInGraceMinutes 가 빠져 있어서 관리자가 보정을 저장해도
-// '저장되었습니다' 만 뜨고 값은 버려졌다.
+// 관리자가 바꿀 수 있는 근무 설정 목록은 여기 한 곳이다. z.object 는 없는 키를 버리므로 필드를 추가하면 여기에도 넣어야 한다.
 export const attendancePolicySchema = z.object({
   standardWorkMinutes: z.number().int().min(30).max(1440).optional(),
-  // 상한은 서비스(updatePolicy)와 같다. 한 시간을 넘겨 당기면 보정이 아니라 기록을 지어내는 것이다.
+  // 상한은 서비스(updatePolicy)와 같은 값이다.
   checkInGraceMinutes: z.number().int().min(0).max(60).optional(),
   requireChecklist: z.boolean().optional(),
   noticeText: z.string().max(300, '안내 문구는 300자를 넘을 수 없습니다.').optional(),

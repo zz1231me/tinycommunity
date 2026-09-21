@@ -1,18 +1,11 @@
-// server/src/utils/contentRenderer.ts
-// Tiptap JSON을 HTML로 변환하는 유틸리티 (서버사이드) - 개선 버전
+// Tiptap JSON·CKEditor HTML 을 서버에서 HTML 로 변환한다.
 import sanitizeHtml from 'sanitize-html';
 import { logInfo } from './logger';
 
-// CKEditor 등에서 들어온 raw HTML 문자열을 서버 측에서 살균.
-// 클라이언트 DOMPurify에만 의존하면 OG 미리보기/검색 미리보기 등 비 DOMPurify 경로에서 XSS가 노출됨.
-//
-// ⚠️ 허용 태그/속성/CSS는 client/src/utils/htmlSanitizer.ts의 DOMPurify 설정과 동기화한다.
-//    서버 측 규칙이 더 엄격하면 정상 콘텐츠(밑줄/표/색상 등)가 잘려 사용자에게 깨져 보임.
+// 서버 측 살균. 클라이언트 DOMPurify 에만 의존하면 OG·검색 미리보기 같은 비 DOMPurify 경로에서 XSS 가 노출된다.
+// 허용 태그·속성·CSS 는 client/src/utils/htmlSanitizer.ts 와 동기화한다. 서버가 더 엄격하면 정상 콘텐츠가 잘린다.
 
-// client/src/utils/htmlSanitizer.ts 의 SAFE_CSS_PROPS 와 같은 목록이어야 한다.
-// 두 곳이 각자 한 번씩 정화하므로, 여기서 허용한 속성을 저쪽이 빼면 저장은 되는데 화면에서 사라진다.
-// sanitizerParity.test.ts 가 두 목록을 직접 비교한다.
-// CKEditor가 출력하는 스타일을 보존하되 javascript:/expression()만 차단한다.
+// client 의 SAFE_CSS_PROPS 와 같은 목록이어야 한다. sanitizerParity.test.ts 가 두 목록을 비교한다.
 const SAFE_CSS_PROPS = new Set<string>([
   'color',
   'background-color',
@@ -181,13 +174,10 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
     th: ['colspan', 'rowspan', 'class', 'style'],
     td: ['colspan', 'rowspan', 'class', 'style'],
     code: ['class'],
-    // 문단별 첨부(증적) 참조. 값은 첨부의 '원본 파일명'이며 렌더 시점에 게시글의
-    // attachments 와 대조해 카드로 바꾼다 — client htmlSanitizer 의 ALLOWED_ATTR 과 동기화.
+    // 문단별 첨부(증적) 참조. client htmlSanitizer 의 ALLOWED_ATTR 과 동기화한다.
     span: ['data-attachment'],
     label: ['class'],
-    // input 은 체크리스트 표시에만 쓴다. type·checked·disabled 만 남기고
-    // transformTags 에서 항상 checkbox·disabled 로 강제한다 — 본문에 조작 가능한
-    // 입력칸이 생기면 그 자체로 공격 표면이 된다.
+    // input 은 체크리스트 표시 전용. transformTags 에서 항상 checkbox·disabled 로 강제한다.
     input: ['type', 'checked', 'disabled'],
     pre: ['class'],
     figure: ['class', 'data-figure-type', 'style'],
@@ -311,20 +301,17 @@ export interface TiptapDocument {
 //   모든 반환 HTML은 sanitize-html을 통과해 서버 측에서 XSS를 1차 차단한다.
 export function renderContentToHTML(json: string | TiptapDocument): string {
   try {
-    // If it's already an HTML string (CKEditor), sanitize and return
     if (typeof json === 'string') {
       const trimmed = json.trimStart();
       if (trimmed.startsWith('<') || trimmed === '') {
         return sanitizeHtmlContent(json);
       }
-      // Try to parse as Tiptap JSON
       const doc = JSON.parse(json) as TiptapDocument;
       if (!doc || doc.type !== 'doc') {
         return sanitizeHtmlContent(json); // Unknown format — sanitize raw input
       }
       return sanitizeHtmlContent(renderNodes(doc.content || []));
     }
-    // TiptapDocument object
     const doc = json as TiptapDocument;
     if (!doc || doc.type !== 'doc') {
       return '<p>잘못된 문서 형식입니다.</p>';
@@ -338,12 +325,10 @@ export function renderContentToHTML(json: string | TiptapDocument): string {
   }
 }
 
-// 노드 배열을 HTML로 변환
 function renderNodes(nodes: TiptapNode[]): string {
   return nodes.map(node => renderNode(node)).join('');
 }
 
-// 개별 노드를 HTML로 변환 (스타일링 개선)
 function renderNode(node: TiptapNode): string {
   const { type, attrs = {}, content = [], marks = [], text } = node;
 
@@ -354,7 +339,6 @@ function renderNode(node: TiptapNode): string {
         attrs.textAlign && allowedAligns.includes(attrs.textAlign) ? attrs.textAlign : null;
       const pAttrs = safeAlign ? ` style="text-align: ${safeAlign}"` : '';
       const pContent = renderNodes(content);
-      // 빈 단락 처리
       return `<p${pAttrs}>${pContent || ''}</p>`;
     }
 
@@ -384,7 +368,6 @@ function renderNode(node: TiptapNode): string {
             result = `<s>${result}</s>`;
             break;
           case 'code':
-            // 인라인 코드 스타일링 개선
             result = `<code class="inline-code">${result}</code>`;
             break;
           case 'link': {
@@ -459,13 +442,11 @@ function renderNode(node: TiptapNode): string {
     }
 
     default:
-      // 알 수 없는 노드 타입의 경우 콘텐츠만 렌더링
       logInfo(`알 수 없는 노드 타입: ${type}`);
       return renderNodes(content);
   }
 }
 
-// HTML 이스케이프 함수
 function escapeHtml(text: string | null | undefined): string {
   if (!text) return '';
 
@@ -503,10 +484,8 @@ export function extractTextFromContent(
 
     let text: string;
     if (doc) {
-      // Tiptap JSON path
       text = extractText(doc.content || []);
     } else {
-      // CKEditor HTML path — strip tags
       const html = typeof json === 'string' ? json : '';
       text = html
         .replace(/<[^>]+>/g, ' ')
@@ -521,14 +500,11 @@ export function extractTextFromContent(
   }
 }
 
-// 검색 인덱싱용: content(CKEditor HTML 또는 Tiptap JSON)를 길이 제한 없이 평문으로 변환.
-// Post.contentText 컬럼을 이 값으로 채워, 검색이 태그가 낀 원본 HTML이 아니라
-// 평문에 매칭되도록 한다(예: "<strong>볼드</strong> <i>이탤릭</i>" → "볼드 이탤릭").
+// 검색 인덱싱용: content 를 길이 제한 없이 평문으로 바꿔 Post.contentText 에 채운다.
 export function extractSearchText(content: string): string {
   return extractTextFromContent(content, Number.MAX_SAFE_INTEGER);
 }
 
-// 노드에서 텍스트만 추출
 function extractText(nodes: TiptapNode[]): string {
   let result = '';
 
@@ -539,7 +515,6 @@ function extractText(nodes: TiptapNode[]): string {
       result += extractText(node.content);
     }
 
-    // 블록 노드 뒤에 공백 추가
     if (['paragraph', 'heading', 'listItem'].includes(node.type)) {
       result += ' ';
     }

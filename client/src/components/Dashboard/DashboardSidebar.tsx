@@ -1,4 +1,3 @@
-// client/src/components/Dashboard/DashboardSidebar.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -31,7 +30,6 @@ interface DashboardSidebarProps {
   onClose: () => void;
 }
 
-// 섹션 헤더
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="px-3 mb-2 text-2xs font-semibold uppercase tracking-[0.08em] text-slate-400 select-none">
@@ -40,7 +38,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-// 인라인 스피너
 function Spinner() {
   return (
     <div className="flex items-center gap-2 px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
@@ -51,10 +48,7 @@ function Spinner() {
 }
 
 export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
-  // 좁은 화면에서는 서랍이다. 닫혀 있어도 화면 밖으로 밀어 둘 뿐 DOM 에는 남아 있어,
-  // Tab 을 누르면 보이지 않는 링크 스무 개를 차례로 지나가게 된다 — 화면에서는
-  // 아무 일도 일어나지 않는데 포커스만 사라진 것처럼 보인다. 닫혀 있으면 꺼 둔다.
-  // (넓은 화면에서는 늘 보이는 기둥이므로 그대로 둔다.)
+  // 좁은 화면에서 닫힌 서랍은 DOM 에 남아 Tab 이 보이지 않는 링크를 지나간다. 닫혀 있으면 꺼 둔다.
   const [narrow, setNarrow] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 1024
   );
@@ -82,10 +76,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
   // store.isAdmin()은 role==='admin' + roleInfo.isActive 까지 확인(비활성 역할 차단)
   const isAdmin = isAdminCheck();
 
-  // 관리자가 끈 기능은 메뉴에서도 뺀다. 눌러 봐야 403 이 뜨는 항목을 남겨 둘 이유가 없다.
-  // 탐색은 인기글·태그 클라우드 중 하나라도 살아 있으면 보여 준다.
-  // 두 훅을 먼저 각각 호출한 뒤 합친다 — || 로 이으면 단축 평가 때문에
-  // 두 번째 훅이 렌더마다 호출되지 않아 훅 순서가 어긋난다.
+  // 관리자가 끈 기능은 메뉴에서도 뺀다. 두 훅을 각각 호출한 뒤 합친다(|| 로 이으면 훅 순서가 어긋난다).
   const popularEnabled = useFeature('discovery.popular');
   const tagCloudEnabled = useFeature('discovery.tagCloud');
   const showExplore = popularEnabled || tagCloudEnabled;
@@ -137,7 +128,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
     }
   }, [boards, boardsLoading, user, userRole, regularBoards.length, personalBoards.length]);
 
-  // 게시된 커스텀 HTML 페이지(관리자 작성) — 사이드바에 노출
+  // 게시된 커스텀 HTML 페이지를 사이드바에 노출한다.
   const [customPages, setCustomPages] = React.useState<CustomPageSummary[]>([]);
   React.useEffect(() => {
     if (!user) return;
@@ -188,7 +179,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
             </div>
           </div>
 
-          {/* 게시판 — 위키도 여기에 끼워 관리자가 정한 순서대로 늘어놓는다 */}
+          {/* 게시판. 위키도 여기에 끼워 관리자가 정한 순서대로 늘어놓는다 */}
           {(boardsLoading || navEntries.length > 0) && (
             <div>
               <SectionLabel>게시판</SectionLabel>
@@ -226,7 +217,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
             </div>
           )}
 
-          {/* 개인 공간은 프로필 드롭다운(헤더)에서 진입 — 사이드바 중복 노출 제거 */}
+          {/* 개인 공간은 헤더 프로필 드롭다운에서 진입한다 */}
 
           {/* 도구 */}
           <div>
@@ -320,8 +311,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
           {/* 북마크 */}
           <div>
             <div className="flex items-center justify-between px-3 mb-1.5">
-              {/* SectionLabel 과 같은 글자 규칙 — 컴포넌트를 쓰지 않는 이유는 이 줄에만
-                  오른쪽 버튼이 함께 놓여 바깥 여백을 부모가 정하기 때문이다. */}
+              {/* SectionLabel 과 같은 글자 규칙. 이 줄만 오른쪽 버튼이 함께 놓여 바깥 여백을 부모가 정한다 */}
               <p className="text-2xs font-semibold uppercase tracking-[0.08em] text-slate-400 select-none">
                 북마크
               </p>

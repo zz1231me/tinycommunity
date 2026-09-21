@@ -1,4 +1,4 @@
-// 관리자 페이지 공통 타입 정의
+// 관리자 페이지 공통 타입
 
 export interface User {
   id: string;
@@ -34,7 +34,7 @@ export interface Board {
   description: string;
   order: number;
   isActive: boolean;
-  /** 업무용 게시판 — 담당자·업무 상태를 쓴다 */
+  /** 업무용 게시판. 담당자·업무 상태를 쓴다. */
   taskEnabled?: boolean;
 }
 
@@ -136,7 +136,7 @@ export type AuditAction =
   | 'update_ip_rule'
   | 'delete_ip_rule'
   | 'update_attendance_settings'
-  // 일반 사용자도 남기는 행위 (되돌릴 수 없는 삭제만)
+  // 일반 사용자도 남기는 행위(되돌릴 수 없는 삭제만)
   | 'delete_post'
   | 'delete_comment'
   | 'delete_wiki_page';
@@ -146,7 +146,7 @@ export interface AuditLogRecord {
   actorId: string;
   actorName: string;
   action: AuditAction;
-  // 서버의 AuditTargetType 과 같아야 한다. 'attendance' 는 서버에만 있고 여기 빠져 있었다.
+  // 서버의 AuditTargetType 과 같아야 한다.
   targetType:
     | 'user'
     | 'board'
@@ -183,7 +183,7 @@ export interface PasswordResetRequestItem {
   id: string;
   userId: string; // 로그인 아이디
   name: string | null;
-  code: string; // 복호화된 6자리 인증번호(관리자 전용) — 사용자에게 전달
+  code: string; // 복호화된 6자리 인증번호(관리자 전용)
   expiresAt: string;
   attempts: number;
   remainingAttempts: number;
@@ -215,7 +215,7 @@ export type TabType =
   | 'announcements'
   | 'attendance';
 
-// 관리자 대시보드 통계 (GET /admin/stats)
+// 관리자 대시보드 통계(GET /admin/stats)
 export interface AdminStatsBucket {
   key: string;
   count: number;
@@ -229,22 +229,22 @@ export interface AdminStats {
     totalComments: number;
     totalBoards: number;
   };
-  /** 지금 운영자가 손대야 하는 것들. 모두 0 이면 대기 중인 일이 없다. */
+  /** 운영자가 지금 처리해야 하는 항목 수. */
   pending: {
     userApprovals: number;
     reports: number;
     passwordResets: number;
   };
-  /** boardActivity·topAuthors 가 보는 "최근" 의 기준 일수 */
+  /** boardActivity·topAuthors 가 보는 '최근' 의 기준 일수. */
   recentDays: number;
-  /** 게시판별 활력 — 최근 글이 많은 순 */
+  /** 게시판별 활력. 최근 글이 많은 순. */
   boardActivity: {
     boardId: string;
     name: string;
     totalPosts: number;
     recentPosts: number;
   }[];
-  /** 최근 기간의 상위 작성자 (최대 5명) */
+  /** 최근 기간의 상위 작성자(최대 5명). */
   topAuthors: { userId: string; name: string; count: number }[];
   signupsByMonth: AdminStatsBucket[];
   postsByMonth: AdminStatsBucket[];

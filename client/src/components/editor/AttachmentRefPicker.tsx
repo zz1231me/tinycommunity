@@ -1,25 +1,19 @@
-// client/src/components/editor/AttachmentRefPicker.tsx
-// 에디터 아래에 붙는 "증적 꽂기" 패널. 첨부 목록에서 하나를 고르면
-// 캐럿 위치에 인라인 참조 위젯이 들어간다.
-//
-// CKEditor 툴바가 아니라 React 패널인 이유: 고를 수 있는 첨부 목록이 작성 도중
-// 계속 바뀌는데(파일 추가/삭제), 툴바 항목은 에디터 설정과 함께 한 번만 만들어진다.
-// MentionAutocomplete 와 같은 방식으로 mousedown 을 막아 캐럿을 유지한다.
+// 에디터 아래 증적 꽂기 패널. 첨부 목록이 작성 중 계속 바뀌어 툴바가 아닌 React 패널로 둔다.
 
 import { useState } from 'react';
 import { Paperclip } from 'lucide-react';
 import { INSERT_ATTACHMENT_REF } from './AttachmentRefPlugin';
 
-/** 이 패널이 실제로 쓰는 CKEditor 표면만 최소로 기술 */
+/** 이 패널이 쓰는 CKEditor 표면만 최소로 기술한다. */
 export interface AttachmentRefEditor {
   execute(commandName: string, ...args: unknown[]): unknown;
   editing: { view: { focus(): void } };
 }
 
 interface Props {
-  /** CKEditor onReady 로 받은 인스턴스 (없으면 비활성) */
+  /** CKEditor onReady 로 받은 인스턴스. 없으면 비활성. */
   editor: AttachmentRefEditor | null;
-  /** 이 글에 달려 있는 첨부의 원본 파일명 — 저장된 것과 방금 고른 것 모두 */
+  /** 이 글에 달린 첨부의 원본 파일명. 저장된 것과 방금 고른 것을 모두 포함한다. */
   attachmentNames: string[];
 }
 

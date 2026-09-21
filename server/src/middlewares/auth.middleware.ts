@@ -1,5 +1,4 @@
-// server/src/middlewares/auth.middleware.ts
-// JWT 쿠키 기반 인증 미들웨어
+// JWT 쿠키 기반 인증 미들웨어.
 
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
@@ -12,8 +11,7 @@ import { env } from '../config/env';
 import { JWT_ALGORITHM } from '../config/constants';
 import { userSessionService } from '../services/userSession.service';
 
-// 인증 미들웨어 캐시 (DB 조회 부하 감소)
-// TTL: 30초 — 로그아웃 무효화는 최대 30초 내에 반영됨
+// 사용자 캐시 TTL. 로그아웃 무효화는 최대 이 시간 안에 반영된다.
 const USER_CACHE_TTL_MS = 30_000;
 interface CachedUser {
   id: string;
@@ -28,11 +26,7 @@ interface CachedUser {
 }
 const userCache = new Map<string, CachedUser>();
 
-// 만료된 항목은 "그 사용자가 다시 요청할 때" 만 지워졌다 — 한 번 로그인하고 떠난 사용자의
-// 항목은 영원히 남는다. 다른 캐시(NodeCache)는 checkperiod 로 알아서 비우는데 여기만
-// 그러지 않아, 오래 떠 있는 서버에서 사용자 수만큼 단조 증가했다.
-// 타이머를 두는 대신, 캐시가 일정 크기를 넘었을 때만 만료분을 한 번 훑는다
-// (타이머는 테스트·종료 시 프로세스를 붙잡는 부작용이 있다).
+// 캐시가 이 크기를 넘을 때만 만료분을 훑는다. 타이머는 종료 시 프로세스를 붙잡아 쓰지 않는다.
 const USER_CACHE_SWEEP_THRESHOLD = 500;
 
 function sweepExpiredUsers(now: number): void {
@@ -55,9 +49,7 @@ export function invalidateUserCache(userId: string): void {
   userCache.delete(userId);
 }
 
-// 역할 변경/삭제처럼 다수 사용자에게 영향을 주는 작업용 — 전체 사용자 캐시 무효화.
-// (역할 비활성화/삭제 시 캐시된 roleInfo.isActive / tokenVersion 이 최대 TTL 동안 stale 하게 남아
-//  취소된 세션이 통과하던 문제를 즉시 해소)
+// 역할 변경·삭제처럼 다수에게 영향을 주는 작업 후 캐시 전체를 비운다.
 export function clearAllUserCaches(): void {
   userCache.clear();
 }
@@ -71,12 +63,7 @@ export const authenticate = async (
     const { access_token } = req.cookies;
 
     if (!access_token) {
-      // 갱신 토큰이 남아 있으면 "끝난 세션" 이 아니라 "다시 발급받으면 되는 상태" 다.
-      // 419 로 알려 주면 화면이 /auth/refresh 를 부르고 하던 일을 이어 간다.
-      // 401 로 뭉뚱그리면 글을 쓰던 중에도 그대로 로그인 화면으로 튕긴다.
-      //
-      // access 쿠키를 refresh 와 같은 수명으로 심으므로 보통 여기까지 오지 않지만,
-      // 쿠키가 지워지거나 예전 수명으로 심긴 쿠키가 남아 있는 경우가 있다.
+      // 갱신 토큰이 남아 있으면 401 이 아니라 419 를 준다. 화면이 /auth/refresh 로 이어 간다.
       if (req.cookies?.refresh_token) {
         logWarning('access_token 없음 — refresh_token 있으므로 갱신 유도(419)');
         sendError(res, 419, '토큰이 만료되었습니다.');
@@ -91,7 +78,7 @@ export const authenticate = async (
       algorithms: [JWT_ALGORITHM],
     }) as { id: string; tv?: number; type?: string };
 
-    // 2fa_pending 임시 토큰은 액세스 토큰으로 사용 불가
+    // 2fa_pending 임시 토큰은 액세스 토큰으로 쓸 수 없다
     if (decoded.type === '2fa_pending') {
       logWarning('인증 실패: 2FA 임시 토큰은 액세스 토큰으로 사용할 수 없음');
       sendUnauthorized(res, '유효하지 않은 토큰 형식입니다.');
@@ -102,12 +89,11 @@ export const authenticate = async (
       logInfo(`디코딩된 사용자 ID: ${decoded.id}`);
     }
 
-    // 캐시 우선 조회 (DB 부하 감소)
     let cachedUser = getCachedUser(decoded.id);
 
     if (!cachedUser) {
       const dbUser = await User.findByPk(decoded.id, {
-        paranoid: false, // ✅ deletedAt 컬럼 마이그레이션 전에도 쿼리 가능 (isDeleted로 체크)
+        paranoid: false, // deletedAt 컬럼이 없어도 조회 가능, 삭제는 isDeleted 로 판단
         include: [
           {
             model: Role,
@@ -133,7 +119,6 @@ export const authenticate = async (
         return;
       }
 
-      // DB 조회 결과를 캐시에 저장
       cachedUser = {
         id: dbUser.id,
         name: dbUser.name,
@@ -162,8 +147,7 @@ export const authenticate = async (
       return;
     }
 
-    // tokenVersion 검증: 로그아웃 후 기존 토큰 무효화
-    // decoded.tv가 없는 구형 토큰이면서 tokenVersion이 이미 증가된 경우(로그아웃 이력)도 거부
+    // tokenVersion 검증. tv 가 없는 구형 토큰도 tokenVersion 이 올라가 있으면 거부한다.
     const tvMismatch =
       decoded.tv === undefined
         ? cachedUser.tokenVersion > 0
@@ -192,11 +176,8 @@ export const authenticate = async (
       return;
     }
 
-    // 세션 단위 무효화: 이 요청의 refresh_token이 가리키는 DB 세션이 종료(isActive=false)됐으면
-    // 액세스 토큰이 아직 유효해도 거부한다. tokenVersion(전체 무효화)과 달리 특정 세션만 끊는
-    // '다른 기기 세션 종료/강제 로그아웃'이 액세스 토큰에도 즉시 반영되게 한다.
-    // (refresh_token이 없으면 검사 생략 → 액세스 토큰 자체 검증에 위임. 로그인 직후 세션 생성 전
-    //  race나 미추적 세션에서 정상 요청이 오인 차단되는 것을 방지)
+    // 세션 단위 무효화. refresh_token 이 가리키는 세션이 종료됐으면 액세스 토큰이 살아 있어도 거부한다.
+    // refresh_token 이 없으면 검사를 생략한다(로그인 직후 세션 생성 전 race 방지).
     const refreshToken = req.cookies?.refresh_token;
     if (refreshToken && (await userSessionService.isSessionRevoked(refreshToken))) {
       logWarning(`인증 실패: 종료된 세션 (userId: ${cachedUser.id})`);
@@ -204,10 +185,8 @@ export const authenticate = async (
       return;
     }
 
-    // 강제 비밀번호 변경(관리자 초기화 후): 임시 비번으로 로그인한 사용자는 비밀번호 변경/세션
-    // 관련 엔드포인트(/api/auth/*) 외 모든 요청을 차단한다. 클라이언트 강제 이동의 서버측 방어선.
-    // ⚠️ 반드시 쿼리스트링을 제거한 '경로'로 검사한다. originalUrl 전체에 includes()를 쓰면
-    //    `/api/notifications?x=/api/auth/` 같이 쿼리에 문자열을 심어 게이트를 우회할 수 있다.
+    // 강제 비밀번호 변경 중에는 /api/auth/* 외 모든 요청을 막는다.
+    // 반드시 쿼리스트링을 뗀 경로로 검사한다. originalUrl 에 includes 를 쓰면 우회된다.
     if (cachedUser.mustChangePassword) {
       const pathOnly = req.originalUrl.split('?')[0];
       if (!pathOnly.startsWith('/api/auth/')) {

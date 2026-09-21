@@ -8,13 +8,7 @@ import {
 } from 'sequelize';
 import { sequelize } from '../config/sequelize';
 
-/**
- * 사용자별 포인트 잔액.
- *
- * 원장(PointLedger)을 매번 합산하지 않고 잔액을 따로 두는 이유는 조회 때문이다.
- * 대신 잔액을 고치는 곳은 서비스 한 곳뿐이고, 반드시 원장과 같은 트랜잭션에서
- * 행 잠금을 걸고 함께 움직인다 — 그래야 동시에 여러 번 뽑아도 어긋나지 않는다.
- */
+/** 사용자별 포인트 잔액. 원장과 같은 트랜잭션에서 행 잠금을 걸고 함께 고쳐야 한다. */
 class UserPointModel extends Model<
   InferAttributes<UserPointModel>,
   InferCreationAttributes<UserPointModel>
@@ -47,7 +41,7 @@ UserPointModel.init(
     modelName: 'UserPoint',
     tableName: 'user_points',
     timestamps: true,
-    // 랭킹은 잔액으로 정렬한다. 인덱스가 없으면 사람이 늘수록 매번 전체를 훑어 정렬한다.
+    // 랭킹이 잔액으로 정렬하므로 인덱스가 필요하다.
     indexes: [{ fields: ['balance'], name: 'idx_user_points_balance' }],
   }
 );

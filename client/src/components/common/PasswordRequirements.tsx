@@ -1,6 +1,4 @@
-// client/src/components/common/PasswordRequirements.tsx
-// 비밀번호 작성 시 실시간 체크리스트 — 사용자가 어느 조건을 못 채웠는지 즉시 확인.
-// Register / ResetPassword / Profile(비밀번호 변경) 등에서 재사용.
+// 비밀번호 조건 충족 여부를 실시간으로 보여 주는 체크리스트.
 
 import { useSiteSettings } from '../../store/siteSettings';
 

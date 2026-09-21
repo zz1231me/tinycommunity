@@ -1,8 +1,4 @@
-// client/src/components/social/SubscribeButton.tsx
-// 게시판 구독 / 사람 팔로우 토글.
-//
-// 게시판과 사람에 같은 컴포넌트를 쓰되 말은 다르게 한다 —
-// 게시판을 "팔로우" 하거나 사람을 "구독" 한다고 쓰면 어색하다.
+// 게시판 구독과 사람 팔로우 토글. 대상에 따라 문구만 다르게 쓴다.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, BellOff, UserMinus, UserPlus } from 'lucide-react';
@@ -44,7 +40,7 @@ export function SubscribeButton({ targetType, targetId, compact = false }: Props
 
   const { mutate, isPending } = useMutation({
     mutationFn: () => toggleSubscription(targetType, targetId),
-    // 누르는 즉시 반영 — 실패하면 되돌린다
+    // 누르는 즉시 반영하고 실패하면 되돌린다.
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<boolean>(key) ?? false;
@@ -60,7 +56,7 @@ export function SubscribeButton({ targetType, targetId, compact = false }: Props
       toast.success(next ? words.doneOn : words.doneOff);
     },
     onSettled: () => {
-      // 구독 목록과 프로필의 팔로워 수도 함께 맞춘다
+      // 구독 목록과 프로필의 팔로워 수도 함께 맞춘다.
       queryClient.invalidateQueries({ queryKey: socialKeys.subscriptions });
       queryClient.invalidateQueries({ queryKey: socialKeys.profile(targetId) });
     },

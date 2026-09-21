@@ -1,7 +1,4 @@
-// client/src/components/messages/NewConversationButton.tsx
-// 메시지함에서 새 대화 시작하기.
-//
-// 상대의 프로필을 거치지 않고 메시지함에서 바로 받는 사람을 찾아 첫 통을 보낸다.
+// 메시지함에서 바로 받는 사람을 골라 새 대화를 시작한다.
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

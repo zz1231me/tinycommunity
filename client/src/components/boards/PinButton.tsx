@@ -1,9 +1,3 @@
-// client/src/components/boards/PinButton.tsx
-// 상단 고정 토글 + 고정 기간 선택.
-//
-// 고정을 켤 때만 기간을 묻는다. 끌 때 기간을 묻는 것은 의미가 없고,
-// 한 번의 클릭으로 끝나야 하는 동작에 단계를 더하는 일이다.
-
 import { useEffect, useRef, useState } from 'react';
 import { Pin } from 'lucide-react';
 import { togglePin } from '../../api/posts';
@@ -37,14 +31,13 @@ export function PinButton({ boardType, postId, isPinned, pinnedUntil, onChange }
   const [busy, setBusy] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // 바깥을 누르면 닫는다 — 메뉴가 떠 있는 채로 다른 동작을 하면 상태가 헷갈린다
   useEffect(() => {
     if (!menuOpen) return;
     const onDown = (e: MouseEvent) => {
       if (!wrapRef.current?.contains(e.target as Node)) setMenuOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      // 위에 대화상자가 떠 있으면 ESC 는 그쪽 몫이다 — 한 번에 둘이 닫히지 않게
+      // 위에 대화상자가 떠 있으면 ESC는 그쪽이 처리한다.
       if (e.key !== 'Escape' || hasOpenDialog()) return;
       setMenuOpen(false);
     };
@@ -82,7 +75,6 @@ export function PinButton({ boardType, postId, isPinned, pinnedUntil, onChange }
       <button
         type="button"
         disabled={busy}
-        // 고정할 때만 기간을 고르게 하고, 해제는 한 번에 끝낸다
         onClick={() => (isPinned ? apply(null) : setMenuOpen(v => !v))}
         aria-expanded={isPinned ? undefined : menuOpen}
         aria-label={isPinned ? '고정 해제' : '게시글 고정'}

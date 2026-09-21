@@ -1,4 +1,3 @@
-// client/src/components/points/LotteryPanel.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Coins, Gift, Loader2, TicketCheck } from 'lucide-react';
@@ -27,34 +26,27 @@ const REASON_LABEL: Record<PointEntry['reason'], string> = {
   defend_cost: '퇴근 방어',
 };
 
-/** 숫자가 섞이는 최소 시간(ms). 서버가 곧바로 답해도 이만큼은 돌아야 '뽑았다'로 읽힌다 */
+/** 숫자가 섞이는 최소 시간(ms) */
 const ROLL_MS = 700;
 
-/** 짧은 진동 — 지원하지 않는 기기에서는 아무 일도 일어나지 않는다 */
+/** 짧은 진동. 지원하지 않는 기기에서는 아무 일도 하지 않는다. */
 function buzz(pattern: number | number[]) {
   try {
     navigator.vibrate?.(pattern);
   } catch {
-    // 진동은 있으면 좋은 것이지 없으면 안 되는 것이 아니다
+    // 진동은 없어도 그만이다
   }
 }
 
-/**
- * 숫자가 목표값까지 굴러 올라가게 한다(잔액 표시용).
- *
- * 처음 받은 값은 굴리지 않고 그대로 보여 준다. 0 에서 굴려 올리면 값이 바뀐 것처럼
- * 보이고, 무엇보다 화면이 숨겨져 requestAnimationFrame 이 멈춘 상태에서는 0 인 채로
- * 굳는다 — 잔액이 0 으로 보이는 것은 연출이 아니라 틀린 값이다.
- */
+/** 숫자가 목표값까지 굴러 올라가게 한다. 처음 받은 값은 굴리지 않고 그대로 보여 준다. */
 function useCountUp(target: number, enabled: boolean, ready: boolean): number {
   const [shown, setShown] = useState(target);
   const fromRef = useRef(target);
   const seeded = useRef(false);
   useEffect(() => {
-    // 아직 서버 값이 없다 — 불러오는 동안의 0 을 시작점으로 삼으면 안 된다
+    // 불러오는 동안의 0 을 시작점으로 삼으면 안 된다.
     if (!ready) return;
-    // 화면이 숨겨져 있으면 requestAnimationFrame 이 멈춘다. 그대로 두면 굴러가다 만
-    // 숫자가 화면에 남는다 — 보이지 않는 동안은 굴리지 말고 바로 맞춘다.
+    // 화면이 숨겨져 있으면 requestAnimationFrame 이 멈추므로 굴리지 말고 바로 맞춘다.
     if (!enabled || !seeded.current || document.hidden) {
       seeded.current = true;
       setShown(target);
@@ -68,7 +60,6 @@ function useCountUp(target: number, enabled: boolean, ready: boolean): number {
     let raf = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - started) / DUR);
-      // 끝에서 부드럽게 멈춘다
       const eased = 1 - Math.pow(1 - t, 3);
       setShown(Math.round(from + (target - from) * eased));
       if (t < 1) raf = requestAnimationFrame(tick);
@@ -97,18 +88,13 @@ function WinPulse() {
   );
 }
 
-/**
- * 마이페이지의 포인트 뽑기.
- *
- * 결과는 서버가 정한다 — 이 화면은 눌러서 받아 적을 뿐이고, 확률·금액·횟수도
- * 서버에서 내려온 값을 그대로 보여준다(바꾸는 곳은 관리자 페이지다).
- */
+/** 마이페이지의 포인트 뽑기. 결과와 확률·금액·횟수는 모두 서버가 정한다. */
 export function LotteryPanel({
   refreshSignal = 0,
   onSpent,
 }: {
   refreshSignal?: number;
-  /** 뽑은 뒤 — 참가비·당첨금으로 잔액이 바뀌었다. 같은 화면의 다른 판들이 다시 읽게 한다. */
+  /** 뽑아서 잔액이 바뀌었을 때 같은 화면의 다른 판들이 다시 읽게 한다. */
   onSpent?: () => void;
 }) {
   const [status, setStatus] = useState<PointStatus | null>(null);
@@ -117,14 +103,13 @@ export function LotteryPanel({
   const [failed, setFailed] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [last, setLast] = useState<{ amount: number; cost: number; isBlank: boolean } | null>(null);
-  /** 릴에 지금 떠 있는 숫자. null 이면 릴이 멈춘 상태 */
+  /** 릴에 지금 떠 있는 숫자. null 이면 멈춘 상태. */
   const [reel, setReel] = useState<number | null>(null);
   const reelTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   /** 결과가 나온 순간 당첨 신호를 낸다 */
   const [celebrate, setCelebrate] = useState(0);
   const motionOk = !prefersReducedMotion();
 
-  // 화면을 떠날 때 릴이 계속 돌지 않도록 정리한다
   useEffect(
     () => () => {
       if (reelTimer.current) clearInterval(reelTimer.current);
@@ -132,9 +117,7 @@ export function LotteryPanel({
     []
   );
 
-  // 다시 읽는 길이 여럿이다(첫 로딩·뽑은 뒤·다른 판의 신호). 응답은 보낸 순서대로 오지
-  // 않으므로 가장 나중에 보낸 요청의 응답만 둔다. 그러지 않으면 먼저 떠난 요청이 늦게 도착해
-  // 뽑기 전 잔액·남은 횟수로 되돌리고, 남은 횟수가 없는데 버튼이 열린다.
+  // 응답이 보낸 순서대로 오지 않으므로 가장 나중에 보낸 요청의 응답만 반영한다.
   const requestSeq = useRef(0);
   const reload = useCallback(async () => {
     const mine = ++requestSeq.current;
@@ -142,8 +125,7 @@ export function LotteryPanel({
     if (mine !== requestSeq.current) return;
     setStatus(s);
     setEntries(h.entries);
-    // 나중에 보낸 요청이 먼저 성공하면 그것으로 로딩·실패 화면을 끝낸다 — 첫 로딩이 늦거나
-    // 실패했다고 계속 빈 화면·오류 화면에 머물지 않게
+    // 나중에 보낸 요청이 먼저 성공하면 그것으로 로딩·실패 화면을 끝낸다.
     setFailed(false);
     setLoading(false);
   }, []);
@@ -158,8 +140,7 @@ export function LotteryPanel({
         setStatus(s);
         setEntries(h.entries);
       } catch {
-        // 토스트는 곧 사라진다. 그것만 띄우고 화면을 통째로 비우면, 잠시 뒤에는
-        // 실패했다는 사실조차 남지 않고 '포인트 기능이 없는 화면' 처럼 보인다.
+        // 토스트는 곧 사라지므로 화면에도 실패를 남긴다.
         if (alive) {
           setFailed(true);
           toast.error('포인트 정보를 불러오지 못했습니다.');
@@ -173,17 +154,13 @@ export function LotteryPanel({
     };
   }, []);
 
-  // 같은 화면의 다른 곳에서 포인트를 쓰면(공격권 등) 잔액을 다시 불러온다.
-  // 이것이 없으면 아래 공격권 칸의 잔액만 줄고 여기 적힌 숫자는 그대로라, 한 화면에
-  // 서로 다른 잔액이 둘 뜬다.
-  //
-  // 0 은 첫 렌더라 건너뛴다 — 위의 첫 조회와 겹쳐 같은 것을 두 번 부르게 된다.
+  // 같은 화면의 다른 곳에서 포인트를 쓰면 잔액을 다시 불러온다. 0 은 첫 렌더라 건너뛴다.
   useEffect(() => {
     if (refreshSignal === 0) return;
     void reload().catch(() => {});
   }, [refreshSignal, reload]);
 
-  /** 결과가 나온 순간 — 잔액·내역 갱신과 알림·진동·신호를 여기서 한 번에 낸다 */
+  /** 결과가 나온 순간 잔액·내역 갱신과 알림·진동·신호를 한 번에 낸다. */
   const revealResult = useCallback(
     (isBlank: boolean, amount: number) => {
       void reload().catch(() => {});
@@ -205,7 +182,6 @@ export function LotteryPanel({
     setLast(null);
 
     // 릴에 띄울 숫자는 실제로 나올 수 있는 것만 넣는다.
-    // 꽝 확률이 0 인 표에서 '0P' 가 지나가면 나올 수 없는 결과를 보여 주게 된다.
     const faces = [...status.prizes.map(p => p.amount), ...(status.blankWeight > 0 ? [0] : [])];
     const roll = motionOk;
     if (roll) {
@@ -219,15 +195,14 @@ export function LotteryPanel({
     try {
       const result = await drawLottery();
 
-      // 서버가 곧바로 답하면 릴이 한 번 깜빡이고 끝난다 — 그러면 뽑았다는 느낌이 안 난다.
-      // 결과는 이미 정해져 있고, 여기서 기다리는 건 보여 주기 위한 시간일 뿐이다.
+      // 결과는 이미 정해져 있고, 여기서 기다리는 것은 연출용 시간이다.
       if (roll) {
         const left = ROLL_MS - (Date.now() - startedAt);
         if (left > 0) await new Promise(r => setTimeout(r, left));
       }
 
       setLast({ amount: result.amount, cost: result.cost, isBlank: result.isBlank });
-      // 남은 횟수와 참가비 여유를 맞춘다 — 버튼을 막을지가 걸려 있다.
+      // 남은 횟수와 참가비 여유를 맞춘다. 버튼을 막을지가 여기에 걸려 있다.
       setStatus(prev =>
         prev
           ? {
@@ -238,17 +213,15 @@ export function LotteryPanel({
             }
           : prev
       );
-      // 결과가 나오면 바로 보여 준다. 예전에는 '결과 확인' 덮개를 한 번 더 눌러야 했는데,
-      // 하루에도 여러 번 누르는 자리라 그 한 단계가 번거로웠다.
       revealResult(result.isBlank, result.amount);
-      // 뽑기만 알리지 않아서, 뽑아서 잔액이 줄어도 대결·공격권 판은 옛 잔액으로 버튼을 열어 뒀다
+      // 다른 판들이 옛 잔액으로 버튼을 열어 두지 않도록 알린다.
       onSpent?.();
     } catch (err) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
         '뽑기에 실패했습니다.';
       toast.error(message);
-      // 한도 초과·잔액 부족처럼 서버 상태가 이미 바뀐 경우가 있어 다시 읽는다
+      // 한도 초과·잔액 부족처럼 서버 상태가 이미 바뀐 경우가 있어 다시 읽는다.
       await reload().catch(() => {});
     } finally {
       if (reelTimer.current) {
@@ -263,7 +236,6 @@ export function LotteryPanel({
   const shownBalance = useCountUp(status?.balance ?? 0, motionOk, !!status);
 
   if (loading) return <LoadingSpinner size="sm" message="포인트 정보를 불러오는 중..." />;
-  // 같은 폴더의 PointRanking·DuelPanel 과 같은 방식으로 실패를 실패라고 말한다
   if (failed || !status) {
     return (
       <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
@@ -276,8 +248,7 @@ export function LotteryPanel({
 
   const board = (
     <div
-      // aria-live 를 달지 않는다. 섞이는 숫자가 0.07초마다 바뀌어, 화면 낭독기가 초당 열네 번
-      // 숫자를 읽었다. 결과는 아래 한 줄(role="status")로 한 번만 알린다.
+      // 섞이는 숫자에는 aria-live 를 달지 않는다. 결과만 아래 role="status" 로 한 번 알린다.
       className="flex h-24 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60"
     >
       {reel !== null ? (
@@ -289,7 +260,6 @@ export function LotteryPanel({
         </span>
       ) : last ? (
         <div className="text-center">
-          {/* 결과만 한 번 알린다(섞이는 숫자에는 aria-live 를 달지 않는다 — 초당 열네 번 읽혔다) */}
           <p role="status" className="sr-only">
             {last.isBlank ? '미당첨입니다.' : `${last.amount.toLocaleString()}포인트 당첨입니다.`}
           </p>
@@ -322,12 +292,11 @@ export function LotteryPanel({
     </div>
   );
 
-  // 확률표 막대의 기준 — 가장 흔한 것이 가득 찬다
+  // 확률표 막대의 기준. 가장 흔한 것이 가득 찬다.
   const maxWeight = Math.max(1, status.blankWeight, ...status.prizes.map(p => p.weight));
 
   return (
     <div className="space-y-6">
-      {/* 지갑 — 탭을 열면 가장 먼저 보이는 숫자라 가장 크게 둔다 */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600 via-violet-600 to-fuchsia-600 p-5 text-white shadow-lg shadow-primary-600/20 sm:p-6">
         <span
           aria-hidden
@@ -367,9 +336,7 @@ export function LotteryPanel({
         title="행운 뽑기"
         description={`접속하면 하루 한 번 출석 포인트 ${status.attendanceBonus.toLocaleString()}P 가 자동으로 쌓입니다.`}
       >
-        {/* 추첨 표시창.
-            누르면 숫자가 섞이고(서버를 기다리는 동안), 답이 오면 그 자리에 결과가 바로 뜬다.
-            자리를 늘 차지하게 둬서, 결과가 나올 때 아래 내용이 밀리지 않는다. */}
+        {/* 추첨 표시창. 결과가 나올 때 아래가 밀리지 않도록 자리를 늘 차지한다. */}
         <div className="relative">
           {board}
           {celebrate > 0 && !last?.isBlank && <WinPulse key={celebrate} />}

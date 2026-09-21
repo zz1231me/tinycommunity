@@ -1,10 +1,4 @@
-// client/src/pages/MyTasks.tsx
-// 내가 맡은 일.
-//
-// 게시판을 하나씩 열어 "내 이름이 붙은 글" 을 찾는 일이 없도록, 담당자가 나인 글을
-// 게시판을 가로질러 모은다. 서버가 오래 안 건드린 것부터 준다 — 밀린 일이 위로 온다.
-//
-// 기본은 끝나지 않은 것만. 완료된 일까지 늘 함께 보이면 목록이 과거로 채워진다.
+// 담당자가 나인 글을 게시판을 가로질러 모은다. 기본은 끝나지 않은 것만 보여 준다.
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -27,8 +21,7 @@ export default function MyTasks() {
   const { data, isLoading, isError } = useQuery({
     queryKey: taskKeys.mine(statuses.join(',')),
     queryFn: ({ signal }) => fetchMyTasks(statuses, signal),
-    // 담당자·상태는 글 상세에서 바뀌는데 그쪽이 이 키를 무효화하지 않는다.
-    // 전역 staleTime 이 5분이라 이것이 없으면 방금 맡은 일이 목록에 뜨지 않는다.
+    // 글 상세가 이 키를 무효화하지 않으므로 마운트마다 다시 읽는다.
     refetchOnMount: 'always',
   });
 
@@ -75,7 +68,7 @@ export default function MyTasks() {
                   <span className="hidden flex-shrink-0 text-xs text-slate-400 sm:inline">
                     {task.boardName}
                   </span>
-                  {/* 마지막으로 움직인 때 — "언제부터 멈춰 있나" 가 작성일보다 중요하다 */}
+                  {/* 마지막으로 움직인 때 */}
                   <time
                     dateTime={task.updatedAt}
                     title="마지막 변경"

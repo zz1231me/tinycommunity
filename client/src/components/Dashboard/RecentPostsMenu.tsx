@@ -1,5 +1,4 @@
-// client/src/components/Dashboard/RecentPostsMenu.tsx
-// 헤더 — 접근 가능한 게시판들의 '최신 소식'. 확인 안 한 글을 순서대로(최신순) 강조해 보여준다.
+// 헤더의 최신 소식 메뉴. 확인 안 한 글을 최신순으로 위에 놓는다.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Newspaper, Lock, Circle } from 'lucide-react';
@@ -8,7 +7,6 @@ import { ListLoading, ListState } from '../common/ListState';
 import { useUIOverlays } from '../../store/uiOverlays';
 import { hasOpenDialog } from '../../hooks/useFocusTrap';
 
-// 간단 상대시간
 function ago(iso: string): string {
   const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
   if (s < 60) return '방금';
@@ -23,9 +21,7 @@ function ago(iso: string): string {
 
 export function RecentPostsMenu() {
   const navigate = useNavigate();
-  // 머리글의 다른 패널들과 같은 통합 store 를 쓴다. 혼자 useState 를 쓰던 동안에는
-  // ⌘K 로 검색을 열어도, 모바일에서 사이드바를 열어도 이 패널이 그대로 떠 있었다
-  // (사이드바 z-40 위로 z-50 패널이 겹쳤다). 화면 이동으로도 닫히지 않았다.
+  // 다른 헤더 패널과 같은 store 를 쓴다. 따로 관리하면 다른 패널을 열어도 닫히지 않는다.
   const open = useUIOverlays(s => s.activeDropdown === 'recentPosts');
   const setOpen = useCallback((next: boolean) => {
     const state = useUIOverlays.getState();
@@ -34,7 +30,7 @@ export function RecentPostsMenu() {
   }, []);
   const [posts, setPosts] = useState<RecentPost[]>([]);
   const [loading, setLoading] = useState(false);
-  const [tick, setTick] = useState(0); // 안 읽은 제목 회전 인덱스(헤더 인라인 프리뷰)
+  const [tick, setTick] = useState(0); // 헤더 프리뷰 제목 회전 인덱스
   const ref = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -42,17 +38,16 @@ export function RecentPostsMenu() {
       setLoading(true);
       setPosts(await fetchRecentPosts());
     } catch {
-      /* 헤더 보조 기능 — 조용히 무시 */
+      /* 헤더 보조 기능이라 실패는 무시한다 */
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // 마운트 + 2분 주기 + 창 포커스 시 갱신 (다른 곳에서 글을 읽고 오면 카운트 반영)
+  // 마운트·2분 주기·창 포커스에 갱신한다.
   useEffect(() => {
     void load();
-    // 보이지 않는 탭에서는 쉰다 — 며칠 열어 둔 탭이 2분마다 요청을 보낼 이유가 없다.
-    // 돌아올 때는 아래 focus 로 한 번에 따라잡는다(알림 store 도 같은 방식이다).
+    // 보이지 않는 탭에서는 쉬고, 돌아올 때 focus 로 따라잡는다.
     const t = setInterval(() => {
       if (!document.hidden) void load();
     }, 120_000);
@@ -64,7 +59,7 @@ export function RecentPostsMenu() {
     };
   }, [load]);
 
-  // 안 읽은 글이 여러 개면 제목을 4초마다 차근차근 회전(헤더 인라인 프리뷰)
+  // 안 읽은 글이 여럿이면 헤더 프리뷰 제목을 4초마다 돌린다
   useEffect(() => {
     const n = posts.filter(p => !p.isRead).length;
     if (n <= 1) {
@@ -96,16 +91,16 @@ export function RecentPostsMenu() {
 
   const go = (p: RecentPost) => {
     setOpen(false);
-    // 낙관적 읽음 처리 — 클릭 즉시 배지에서 빠지도록
+    // 클릭 즉시 배지에서 빠지도록 낙관적으로 읽음 처리한다
     setPosts(prev => prev.map(x => (x.id === p.id ? { ...x, isRead: true } : x)));
     navigate(`/dashboard/posts/${p.boardType}/${p.id}`);
   };
 
   const unread = posts.filter(p => !p.isRead);
   const unreadCount = unread.length;
-  // 안 읽은 글을 위로(최신순), 그 아래 읽은 글 — "순서대로 차근차근"
+  // 안 읽은 글을 위로, 그 아래에 읽은 글
   const ordered = [...unread, ...posts.filter(p => p.isRead)];
-  // 헤더에 미리 보여줄 현재 회전 대상 제목(안 읽은 글 중)
+  // 헤더에 보여 줄 현재 회전 대상
   const preview = unreadCount > 0 ? unread[tick % unreadCount] : null;
 
   return (
@@ -124,7 +119,7 @@ export function RecentPostsMenu() {
         }`}
       >
         <Newspaper className="h-6 w-6 flex-shrink-0" />
-        {/* 안 읽은 최신 제목 인라인 프리뷰 (회전) */}
+        {/* 안 읽은 최신 제목 프리뷰 */}
         {preview && (
           <span
             key={preview.id}
@@ -177,7 +172,7 @@ export function RecentPostsMenu() {
                     p.isRead ? 'opacity-60' : ''
                   }`}
                 >
-                  {/* 안 읽음 표시 점 — 읽은 글은 자리만 차지해 정렬 유지 */}
+                  {/* 안 읽음 점. 읽은 글은 자리만 차지해 정렬을 유지한다. */}
                   <span className="mt-1.5 flex-shrink-0" aria-hidden="true">
                     {p.isRead ? (
                       <Circle className="h-2 w-2 text-transparent" />

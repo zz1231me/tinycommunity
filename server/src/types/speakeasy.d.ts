@@ -1,4 +1,4 @@
-// server/src/types/speakeasy.d.ts - speakeasy 타입 선언
+// speakeasy 타입 선언
 declare module 'speakeasy' {
   interface GenerateSecretOptions {
     name?: string;
@@ -42,12 +42,7 @@ declare module 'speakeasy' {
     time?: number;
   }
 
-  /**
-   * ⚠️ 실제 런타임 API 와 일치시켜야 한다.
-   *    speakeasy.totp 는 "호출 가능한 함수"이고 verify/verifyDelta 를 프로퍼티로 갖는다.
-   *    예전 선언은 namespace + generate() 였는데, generate 는 라이브러리에 존재하지 않아
-   *    타입 검사만 통과하고 런타임에 TypeError 가 났다.
-   */
+  /** speakeasy.totp 는 호출 가능한 함수이며 verify/verifyDelta 를 프로퍼티로 갖는다. */
   interface Totp {
     (options: TotpOptions): string;
     verify(options: VerifyOptions): boolean;

@@ -1,4 +1,4 @@
-// client/src/components/boards/ReportButton.tsx - 신고 버튼 + 모달
+// 신고 버튼과 모달
 import { useId, useRef, useState } from 'react';
 import { createReport, ReportReason, ReportTargetType, REASON_LABELS } from '../../api/reports';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -10,7 +10,7 @@ interface ReportButtonProps {
 }
 
 export function ReportButton({ targetType, targetId, className = '' }: ReportButtonProps) {
-  // 이 단추는 글·댓글마다 하나씩 그려진다 — 라벨을 이어 줄 id 도 그만큼 달라야 한다
+  // 글·댓글마다 하나씩 그려지므로 라벨을 이을 id 도 달라야 한다
   const fieldId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [reason, setReason] = useState<ReportReason>('spam');
@@ -51,10 +51,7 @@ export function ReportButton({ targetType, targetId, className = '' }: ReportBut
     }, 300);
   };
 
-  // 접근성: ESC로 닫기 + 첫 포커스를 닫기 버튼으로 + 닫힐 때 트리거로 포커스 복원.
-  // 손으로 하던 것을 공용 훅으로 옮겼다 — 여기에 없던 Tab 가두기가 함께 붙는다.
-  // 복원 대상을 따로 기억하지 않는다: 훅이 '열리기 직전에 포커스가 있던 곳' 으로
-  // 되돌리는데, 이 대화상자는 트리거를 눌러야 열리므로 그 자리가 곧 트리거다.
+  // ESC 닫기, 첫 포커스, Tab 가두기, 포커스 복원을 훅이 처리한다
   useFocusTrap(panelRef, handleClose, isOpen, closeBtnRef);
 
   return (

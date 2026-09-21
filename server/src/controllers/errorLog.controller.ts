@@ -16,7 +16,6 @@ export const getErrorLogs = async (req: AuthRequest, res: Response): Promise<voi
     dateFrom: (req.query.dateFrom as string) || undefined,
     dateTo: (req.query.dateTo as string) || undefined,
   };
-  // Remove undefined values
   Object.keys(filters).forEach(k => {
     if ((filters as any)[k] === undefined) delete (filters as any)[k];
   });
@@ -42,7 +41,6 @@ export const deleteErrorLogs = async (req: AuthRequest, res: Response): Promise<
     all?: boolean;
   };
 
-  // ids 배열 타입 및 개수 검증
   if (ids !== undefined) {
     if (!Array.isArray(ids)) {
       sendValidationError(res, 'ids', 'ids는 배열이어야 합니다.');
@@ -77,7 +75,6 @@ export const deleteErrorLogs = async (req: AuthRequest, res: Response): Promise<
           });
     logInfo(`에러 로그 삭제: ${deleted}건`, { before, severity, ids });
 
-    // 감사 로그 — 오류 흔적 삭제 추적
     auditLogService
       .createAuditLog({
         actorId: req.user?.id ?? 'unknown',

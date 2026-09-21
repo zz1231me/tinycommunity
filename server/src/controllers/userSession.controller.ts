@@ -25,15 +25,13 @@ export const forceLogoutSession = async (req: Request, res: Response): Promise<v
     const { userId, sessionId } = req.params;
     const authReq = req as unknown as AuthRequest;
 
-    // 자기 자신의 세션을 이 관리자 엔드포인트로 종료하면 tokenVersion 증가로
-    //    현재 진행 중인 관리자 세션까지 모두 로그아웃되어 즉시 셀프 락아웃이 발생함.
-    //    자신의 세션 관리는 /auth/sessions(getOwnSessions) 전용 흐름을 사용해야 함.
+    // 여기서 자기 세션을 끊으면 tokenVersion 이 올라 관리자 본인이 즉시 로그아웃된다.
     if (authReq.user?.id === userId) {
       sendError(res, 400, '본인의 세션은 관리자 메뉴에서 종료할 수 없습니다.');
       return;
     }
 
-    // 세션이 요청한 userId에 속하는지 확인 (다른 사용자의 세션 강제 종료 방지)
+    // 다른 사용자의 세션을 끊지 못하도록 소유자를 확인한다.
     const { UserSession } = await import('../models/UserSession');
     const session = await UserSession.findByPk(sessionId, { attributes: ['id', 'userId'] });
     if (!session) {
@@ -52,7 +50,7 @@ export const forceLogoutSession = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    // tokenVersion 증가 → 해당 사용자의 모든 기존 JWT(access/refresh) 무효화
+    // tokenVersion 을 올려 기존 JWT 를 모두 무효화한다.
     try {
       const user = await User.findByPk(userId);
       if (user) {
@@ -61,7 +59,7 @@ export const forceLogoutSession = async (req: Request, res: Response): Promise<v
       }
     } catch (tvErr) {
       logError('강제 종료 후 tokenVersion 증가 실패', tvErr);
-      // tokenVersion 증가 실패해도 세션 비활성화는 완료됐으므로 계속 진행
+      // 실패해도 세션 비활성화는 끝났으므로 계속 진행한다.
     }
 
     auditLogService
@@ -90,7 +88,7 @@ export const getOwnSessions = async (req: Request, res: Response): Promise<void>
       sendError(res, 401, '인증 정보가 없습니다.');
       return;
     }
-    // 현재 요청의 refresh_token으로 isCurrent 표시 (현재 기기 구분 + 자기 종료 차단)
+    // 현재 요청의 refresh_token 으로 isCurrent 를 표시한다.
     const currentRaw = (req as unknown as { cookies?: Record<string, string | undefined> }).cookies
       ?.refresh_token;
     const sessions = await userSessionService.getActiveSessions(authReq.user.id, currentRaw);
@@ -101,7 +99,7 @@ export const getOwnSessions = async (req: Request, res: Response): Promise<void>
   }
 };
 
-// 본인의 특정 세션 종료 (다른 기기 로그아웃). 현재 세션은 로그아웃 흐름을 사용해야 함.
+// 본인의 다른 기기 세션을 끊는다. 현재 세션은 로그아웃 흐름을 쓴다.
 export const terminateOwnSession = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as unknown as AuthRequest;

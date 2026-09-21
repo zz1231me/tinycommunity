@@ -1,4 +1,3 @@
-// client/src/pages/components/calendar/hooks/useCalendarEvents.ts
 import { useState, useCallback, useRef } from 'react';
 import { EventInput } from '@fullcalendar/core';
 import { getEvents, createEvent, updateEvent, deleteEvent } from '../../../../api/events';
@@ -22,7 +21,7 @@ export const useCalendarEvents = ({
 }: UseCalendarEventsProps) => {
   const [events, setEvents] = useState<EventInput[]>([]);
   const [loading, setLoading] = useState(false);
-  // Bug 6 fix: race condition 방지를 위한 요청 ID 추적
+  // 요청 ID 로 늦게 도착한 응답을 걸러낸다.
   const loadRequestIdRef = useRef(0);
 
   const canEditEvent = useCallback(
@@ -42,14 +41,14 @@ export const useCalendarEvents = ({
     const start = view.activeStart;
     const end = view.activeEnd;
 
-    // Bug 6 fix: 현재 요청 ID를 증가시키고 저장 - 나중에 도착한 이전 요청은 무시
+    // 요청 ID 를 올려 두고, 나중에 도착한 이전 응답은 무시한다.
     const requestId = ++loadRequestIdRef.current;
     setLoading(true);
 
     try {
       const eventData = await getEvents(start, end);
 
-      // 이 응답이 가장 최근 요청인지 확인 (race condition 방지)
+      // 가장 최근 요청의 응답만 반영한다.
       if (requestId !== loadRequestIdRef.current) return;
 
       const formattedEvents: EventInput[] = eventData.map((event: CalendarEvent) => ({
@@ -66,8 +65,7 @@ export const useCalendarEvents = ({
           event.borderColor ||
           categoryColors[event.category as keyof typeof categoryColors]?.border ||
           DEFAULT_EVENT_COLOR,
-        // textColor는 주입하지 않는다 — soft-tint 렌더는 calendar.css가 --ev 기반 color-mix로
-        // 어두운 톤 글자색을 지정한다. 여기서 흰색을 넣으면 인라인 style이 그 위를 덮어 흰 글자가 된다.
+        // textColor 는 주입하지 않는다. 인라인 style 이 calendar.css 의 color-mix 글자색을 덮는다.
         editable: canEditEvent(event),
         startEditable: canEditEvent(event),
         durationEditable: canEditEvent(event),
@@ -87,7 +85,7 @@ export const useCalendarEvents = ({
       if (requestId !== loadRequestIdRef.current) return;
       if (import.meta.env.DEV) console.error('❌ 이벤트 로드 실패:', error);
       toast.error('일정을 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.');
-      // 기존 이벤트 유지 — 네트워크 오류 시 빈 캘린더 방지
+      // 네트워크 오류 시 빈 캘린더가 되지 않게 기존 이벤트를 유지한다.
     } finally {
       if (requestId === loadRequestIdRef.current) {
         setLoading(false);
@@ -98,7 +96,7 @@ export const useCalendarEvents = ({
   const handleCreateEvent = useCallback(
     async (formData: EventFormData) => {
       try {
-        // 'T00:00:00Z' — UTC 자정 기준 (로컬 'T00:00:00' 사용 시 KST에서 날짜 하루 밀림)
+        // UTC 자정 기준. 로컬 'T00:00:00' 을 쓰면 KST 에서 날짜가 하루 밀린다.
         const startDate = new Date(formData.start + 'T00:00:00Z');
         const endDate = new Date(dateUtils.addDay(formData.end) + 'T00:00:00Z');
 
@@ -133,8 +131,7 @@ export const useCalendarEvents = ({
         const startDate = new Date(formData.start + 'T00:00:00Z');
         const endDate = new Date(dateUtils.addDay(formData.end) + 'T00:00:00Z');
 
-        // 기존 이벤트의 isReadOnly 보존 — 모달 편집 시 false로 덮어쓰면
-        //   admin이 시간만 조정해도 read-only 플래그가 해제되는 버그 발생.
+        // 기존 isReadOnly 를 보존한다. false 로 덮으면 시간만 바꿔도 읽기 전용이 풀린다.
         const eventData = {
           calendarId: 'default',
           title: formData.title,
