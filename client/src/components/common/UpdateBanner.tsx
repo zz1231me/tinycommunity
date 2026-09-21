@@ -32,16 +32,17 @@ export function UpdateBanner() {
       if (reloading.current) return;
       reloading.current = true;
       window.location.reload();
+      // beforeunload 로 막히면 새로고침이 일어나지 않는다. 다음 기회에 다시 보게 풀어 둔다.
+      window.setTimeout(() => {
+        reloading.current = false;
+      }, 2_000);
     };
 
-    // 보고 있지 않은 탭이면 지금 새로고침한다.
-    if (document.hidden) {
-      reload();
-      return;
-    }
-
+    // 안 보는 탭이라도 쓰던 것이 있으면 기다린다. 입력칸에 손이 가 있거나 대화상자가
+    // 열린 채 탭을 옮겼을 뿐일 수 있고, 그대로 새로고침하면 쓰던 글이 날아간다.
+    // 곧바로 새로고침하지 않는다. 띠를 읽을 틈은 주고, 그 뒤로는 안전해질 때마다 시도한다.
     const id = window.setInterval(() => {
-      if (document.hidden || !busyRightNow()) reload();
+      if (!busyRightNow()) reload();
     }, GRACE_MS);
     return () => window.clearInterval(id);
   }, [stale]);
@@ -49,7 +50,7 @@ export function UpdateBanner() {
   if (!visible) return null;
 
   return (
-    <TopNoticeSlot>
+    <TopNoticeSlot priority={80}>
       <div
         role="status"
         className="pointer-events-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-primary-600 px-4 py-2 text-center text-sm font-medium text-white shadow"

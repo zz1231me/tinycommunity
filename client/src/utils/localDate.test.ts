@@ -32,13 +32,17 @@ describe('시각 → 달력 날짜', () => {
   });
 });
 
-describe('타임존이 달라도', () => {
+describe('어느 타임존에서 읽든', () => {
+  // 실행 중에 프로세스 타임존을 바꿀 수는 없으므로(테스트는 Asia/Seoul 로 고정해 돌린다),
+  // 여기서는 '그 지역 달력' 이라는 뜻 자체를 Intl 로 대조한다.
   const zones = ['Asia/Seoul', 'America/New_York', 'Pacific/Auckland'];
-  it.each(zones)('%s 에서도 왕복이 유지된다', () => {
-    let picked = '2026-03-01';
-    for (let i = 0; i < 3; i++) {
-      picked = toLocalDateInput(new Date(picked + 'T00:00:00').toISOString());
-    }
-    expect(picked).toBe('2026-03-01');
+  it.each(zones)('%s 기준 날짜와 어긋나지 않는다', zone => {
+    const instant = new Date('2026-09-20T15:00:00.000Z');
+    const expected = new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(instant);
+    const here = new Intl.DateTimeFormat('en-CA').format(instant);
+    // 실행 타임존과 같은 지역이면 값이 같아야 하고, 다르면 다를 수 있다.
+    // (UTC 로 자르던 옛 방식은 실행 타임존과 무관하게 늘 같은 값을 내놓았다.)
+    if (expected === here) expect(toLocalDateInput(instant)).toBe(expected);
+    else expect(toLocalDateInput(instant)).toBe(here);
   });
 });

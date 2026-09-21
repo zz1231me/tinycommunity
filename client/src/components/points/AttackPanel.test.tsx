@@ -258,4 +258,23 @@ describe('같은 화면의 다른 판이 포인트를 움직이면', () => {
     );
     await waitFor(() => expect(mockFetchAttackState.mock.calls.length).toBeGreaterThan(before));
   });
+
+  it('내 시계가 느려도 언제 걸리는지를 서버 기준으로 말한다', async () => {
+    // 시계가 5분 느리면, 지금 걸리는 공격이 '5분 뒤에 걸립니다' 로 잘못 안내됐다.
+    const serverNow = new Date(Date.now() + 5 * 60_000).toISOString();
+    mockFetchAttackState.mockResolvedValue({ ...state(), now: serverNow });
+    mockSendAttack.mockResolvedValue({
+      id: 2,
+      startsAt: serverNow, // 서버 기준으로는 지금 시작한다
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      stack: 1,
+    });
+
+    await show();
+    fireEvent.click(screen.getByRole('button', { name: '상대 고르기' }));
+    fireEvent.click(sendBtn());
+
+    expect(await screen.findByText(/날뛰기 시작합니다/)).toBeInTheDocument();
+    expect(screen.queryByText(/뒤에 걸립니다/)).not.toBeInTheDocument();
+  });
 });

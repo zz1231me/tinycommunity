@@ -1,4 +1,7 @@
 // 테스트 환경변수 설정. 모든 모듈 로드 전에 실행된다(jest setupFiles).
+// 타임존을 운영과 같게 못박는다. UTC 에서 돌리면 '한국 시간 09시 이전' 경계가 사라져
+// 날짜 칸을 UTC 로 나누는 버그가 테스트를 그대로 통과한다(CI 는 UTC 다).
+process.env.TZ = 'Asia/Seoul';
 process.env.NODE_ENV = 'test';
 process.env.DB_TYPE = 'sqlite';
 // 테스트 DB 는 OS 임시 폴더의 파일로 둔다.

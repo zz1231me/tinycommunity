@@ -59,6 +59,9 @@ export function AttackPanel({
   const queryClient = useQueryClient();
   const query = useQuery({ queryKey: attendanceKeys.attack, queryFn: fetchAttackState });
   const state = query.data ?? null;
+  // 서버 시각 − 내 시계. 시계가 어긋난 PC 에서 '언제 걸리는지' 를 잘못 말하지 않게 한다.
+  const clockOffset =
+    state?.now && query.dataUpdatedAt ? new Date(state.now).getTime() - query.dataUpdatedAt : 0;
   const loading = query.isLoading;
   const failed = query.isError;
   const [sending, setSending] = useState(false);
@@ -98,7 +101,10 @@ export function AttackPanel({
         key: Date.now(),
         name: picked[0].name,
         kind,
-        startsIn: Math.max(0, Math.round((new Date(sent.startsAt).getTime() - Date.now()) / 1000)),
+        startsIn: Math.max(
+          0,
+          Math.round((new Date(sent.startsAt).getTime() - (Date.now() + clockOffset)) / 1000)
+        ),
         stack: sent.stack,
       });
       // 성공한 뒤에만 비운다. 거절되는 경우가 많아 미리 비우면 상대를 다시 골라야 한다.

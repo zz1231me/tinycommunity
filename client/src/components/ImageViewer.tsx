@@ -1,6 +1,5 @@
 // src/components/ImageViewer.tsx - passive 이벤트 리스너 오류 해결 버전
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { lockScroll, unlockScroll } from '../utils/scrollLock';
 import { isTopmostDialog, useFocusTrap } from '../hooks/useFocusTrap';
 
 interface ImageViewerProps {
@@ -110,34 +109,15 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     };
   }, [isOpen, imageUrl, preloadImage, safeSetState]);
 
-  // 뷰어 상태 초기화 (메모리 정리 최적화)
+  // 열 때마다 배율·위치를 처음으로 되돌린다.
+  // 배경 스크롤 잠금은 아래 useFocusTrap 이 부르는 공용 잠금이 맡는다.
   useEffect(() => {
-    if (isOpen) {
-      // 상태 초기화
-      safeSetState(() => {
-        setScale(1);
-        setPosition({ x: 0, y: 0 });
-        setIsDragging(false);
-      });
-
-      // 배경 스크롤 잠금 — 세어 두는 공용 잠금을 쓴다(겹쳐 열려도 어긋나지 않게)
-      const originalPaddingRight = document.body.style.paddingRight;
-      // 스크롤바가 사라지며 화면이 옆으로 튀지 않게 그만큼 여백을 준다
-      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-      lockScroll();
-      if (scrollbarWidth > 0) {
-        document.body.style.paddingRight = `${scrollbarWidth}px`;
-      }
-
-      return () => {
-        // 아직 다른 대화상자가 열려 있으면 스크롤바는 여전히 없다 — 그때 여백을
-        // 먼저 빼면 그 대화상자가 닫힐 때까지 본문이 스크롤바 폭만큼 옆으로 밀린다
-        if (unlockScroll()) {
-          document.body.style.paddingRight = originalPaddingRight;
-        }
-      };
-    }
-    return undefined;
+    if (!isOpen) return;
+    safeSetState(() => {
+      setScale(1);
+      setPosition({ x: 0, y: 0 });
+      setIsDragging(false);
+    });
   }, [isOpen, safeSetState]);
 
   // 키보드 단축키 (메모리 누수 방지)

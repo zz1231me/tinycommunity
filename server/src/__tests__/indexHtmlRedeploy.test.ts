@@ -10,9 +10,8 @@ import os from 'os';
 import path from 'path';
 import { readAppVersion, renderIndexHtml, invalidateIndexHtmlCache } from '../utils/indexHtml';
 
-jest.mock('../models/SiteSettings', () => ({
-  SiteSettings: { findOne: jest.fn().mockResolvedValue(null) },
-}));
+const mockFindOne = jest.fn().mockResolvedValue(null);
+jest.mock('../models/SiteSettings', () => ({ SiteSettings: { findOne: mockFindOne } }));
 
 const html = (asset: string) =>
   `<!doctype html><html><head><title>t</title></head><body><script src="/assets/${asset}"></script></body></html>`;
@@ -54,5 +53,20 @@ describe('새로 빌드한 index.html', () => {
   it('그 표식을 HTML 에도 심는다 — 화면이 자기 버전을 안다', async () => {
     const rendered = await renderIndexHtml(file);
     expect(rendered).toContain(`<meta name="app-version" content="${readAppVersion(file)}"`);
+  });
+
+  it('렌더 도중 배포가 끼어들어도 옛 HTML 을 캐시에 남기지 않는다', async () => {
+    // 렌더는 설정을 읽으러 DB 에 한 번 다녀온다. 그 사이에 배포가 나고 다른 요청이 새 빌드를
+    // 먼저 읽어 가면, 돌아온 쪽이 옛 HTML 을 캐시에 덮어써 사라진 자산을 가리키게 된다.
+    // 그러면 그 뒤로 모두가 빈 화면을 받고, 새로고침해도 같은 것을 다시 받는다.
+    const inFlight = renderIndexHtml(file); // DB 를 기다리는 중
+
+    fs.writeFileSync(file, html('app-bbb.js'));
+    fs.utimesSync(file, new Date(Date.now() + 2000), new Date(Date.now() + 2000));
+    readAppVersion(file); // 다른 요청이 새 빌드를 읽어 간다
+
+    expect(await inFlight).toContain('app-bbb.js');
+    // 캐시에도 옛 것이 남아 있으면 안 된다
+    expect(await renderIndexHtml(file)).toContain('app-bbb.js');
   });
 });

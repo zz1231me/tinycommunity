@@ -79,3 +79,26 @@ describe('위에 다른 대화상자가 열렸을 때', () => {
     expect(zoomLabel()).toBe(before);
   });
 });
+
+describe('닫은 뒤 본문', () => {
+  it('스크롤바 자리 여백을 되돌려 놓는다', () => {
+    // 잠금이 두 번 걸려 있어(뷰어 + 포커스 가두기) 먼저 풀리는 쪽이 여백을 되돌리지
+    // 못하면, 닫은 뒤에도 본문이 스크롤바 폭만큼 밀린 채로 남는다.
+    resetScrollLock();
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1015 });
+    Object.defineProperty(document.documentElement, 'clientWidth', {
+      configurable: true,
+      value: 1000,
+    });
+
+    const { unmount } = render(
+      <ImageViewer isOpen onClose={vi.fn()} imageUrl="/x.png" altText="첨부 사진" />
+    );
+    expect(document.body.style.paddingRight).toBe('15px');
+
+    unmount();
+
+    expect(document.body.style.paddingRight).toBe('');
+    expect(document.body.style.overflow).toBe('');
+  });
+});

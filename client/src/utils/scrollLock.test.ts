@@ -49,21 +49,38 @@ describe('scrollLock', () => {
   });
 });
 
-describe('마지막 하나가 풀렸는지 알려 준다', () => {
+describe('스크롤바 자리', () => {
   beforeEach(() => {
     resetScrollLock();
   });
 
-  it('겹쳐 잠긴 동안에는 false, 마지막에만 true', () => {
-    // 사진 뷰어는 스크롤바가 사라진 만큼 본문에 여백을 준다. 아직 다른 대화상자가
-    // 잠가 두고 있는데 그 여백을 먼저 빼면 본문이 스크롤바 폭만큼 옆으로 밀린다.
+  it('잠글 때 스크롤바 폭만큼 여백을 주고, 풀 때 되돌린다', () => {
+    // 스크롤바가 사라지면 본문이 그 폭만큼 옆으로 튄다. 여백으로 그 자리를 채운다.
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1015 });
+    Object.defineProperty(document.documentElement, 'clientWidth', {
+      configurable: true,
+      value: 1000,
+    });
+
     lockScroll();
-    lockScroll();
-    expect(unlockScroll()).toBe(false);
-    expect(unlockScroll()).toBe(true);
+    expect(document.body.style.paddingRight).toBe('15px');
+    unlockScroll();
+    expect(document.body.style.paddingRight).toBe('');
   });
 
-  it('잠근 적이 없으면 false', () => {
-    expect(unlockScroll()).toBe(false);
+  it('겹쳐 잠긴 동안에는 여백이 남아 있는다', () => {
+    // 여백을 먼저 빼면 남은 대화상자가 닫힐 때까지 본문이 밀린 채로 있는다.
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1015 });
+    Object.defineProperty(document.documentElement, 'clientWidth', {
+      configurable: true,
+      value: 1000,
+    });
+
+    lockScroll();
+    lockScroll();
+    unlockScroll();
+    expect(document.body.style.paddingRight).toBe('15px');
+    unlockScroll();
+    expect(document.body.style.paddingRight).toBe('');
   });
 });

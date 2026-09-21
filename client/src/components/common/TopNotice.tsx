@@ -90,14 +90,26 @@ function noticeHost(): HTMLElement {
   if (!el) {
     el = document.createElement('div');
     el.id = 'top-notices';
-    el.className =
-      'pointer-events-none fixed inset-x-0 top-14 z-toast flex flex-col items-stretch gap-1';
+    el.className = 'pointer-events-none fixed inset-x-0 z-toast flex flex-col items-stretch gap-1';
+    // 머리글(56px) 아래. 점검 배너가 켜져 있으면 그만큼 더 내린다 — 그 배너는 흐름 안에
+    // 들어가 머리글을 밀어 내리므로, 이 자리를 그대로 두면 머리글을 덮는다.
+    el.style.top = 'calc(3.5rem + var(--maintenance-bar-h, 0px))';
     document.body.appendChild(el);
   }
   return el;
 }
 
-export function TopNoticeSlot({ children }: { children: ReactNode }) {
-  const [host] = useState(noticeHost);
-  return createPortal(children, host);
+/**
+ * @param priority 작을수록 위에 앉는다. 급한 알림(공격·대결)이 위로 오게 한다 —
+ *   자리는 붙는 순서로 정해지므로, 먼저 떠 있던 띠 아래로 밀리면 정작 급한 것이 안 보인다.
+ */
+export function TopNoticeSlot({
+  children,
+  priority = 50,
+}: {
+  children: ReactNode;
+  priority?: number;
+}) {
+  const [host] = useState(() => noticeHost());
+  return createPortal(<div style={{ order: priority }}>{children}</div>, host);
 }

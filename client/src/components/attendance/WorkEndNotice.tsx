@@ -109,7 +109,7 @@ export function WorkEndNotice() {
 
   const late = stageShown === 'late';
   return (
-    <TopNoticeSlot>
+    <TopNoticeSlot priority={30}>
       <TopNotice
         icon="⏰"
         title={late ? '퇴근 시간이 지났습니다' : '퇴근 시간 10분 전입니다'}

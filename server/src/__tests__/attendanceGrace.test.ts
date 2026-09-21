@@ -22,6 +22,17 @@ async function setGrace(minutes: number) {
   await policy.save();
 }
 
+/**
+ * 그 시각에 실제로 당겨질 수 있는 분.
+ * 보정은 자정을 넘겨 당기지 않는다(전날로 넘어가면 없던 밤샘 근무가 생긴다).
+ * 자정 직후에 돌리면 그만큼만 당겨지므로, 기대값도 같은 규칙으로 잡아야 한다.
+ */
+function expectedShift(graceMinutes: number): number {
+  const now = new Date();
+  const sinceMidnight = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  return Math.min(graceMinutes, sinceMidnight);
+}
+
 const checkIn = () =>
   request(app).post('/api/attendance/check-in').set(CSRF_HEADER).set('Cookie', cookie).send({});
 
@@ -66,9 +77,10 @@ describe('출근 시각 보정', () => {
 
     const row = await AttendanceRecord.findOne({ where: { UserId: U } });
     const shifted = (before - row!.checkInAt.getTime()) / 60_000;
-    // 5분 당겨지고 초 절삭까지 더해 5~6분 사이
-    expect(shifted).toBeGreaterThanOrEqual(5);
-    expect(shifted).toBeLessThan(6);
+    // 당겨진 만큼 + 초 절삭(최대 1분)
+    const want = expectedShift(5);
+    expect(shifted).toBeGreaterThanOrEqual(want - 0.02);
+    expect(shifted).toBeLessThan(want + 1);
   });
 
   it('보정해도 초는 00 으로 남는다', async () => {
@@ -147,8 +159,9 @@ describe('관리자 화면에서 바꾼 보정값 — 실제 HTTP 경로', () =>
 
     const row = await AttendanceRecord.findOne({ where: { UserId: U } });
     const shifted = (before - row!.checkInAt.getTime()) / 60_000;
-    expect(shifted).toBeGreaterThanOrEqual(10);
-    expect(shifted).toBeLessThan(11);
+    const want = expectedShift(10);
+    expect(shifted).toBeGreaterThanOrEqual(want - 0.02);
+    expect(shifted).toBeLessThan(want + 1);
   });
 
   it('범위 밖의 값은 거절하고 저장하지 않는다', async () => {

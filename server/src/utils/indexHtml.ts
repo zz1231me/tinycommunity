@@ -57,9 +57,12 @@ function loadTemplate(indexPath: string): string {
 }
 
 /** index.html 에 현재 사이트 설정을 주입해 반환한다(캐시됨). 실패 시 원본 템플릿. */
-export async function renderIndexHtml(indexPath: string): Promise<string> {
+export async function renderIndexHtml(indexPath: string, retry = 1): Promise<string> {
   const template = loadTemplate(indexPath);
   if (rendered) return rendered;
+  // 아래 DB 조회 중에 배포가 끼어들 수 있다. 그때 이 결과를 캐시에 넣으면 사라진 자산을
+  // 가리키는 옛 HTML 이 고정돼 화면이 빈 채로 남는다. 조회 전후의 표식을 비교한다.
+  const builtFrom = rawStamp;
 
   // 화면이 이 값으로 새 배포를 알아챈다
   let html = template.replace(
@@ -95,6 +98,11 @@ export async function renderIndexHtml(indexPath: string): Promise<string> {
     return html;
   }
 
+  // 조회 사이에 파일이 바뀌었으면 이 결과는 이미 지난 빌드의 것이다.
+  // 캐시에 넣지 않고 새 템플릿으로 한 번 더 만든다(그 사이 또 바뀌면 그때 것을 그대로 준다).
+  if (rawStamp !== builtFrom) {
+    return retry > 0 ? renderIndexHtml(indexPath, retry - 1) : html;
+  }
   rendered = html;
   return rendered;
 }

@@ -134,7 +134,7 @@ export function NotificationToast() {
   return (
     <>
       {urgent && (
-        <TopNoticeSlot>
+        <TopNoticeSlot priority={10}>
           <UrgentNotice key={urgent.id} n={urgent} onClose={clearNew} />
         </TopNoticeSlot>
       )}
