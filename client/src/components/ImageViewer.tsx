@@ -1,6 +1,7 @@
 // src/components/ImageViewer.tsx - passive 이벤트 리스너 오류 해결 버전
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { lockScroll, unlockScroll } from '../utils/scrollLock';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface ImageViewerProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
   const [error, setError] = useState(false);
   const [imageNaturalSize, setImageNaturalSize] = useState({ width: 0, height: 0 });
 
+  const dialogRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const wheelThrottleRef = useRef<TimerRef | null>(null);
@@ -146,10 +148,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
       if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
 
       switch (e.key) {
-        case 'Escape':
-          e.preventDefault();
-          onClose();
-          break;
+        // ESC 는 useFocusTrap 이 처리한다(겹쳐 열린 것 중 맨 위만 닫히게)
         case '+':
         case '=':
           e.preventDefault();
@@ -374,13 +373,23 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     };
   }, []);
 
+  // 사진 보기는 화면 전체를 덮는 대화상자다. 그렇게 알리지 않으면 낭독기는 뒤 화면을
+  // 계속 읽고, 가두지 않으면 Tab 이 가려진 목록으로 새어 엉뚱한 링크가 눌린다.
+  useFocusTrap(dialogRef, onClose, isOpen);
+
   if (!isOpen) return null;
 
   const cursorStyle =
     isLoading || error ? 'default' : scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in';
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${altText} 크게 보기`}
+      className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+    >
       {/* 로딩 상태 */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center">
