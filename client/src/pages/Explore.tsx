@@ -172,20 +172,20 @@ export default function Explore() {
               <Empty>불러오는 중…</Empty>
             ) : byTag.isError ? (
               <Empty>글을 불러오지 못했습니다.</Empty>
-            ) : (byTag.data?.posts.length ?? 0) === 0 ? (
+            ) : (byTag.data?.posts?.length ?? 0) === 0 ? (
               <Empty>이 태그가 붙은 글이 없습니다.</Empty>
             ) : (
               <>
                 <ul className="space-y-0.5">
-                  {byTag.data?.posts.map(post => (
+                  {(byTag.data?.posts ?? []).map(post => (
                     <DiscoveryPostRow key={post.id} post={post} />
                   ))}
                 </ul>
-                {byTag.data && byTag.data.pagination.totalPages > 1 && (
+                {(byTag.data?.pagination?.totalPages ?? 0) > 1 && (
                   <div className="mt-3 border-t border-slate-200 pt-3 dark:border-slate-700">
                     <Pagination
-                      pagination={byTag.data.pagination}
-                      currentPage={byTag.data.pagination.currentPage}
+                      pagination={byTag.data!.pagination}
+                      currentPage={byTag.data!.pagination.currentPage}
                       onPageChange={setTagPage}
                     />
                   </div>

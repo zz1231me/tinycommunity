@@ -202,7 +202,7 @@ export function DuelPanel({
   // 기다리는 판이 없을 때 아예 묻지 않던 때는, 대결 알림을 꺼 둔 사람에게 도전장이 오면
   // 영영 보이지 않았다 — 알림을 끄면 서버가 알림 줄을 만들지 않아 도착 신호도 없는데,
   // 하필 '아무것도 없는' 그 상태에서만 주기 확인까지 쉬고 있었다.
-  const waitingCount = (board?.incoming.length ?? 0) + (board?.outgoing.length ?? 0);
+  const waitingCount = (board?.incoming?.length ?? 0) + (board?.outgoing?.length ?? 0);
   useEffect(() => {
     const every = waitingCount > 0 ? 15_000 : 60_000;
     const id = window.setInterval(() => {

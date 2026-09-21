@@ -473,7 +473,7 @@ const AttendanceManagement = () => {
             <ListState>
               {getApiErrorMessage(records.error, '기록을 불러오지 못했습니다.')}
             </ListState>
-          ) : (records.data?.records.length ?? 0) === 0 ? (
+          ) : (records.data?.records?.length ?? 0) === 0 ? (
             <ListState size="roomy">이 기간에는 기록이 없습니다.</ListState>
           ) : (
             <>
@@ -521,7 +521,7 @@ const AttendanceManagement = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {records.data?.records.map(row => {
+                    {(records.data?.records ?? []).map(row => {
                       const open = expanded === row.id;
                       const missed = row.checklist.filter(c => !c.checked).length;
                       return (

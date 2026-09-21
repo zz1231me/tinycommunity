@@ -37,25 +37,25 @@ export default function Scraps() {
             <ListLoading />
           ) : isError ? (
             <ListError what="스크랩 목록" />
-          ) : (data?.posts.length ?? 0) === 0 ? (
+          ) : (data?.posts?.length ?? 0) === 0 ? (
             <ListState size="roomy">
               아직 스크랩한 글이 없습니다.
               <br />글 상세 화면의 스크랩 버튼으로 담아 두세요.
             </ListState>
           ) : (
             <ul className="space-y-0.5">
-              {data?.posts.map(post => (
+              {(data?.posts ?? []).map(post => (
                 <DiscoveryPostRow key={post.id} post={post} />
               ))}
             </ul>
           )}
         </div>
 
-        {data && data.pagination.totalPages > 1 && (
+        {(data?.pagination?.totalPages ?? 0) > 1 && (
           <div className="border-t border-slate-200 px-3 py-3 dark:border-slate-700">
             <Pagination
-              pagination={data.pagination}
-              currentPage={data.pagination.currentPage}
+              pagination={data!.pagination}
+              currentPage={data!.pagination.currentPage}
               onPageChange={setPage}
             />
           </div>

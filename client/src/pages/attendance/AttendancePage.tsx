@@ -304,7 +304,7 @@ export default function AttendancePage() {
               />
             </div>
 
-            {(history.data?.records.length ?? 0) === 0 ? (
+            {(history.data?.records?.length ?? 0) === 0 ? (
               <ListState size="roomy">이 달에는 기록이 없습니다.</ListState>
             ) : (
               <>
@@ -327,7 +327,7 @@ export default function AttendancePage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {history.data?.records.map(row => (
+                      {(history.data?.records ?? []).map(row => (
                         <tr
                           key={row.id}
                           className={

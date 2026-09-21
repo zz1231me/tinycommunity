@@ -19,8 +19,13 @@ export function RelatedPosts({ boardType, postId }: Props) {
     queryFn: ({ signal }) => fetchRelatedPosts(boardType, postId, signal),
   });
 
+  // 배열이 아닌 답(서버가 모양을 바꾸거나 오류 봉투가 오는 경우)이 와도 이 칸만 비운다.
+  // 예전에는 data.length 로만 봐서, 배열이 아니면 그대로 map 까지 가 터졌다 — 이 화면에는
+  // 자체 오류 울타리가 없어 글 전체(앱 전체)가 하얗게 됐다. 곁다리 카드가 본문을 끌어내리면 안 된다.
+  const items = Array.isArray(data) ? data : [];
+
   // 읽을 글이 없으면 빈 칸을 남기지 않고 통째로 숨긴다
-  if (isLoading || isError || !data || data.length === 0) return null;
+  if (isLoading || isError || items.length === 0) return null;
 
   return (
     <section className="card overflow-hidden">
@@ -31,7 +36,7 @@ export function RelatedPosts({ boardType, postId }: Props) {
         <h2 className="card-title">관련 글</h2>
       </header>
       <ul className="space-y-0.5 p-2 sm:p-3">
-        {data.map(post => (
+        {items.map(post => (
           <DiscoveryPostRow key={post.id} post={post} />
         ))}
       </ul>
