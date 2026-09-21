@@ -124,6 +124,11 @@ export const reviewReport = async (req: AuthRequest, res: Response): Promise<voi
     sendValidationError(res, 'status', '유효하지 않은 처리 상태입니다.');
     return;
   }
+  // 문자열이 아니면 길이 검사를 그냥 지나쳐 DB 까지 갔다(객체는 .length 가 없다) — 500 이 됐다
+  if (reviewNote !== undefined && reviewNote !== null && typeof reviewNote !== 'string') {
+    sendValidationError(res, 'reviewNote', '처리 메모는 문자열이어야 합니다.');
+    return;
+  }
   // Report.reviewNote 컬럼이 STRING(500) 이다 — 1000 을 허용하면 넘겨 저장된다
   if (reviewNote && reviewNote.length > 500) {
     sendValidationError(res, 'reviewNote', '처리 메모는 500자를 초과할 수 없습니다.');

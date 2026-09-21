@@ -9,6 +9,7 @@ import request from 'supertest';
 import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import { FeatureFlag } from '../models/FeatureFlag';
 import { featureFlagService } from '../services/featureFlag.service';
+import { clampText } from '../utils/clamp';
 
 let cookie = '';
 let adminCookie = '';
@@ -140,5 +141,54 @@ describe('달 표기', () => {
       .get('/api/attendance/me/history?month=2026-03')
       .set('Cookie', cookie);
     expect(res.body.data.month).toBe('2026-03');
+  });
+});
+
+describe('열 너비·이모지 경계', () => {
+  // 파일 이름을 이모지 한가운데에서 자르면 짝이 깨져, 받을 때 encodeURIComponent 가 터진다.
+  // 실제 내려받기는 진짜 첨부가 있어야 닿는 길이라, 자르는 방법 자체를 고정한다.
+  it('255자에서 자를 때 이모지 짝을 깨지 않는다', () => {
+    const name = 'ㅇ'.repeat(254) + '😀'; // 256 자리 — 255 에서 자르면 짝이 반만 남는다
+
+    expect(() => encodeURIComponent(name.substring(0, 255))).toThrow(); // 예전 방법
+    expect(() => encodeURIComponent(clampText(name, 255))).not.toThrow(); // 지금 방법
+    expect(clampText(name, 255).length).toBeLessThanOrEqual(255);
+  });
+});
+
+describe('형이 다른 관리 입력', () => {
+  it('신고 처리 메모가 객체여도 넘어지지 않는다', async () => {
+    // 없는 신고라도 형 검사가 먼저다 — 400 이어야 한다(검사가 없으면 404 로 지나간다)
+    const res = await request(app)
+      .patch('/api/reports/99999/review')
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({ status: 'reviewed', reviewNote: { a: 1 } });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("이름에 객체를 보내면 거절한다 — '[object Object]' 로 저장되지 않는다", async () => {
+    const res = await request(app)
+      .put('/api/admin/users/testuser')
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({ name: { a: 1 } });
+
+    expect(res.status).toBe(400);
+    const after = await request(app)
+      .get('/api/admin/users?search=testuser')
+      .set('Cookie', adminCookie);
+    expect(JSON.stringify(after.body)).not.toContain('[object Object]');
+  });
+});
+
+describe('보안 로그 날짜 거르기', () => {
+  // 잘못된 날짜는 조건에서 빼야 한다 — 그대로 넣으면 '거른 것처럼 보이지만 안 걸러진' 목록이 온다
+  it('말이 안 되는 날짜를 줘도 넘어지지 않는다', async () => {
+    const res = await request(app)
+      .get('/api/admin/security-logs?startDate=abc&endDate=2026-13-45')
+      .set('Cookie', adminCookie);
+    notCrashed(res.status);
   });
 });

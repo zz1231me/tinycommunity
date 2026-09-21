@@ -9,6 +9,7 @@ import { FlatRequest, type AuthRequest } from '../types/auth-request';
 import { TempShare } from '../models/TempShare';
 import { sendSuccess, sendError } from '../utils/response';
 import { logError, logInfo } from '../utils/logger';
+import { clampText } from '../utils/clamp';
 
 export const TEMP_TTL_MS = 15 * 60 * 1000; // 15분
 export const tempDir = path.resolve(__dirname, '../../uploads/temp');
@@ -29,10 +30,12 @@ export const uploadTempFile = async (req: Request, res: Response): Promise<void>
     }
     const expiresAt = new Date(Date.now() + TEMP_TTL_MS);
     const record = await TempShare.create({
-      originalName: file.originalname,
+      // 열 너비(255·150)에 맞춰 자른다. SQLite 는 그냥 넣지만 MySQL 은 거절해 500 이 된다.
+      // 이모지 한가운데를 자르지 않는 clampText 를 쓴다 — 받을 때 파일 이름을 인코딩한다.
+      originalName: clampText(file.originalname, 255),
       storedName: file.filename,
       size: file.size,
-      mimetype: file.mimetype,
+      mimetype: clampText(file.mimetype, 150),
       uploadedBy: authReq.user?.id ?? 'unknown',
       expiresAt,
     });

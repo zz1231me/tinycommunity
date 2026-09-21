@@ -321,7 +321,12 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 
     // name 길이/빈값 검증
     if (updateData.name !== undefined) {
-      const trimmedName = String(updateData.name).trim();
+      // String() 으로 감싸면 객체가 '[object Object]' 라는 멀쩡한 이름이 되어 그대로 저장됐다
+      if (typeof updateData.name !== 'string') {
+        sendError(res, 400, '이름은 문자열이어야 합니다.');
+        return;
+      }
+      const trimmedName = updateData.name.trim();
       if (!trimmedName || trimmedName.length < 1 || trimmedName.length > 50) {
         sendError(res, 400, '이름은 1자 이상 50자 이하로 입력해주세요.');
         return;

@@ -82,10 +82,15 @@ export class SecurityLogService extends BaseService {
       where.action = params.action;
     }
 
+    // 날짜를 확인한다. 'abc' 같은 값은 Invalid Date 가 되는데, SQLite 는 그 조건을 그냥
+    // 지나쳐 '거른 것처럼 보이지만 안 걸러진' 목록을 줬다(MySQL 은 오류로 500).
+    // 감사 로그·오류 로그·로그인 기록은 모두 이 확인을 한다 — 여기만 빠져 있었다.
     if (params.startDate && params.endDate) {
-      where.createdAt = {
-        [Op.between]: [new Date(params.startDate), new Date(params.endDate)],
-      };
+      const start = new Date(params.startDate);
+      const end = new Date(params.endDate);
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        where.createdAt = { [Op.between]: [start, end] };
+      }
     }
 
     const { count, rows } = await SecurityLog.findAndCountAll({

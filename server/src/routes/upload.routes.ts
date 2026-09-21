@@ -14,6 +14,7 @@ import { sendSuccess, sendError, sendNotFound, sendForbidden } from '../utils/re
 import { isAdminOrManager } from '../config/constants';
 import { authorizeAttachmentAccess } from '../services/attachmentAccess.service';
 import { getOrCreateThumbnail } from '../services/thumbnail.service';
+import { clampText } from '../utils/clamp';
 
 const router = Router();
 
@@ -156,8 +157,10 @@ router.get(
   asyncHandler(async (req, res) => {
     const { filename } = req.params as Record<string, string>;
     const rawOriginalName = req.query.originalName;
+    // clampText 로 자른다. substring 은 이모지(서로게이트 짝) 한가운데를 자를 수 있고,
+    // 짝이 깨진 문자열은 아래 encodeURIComponent 에서 URIError 를 내 500 이 됐다.
     const originalName =
-      typeof rawOriginalName === 'string' ? rawOriginalName.substring(0, 255) : undefined;
+      typeof rawOriginalName === 'string' ? clampText(rawOriginalName, 255) : undefined;
 
     const resolvedFilePath = resolveSecureFilePath(filename, filesDir);
     if (!resolvedFilePath) {
