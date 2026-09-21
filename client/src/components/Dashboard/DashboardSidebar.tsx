@@ -1,5 +1,5 @@
 // client/src/components/Dashboard/DashboardSidebar.tsx
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Calendar,
@@ -51,6 +51,22 @@ function Spinner() {
 }
 
 export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
+  // 좁은 화면에서는 서랍이다. 닫혀 있어도 화면 밖으로 밀어 둘 뿐 DOM 에는 남아 있어,
+  // Tab 을 누르면 보이지 않는 링크 스무 개를 차례로 지나가게 된다 — 화면에서는
+  // 아무 일도 일어나지 않는데 포커스만 사라진 것처럼 보인다. 닫혀 있으면 꺼 둔다.
+  // (넓은 화면에서는 늘 보이는 기둥이므로 그대로 둔다.)
+  const [narrow, setNarrow] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 1024
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)');
+    const sync = () => setNarrow(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+  const hidden = narrow && !isOpen;
+
   const { boards, loading: boardsLoading, regularBoards, personalBoards } = useAccessibleBoards();
   const {
     bookmarks,
@@ -138,6 +154,8 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
 
   return (
     <aside
+      inert={hidden}
+      aria-hidden={hidden}
       className={`
       w-60 bg-white dark:bg-slate-900
       border-r border-slate-200 dark:border-slate-700/70
