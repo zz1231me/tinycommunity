@@ -9,6 +9,7 @@ import { Pin } from 'lucide-react';
 import { togglePin } from '../../api/posts';
 import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
+import { hasOpenDialog } from '../../hooks/useFocusTrap';
 
 interface Props {
   boardType: string;
@@ -43,7 +44,9 @@ export function PinButton({ boardType, postId, isPinned, pinnedUntil, onChange }
       if (!wrapRef.current?.contains(e.target as Node)) setMenuOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenuOpen(false);
+      // 위에 대화상자가 떠 있으면 ESC 는 그쪽 몫이다 — 한 번에 둘이 닫히지 않게
+      if (e.key !== 'Escape' || hasOpenDialog()) return;
+      setMenuOpen(false);
     };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);

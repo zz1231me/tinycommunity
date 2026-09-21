@@ -5,12 +5,13 @@
 // 키보드 사용자는 알림을 열 수도, 닫을 수도 없었다.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createElement } from 'react';
+import { createElement, useRef } from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { NotificationBell } from './NotificationBell';
 import { useUIOverlays } from '../../store/uiOverlays';
 import { useNotificationStore } from '../../store/notifications';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 // framer-motion 의 애니메이션은 happy-dom 에서 취소될 때 잡히지 않는 AbortError 를 남기고,
 // vitest 는 테스트가 모두 통과해도 그 때문에 실패로 끝난다(LotteryPanel.test 와 같은 처리).
@@ -109,6 +110,17 @@ const open = async () => {
   return screen.findByRole('button', { name: /대결을 신청했습니다/ });
 };
 
+/** 알림 목록 위에 겹쳐 뜨는 대화상자 */
+function TrapDialog({ onClose }: { onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useFocusTrap(ref, onClose);
+  return (
+    <div ref={ref}>
+      <button type="button">대화상자 단추</button>
+    </div>
+  );
+}
+
 describe('알림 목록 — 키보드', () => {
   it('벨이 열림 상태를 알린다', async () => {
     await open();
@@ -134,6 +146,18 @@ describe('알림 목록 — 키보드', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     await waitFor(() => expect(bell()).toHaveAttribute('aria-expanded', 'false'));
     expect(document.activeElement).toBe(bell());
+  });
+
+  it('위에 대화상자가 떠 있으면 Esc 를 가로채지 않는다', async () => {
+    await open();
+    const onDialogClose = vi.fn();
+    render(<TrapDialog onClose={onDialogClose} />);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    // 대화상자를 닫으려던 한 번의 ESC 에 알림 목록까지 닫히면 안 된다
+    expect(onDialogClose).toHaveBeenCalledTimes(1);
+    expect(bell()).toHaveAttribute('aria-expanded', 'true');
   });
 });
 

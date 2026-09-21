@@ -6,6 +6,7 @@ import { Bell, BellOff, CheckCheck, ChevronRight, Trash2, X } from 'lucide-react
 import { AnimatePresence, motion } from 'framer-motion';
 import { stagger, listItem, scaleIn } from '../../utils/animations';
 import { useUIOverlays } from '../../store/uiOverlays';
+import { hasOpenDialog } from '../../hooks/useFocusTrap';
 import { useNotificationStore } from '../../store/notifications';
 import { toast } from '../../utils/toast';
 import { kindOf } from '../common/notificationKinds';
@@ -289,7 +290,8 @@ export function NotificationBell() {
       dropdownRef.current?.focus({ preventScroll: true })
     );
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
+      // 위에 대화상자가 떠 있으면 ESC 는 그쪽 몫이다 — 한 번에 둘이 닫히지 않게
+      if (e.key !== 'Escape' || hasOpenDialog()) return;
       setOpen(false);
       bellRef.current?.focus();
     };

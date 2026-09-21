@@ -3,6 +3,7 @@ import { useFeature } from '../../store/features';
 import { EmojiPicker } from 'frimousse';
 import { SmilePlus } from 'lucide-react';
 import type { Comment } from '../../hooks/useCommentOperations';
+import { hasOpenDialog } from '../../hooks/useFocusTrap';
 
 interface CommentReactionsProps {
   comment: Comment;
@@ -30,7 +31,9 @@ export const CommentReactions: React.FC<CommentReactionsProps> = ({
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      // 위에 대화상자가 떠 있으면 ESC 는 그쪽 몫이다 — 한 번에 둘이 닫히지 않게
+      if (e.key !== 'Escape' || hasOpenDialog()) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
