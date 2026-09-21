@@ -31,20 +31,42 @@ function bareSvgs(source: string): number[] {
   return lines;
 }
 
+/**
+ * 이 파일이 lucide 에서 들여온 아이콘 이름들.
+ * 이 앱의 아이콘은 거의 다 lucide 컴포넌트다 — <svg> 만 찾으면 대부분을 놓친다.
+ */
+function lucideNames(source: string): string[] {
+  const names: string[] = [];
+  for (const m of source.matchAll(/import\s*\{([^}]+)\}\s*from\s*'lucide-react'/g)) {
+    for (const raw of m[1].split(',')) {
+      const name = raw.split(' as ').pop()?.trim();
+      if (name) names.push(name);
+    }
+  }
+  return names;
+}
+
 /** 그림만 들어 있는데 이름이 없는 <button> */
 function namelessIconButtons(source: string): number[] {
   const lines: number[] = [];
-  for (const m of source.matchAll(/<button(\s|>)/g)) {
-    const at = m.index ?? 0;
-    const gt = source.indexOf('>', at);
-    const close = source.indexOf('</button>', gt);
-    if (gt === -1 || close === -1) continue;
-    const inner = source.slice(gt + 1, close);
-    if (!inner.includes('<svg')) continue;
-    if (inner.replace(/<[^>]*>/g, '').trim()) continue; // 글자가 있으면 그것이 이름이다
-    const openTag = source.slice(at, gt + 1);
-    if (/aria-label|aria-labelledby/.test(openTag)) continue;
-    lines.push(source.slice(0, at).split('\n').length);
+  const icons = lucideNames(source);
+  const hasIcon = (inner: string) =>
+    inner.includes('<svg') || icons.some(n => inner.includes(`<${n} `) || inner.includes(`<${n}/`));
+
+  // 링크도 같다. 아이콘만 있는 링크는 낭독기에 목적지 주소만 읽힌다.
+  for (const tag of ['button', 'a', 'Link', 'NavLink']) {
+    for (const m of source.matchAll(new RegExp(`<${tag}(\\s|>)`, 'g'))) {
+      const at = m.index ?? 0;
+      const gt = source.indexOf('>', at);
+      const close = source.indexOf(`</${tag}>`, gt);
+      if (gt === -1 || close === -1) continue;
+      const inner = source.slice(gt + 1, close);
+      if (!hasIcon(inner)) continue;
+      if (inner.replace(/<[^>]*>/g, '').trim()) continue; // 글자가 있으면 그것이 이름이다
+      const openTag = source.slice(at, gt + 1);
+      if (/aria-label|aria-labelledby|title=/.test(openTag)) continue;
+      lines.push(source.slice(0, at).split('\n').length);
+    }
   }
   return lines;
 }
