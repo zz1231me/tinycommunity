@@ -123,7 +123,7 @@ export function useFocusTrap(
     document.addEventListener('keydown', onKey);
     return () => {
       clearTimeout(t);
-      const at = traps.findIndex(t => t.id === id);
+      const at = traps.findIndex(entry => entry.id === id);
       if (at !== -1) traps.splice(at, 1);
       unlockScroll();
       document.removeEventListener('keydown', onKey);
