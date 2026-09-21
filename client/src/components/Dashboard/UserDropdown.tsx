@@ -12,6 +12,7 @@ import { logout as logoutAPI } from '../../api/auth';
 import { getRoleBadgeClass, getRoleName } from '../../utils/roleUtils';
 import { ThemeToggle } from '../ThemeToggle';
 import { useUIOverlays } from '../../store/uiOverlays';
+import { hasOpenDialog } from '../../hooks/useFocusTrap';
 import { useFeature } from '../../store/features';
 
 export function UserDropdown() {
@@ -39,14 +40,19 @@ export function UserDropdown() {
   const currentUser = getUser();
 
   useEffect(() => {
+    if (!isOpen) return;
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false);
+      // 위에 대화상자가 떠 있으면 ESC 는 그쪽 몫이다
+      if (e.key !== 'Escape' || hasOpenDialog()) return;
+      setIsOpen(false);
     };
-    if (isOpen) document.addEventListener('keydown', handleEscape);
+    document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, setIsOpen]);
 
   useEffect(() => {
+    // 열려 있을 때만 듣는다 — 닫힌 채로 걸어 두면 앱 안의 모든 클릭이 이 검사를 거친다
+    if (!isOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsOpen(false);
@@ -54,7 +60,7 @@ export function UserDropdown() {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [setIsOpen]);
+  }, [isOpen, setIsOpen]);
 
   const handleLogout = async () => {
     try {
