@@ -183,7 +183,7 @@ function SortableBoardRow({
             className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-primary-600"
           />
         ) : board.taskEnabled ? (
-          <span className="inline-flex items-center rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+          <span className="badge bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
             업무용
           </span>
         ) : (

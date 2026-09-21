@@ -79,7 +79,7 @@ function Podium({ entries, myId }: { entries: Entry[]; myId?: string }) {
               {e.name}
             </p>
             {mine && (
-              <span className="mt-0.5 rounded-full bg-primary-100 px-1.5 text-2xs font-medium text-primary-700 dark:bg-primary-500/20 dark:text-primary-300">
+              <span className="badge mt-0.5 bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-300">
                 나
               </span>
             )}

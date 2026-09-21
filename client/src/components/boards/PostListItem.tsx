@@ -194,7 +194,7 @@ export const PostListItem: React.FC<PostListItemProps> = ({
 
             {/* 새 글 배지 */}
             {isNewPost() && (
-              <span className="bg-secondary-100 text-secondary-700 dark:bg-secondary-900/40 dark:text-secondary-300 text-xs px-2 py-0.5 rounded-full font-bold flex-shrink-0">
+              <span className="badge flex-shrink-0 bg-secondary-100 text-secondary-700 dark:bg-secondary-900/40 dark:text-secondary-300">
                 NEW
               </span>
             )}

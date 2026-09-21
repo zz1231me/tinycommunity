@@ -412,7 +412,7 @@ export function NotificationBell() {
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-2xs font-bold rounded-full flex items-center justify-center leading-none">
+          <span className="badge-count absolute -right-0.5 -top-0.5 bg-red-500 text-white">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -440,7 +440,7 @@ export function NotificationBell() {
                   <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
                     알림
                     {unreadCount > 0 && (
-                      <span className="rounded-full bg-red-500 px-1.5 py-px text-2xs font-bold tabular-nums text-white">
+                      <span className="badge-count bg-red-500 text-white">
                         {unreadCount}
                       </span>
                     )}

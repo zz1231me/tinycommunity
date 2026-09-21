@@ -68,7 +68,7 @@ function ConversationRow({
               {conversation.partner.name}
             </span>
             {conversation.unreadCount > 0 && (
-              <span className="ml-auto flex-shrink-0 rounded-full bg-primary-600 px-1.5 py-0.5 text-2xs font-bold text-white">
+              <span className="badge-count ml-auto flex-shrink-0 bg-primary-600 text-white">
                 {conversation.unreadCount}
               </span>
             )}

@@ -76,11 +76,7 @@ function PasswordResetRequest() {
     }
   };
 
-  const inputCls =
-    'w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 ' +
-    'focus:bg-slate-50 dark:focus:bg-slate-600 focus:ring-2 focus:ring-primary-500/40 outline-none ' +
-    'disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 ' +
-    'placeholder:text-slate-400 dark:placeholder:text-slate-500';
+  const inputCls = 'input-auth';
 
   const primaryBtn =
     'w-full py-3 px-4 bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-semibold ' +

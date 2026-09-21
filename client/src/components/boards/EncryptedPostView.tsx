@@ -71,7 +71,7 @@ export const EncryptedPostView: React.FC<EncryptedPostViewProps> = ({
           {/* 게시글 헤더 */}
           <header className="px-6 py-5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
             <div className="flex items-center gap-2 mb-3">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200 dark:border-emerald-800/60">
+              <span className="badge border border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-900/30 dark:text-emerald-400">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 E2EE 종단간 암호화
               </span>

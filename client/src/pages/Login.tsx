@@ -243,14 +243,7 @@ function Login() {
                 required
                 autoComplete="username"
                 placeholder="아이디를 입력하세요"
-                className="w-full px-4 py-3 rounded-lg
-                           bg-slate-50 dark:bg-slate-800
-                           border border-slate-200 dark:border-slate-700
-                           text-slate-900 dark:text-slate-100 text-sm
-                           placeholder:text-slate-400 dark:placeholder:text-slate-500
-                           focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-500
-                           disabled:opacity-50 disabled:cursor-not-allowed
-                           transition-all duration-150"
+                className="input-auth"
               />
             </div>
 
@@ -269,14 +262,7 @@ function Login() {
                   required
                   autoComplete="current-password"
                   placeholder="비밀번호를 입력하세요"
-                  className="w-full px-4 py-3 pr-11 rounded-lg
-                             bg-slate-50 dark:bg-slate-800
-                             border border-slate-200 dark:border-slate-700
-                             text-slate-900 dark:text-slate-100 text-sm
-                             placeholder:text-slate-400 dark:placeholder:text-slate-500
-                             focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-500
-                             disabled:opacity-50 disabled:cursor-not-allowed
-                             transition-all duration-150"
+                  className="input-auth pr-11"
                 />
                 <button
                   type="button"

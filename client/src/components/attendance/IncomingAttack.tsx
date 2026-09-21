@@ -69,7 +69,7 @@ export function AttackBanner({
         {ATTACK_FACE[incoming.kind]}
       </span>
       {waiting > 0 && (
-        <span className="-ml-2 rounded-full bg-rose-600 px-1.5 text-2xs font-bold tabular-nums text-white">
+        <span className="badge-count -ml-2 bg-rose-600 text-white">
           ×{waiting + 1}
         </span>
       )}

@@ -32,7 +32,7 @@ export function MessageBadge() {
     >
       <MessagesSquare className="h-5 w-5" />
       {count > 0 && (
-        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-2xs font-bold text-white">
+        <span className="badge-count absolute -right-0.5 -top-0.5 bg-red-500 text-white">
           {count > 99 ? '99+' : count}
         </span>
       )}

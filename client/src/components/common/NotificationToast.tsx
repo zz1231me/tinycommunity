@@ -79,11 +79,7 @@ function ToastCard({ n, more, onClose }: { n: Notification; more: number; onClos
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
             {kind.title}
-            {more > 0 && (
-              <span className="rounded-full bg-slate-100 px-1.5 py-px text-2xs font-medium tabular-nums text-slate-500 dark:bg-slate-700 dark:text-slate-300">
-                외 {more}건
-              </span>
-            )}
+            {more > 0 && <span className="badge badge-gray tabular-nums">외 {more}건</span>}
           </span>
           <span className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
             {n.message}

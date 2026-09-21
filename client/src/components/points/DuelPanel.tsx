@@ -341,7 +341,7 @@ export function DuelPanel({
         title="포인트 대결"
         badge={
           board.incoming.length > 0 && (
-            <span className="animate-popIn rounded-full bg-violet-600 px-2 py-0.5 text-2xs font-semibold text-white">
+            <span className="badge-count animate-popIn bg-violet-600 text-white">
               도전장 {board.incoming.length}
             </span>
           )
