@@ -236,3 +236,46 @@ describe('열려 있는 동안 배경 스크롤을 잠근다', () => {
     expect(document.body.style.overflow).toBe('hidden');
   });
 });
+
+describe('겹쳐 열린 대화상자', () => {
+  /** 바깥 대화상자 위에 확인 상자가 하나 더 열린 화면 */
+  function Nested({ onOuterClose, onInnerClose }: { onOuterClose: () => void; onInnerClose: () => void }) {
+    const outer = useRef<HTMLDivElement>(null);
+    const inner = useRef<HTMLDivElement>(null);
+    useFocusTrap(outer, onOuterClose);
+    useFocusTrap(inner, onInnerClose);
+    // 확인 상자는 portal 을 쓰지 않는다 — 바깥 상자의 DOM 안에 그려지므로
+    // 바깥 훅의 요소 목록에도 안쪽 단추가 들어간다
+    return (
+      <div ref={outer}>
+        <button type="button">바깥 단추</button>
+        <div ref={inner}>
+          <button type="button">안쪽 취소</button>
+          <button type="button">안쪽 확인</button>
+        </div>
+      </div>
+    );
+  }
+
+  it('ESC 는 맨 위 상자만 닫는다', () => {
+    const onOuterClose = vi.fn();
+    const onInnerClose = vi.fn();
+    render(<Nested onOuterClose={onOuterClose} onInnerClose={onInnerClose} />);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    // 확인만 취소하려던 것이 화면째 닫히면 안 된다
+    expect(onInnerClose).toHaveBeenCalledTimes(1);
+    expect(onOuterClose).not.toHaveBeenCalled();
+  });
+
+  it('Tab 은 맨 위 상자 안에서만 돈다', () => {
+    render(<Nested onOuterClose={() => {}} onInnerClose={() => {}} />);
+    btn('안쪽 확인').focus(); // 안쪽의 마지막 요소 = 바깥 목록의 마지막이기도 하다
+
+    fireEvent.keyDown(document, { key: 'Tab' });
+
+    // 바깥 훅까지 반응하면 포커스가 가려진 '바깥 단추' 로 튄다
+    expect(document.activeElement).toBe(btn('안쪽 취소'));
+  });
+});

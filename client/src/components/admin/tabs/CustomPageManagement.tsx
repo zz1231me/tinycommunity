@@ -123,15 +123,24 @@ export const CustomPageManagement = () => {
    * 방식 바꾸기. 번들에서 벗어나면 올려 둔 파일이 저장 시 지워지므로 미리 알린다.
    * (예전에는 아예 못 바꿔서, 종류를 바꾸려면 지우고 같은 주소로 다시 만들어야 했다)
    */
-  const switchMode = (next: Mode) => {
-    if (next === mode) return;
-    const leavingBundle = mode === 'bundle' && bundleHtmlFiles.length > 0;
-    if (leavingBundle && !window.confirm('올려 둔 폴더 파일이 저장할 때 삭제됩니다. 바꿀까요?')) {
-      return;
-    }
+  const applyMode = (next: Mode) => {
     if (next !== 'bundle') resetBundleFiles();
     setMode(next);
   };
+
+  const switchMode = (next: Mode) => {
+    if (next === mode) return;
+    const leavingBundle = mode === 'bundle' && bundleHtmlFiles.length > 0;
+    // 브라우저 기본 confirm 대신 이 화면이 이미 쓰는 공용 확인 상자로
+    if (leavingBundle) {
+      setPendingMode(next);
+      return;
+    }
+    applyMode(next);
+  };
+
+  // 올려 둔 파일을 버리게 되는 방식 변경 — 확인을 받고 나서 바꾼다
+  const [pendingMode, setPendingMode] = useState<Mode | null>(null);
 
   const cancel = () => {
     setEditingId(null);
@@ -573,6 +582,18 @@ export const CustomPageManagement = () => {
         variant="danger"
         onConfirm={doDelete}
         onCancel={() => setConfirmDelete(null)}
+      />
+
+      <ConfirmationModal
+        open={pendingMode !== null}
+        title="올려 둔 폴더 파일이 지워집니다"
+        message="저장할 때 삭제됩니다. 방식을 바꿀까요?"
+        confirmLabel="바꾸기"
+        onConfirm={() => {
+          if (pendingMode) applyMode(pendingMode);
+          setPendingMode(null);
+        }}
+        onCancel={() => setPendingMode(null)}
       />
     </>
   );

@@ -11,6 +11,7 @@ import { VirtualLogTable, LogColumn } from '../common/VirtualLogTable';
 import { formatDateTime } from '../../../utils/date';
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
 import { useAdminLogQuery } from '../../../hooks/admin/useAdminLogQuery';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -34,6 +35,14 @@ const COLUMNS: LogColumn[] = [
   { label: 'Details', width: '96px' },
 ];
 
+type DeleteMode = '30d' | '90d' | 'all';
+
+const DELETE_LABELS: Record<DeleteMode, string> = {
+  '30d': '30일 이전 보안 로그',
+  '90d': '90일 이전 보안 로그',
+  all: '모든 보안 로그',
+};
+
 export const SecurityLogManagement = () => {
   const queryClient = useQueryClient();
 
@@ -46,6 +55,8 @@ export const SecurityLogManagement = () => {
 
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // 브라우저 기본 confirm 대신 공용 확인 상자를 쓴다 — 나머지 삭제 17곳과 같은 모양으로
+  const [pendingDelete, setPendingDelete] = useState<DeleteMode | null>(null);
   const [exporting, setExporting] = useState(false);
 
   const {
@@ -87,15 +98,7 @@ export const SecurityLogManagement = () => {
   };
 
   /** 특정 날짜 이전 로그 삭제 또는 전체 삭제 */
-  const handleDelete = async (mode: '30d' | '90d' | 'all') => {
-    const labels: Record<string, string> = {
-      '30d': '30일 이전 보안 로그',
-      '90d': '90일 이전 보안 로그',
-      all: '모든 보안 로그',
-    };
-    if (!window.confirm(`${labels[mode]}를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`))
-      return;
-
+  const handleDelete = async (mode: DeleteMode) => {
     setDeleting(true);
     try {
       const options: { before?: string } = {};
@@ -113,6 +116,7 @@ export const SecurityLogManagement = () => {
       toast.error('보안 로그 삭제 중 오류가 발생했습니다.');
     } finally {
       setDeleting(false);
+      setPendingDelete(null);
     }
   };
 
@@ -135,21 +139,21 @@ export const SecurityLogManagement = () => {
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400">삭제:</span>
               <button
-                onClick={() => handleDelete('30d')}
+                onClick={() => setPendingDelete('30d')}
                 disabled={deleting}
                 className="rounded-md px-2 py-1 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors disabled:opacity-50"
               >
                 30일 이전
               </button>
               <button
-                onClick={() => handleDelete('90d')}
+                onClick={() => setPendingDelete('90d')}
                 disabled={deleting}
                 className="rounded-md px-2 py-1 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors disabled:opacity-50"
               >
                 90일 이전
               </button>
               <button
-                onClick={() => handleDelete('all')}
+                onClick={() => setPendingDelete('all')}
                 disabled={deleting}
                 className="rounded-md px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
               >
@@ -260,6 +264,15 @@ export const SecurityLogManagement = () => {
           }
         />
       </AdminSection>
+
+      <ConfirmationModal
+        open={pendingDelete !== null}
+        title={`${pendingDelete ? DELETE_LABELS[pendingDelete] : ''}를 삭제할까요?`}
+        message="지우면 되돌릴 수 없습니다."
+        confirmLabel="삭제"
+        onConfirm={() => (pendingDelete ? handleDelete(pendingDelete) : undefined)}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 };

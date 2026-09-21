@@ -10,6 +10,7 @@ import { formatDateShort } from '../../../utils/date';
 import { useAdminLogQuery } from '../../../hooks/admin/useAdminLogQuery';
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
 import { ListState } from '../../common/ListState';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 
 type ErrorLog = {
   id: string;
@@ -40,6 +41,8 @@ const getSeverityBadge = (severity: string) => {
   }
 };
 
+type DeleteMode = '7d' | '30d' | 'severity' | 'all';
+
 export const ErrorLogManagement = () => {
   const queryClient = useQueryClient();
 
@@ -48,6 +51,9 @@ export const ErrorLogManagement = () => {
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
   const [deleting, setDeleting] = useState(false);
+  // 브라우저 기본 confirm 은 화면 밖(창 위)에 뜨고 다크 모드도 따르지 않는다.
+  // 지우는 동작 17곳이 이미 공용 확인 상자를 쓴다 — 여기도 같은 것을 쓴다.
+  const [pendingDelete, setPendingDelete] = useState<DeleteMode | null>(null);
   // 자유 입력 필터는 디바운스 — 다른 로그 탭과 동일하게 키 입력마다 조회하지 않는다
   const debouncedUserId = useDebouncedValue(filterUserId, 400);
 
@@ -77,21 +83,24 @@ export const ErrorLogManagement = () => {
     },
   });
 
-  /** 에러 로그 삭제 */
-  const handleDelete = async (mode: '7d' | '30d' | 'severity' | 'all') => {
-    const labels: Record<string, string> = {
-      '7d': '7일 이전 에러 로그',
-      '30d': '30일 이전 에러 로그',
-      severity: filterSeverity ? `심각도 "${filterSeverity}" 에러 로그 전체` : '(심각도 미선택)',
-      all: '모든 에러 로그',
-    };
+  const deleteLabels: Record<DeleteMode, string> = {
+    '7d': '7일 이전 에러 로그',
+    '30d': '30일 이전 에러 로그',
+    severity: filterSeverity ? `심각도 "${filterSeverity}" 에러 로그 전체` : '(심각도 미선택)',
+    all: '모든 에러 로그',
+  };
+
+  /** 삭제 전 확인 상자를 연다 */
+  const askDelete = (mode: DeleteMode) => {
     if (mode === 'severity' && !filterSeverity) {
       toast.error('삭제할 심각도를 먼저 선택해주세요.');
       return;
     }
-    if (!window.confirm(`${labels[mode]}를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`))
-      return;
+    setPendingDelete(mode);
+  };
 
+  /** 에러 로그 삭제 */
+  const handleDelete = async (mode: DeleteMode) => {
     setDeleting(true);
     try {
       const options: { before?: string; severity?: string; all?: boolean } = {};
@@ -116,6 +125,7 @@ export const ErrorLogManagement = () => {
       toast.error('에러 로그 삭제 중 오류가 발생했습니다.');
     } finally {
       setDeleting(false);
+      setPendingDelete(null);
     }
   };
 
@@ -131,21 +141,21 @@ export const ErrorLogManagement = () => {
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400">삭제:</span>
               <button
-                onClick={() => handleDelete('7d')}
+                onClick={() => askDelete('7d')}
                 disabled={deleting}
                 className="px-2 py-1 text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 rounded transition-colors disabled:opacity-50"
               >
                 7일 이전
               </button>
               <button
-                onClick={() => handleDelete('30d')}
+                onClick={() => askDelete('30d')}
                 disabled={deleting}
                 className="px-2 py-1 text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 rounded transition-colors disabled:opacity-50"
               >
                 30일 이전
               </button>
               <button
-                onClick={() => handleDelete('severity')}
+                onClick={() => askDelete('severity')}
                 disabled={deleting || !filterSeverity}
                 title={
                   filterSeverity
@@ -157,7 +167,7 @@ export const ErrorLogManagement = () => {
                 현재 심각도
               </button>
               <button
-                onClick={() => handleDelete('all')}
+                onClick={() => askDelete('all')}
                 disabled={deleting}
                 className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded transition-colors disabled:opacity-50"
               >
@@ -320,6 +330,15 @@ export const ErrorLogManagement = () => {
           </div>
         )}
       </AdminSection>
+
+      <ConfirmationModal
+        open={pendingDelete !== null}
+        title={`${pendingDelete ? deleteLabels[pendingDelete] : ''}를 삭제할까요?`}
+        message="지우면 되돌릴 수 없습니다."
+        confirmLabel="삭제"
+        onConfirm={() => (pendingDelete ? handleDelete(pendingDelete) : undefined)}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 };

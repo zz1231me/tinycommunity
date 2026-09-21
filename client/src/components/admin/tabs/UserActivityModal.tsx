@@ -19,6 +19,7 @@ import { toast } from '../../../utils/toast';
 import { formatDateTime, formatRelative } from '../../../utils/date';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { ListState } from '../../common/ListState';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 
 type ModalTab = 'login' | 'audit' | 'sessions' | 'denied';
 
@@ -102,6 +103,8 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
   const [deniedPage, setDeniedPage] = useState(1);
   const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
   const [forcingOut, setForcingOut] = useState<string | null>(null);
+  // 브라우저 기본 confirm 은 창 위에 떠 이 대화상자와 따로 논다 — 공용 확인 상자를 쓴다
+  const [pendingLogout, setPendingLogout] = useState<string | null>(null);
 
   // 각 탭은 실제로 열렸을 때만 조회한다(enabled) — 기존 activeTab 분기 useEffect 와 동일.
   const loginQuery = useQuery({
@@ -150,7 +153,6 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
   const FETCH_FAILED = '불러오지 못했습니다. 잠시 후 다시 시도해주세요.';
 
   const handleForceLogout = async (sessionId: string) => {
-    if (!window.confirm('해당 세션을 강제 종료하시겠습니까?')) return;
     setForcingOut(sessionId);
     try {
       await forceLogoutSession(userId, sessionId);
@@ -162,6 +164,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
       toast.error('세션 종료 중 오류가 발생했습니다.');
     } finally {
       setForcingOut(null);
+      setPendingLogout(null);
     }
   };
 
@@ -509,7 +512,7 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
                         </td>
                         <td className="admin-td whitespace-nowrap">
                           <button
-                            onClick={() => handleForceLogout(session.id)}
+                            onClick={() => setPendingLogout(session.id)}
                             disabled={forcingOut === session.id}
                             className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded transition-colors disabled:opacity-50"
                           >
@@ -525,6 +528,15 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
           )}
         </div>
       </div>
+
+      <ConfirmationModal
+        open={pendingLogout !== null}
+        title="이 세션을 강제 종료할까요?"
+        message="해당 기기에서 즉시 로그아웃됩니다."
+        confirmLabel="강제 종료"
+        onConfirm={() => (pendingLogout ? handleForceLogout(pendingLogout) : undefined)}
+        onCancel={() => setPendingLogout(null)}
+      />
     </div>
   );
 };
