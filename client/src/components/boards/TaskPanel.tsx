@@ -57,7 +57,7 @@ export function TaskPanel({ boardType, postId, state, editable, onChange }: Prop
   return (
     <section
       aria-label="업무 상태"
-      className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/40 sm:px-6"
+      className="card-header flex-wrap gap-x-6 gap-y-3 bg-slate-50/70 dark:bg-slate-800/40"
     >
       {/* 상태 */}
       <div className="flex items-center gap-2">

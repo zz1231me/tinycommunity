@@ -25,10 +25,9 @@ interface PostListTableProps {
  * 순간 줄이 덜컥 바뀌었다. 한 곳에서만 그리면 어긋날 수가 없다.
  */
 export const ColumnHeader = ({ showAssignee }: { showAssignee: boolean }) => (
-  <div
-    role="rowgroup"
-    className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-3"
-  >
+  // card-header 는 flex 다 — 안쪽 12칸 그리드가 flex 항목이 되면 폭이 글자만큼 줄어
+  // 행과 칼럼이 어긋난다. 여백·테두리만 쓰고 배치는 원래대로 둔다.
+  <div role="rowgroup" className="card-header block bg-slate-50 dark:bg-slate-900/60">
     {/* ⚠️ grid 칼럼 설정(cols/gap)을 PostListItem 행과 반드시 동일하게 유지해야 칼럼이 정렬됨 */}
     <div
       role="row"

@@ -504,7 +504,7 @@ export default function Profile() {
 
             {activeTab === 'security' && (
               <div className="card mb-6 overflow-hidden">
-                <div className="border-b border-slate-100 px-4 py-3 sm:px-6 dark:border-slate-700">
+                <div className="card-header block border-slate-100">
                   <h3 className="card-title">활성 세션</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     현재 로그인된 기기 목록 · 다른 기기는 종료할 수 있습니다
@@ -580,7 +580,7 @@ export default function Profile() {
 
             {activeTab === 'security' && (
               <div className="card overflow-hidden">
-                <div className="border-b border-slate-100 px-4 py-3 sm:px-6 dark:border-slate-700">
+                <div className="card-header block border-slate-100">
                   <h3 className="card-title">접속 기록</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     로그인 성공/실패, 로그아웃 이력
