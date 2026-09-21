@@ -10,6 +10,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { TempShareModal } from './TempShareModal';
+import { resetScrollLock } from '../../utils/scrollLock';
 
 const featureOn = vi.hoisted(() => ({ value: true }));
 
@@ -56,5 +57,26 @@ describe('파일공유 대화상자의 포커스', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe('기능이 꺼져 있을 때의 배경 스크롤', () => {
+  it('그리지도 않으면서 페이지를 잠그지 않는다', () => {
+    resetScrollLock();
+    featureOn.value = false;
+    render(<TempShareModal open onClose={vi.fn()} />);
+
+    // 아무것도 안 보이는데 스크롤만 죽으면 원인을 찾을 길이 없다
+    expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe('');
+  });
+
+  it('켜져 있으면 열려 있는 동안 잠근다 — 대조군', () => {
+    resetScrollLock();
+    featureOn.value = true;
+    const { unmount } = render(<TempShareModal open onClose={vi.fn()} />);
+    expect(document.body.style.overflow).toBe('hidden');
+    unmount();
+    expect(document.body.style.overflow).toBe('');
   });
 });

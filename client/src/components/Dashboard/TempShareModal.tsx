@@ -54,13 +54,15 @@ export function TempShareModal({ open, onClose }: Props) {
     reset();
   }, [onClose, reset]);
 
-  // 열려 있는 동안 배경 스크롤 잠금
+  // 열려 있는 동안 배경 스크롤 잠금.
+  // 그리는 조건과 똑같이 건다 — open 만 보고 걸면, 기능이 꺼져 아무것도 그리지 않는
+  // 동안에도 잠금이 남아 페이지가 스크롤되지 않는다(원인이 화면에 보이지 않는다).
   useEffect(() => {
-    if (!open) return;
+    if (!featureEnabled || !open) return;
     // 세어 두는 공용 잠금을 쓴다 — 겹쳐 열렸을 때 안쪽이 닫히며 바깥 잠금을 풀지 않게
     lockScroll();
     return () => unlockScroll();
-  }, [open]);
+  }, [featureEnabled, open]);
 
   // Esc 로 닫고, 열려 있는 동안 포커스를 안에 가둔다.
   // body 로 포털하지만 ref 가 가리키는 것은 실제 DOM 노드라 가두기는 그대로 동작한다.

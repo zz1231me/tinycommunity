@@ -198,7 +198,7 @@ function showCenterError(message: string, durationMs = 6000): void {
   const close = (immediate = false) => {
     if (!backdrop.parentNode) return;
     window.clearTimeout(timer);
-    document.removeEventListener('keydown', onKey);
+    document.removeEventListener('keydown', onKey, true);
     closeActiveError = null;
     if (immediate) {
       backdrop.remove(); // 교체 시 애니메이션 없이 즉시 제거(잔상/이중 배경 방지)
@@ -209,14 +209,18 @@ function showCenterError(message: string, durationMs = 6000): void {
     prevFocus?.focus?.();
   };
   const onKey = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') close();
+    if (e.key !== 'Escape') return;
+    // 이 팝업은 무엇보다 위에 뜬다. 잡아 두지 않으면 같은 ESC 가 뒤에 열려 있던
+    // 대화상자의 닫기까지 함께 불러, 오류 메시지를 지웠을 뿐인데 화면이 사라진다.
+    e.stopImmediatePropagation();
+    close();
   };
 
   btn.addEventListener('click', () => close());
   backdrop.addEventListener('click', e => {
     if (e.target === backdrop) close(); // 배경 클릭 시 닫기(카드 클릭은 유지)
   });
-  document.addEventListener('keydown', onKey);
+  document.addEventListener('keydown', onKey, true);
   timer = window.setTimeout(() => close(), durationMs); // 방치돼도 자동으로 닫히도록 안전장치
   closeActiveError = close; // 다음 오류가 이 팝업을 정리할 수 있도록 등록
 }

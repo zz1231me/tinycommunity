@@ -285,3 +285,54 @@ describe('겹쳐 열린 대화상자', () => {
     expect(document.activeElement).toBe(btn('안쪽 취소'));
   });
 });
+
+describe('나중에 열렸지만 아래에 깔린 대화상자', () => {
+  /**
+   * 퇴근 알림은 사람이 여는 것이 아니라 시계가 연다. App 맨 위에 있어 화면에서는
+   * 나중에 그려지는 페이지 대화상자에 가린다 — 그런데 '나중에 열렸다' 는 이유로
+   * 맨 위 취급을 받으면, 보이는 쪽에서 ESC 가 듣지 않는다.
+   */
+  function TimedReminder({
+    onReminderClose,
+    onDialogClose,
+  }: {
+    onReminderClose: () => void;
+    onDialogClose: () => void;
+  }) {
+    const [reminderOpen, setReminderOpen] = useState(false);
+    const reminder = useRef<HTMLDivElement>(null);
+    const dialog = useRef<HTMLDivElement>(null);
+    useFocusTrap(reminder, onReminderClose, reminderOpen);
+    useFocusTrap(dialog, onDialogClose, true);
+    return (
+      <>
+        {/* App 맨 위 — 먼저 그려지므로 아래에 깔린다 */}
+        {reminderOpen && (
+          <div ref={reminder}>
+            <button type="button">알림 닫기</button>
+          </div>
+        )}
+        {/* 페이지 대화상자 — 나중에 그려져 위에 온다 */}
+        <div ref={dialog}>
+          <button type="button">대화상자 단추</button>
+        </div>
+        <button type="button" onClick={() => setReminderOpen(true)}>
+          시계가 연다
+        </button>
+      </>
+    );
+  }
+
+  it('가려진 알림이 ESC 를 가로채지 않는다', () => {
+    const onReminderClose = vi.fn();
+    const onDialogClose = vi.fn();
+    render(<TimedReminder onReminderClose={onReminderClose} onDialogClose={onDialogClose} />);
+
+    fireEvent.click(btn('시계가 연다')); // 대화상자가 열려 있는 사이에 알림이 뜬다
+    expect(btn('알림 닫기')).toBeInTheDocument(); // 알림이 실제로 떴는지 먼저 확인한다
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(onDialogClose).toHaveBeenCalledTimes(1);
+    expect(onReminderClose).not.toHaveBeenCalled();
+  });
+});

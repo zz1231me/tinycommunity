@@ -10,11 +10,47 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import { lockScroll, unlockScroll } from '../utils/scrollLock';
 
-// 열려 있는 대화상자들을 연 순서대로 쌓아 둔다.
+// 열려 있는 대화상자들을 모아 둔다.
 // 대화상자 위에 확인 상자가 또 열리면 두 훅이 모두 document 의 keydown 을 듣는다 —
 // ESC 한 번에 둘 다 닫히고(확인만 취소하려던 것이 화면째 닫힘), Tab 은 뒤쪽 상자의
 // 요소 목록으로도 돌아 포커스가 가려진 쪽으로 튄다. 맨 위 하나만 반응하게 한다.
-const stack: symbol[] = [];
+//
+// '맨 위' 는 연 순서가 아니라 화면에 그려진 순서다. 대화상자들은 모두 같은 층(z-50)에
+// 있으므로 DOM 에서 뒤에 오는 것이 위에 그려진다. 연 순서로 정하면 어긋나는 경우가 있다:
+// 퇴근 알림은 사람이 여는 것이 아니라 시계가 연다 — App 맨 위에 있어 화면에서는 가려지는데,
+// 나중에 열렸다는 이유로 맨 위가 되면 보이는 쪽 대화상자에서 ESC 가 듣지 않게 된다.
+const traps: { id: symbol; ref: RefObject<HTMLElement | null> }[] = [];
+
+/** 지금 화면 맨 위에 그려진 대화상자 */
+function topTrapId(): symbol | undefined {
+  let top: { id: symbol; el: HTMLElement } | undefined;
+  for (const t of traps) {
+    const el = t.ref.current;
+    if (!el) continue;
+    // b 가 a 보다 뒤에 오거나 a 안에 들어 있으면 b 가 위에 그려진다(둘 다 FOLLOWING)
+    if (!top || top.el.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) {
+      top = { id: t.id, el };
+    }
+  }
+  return top?.id;
+}
+
+/** 지금 열려 있는 대화상자가 하나라도 있는가 */
+export function hasOpenDialog(): boolean {
+  return traps.some(t => t.ref.current);
+}
+
+/**
+ * 이 요소가 지금 맨 위 대화상자인가.
+ * document 에 직접 키를 듣는 화면(사진 뷰어의 확대·이동 단축키처럼)이 가려진 채로
+ * 키를 먹지 않게 하려고 쓴다.
+ */
+export function isTopmostDialog(el: HTMLElement | null): boolean {
+  if (traps.length === 0) return true;
+  if (!el) return false;
+  const top = topTrapId();
+  return traps.some(t => t.id === top && t.ref.current === el);
+}
 
 /** 이 안에서 Tab 으로 갈 수 있는 요소들 */
 const FOCUSABLE =
@@ -48,7 +84,7 @@ export function useFocusTrap(
     if (!active) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const id = idRef.current;
-    stack.push(id);
+    traps.push({ id, ref: panelRef });
 
     // 열려 있는 동안 뒤 화면이 스크롤되지 않게 한다. 대화상자마다 손으로 하던 일이라
     // 공용 상자(ModalShell·확인 상자)를 쓰는 곳은 아예 빠져 있었다 — 뒤가 같이 밀렸다.
@@ -63,7 +99,7 @@ export function useFocusTrap(
 
     const onKey = (e: KeyboardEvent) => {
       // 맨 위 대화상자만 키를 받는다
-      if (stack[stack.length - 1] !== id) return;
+      if (topTrapId() !== id) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         onCloseRef.current();
@@ -87,8 +123,8 @@ export function useFocusTrap(
     document.addEventListener('keydown', onKey);
     return () => {
       clearTimeout(t);
-      const at = stack.lastIndexOf(id);
-      if (at !== -1) stack.splice(at, 1);
+      const at = traps.findIndex(t => t.id === id);
+      if (at !== -1) traps.splice(at, 1);
       unlockScroll();
       document.removeEventListener('keydown', onKey);
       // 열기 전에 보던 자리로 되돌린다.

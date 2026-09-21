@@ -7,6 +7,8 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useRef } from 'react';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import ImageViewer from './ImageViewer';
 import { resetScrollLock } from '../utils/scrollLock';
 
@@ -48,5 +50,32 @@ describe('사진 크게 보기', () => {
   it('열려 있는 동안 뒤 화면이 스크롤되지 않는다', () => {
     open();
     expect(document.body.style.overflow).toBe('hidden');
+  });
+});
+
+describe('위에 다른 대화상자가 열렸을 때', () => {
+  /** 사진 뷰어 위에 확인 상자가 하나 더 열린 화면 */
+  function ViewerUnderDialog() {
+    const above = useRef<HTMLDivElement>(null);
+    useFocusTrap(above, () => {});
+    return (
+      <>
+        <ImageViewer isOpen onClose={vi.fn()} imageUrl="/x.png" altText="첨부 사진" />
+        <div ref={above}>
+          <button type="button">위 상자 단추</button>
+        </div>
+      </>
+    );
+  }
+
+  it('가려진 사진이 뒤에서 확대되지 않는다', () => {
+    resetScrollLock();
+    render(<ViewerUnderDialog />);
+    const zoomLabel = () => screen.getByText(/%$/).textContent;
+    const before = zoomLabel();
+
+    fireEvent.keyDown(document, { key: '+' });
+
+    expect(zoomLabel()).toBe(before);
   });
 });

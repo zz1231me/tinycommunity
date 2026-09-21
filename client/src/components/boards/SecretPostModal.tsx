@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { hasOpenDialog } from '../../hooks/useFocusTrap';
 
 interface SecretPostModalProps {
   postTitle: string;
@@ -26,7 +27,9 @@ const SecretPostModal: React.FC<SecretPostModalProps> = ({
     inputRef.current?.focus();
     // ESC로 목록으로 돌아가기 (다른 모달과 일관)
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onBack();
+      // 위에 다른 대화상자가 떠 있으면 ESC 는 그쪽 몫이다 — 가려진 채로 먹지 않게
+      if (e.key !== 'Escape' || hasOpenDialog()) return;
+      onBack();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);

@@ -1,7 +1,7 @@
 // src/components/ImageViewer.tsx - passive 이벤트 리스너 오류 해결 버전
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { lockScroll, unlockScroll } from '../utils/scrollLock';
-import { useFocusTrap } from '../hooks/useFocusTrap';
+import { isTopmostDialog, useFocusTrap } from '../hooks/useFocusTrap';
 
 interface ImageViewerProps {
   isOpen: boolean;
@@ -143,6 +143,9 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isMountedRef.current) return;
+      // 위에 다른 대화상자가 열렸으면 이 단축키는 쉰다 — 가려진 사진이 뒤에서
+      // 확대되거나 움직이면 안 된다(ESC 와 Tab 은 가두기 쪽이 이미 그렇게 한다)
+      if (!isTopmostDialog(dialogRef.current)) return;
 
       // 수정자 키가 눌린 경우 무시
       if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
