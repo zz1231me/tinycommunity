@@ -98,8 +98,16 @@ export const fetchAttackState = async (): Promise<AttackState> =>
 export const sendAttack = async (body: {
   targetId: string;
   kind: AttackKind;
-}): Promise<{ id: number; targetId: string; kind: AttackKind; expiresAt: string }> =>
-  unwrap(await api.post('/attendance/attack', body));
+}): Promise<{
+  id: number;
+  targetId: string;
+  kind: AttackKind;
+  /** 이 공격이 실제로 걸리기 시작하는 시각 — 앞에 쌓인 것이 있으면 나중이다 */
+  startsAt: string;
+  expiresAt: string;
+  /** 이 공격을 포함해 상대에게 쌓인 공격 수 */
+  stack: number;
+}> => unwrap(await api.post('/attendance/attack', body));
 
 export const sendDefend = async (id: number): Promise<{ id: number }> =>
   unwrap(await api.post(`/attendance/attack/${id}/defend`));

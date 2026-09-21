@@ -72,7 +72,12 @@ const sendBtn = () => screen.getByRole('button', { name: /보내기|모두 사�
 beforeEach(() => {
   vi.clearAllMocks();
   mockFetchAttackState.mockResolvedValue(state());
-  mockSendAttack.mockResolvedValue({ id: 1 });
+  mockSendAttack.mockResolvedValue({
+    id: 1,
+    startsAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    stack: 1,
+  });
 });
 
 describe('공격 보내기', () => {
@@ -201,6 +206,31 @@ describe('보낸 뒤의 손맛', () => {
     fireEvent.click(sendBtn());
 
     expect(await screen.findByText(/피해자님에게 명중/)).toBeInTheDocument();
+  });
+
+  it('앞에 쌓여 있으면 언제 걸리는지 말해 준다', async () => {
+    // 줄을 서면 지금은 아무 일도 일어나지 않는다. 그런데도 '날뛰기 시작합니다' 라고만
+    // 하면, 상대 화면이 멀쩡한 것을 보고 공격이 안 먹혔다고 읽는다.
+    mockSendAttack.mockResolvedValue({
+      id: 9,
+      startsAt: new Date(Date.now() + 80_000).toISOString(),
+      expiresAt: new Date(Date.now() + 140_000).toISOString(),
+      stack: 3,
+    });
+    await show();
+    fireEvent.click(screen.getByRole('button', { name: '상대 고르기' }));
+    fireEvent.click(sendBtn());
+
+    expect(await screen.findByText(/앞에 2개 대기/)).toBeInTheDocument();
+    expect(screen.queryByText(/날뛰기 시작합니다/)).not.toBeInTheDocument();
+  });
+
+  it('바로 걸리면 그렇게 말한다 — 대조군', async () => {
+    await show();
+    fireEvent.click(screen.getByRole('button', { name: '상대 고르기' }));
+    fireEvent.click(sendBtn());
+
+    expect(await screen.findByText(/날뛰기 시작합니다/)).toBeInTheDocument();
   });
 
   it('거절당했으면 명중이라고 하지 않는다 — 음성 대조', async () => {

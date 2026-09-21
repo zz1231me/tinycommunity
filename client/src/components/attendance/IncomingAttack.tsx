@@ -24,12 +24,14 @@ import { attendanceKeys } from '../../api/queryKeys';
 import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
 import { formatLeft, liveOnly, secondsLeft, useCountdown } from '../../hooks/useCountdown';
+import { useAttackQueue } from '../../hooks/useAttackQueue';
 
 /** 방해받는 중임을 알리고, 방어권을 살 기회를 준다 */
 export function AttackBanner({
   incoming,
   totalSeconds,
   waiting = 0,
+  next = null,
   endsAt,
   defendCost,
   balance,
@@ -46,6 +48,8 @@ export function AttackBanner({
   totalSeconds?: number;
   /** 이 공격 뒤에 쌓여 기다리는 공격 수 */
   waiting?: number;
+  /** 바로 다음에 올 공격 — 종류가 갑자기 바뀌지 않게 미리 알려 준다 */
+  next?: IncomingAttackData | null;
   /** 쌓인 공격이 전부 풀리는 시각 (없으면 이 공격이 끝나는 시각) */
   endsAt?: string;
   defendCost: number;
@@ -108,6 +112,14 @@ export function AttackBanner({
           <span className="mt-0.5 block text-xs tabular-nums text-rose-700/80 dark:text-rose-300/80">
             뒤에 {waiting}개 더 대기 · 전부 풀리기까지 {formatLeft(totalLeft)} · 방어권 한 장에
             하나씩 풀립니다
+            {/* 다음에 무엇이 오는지 미리 보여 준다 — 모르고 있다가 갑자기 버튼이
+                사라지면 고장으로 읽힌다 */}
+            {next && (
+              <span className="ml-1">
+                · 다음 <span aria-hidden>{ATTACK_FACE[next.kind]}</span>{' '}
+                {{ chaos: '방해', hide: '숨기기', quiz: '문제 내기' }[next.kind]}
+              </span>
+            )}
           </span>
         )}
       </p>
@@ -249,25 +261,23 @@ export function IncomingAttack() {
   });
 
   const state = attack.data;
-  const incoming = state?.incoming ?? null;
   // 내 시계와 서버 시계의 차이 — 몇 분 빠른 PC 에서 걸려 있는 공격이 '이미 끝난 것' 으로 보였다
   // now 가 없는 답(옛 서버·캐시에 남은 값)이면 차이를 0 으로 둔다
   const clockOffset =
     state?.now && attack.dataUpdatedAt ? new Date(state.now).getTime() - attack.dataUpdatedAt : 0;
-  const serverNow = Date.now() + clockOffset;
-  const queue = liveOnly(state?.queue ?? [], serverNow);
-  const endsAt = queue[queue.length - 1]?.expiresAt;
-  // 서버가 준 만료 시각으로 직접 판단한다 — 이미 지난 공격을 아직 다시 받아 오지 않았을 수 있다
-  const live = Boolean(incoming && new Date(incoming.expiresAt).getTime() > serverNow);
+  // 지금 걸려 있는 공격은 줄에서 직접 고른다. 서버가 준 incoming 은 마지막으로 물어본
+  // 시점의 답이라, 앞 것이 끝나고 다음 것이 시작되는 사이에 띠가 통째로 사라졌다가
+  // 다시 나타났다(최대 10초). 퇴근 버튼 쪽도 같은 규칙으로 같은 순간에 바뀐다.
+  const { active: incoming, waiting, next, endsAt } = useAttackQueue(state, clockOffset);
 
-  if (!defendedFrom && !(incoming && live && state)) return null;
+  if (!defendedFrom && !(incoming && state)) return null;
 
   return (
     <div>
       {defendedFrom && (
         <DefendedBanner attackerName={defendedFrom.name} remaining={defendedFrom.remaining} />
       )}
-      {incoming && live && state && (
+      {incoming && state && (
         <AttackBanner
           // 새 공격이면 새로 그린다 — 등장 연출과 남은 시간 막대의 기준이 공격마다 다르다
           key={incoming.id}
@@ -276,8 +286,9 @@ export function IncomingAttack() {
           totalSeconds={Math.round(
             (new Date(incoming.expiresAt).getTime() - new Date(incoming.startsAt).getTime()) / 1000
           )}
-          waiting={Math.max(0, queue.length - 1)}
-          endsAt={endsAt}
+          waiting={waiting}
+          next={next}
+          endsAt={endsAt ?? undefined}
           defendCost={state.rules.defendCost}
           balance={state.balance}
           clockOffset={clockOffset}
