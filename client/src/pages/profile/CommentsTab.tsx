@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { MessageCircle } from 'lucide-react';
 import { getMyComments } from '../../api/users';
 import { profileKeys } from '../../api/queryKeys';
@@ -30,7 +30,6 @@ function preview(html: string | undefined): string {
 }
 
 export function CommentsTab() {
-  const navigate = useNavigate();
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -61,28 +60,31 @@ export function CommentsTab() {
       ) : (
         <ul className="divide-y divide-slate-100 dark:divide-slate-700">
           {comments.map(comment => (
-            <li
-              key={comment.id}
-              onClick={() =>
-                comment.PostId &&
-                comment.boardType &&
-                navigate(`/dashboard/posts/${comment.boardType}/${comment.PostId}`)
-              }
-              className="cursor-pointer px-5 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="mb-1 truncate text-xs font-medium text-primary-600 dark:text-primary-400">
-                    {comment.postTitle ?? '게시글'}
-                  </p>
-                  <p className="line-clamp-2 text-sm text-slate-700 dark:text-slate-300">
-                    {preview(comment.content)}
-                  </p>
+            <li key={comment.id}>
+              {/* 진짜 링크다(옆의 '내 게시글' 탭과 같게). 클릭만 받는 줄이면 키보드로 열 수 없고,
+                  새 탭에서 열기도 안 된다. */}
+              <Link
+                to={
+                  comment.PostId && comment.boardType
+                    ? `/dashboard/posts/${comment.boardType}/${comment.PostId}`
+                    : '#'
+                }
+                className="block px-5 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="mb-1 truncate text-xs font-medium text-primary-600 dark:text-primary-400">
+                      {comment.postTitle ?? '게시글'}
+                    </p>
+                    <p className="line-clamp-2 text-sm text-slate-700 dark:text-slate-300">
+                      {preview(comment.content)}
+                    </p>
+                  </div>
+                  <span className="flex-shrink-0 text-xs text-slate-400">
+                    {formatRelativeDate(comment.createdAt)}
+                  </span>
                 </div>
-                <span className="flex-shrink-0 text-xs text-slate-400">
-                  {formatRelativeDate(comment.createdAt)}
-                </span>
-              </div>
+              </Link>
             </li>
           ))}
         </ul>

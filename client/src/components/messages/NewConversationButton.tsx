@@ -74,7 +74,7 @@ export function NewConversationButton() {
               onChange={e => setQuery(e.target.value)}
               placeholder="아이디나 이름으로 검색"
               aria-label="받는 사람 검색"
-              className="w-full bg-transparent text-sm outline-none"
+              className="w-full bg-transparent text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-800"
             />
           </div>
 

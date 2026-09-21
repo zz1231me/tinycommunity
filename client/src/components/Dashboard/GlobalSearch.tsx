@@ -492,7 +492,7 @@ export function GlobalSearch() {
                   onChange={e => setSearchTerm(e.target.value)}
                   placeholder="전체검색... (2자 이상)"
                   aria-label="검색어 입력"
-                  className="flex-1 bg-transparent border-0 outline-none shadow-none text-base text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-0"
+                  className="flex-1 bg-transparent border-0 outline-none shadow-none text-base text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-0 focus-visible:ring-2 focus-visible:ring-primary-500"
                   autoComplete="off"
                 />
                 {searchTerm && (
@@ -619,13 +619,7 @@ export function GlobalSearch() {
             )}
 
             {/* 결과 영역 */}
-            <div
-              className="max-h-[28rem] overflow-y-auto"
-              role="listbox"
-              aria-label="검색 결과"
-              aria-live="polite"
-              aria-atomic="false"
-            >
+            <div className="max-h-[28rem] overflow-y-auto" role="listbox" aria-label="검색 결과">
               {/* 최근 검색 기록 */}
               {showHistory && (
                 <div className="py-2">

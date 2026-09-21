@@ -276,7 +276,8 @@ export function LotteryPanel({
 
   const board = (
     <div
-      aria-live="polite"
+      // aria-live 를 달지 않는다. 섞이는 숫자가 0.07초마다 바뀌어, 화면 낭독기가 초당 열네 번
+      // 숫자를 읽었다. 결과는 아래 한 줄(role="status")로 한 번만 알린다.
       className="flex h-24 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60"
     >
       {reel !== null ? (
@@ -288,6 +289,10 @@ export function LotteryPanel({
         </span>
       ) : last ? (
         <div className="text-center">
+          {/* 결과만 한 번 알린다(섞이는 숫자에는 aria-live 를 달지 않는다 — 초당 열네 번 읽혔다) */}
+          <p role="status" className="sr-only">
+            {last.isBlank ? '미당첨입니다.' : `${last.amount.toLocaleString()}포인트 당첨입니다.`}
+          </p>
           <motion.p
             key={`${last.amount}-${celebrate}`}
             initial={motionOk ? { scale: 0.6, opacity: 0 } : false}

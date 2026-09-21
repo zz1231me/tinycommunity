@@ -148,7 +148,7 @@ const FallbackEditor = forwardRef<FallbackEditorRef, FallbackEditorProps>((props
           ref={textareaRef}
           value={content}
           onChange={handleContentChange}
-          className="w-full h-96 p-4 border-none resize-none focus:outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+          className="w-full h-96 p-4 border-none resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
           placeholder={`${placeholder}
 
 📝 마크다운 지원:

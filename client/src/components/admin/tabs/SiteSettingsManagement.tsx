@@ -229,6 +229,8 @@ export const SiteSettingsManagement = () => {
   // 채워지고, 아래 조회가 돌아오기 전에 다른 칸을 건드리면(isDirty) 기본값이 그대로 저장된다.
   // 관리자 조회가 끝날 때까지는 폼을 열지 않는다.
   const [loading, setLoading] = useState(true);
+  /** 불러오기 실패 — 폼을 열지 않는다(기본값으로 진짜 설정을 덮어쓰지 않게) */
+  const [loadFailed, setLoadFailed] = useState(false);
   const isDirty = useRef(false);
 
   const [resetting, setResetting] = useState(false);
@@ -311,7 +313,12 @@ export const SiteSettingsManagement = () => {
         // 스토어는 항상 최신 서버 값으로 유지
         updateStore(data as unknown as Parameters<typeof updateStore>[0]);
       } catch {
-        setMessage({ type: 'error', text: '설정을 불러오는데 실패했습니다.' });
+        // 못 불러왔으면 폼을 열지 않는다.
+        //
+        // 예전에는 안내만 띄우고 기본값으로 채운 폼을 그대로 보여 줬다. 관리자는 그 값이
+        // 지금 설정인 줄 알고 저장을 눌렀고, 그 순간 서버의 진짜 설정(보안 설정까지)이
+        // 화면의 기본값으로 덮였다.
+        setLoadFailed(true);
       } finally {
         setLoading(false);
       }
@@ -350,6 +357,25 @@ export const SiteSettingsManagement = () => {
   };
 
   if (loading) return <LoadingSpinner message="설정을 불러오는 중..." />;
+
+  if (loadFailed) {
+    return (
+      <div className="alert alert-danger">
+        <p className="font-medium">설정을 불러오지 못했습니다.</p>
+        <p className="mt-1 text-sm">
+          지금 저장하면 화면의 기본값이 실제 설정을 덮어쓸 수 있어, 편집 화면을 열지 않았습니다.
+          잠시 후 다시 시도해주세요.
+        </p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="btn-secondary btn-sm mt-3"
+        >
+          다시 시도
+        </button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">

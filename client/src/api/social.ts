@@ -54,8 +54,10 @@ export async function fetchSubscriptionStatus(
   targetType: SubscriptionTarget,
   targetId: string
 ): Promise<boolean> {
+  // === true 로 좁힌다. 답에 subscribed 가 없으면 undefined 가 돌아가는데, React Query 는
+  // undefined 를 '실패' 로 보아 구독 상태 조회가 오류 상태로 굳는다(경고도 남는다).
   const res = await api.get(`/social/subscriptions/${targetType}/${targetId}`);
-  return unwrap<{ subscribed: boolean }>(res).subscribed;
+  return unwrap<{ subscribed?: boolean }>(res).subscribed === true;
 }
 
 export async function toggleSubscription(
@@ -63,7 +65,7 @@ export async function toggleSubscription(
   targetId: string
 ): Promise<boolean> {
   const res = await api.post(`/social/subscriptions/${targetType}/${targetId}`);
-  return unwrap<{ subscribed: boolean }>(res).subscribed;
+  return unwrap<{ subscribed?: boolean }>(res).subscribed === true;
 }
 
 export async function fetchNotificationSettings(

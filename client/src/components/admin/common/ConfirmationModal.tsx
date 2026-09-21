@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
@@ -8,7 +8,8 @@ interface ConfirmationModalProps {
   message?: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  onConfirm: () => void;
+  /** 확인을 눌렀을 때. Promise 를 돌려주면 끝날 때까지 단추를 잠가 둔다 */
+  onConfirm: () => unknown | Promise<unknown>;
   onCancel: () => void;
   /** 확인 버튼 색상 — 기본 red (삭제), blue (일반 확인) */
   variant?: 'danger' | 'primary';
@@ -25,6 +26,19 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   variant = 'danger',
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
+  // 확인은 한 번만. 지우는 동작은 돌아오는 데 시간이 걸리는데 단추가 계속 눌려,
+  // 두 번 누르면 같은 요청이 두 번 나갔다(17곳이 이 상자를 함께 쓴다).
+  const [busy, setBusy] = useState(false);
+  const handleConfirm = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await onConfirm();
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const cancelBtnRef = useRef<HTMLButtonElement>(null);
 
   // 접근성: ESC로 닫기, 모달 안에서 Tab 순환(focus trap), 첫 포커스를 취소 버튼으로,
@@ -85,8 +99,9 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                 {cancelLabel}
               </button>
               <button
-                onClick={onConfirm}
-                className={`px-4 py-2 text-sm rounded-lg font-medium focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 transition-colors ${confirmCls}`}
+                onClick={handleConfirm}
+                disabled={busy}
+                className={`px-4 py-2 text-sm rounded-lg font-medium focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${confirmCls}`}
               >
                 {confirmLabel}
               </button>

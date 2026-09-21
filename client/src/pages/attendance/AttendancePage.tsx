@@ -252,11 +252,7 @@ export default function AttendancePage() {
         </>
       )}
 
-      <section
-        className="card mt-4 overflow-hidden"
-        aria-live="polite"
-        aria-busy={history.isFetching}
-      >
+      <section className="card mt-4 overflow-hidden" aria-busy={history.isFetching}>
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
           <h2 className="card-title">내 기록</h2>
           <div className="flex items-center gap-1">

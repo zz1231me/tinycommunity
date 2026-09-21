@@ -382,7 +382,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     isLoading || error ? 'default' : scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in';
 
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
       {/* 로딩 상태 */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center">
@@ -424,7 +424,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
       {/* 컨트롤 UI */}
       <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-        <div className="flex items-center gap-1 bg-black bg-opacity-80 rounded-lg px-3 py-2 backdrop-blur-sm">
+        <div className="flex items-center gap-1 bg-black/80 rounded-lg px-3 py-2 backdrop-blur-sm">
           <button
             onClick={handleZoomOut}
             className="text-white hover:text-blue-400 p-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -475,7 +475,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
         <button
           onClick={onClose}
-          className="text-white hover:text-red-400 bg-black bg-opacity-80 p-2 rounded-lg transition-colors backdrop-blur-sm"
+          className="text-white hover:text-red-400 bg-black/80 p-2 rounded-lg transition-colors backdrop-blur-sm"
           title="닫기 (ESC)"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -530,13 +530,13 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2">
           {/* 이미지 정보 */}
           {imageNaturalSize.width > 0 && (
-            <div className="text-white text-xs bg-black bg-opacity-70 px-3 py-1 rounded-lg backdrop-blur-sm">
+            <div className="text-white text-xs bg-black/70 px-3 py-1 rounded-lg backdrop-blur-sm">
               {imageNaturalSize.width} × {imageNaturalSize.height}px
             </div>
           )}
 
           {/* 사용법 안내 */}
-          <div className="text-white text-sm bg-black bg-opacity-70 px-4 py-2 rounded-lg backdrop-blur-sm">
+          <div className="text-white text-sm bg-black/70 px-4 py-2 rounded-lg backdrop-blur-sm">
             <div className="flex items-center gap-4 text-xs">
               <span>🖱️ 휠: 확대/축소</span>
               <span>👆 더블클릭: 확대/원본</span>

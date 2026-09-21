@@ -122,7 +122,7 @@ export function UserPicker({
           onKeyDown={onKeyDown}
           placeholder={placeholder}
           aria-label={placeholder}
-          className="w-full bg-transparent text-sm outline-none"
+          className="w-full bg-transparent text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-800"
         />
       </div>
 

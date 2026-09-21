@@ -471,7 +471,6 @@ const PostList = () => {
         className="card overflow-hidden"
         role="region"
         aria-label={`${boardInfo?.name || '게시판'} 목록`}
-        aria-live="polite"
         aria-busy={fetching}
       >
         {loading && (

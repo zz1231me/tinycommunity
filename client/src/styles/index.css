@@ -228,7 +228,10 @@ body {
 :focus-visible {
   outline: 2px solid var(--border-focus);
   outline-offset: 2px;
-  border-radius: var(--radius-sm);
+  /* border-radius 를 여기서 주지 않는다.
+     이 규칙은 층(@layer) 밖이라 Tailwind 의 rounded-* 를 모두 이긴다 — 포커스를 받는 순간
+     동그란 아바타·알약 배지·원형 아이콘 단추가 4px 각진 모서리로 바뀌었다가 돌아왔다.
+     바깥 선(outline)은 요즘 브라우저에서 요소 자신의 모서리를 따라 그려진다. */
 }
 
 /* ========================================
@@ -707,7 +710,9 @@ body {
            rounded-lg
            bg-white dark:bg-slate-700
            text-slate-900 dark:text-slate-100 text-sm
-           placeholder-slate-400 dark:placeholder-slate-500
+           /* dark: 를 붙이지 않는다 — slate-400 은 어두운 화면에서 밝은 쪽(#94a3b8)으로 뒤집혀
+              4:1 을 넘는다. dark:placeholder-slate-500 을 얹으면 오히려 배경에 묻혔다(2.1:1). */
+           placeholder-slate-400
            focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500
            disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 dark:disabled:bg-slate-900
            transition-colors duration-150;

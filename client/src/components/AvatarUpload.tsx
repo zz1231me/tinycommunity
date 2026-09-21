@@ -245,7 +245,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
         className={`
           relative group cursor-pointer transition-all duration-200
           ${config.containerClass}
-          ${dragActive ? 'scale-105 ring-4 ring-blue-500 ring-opacity-50' : ''}
+          ${dragActive ? 'scale-105 ring-4 ring-blue-500/50' : ''}
           ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}
         `}
         onDragEnter={handleDragIn}
@@ -269,14 +269,14 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
           {/* 로딩 오버레이 */}
           {isLoading && (
-            <div className="absolute inset-0 bg-black bg-opacity-50 rounded-xs flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/50 rounded-xs flex items-center justify-center">
               <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             </div>
           )}
 
           {/* 호버 오버레이 */}
           {!isLoading && (
-            <div className="absolute inset-0 bg-black bg-opacity-50 rounded-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/50 rounded-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
               <div className="text-white text-sm font-medium text-center">
                 📸
                 <br />
@@ -287,7 +287,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
           {/* 드래그 활성 오버레이 */}
           {dragActive && !isLoading && (
-            <div className="absolute inset-0 bg-blue-500 bg-opacity-30 rounded-xs flex items-center justify-center">
+            <div className="absolute inset-0 bg-blue-500/30 rounded-xs flex items-center justify-center">
               <div className="text-white text-sm font-medium text-center">
                 📥
                 <br />
@@ -313,7 +313,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
           className="
             px-4 py-2 text-sm font-medium whitespace-nowrap text-blue-600 bg-blue-50
             rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2
-            focus:ring-blue-500 focus:ring-opacity-50 transition-colors
+            focus:ring-blue-500/50 transition-colors
             disabled:opacity-50 disabled:cursor-not-allowed
             dark:text-blue-400 dark:bg-blue-900 dark:hover:bg-blue-800
           "
@@ -328,7 +328,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
           className="
             px-4 py-2 text-sm font-medium whitespace-nowrap text-secondary-700 bg-secondary-50
             rounded-lg hover:bg-secondary-100 focus:outline-none focus:ring-2
-            focus:ring-secondary-500 focus:ring-opacity-50 transition-colors
+            focus:ring-secondary-500/50 transition-colors
             disabled:opacity-50 disabled:cursor-not-allowed
             dark:text-secondary-300 dark:bg-secondary-900/40 dark:hover:bg-secondary-900/60
           "
@@ -343,7 +343,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
             className="
               px-4 py-2 text-sm font-medium whitespace-nowrap text-red-600 bg-red-50
               rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2
-              focus:ring-red-500 focus:ring-opacity-50 transition-colors
+              focus:ring-red-500/50 transition-colors
               disabled:opacity-50 disabled:cursor-not-allowed
               dark:text-red-400 dark:bg-red-900 dark:hover:bg-red-800
             "
@@ -360,7 +360,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
             className="
             px-3 py-2 text-sm font-medium whitespace-nowrap text-slate-600 bg-slate-100
             rounded-lg hover:bg-slate-200 focus:outline-none focus:ring-2
-            focus:ring-slate-500 focus:ring-opacity-50 transition-colors
+            focus:ring-slate-500/50 transition-colors
             disabled:opacity-50 disabled:cursor-not-allowed
             dark:text-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600
           "

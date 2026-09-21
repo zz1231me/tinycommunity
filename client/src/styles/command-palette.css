@@ -3,7 +3,9 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(2px);
-  z-index: 9999;
+  /* 겹침 순서는 index.css 의 z 층을 따른다. 9999 로 두었더니 토스트(80)보다 위여서,
+     팔레트를 열어 둔 동안 온 알림이 팔레트 뒤에 가려 아무도 보지 못했다. */
+  z-index: var(--z-index-modal);
   display: flex;
   align-items: flex-start;
   justify-content: center;

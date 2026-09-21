@@ -114,6 +114,8 @@ const AppearanceManagement = () => {
   const [primary, setPrimary] = useState<string | null>(null);
   const [secondary, setSecondary] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  /** 불러오기 실패 — 편집 화면을 열지 않는다(기본 색이 진짜 테마를 덮어쓰지 않게) */
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -124,7 +126,12 @@ const AppearanceManagement = () => {
         setPrimary(s.themePrimaryColor);
         setSecondary(s.themeSecondaryColor);
       })
-      .catch(() => toast.error('테마 설정을 불러오지 못했습니다.'))
+      .catch(() => {
+        // 못 불러왔으면 편집 화면을 열지 않는다 — 기본 색이 지금 테마인 것처럼 보이고,
+        // 그대로 저장하면 서버의 진짜 테마가 덮인다.
+        if (!cancelled) setLoadFailed(true);
+        toast.error('테마 설정을 불러오지 못했습니다.');
+      })
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
@@ -150,6 +157,24 @@ const AppearanceManagement = () => {
   );
 
   if (loading) return <LoadingSpinner message="테마 설정을 불러오는 중..." />;
+
+  if (loadFailed) {
+    return (
+      <div className="alert alert-danger">
+        <p className="font-medium">테마 설정을 불러오지 못했습니다.</p>
+        <p className="mt-1 text-sm">
+          지금 저장하면 기본 색이 실제 테마를 덮어쓸 수 있어, 편집 화면을 열지 않았습니다.
+        </p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="btn-secondary btn-sm mt-3"
+        >
+          다시 시도
+        </button>
+      </div>
+    );
+  }
 
   const effectivePrimary = primary ?? DEFAULT_PRIMARY;
   const ratio = contrastRatio(effectivePrimary, '#ffffff');

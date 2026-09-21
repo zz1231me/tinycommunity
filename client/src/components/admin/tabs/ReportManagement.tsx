@@ -306,7 +306,7 @@ export const ReportManagement = React.memo(() => {
                 value={reviewNote}
                 onChange={e => setReviewNote(e.target.value)}
                 rows={3}
-                maxLength={1000}
+                maxLength={500} // 서버 한도와 같게(Report.reviewNote 는 500자)
                 placeholder="처리 사유 또는 조치 내용을 입력하세요..."
                 className="input resize-none"
               />
