@@ -557,7 +557,7 @@ export const CustomPageManagement = () => {
                     target="_blank"
                     rel="noreferrer"
                     title="새 탭에서 보기"
-                    className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                    className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                   >
                     <ExternalLink className="h-4 w-4" />
                   </a>

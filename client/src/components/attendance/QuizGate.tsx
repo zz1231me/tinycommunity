@@ -56,7 +56,7 @@ export function QuizGate({
         type="button"
         onClick={onClose}
         aria-label="문제 닫기"
-        className="absolute right-2 top-2 rounded-md p-1 text-slate-400 hover:bg-white hover:text-slate-600 dark:hover:bg-slate-700"
+        className="absolute right-2 top-2 rounded-md p-1 text-slate-400 hover:bg-white hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-100"
       >
         <X className="h-4 w-4" />
       </button>

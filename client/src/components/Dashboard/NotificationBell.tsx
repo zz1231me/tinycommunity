@@ -96,7 +96,7 @@ const NotificationRow = memo(function NotificationRow({
           onRead(n);
         }
       }}
-      className={`group relative flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none dark:hover:bg-slate-700/50 dark:focus-visible:bg-slate-700/50 ${
+      className={`group relative flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:hover:bg-slate-700/50 dark:focus-visible:bg-slate-700/50 ${
         !read ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''
       }`}
     >

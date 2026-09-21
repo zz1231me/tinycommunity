@@ -62,7 +62,7 @@ export function AnnouncementBanner() {
             type="button"
             onClick={() => dismiss(a)}
             aria-label="공지 닫기"
-            className="flex-shrink-0 rounded-lg p-1 text-slate-400 transition-colors hover:bg-secondary-100 hover:text-slate-600 dark:hover:bg-secondary-900/40"
+            className="flex-shrink-0 rounded-lg p-1 text-slate-400 transition-colors hover:bg-secondary-100 hover:text-slate-600 dark:hover:bg-secondary-900/40 dark:hover:text-slate-100"
           >
             <X className="h-4 w-4" />
           </button>

@@ -1048,14 +1048,11 @@ export function GlobalSearch() {
           </div>
         )}
 
+        {/* 전역 fadeIn 을 여기서 다시 정의하면 index.css 쪽 수정이 이 화면에서만 무시된다 */}
         <style>{`
           @keyframes slideDown {
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
           }
         `}</style>
       </div>

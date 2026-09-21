@@ -24,6 +24,16 @@ function Dashboard() {
 
   // 사이드바/dropdown 통합 store — 한 번에 하나의 dropdown만 열리고
   // 사이드바 토글 시 다른 dropdown을 자동으로 닫는다 (모바일 레이어 충돌 해소).
+  // 알림 띠가 머리글 아래에 앉도록 높이를 알린다. 머리글이 없는 화면(로그인 등)에서는
+  // 이 값이 없어 0 이 되고, 띠는 화면 맨 위에 붙는다.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--app-header-h', '3.5rem');
+    return () => {
+      root.style.removeProperty('--app-header-h');
+    };
+  }, []);
+
   const sidebarOpen = useUIOverlays(s => s.sidebarOpen);
   const toggleSidebar = useUIOverlays(s => s.toggleSidebar);
   const closeSidebar = useUIOverlays(s => s.closeSidebar);

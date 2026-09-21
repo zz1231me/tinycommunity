@@ -40,7 +40,8 @@ export function WinFanfare({ amount, onDone }: { amount: number; onDone: () => v
     <div
       // 이겼다는 말은 토스트가 하므로 낭독기에는 감춘다.
       aria-hidden
-      className="pointer-events-none fixed inset-x-0 top-14 z-toast flex justify-center overflow-hidden"
+      className="pointer-events-none fixed inset-x-0 z-toast flex justify-center overflow-hidden"
+      style={{ top: 'calc(var(--app-header-h, 0px) + var(--maintenance-bar-h, 0px))' }}
     >
       {!reduced && (
         <div className="absolute inset-x-0 top-0 h-40">

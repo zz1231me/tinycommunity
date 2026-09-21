@@ -81,7 +81,7 @@ export const MaintenanceGate: React.FC<{ children: React.ReactNode }> = ({ child
       {isAdmin && (
         <div
           ref={barRef}
-          className="maintenance-bar bg-amber-500 text-white text-xs sm:text-sm text-center py-1.5 px-4 font-medium shadow"
+          className="maintenance-bar bg-amber-400 text-slate-900 text-xs sm:text-sm text-center py-1.5 px-4 font-medium shadow"
         >
           🔧 점검 모드가 켜져 있습니다 — 일반 사용자에게는 점검 안내가 표시됩니다. (관리자만 이용
           가능)

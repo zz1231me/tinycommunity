@@ -131,7 +131,7 @@ export function AttackPanel({
       title="퇴근 공격권"
       badge={
         state && rules ? (
-          <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
+          <span className="rounded-full bg-rose-100 px-2 py-0.5 text-2xs font-semibold tabular-nums text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
             오늘 {state.remainingToday}/{rules.dailyLimit}
           </span>
         ) : undefined

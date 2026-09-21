@@ -439,7 +439,7 @@ const PostEditor = ({ mode }: Props) => {
       <div className="mb-4 flex items-center gap-2 border-b border-slate-200 pb-3 dark:border-slate-700/60">
         <button
           onClick={() => navigate(-1)}
-          className="-ml-1 flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700"
+          className="-ml-1 flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-100"
           aria-label="뒤로 가기"
         >
           <svg

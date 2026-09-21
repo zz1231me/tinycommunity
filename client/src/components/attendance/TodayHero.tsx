@@ -135,6 +135,9 @@ function HiddenSlot({
 type Rect = { l: number; t: number; r: number; b: number };
 type Decoy = { key: number; left: string; top: string; leaving: boolean };
 
+/** 사라지는 연출 길이. index.css 의 .animate-poof(0.6s)와 같아야 끝까지 보인다. */
+const POOF_MS = 600;
+
 /** 가짜 버튼 하나의 대략적인 크기(px). 겹침을 피할 때만 쓴다. */
 const DECOY_W = 84;
 const DECOY_H = 38;
@@ -227,7 +230,7 @@ function Decoys({ count = 8, level = 1 }: { count?: number; level?: number }) {
   /** 떠나는 가짜는 연기로 흩어진 뒤 지운다 */
   const leave = (key: number) => {
     setDecoys(prev => prev.map(d => (d.key === key ? { ...d, leaving: true } : d)));
-    window.setTimeout(() => setDecoys(prev => prev.filter(d => d.key !== key)), 450);
+    window.setTimeout(() => setDecoys(prev => prev.filter(d => d.key !== key)), POOF_MS);
   };
 
   // 자리를 재려면 그려진 뒤여야 하므로 첫 그림은 비워 두고 layout effect 에서 채운다.

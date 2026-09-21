@@ -236,13 +236,15 @@ body {
 /* ========================================
  * 포커스 접근성
  * ======================================== */
-:focus-visible {
-  outline: 2px solid var(--border-focus);
-  outline-offset: 2px;
-  /* border-radius 를 여기서 주지 않는다.
-     이 규칙은 층(@layer) 밖이라 Tailwind 의 rounded-* 를 모두 이긴다 — 포커스를 받는 순간
-     동그란 아바타·알약 배지·원형 아이콘 단추가 4px 각진 모서리로 바뀌었다가 돌아왔다.
-     바깥 선(outline)은 요즘 브라우저에서 요소 자신의 모서리를 따라 그려진다. */
+/* 아무 포커스 표시도 없는 요소를 위한 기본값.
+   base 층에 둔다. 층 밖에 두면 focus:outline-none 을 이겨, 자기 링을 따로 그린 요소는
+   테두리가 두 겹으로 나온다(서른여덟 곳이 outline-none 을 쓰고 있었는데 하나도 듣지 않았다).
+   border-radius 는 주지 않는다 — 주면 동그란 아바타·알약 배지가 포커스 순간 각지게 바뀐다. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+  }
 }
 
 /* ========================================

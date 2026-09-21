@@ -341,7 +341,7 @@ export function DuelPanel({
         title="포인트 대결"
         badge={
           board.incoming.length > 0 && (
-            <span className="animate-popIn rounded-full bg-violet-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+            <span className="animate-popIn rounded-full bg-violet-600 px-2 py-0.5 text-2xs font-semibold text-white">
               도전장 {board.incoming.length}
             </span>
           )
@@ -377,7 +377,7 @@ export function DuelPanel({
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-[11px] font-bold tracking-wide text-violet-600 dark:text-violet-300">
+                        <p className="text-2xs font-bold tracking-wide text-violet-600 dark:text-violet-300">
                           ⚔️ 도전장
                         </p>
                         <p className="mt-0.5 text-sm text-slate-700 dark:text-slate-200">
@@ -555,7 +555,7 @@ export function DuelPanel({
                     onClick={() =>
                       void run(() => cancelDuel(duel.id), '대결을 취소하지 못했습니다.')
                     }
-                    className="shrink-0 text-xs text-slate-500 underline hover:text-slate-700 disabled:opacity-40 dark:text-slate-400"
+                    className="shrink-0 text-xs text-slate-500 underline hover:text-slate-700 disabled:opacity-40 dark:text-slate-400 dark:hover:text-slate-100"
                   >
                     취소
                   </button>
