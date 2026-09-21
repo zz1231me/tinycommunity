@@ -1,7 +1,7 @@
 // 관리자 커스텀 HTML 페이지. 렌더가 sandbox iframe 이라 html 은 새니타이즈 없이 원문 그대로 보관한다.
 
 import { DataTypes, Model, Optional } from 'sequelize';
-import { sequelize } from '../config/sequelize';
+import { sequelize, LONG_TEXT } from '../config/sequelize';
 
 export interface CustomPageAttributes {
   id: string;
@@ -62,7 +62,7 @@ CustomPage.init(
       allowNull: false,
     },
     html: {
-      type: DataTypes.TEXT('long'),
+      type: LONG_TEXT(),
       allowNull: false,
       defaultValue: '',
       comment: '관리자 원문 HTML — sandbox iframe에서만 렌더',

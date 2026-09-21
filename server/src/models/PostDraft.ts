@@ -9,7 +9,7 @@ import {
   CreationOptional,
   ForeignKey,
 } from 'sequelize';
-import { sequelize } from '../config/sequelize';
+import { sequelize, LONG_TEXT } from '../config/sequelize';
 import { generateRandomId } from '../utils/generateId';
 
 class PostDraftModel extends Model<
@@ -48,7 +48,7 @@ PostDraftModel.init(
       defaultValue: '',
       validate: { len: [0, 255] },
     },
-    content: { type: DataTypes.TEXT('long'), allowNull: false, defaultValue: '' },
+    content: { type: LONG_TEXT(), allowNull: false, defaultValue: '' },
     createdAt: { type: DataTypes.DATE, allowNull: false },
     updatedAt: { type: DataTypes.DATE, allowNull: false },
   },

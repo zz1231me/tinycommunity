@@ -1,6 +1,6 @@
 // Sequelize 연결 설정. SQLite/MySQL/MariaDB/PostgreSQL 을 지원한다.
 
-import { Sequelize, Dialect, Transaction, Options as SequelizeOptions } from 'sequelize';
+import { Sequelize, Dialect, Transaction, DataTypes, Options as SequelizeOptions } from 'sequelize';
 import { env, DatabaseType, printDatabaseInfo } from './env';
 import { logInfo, logError, logWarning, logSuccess } from '../utils/logger';
 
@@ -156,6 +156,13 @@ function createSequelizeConfig(): SequelizeOptions {
 }
 
 export const sequelize = new Sequelize(createSequelizeConfig());
+
+/**
+ * 긴 본문을 담는 열. MySQL 에서는 LONGTEXT 가 필요하지만 SQLite 는 길이 구분이 없어,
+ * TEXT('long') 을 그대로 쓰면 부팅할 때마다 경고를 찍는다. 그 경고가 쌓이면 진짜 경고를 가린다.
+ */
+export const LONG_TEXT = () =>
+  sequelize.getDialect() === 'sqlite' ? DataTypes.TEXT : DataTypes.TEXT('long');
 
 /** DB 연결(+09:00)과 프로세스 시간대가 다르면 경고한다. 날짜 경계가 어긋나며, 고칠 자리는 배포의 TZ 설정이다. */
 function warnIfTimezoneMismatch(): void {

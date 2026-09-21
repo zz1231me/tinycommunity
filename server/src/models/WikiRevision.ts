@@ -7,7 +7,7 @@ import {
   ForeignKey,
   NonAttribute,
 } from 'sequelize';
-import { sequelize } from '../config/sequelize';
+import { sequelize, LONG_TEXT } from '../config/sequelize';
 
 class WikiRevisionModel extends Model<
   InferAttributes<WikiRevisionModel>,
@@ -29,7 +29,7 @@ WikiRevisionModel.init(
     wikiPageId: { type: DataTypes.INTEGER, allowNull: false },
     editorId: { type: DataTypes.STRING(50), allowNull: true },
     title: { type: DataTypes.STRING(200), allowNull: false },
-    content: { type: DataTypes.TEXT('long'), allowNull: true, defaultValue: '' },
+    content: { type: LONG_TEXT(), allowNull: true, defaultValue: '' },
     createdAt: { type: DataTypes.DATE, allowNull: false },
   },
   {

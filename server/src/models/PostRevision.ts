@@ -7,7 +7,7 @@ import {
   ForeignKey,
   NonAttribute,
 } from 'sequelize';
-import { sequelize } from '../config/sequelize';
+import { sequelize, LONG_TEXT } from '../config/sequelize';
 
 // 게시글 수정 이력(append-only). 각 행은 수정 직전의 제목·본문이고 현재 버전은 Post 에 있다.
 class PostRevisionModel extends Model<
@@ -31,7 +31,7 @@ PostRevisionModel.init(
     postId: { type: DataTypes.STRING(12), allowNull: false },
     editorId: { type: DataTypes.STRING(50), allowNull: true },
     title: { type: DataTypes.STRING(255), allowNull: false },
-    content: { type: DataTypes.TEXT('long'), allowNull: true, defaultValue: '' },
+    content: { type: LONG_TEXT(), allowNull: true, defaultValue: '' },
     createdAt: { type: DataTypes.DATE, allowNull: false },
   },
   {

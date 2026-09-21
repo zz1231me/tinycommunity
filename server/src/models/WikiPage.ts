@@ -7,7 +7,7 @@ import {
   ForeignKey,
   NonAttribute,
 } from 'sequelize';
-import { sequelize } from '../config/sequelize';
+import { sequelize, LONG_TEXT } from '../config/sequelize';
 import { extractSearchText } from '../utils/contentRenderer';
 
 class WikiPageModel extends Model<
@@ -41,8 +41,8 @@ WikiPageModel.init(
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     slug: { type: DataTypes.STRING(200), allowNull: false, validate: { notEmpty: true } },
     title: { type: DataTypes.STRING(200), allowNull: false, validate: { len: [1, 200] } },
-    content: { type: DataTypes.TEXT('long'), allowNull: true, defaultValue: '' },
-    contentText: { type: DataTypes.TEXT('long'), allowNull: true },
+    content: { type: LONG_TEXT(), allowNull: true, defaultValue: '' },
+    contentText: { type: LONG_TEXT(), allowNull: true },
     parentId: { type: DataTypes.INTEGER, allowNull: true },
     authorId: { type: DataTypes.STRING(50), allowNull: true }, // SET NULL 지원을 위해 nullable
     lastEditorId: { type: DataTypes.STRING(50), allowNull: true },
