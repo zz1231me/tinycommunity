@@ -69,9 +69,7 @@ export function AttackBanner({
         {ATTACK_FACE[incoming.kind]}
       </span>
       {waiting > 0 && (
-        <span className="badge-count -ml-2 bg-rose-600 text-white">
-          ×{waiting + 1}
-        </span>
+        <span className="badge-count -ml-2 bg-rose-600 text-white">×{waiting + 1}</span>
       )}
       <p className="min-w-[12rem] flex-1 text-sm text-rose-800 dark:text-rose-300">
         <span className="font-semibold">{incoming.attackerName}</span>님이 공격권을 사용했습니다!
