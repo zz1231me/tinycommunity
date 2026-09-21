@@ -652,7 +652,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
         parsedLotteryPrizes !== undefined
           ? JSON.stringify(parsedLotteryPrizes)
           : settings.lotteryPrizes,
-      lotteryDailyLimit: intOrKeep(lotteryDailyLimit, settings.lotteryDailyLimit, 1, 100),
+      lotteryDailyLimit: intOrKeep(lotteryDailyLimit, settings.lotteryDailyLimit, 1, 200),
       lotteryDrawCost: intOrKeep(lotteryDrawCost, settings.lotteryDrawCost, 0, 100000),
       attendanceBonus: intOrKeep(attendanceBonus, settings.attendanceBonus, 0, 100000),
       duelMinStake: nextDuelMin,

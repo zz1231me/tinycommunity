@@ -123,7 +123,7 @@ describe('언제 깜빡이는가', () => {
   });
 
   it('어제 미마감 기록이 있어도 오늘 안 찍었으면 깜빡인다', async () => {
-    // reminderRule 과 같은 판단 — 어제 것을 오늘 출근으로 세지 않는다
+    // 출근 알림과 같은 판단 — 어제 것을 오늘 출근으로 세지 않는다
     mockFetchMyAttendance.mockResolvedValue(
       status({ record: null, openPrevious: record({ workDate: '2026-09-16' }) })
     );

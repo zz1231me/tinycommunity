@@ -673,7 +673,7 @@ export const SiteSettingsManagement = () => {
               label="하루 뽑기 횟수"
               description="한 사람이 하루에 뽑을 수 있는 횟수"
               min={1}
-              max={100}
+              max={200}
               value={settings.lotteryDailyLimit}
               onChange={v => set('lotteryDailyLimit', v)}
               unit="회"

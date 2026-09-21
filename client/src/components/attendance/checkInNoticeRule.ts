@@ -1,5 +1,5 @@
 // client/src/components/attendance/checkInNoticeRule.ts
-// 출근 알림을 언제 띄울지의 규칙. 퇴근 알림(reminderRule)과 같은 이유로 떼어 둔다.
+// 출근 알림을 언제 띄울지의 규칙. 화면에서 떼어 두어야 규칙만 따로 검사할 수 있다.
 
 /**
  * 이 시각(시)을 넘기면 더 이상 알리지 않는다.

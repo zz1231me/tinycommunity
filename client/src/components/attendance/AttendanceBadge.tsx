@@ -4,7 +4,7 @@
 // 전에는 출근을 찍으려면 프로필로 들어가야 했다. 하루에 한 번 하는 일인데 경로가 깊어
 // 잊기 쉽다 — 알림 옆에 두고, 아직 안 찍었으면 눈에 띄게 한다.
 //
-// 네트워크 요청을 늘리지 않는다. AttendanceReminder 가 App 최상위에 있어 이미
+// 네트워크 요청을 늘리지 않는다. 출근 알림(CheckInReminder)이 App 최상위에서 이미
 // attendanceKeys.me 를 구독하고 있고(staleTime 5분), 여기서 같은 키를 쓰면 React Query 가
 // 구독을 합쳐 캐시를 그대로 읽는다. 조회 옵션도 그쪽과 같게 맞춰 둔다 — 한쪽만 다르면
 // 먼저 마운트되는 쪽의 설정이 이기고 다른 쪽 의도가 조용히 사라진다.
@@ -19,7 +19,7 @@ import { useAuth } from '../../store/auth';
 
 export function AttendanceBadge() {
   const loggedIn = useAuth(s => s.isAuthenticated);
-  // AttendanceReminder 와 같은 조건 — 로그인 화면에서까지 물어볼 이유가 없다
+  // 출근 알림과 같은 조건 — 로그인 화면에서까지 물어볼 이유가 없다
   const enabled = useFeature('tools.attendance') && loggedIn;
 
   const { data } = useQuery({
@@ -40,7 +40,7 @@ export function AttendanceBadge() {
   const record = data?.record ?? null;
 
   // 어제 미마감 기록(openPrevious)은 '오늘 출근' 으로 치지 않는다.
-  // reminderRule 에 적힌 판단과 같다 — 어제 것을 오늘로 세면 엉뚱한 안내가 나간다.
+  // 출근 알림과 같은 판단 — 어제 것을 오늘로 세면 엉뚱한 안내가 나간다.
   const notCheckedIn = loaded && record === null;
   const working = Boolean(record && !record.checkOutAt);
 
