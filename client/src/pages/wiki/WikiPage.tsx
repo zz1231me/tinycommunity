@@ -300,7 +300,13 @@ const WikiPageRoute = () => {
             aria-expanded={treeOpen}
             className="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              aria-hidden="true"
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -321,7 +327,13 @@ const WikiPageRoute = () => {
               }}
               className="btn-primary"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                aria-hidden="true"
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -334,7 +346,13 @@ const WikiPageRoute = () => {
             {/* 페이지 액션(편집·삭제·이력)은 제목 옆 WikiDetail로 이동 — 상단 툴바 중복 제거 */}
             {saveError && (
               <span className="text-xs text-red-500 ml-2 flex items-center gap-1">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  aria-hidden="true"
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -408,6 +426,7 @@ const WikiPageRoute = () => {
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg
+                  aria-hidden="true"
                   className="w-5 h-5 text-amber-600 dark:text-amber-400"
                   fill="none"
                   stroke="currentColor"
@@ -459,6 +478,7 @@ const WikiPageRoute = () => {
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg
+                  aria-hidden="true"
                   className="w-5 h-5 text-red-600 dark:text-red-400"
                   fill="none"
                   stroke="currentColor"
@@ -527,6 +547,7 @@ const WikiPageRoute = () => {
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg
+                  aria-hidden="true"
                   className="w-5 h-5 text-amber-600 dark:text-amber-400"
                   fill="none"
                   stroke="currentColor"

@@ -64,7 +64,13 @@ export function ReportButton({ targetType, targetId, className = '' }: ReportBut
         aria-label="신고하기"
         className={`flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors ${className}`}
       >
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg
+          aria-hidden="true"
+          className="w-3.5 h-3.5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -94,6 +100,7 @@ export function ReportButton({ targetType, targetId, className = '' }: ReportBut
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
                   <svg
+                    aria-hidden="true"
                     className="w-4 h-4 text-red-500"
                     fill="none"
                     stroke="currentColor"
@@ -116,6 +123,7 @@ export function ReportButton({ targetType, targetId, className = '' }: ReportBut
                 className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
               >
                 <svg
+                  aria-hidden="true"
                   className="w-4 h-4 text-slate-400"
                   fill="none"
                   stroke="currentColor"
@@ -137,6 +145,7 @@ export function ReportButton({ targetType, targetId, className = '' }: ReportBut
                 <div className="text-center py-4">
                   <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
                     <svg
+                      aria-hidden="true"
                       className="w-6 h-6 text-green-500"
                       fill="none"
                       stroke="currentColor"

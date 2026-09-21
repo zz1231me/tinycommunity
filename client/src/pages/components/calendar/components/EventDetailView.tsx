@@ -76,6 +76,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
           style={{ color: `color-mix(in srgb, ${eventColor} 45%, #0f172a)` }}
         >
           <svg
+            aria-hidden="true"
             className="h-4 w-4 flex-shrink-0"
             fill="none"
             stroke="currentColor"
@@ -98,6 +99,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
           <MetaRow
             icon={
               <svg
+                aria-hidden="true"
                 className="h-[18px] w-[18px]"
                 fill="none"
                 stroke="currentColor"
@@ -124,6 +126,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
         <MetaRow
           icon={
             <svg
+              aria-hidden="true"
               className="h-[18px] w-[18px]"
               fill="none"
               stroke="currentColor"
@@ -171,7 +174,13 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
         <div className="flex items-center gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
           {canEdit && (
             <button onClick={onEdit} className="btn-primary flex-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                aria-hidden="true"
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -196,7 +205,13 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
                 </>
               ) : (
                 <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    aria-hidden="true"
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"

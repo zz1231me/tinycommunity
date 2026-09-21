@@ -203,7 +203,13 @@ export const UserActivityModal: React.FC<Props> = ({ userId, userName, onClose }
             aria-label="닫기"
             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              aria-hidden="true"
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"

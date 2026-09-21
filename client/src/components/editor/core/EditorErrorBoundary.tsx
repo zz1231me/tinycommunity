@@ -45,6 +45,7 @@ class EditorErrorBoundary extends Component<Props, State> {
             <div className="flex items-start gap-2">
               <div className="flex-shrink-0">
                 <svg
+                  aria-hidden="true"
                   className="w-5 h-5 text-yellow-600 dark:text-yellow-400"
                   fill="currentColor"
                   viewBox="0 0 20 20"

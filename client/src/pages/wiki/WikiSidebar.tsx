@@ -75,6 +75,7 @@ const WikiTreeNode: React.FC<WikiTreeNodeProps> = ({
             }`}
           >
             <svg
+              aria-hidden="true"
               className={`w-2.5 h-2.5 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}
               fill="currentColor"
               viewBox="0 0 20 20"
@@ -140,6 +141,7 @@ export const WikiSidebar: React.FC<WikiSidebarProps> = ({ pages, isEditing, onIn
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-primary-100 dark:bg-primary-900/40 rounded-md flex items-center justify-center">
               <svg
+                aria-hidden="true"
                 className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400"
                 fill="none"
                 stroke="currentColor"

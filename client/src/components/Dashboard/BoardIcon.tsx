@@ -8,7 +8,13 @@ interface BoardIconProps {
 export function BoardIcon({ boardId }: BoardIconProps) {
   const iconMap: Record<string, ReactElement> = {
     notice: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        aria-hidden="true"
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -18,7 +24,13 @@ export function BoardIcon({ boardId }: BoardIconProps) {
       </svg>
     ),
     general: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        aria-hidden="true"
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -28,7 +40,13 @@ export function BoardIcon({ boardId }: BoardIconProps) {
       </svg>
     ),
     admin: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        aria-hidden="true"
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -38,7 +56,13 @@ export function BoardIcon({ boardId }: BoardIconProps) {
       </svg>
     ),
     onboarding: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        aria-hidden="true"
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -48,7 +72,13 @@ export function BoardIcon({ boardId }: BoardIconProps) {
       </svg>
     ),
     shared: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        aria-hidden="true"
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -58,7 +88,13 @@ export function BoardIcon({ boardId }: BoardIconProps) {
       </svg>
     ),
     internal: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        aria-hidden="true"
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -68,7 +104,13 @@ export function BoardIcon({ boardId }: BoardIconProps) {
       </svg>
     ),
     free: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        aria-hidden="true"
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -81,7 +123,13 @@ export function BoardIcon({ boardId }: BoardIconProps) {
 
   return (
     iconMap[boardId] || (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        aria-hidden="true"
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"

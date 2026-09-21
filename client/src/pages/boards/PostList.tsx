@@ -292,6 +292,7 @@ const PostList = () => {
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-12 max-w-md text-center">
           <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg
+              aria-hidden="true"
               className="w-10 h-10 text-red-600 dark:text-red-400"
               fill="none"
               stroke="currentColor"
@@ -326,6 +327,7 @@ const PostList = () => {
         description={`${boardInfo?.description || '게시글 목록을 확인하세요'} · 총 ${pagination?.totalCount || 0}개`}
         icon={
           <svg
+            aria-hidden="true"
             className="w-6 h-6 text-primary-600 dark:text-primary-400"
             fill="none"
             stroke="currentColor"
@@ -361,6 +363,7 @@ const PostList = () => {
                 className="btn-secondary"
               >
                 <svg
+                  aria-hidden="true"
                   className="w-4 h-4 mr-1.5"
                   fill="none"
                   stroke="currentColor"
@@ -383,7 +386,13 @@ const PostList = () => {
               </button>
             )}
             <button onClick={handleNewPost} aria-label="새 게시글 작성" className="btn-primary">
-              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                aria-hidden="true"
+                className="w-4 h-4 mr-1.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"

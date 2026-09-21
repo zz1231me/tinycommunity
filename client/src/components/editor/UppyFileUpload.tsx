@@ -192,6 +192,7 @@ const UppyFileUpload: React.FC<UppyFileUploadProps> = ({
                 className="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-700/50 rounded text-sm"
               >
                 <svg
+                  aria-hidden="true"
                   className="w-4 h-4 flex-shrink-0 text-slate-400"
                   fill="none"
                   stroke="currentColor"
@@ -235,6 +236,7 @@ const UppyFileUpload: React.FC<UppyFileUploadProps> = ({
                 className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm"
               >
                 <svg
+                  aria-hidden="true"
                   className="w-4 h-4 flex-shrink-0 text-blue-400"
                   fill="none"
                   stroke="currentColor"
@@ -289,6 +291,7 @@ const UppyFileUpload: React.FC<UppyFileUploadProps> = ({
           <div className="flex flex-col items-center gap-3">
             <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center">
               <svg
+                aria-hidden="true"
                 className="w-6 h-6 text-slate-600 dark:text-slate-400"
                 fill="none"
                 stroke="currentColor"

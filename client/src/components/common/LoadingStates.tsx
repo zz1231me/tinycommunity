@@ -122,6 +122,7 @@ export const PageError: React.FC<PageErrorProps> = ({ message, onBack, onRetry }
       <div className="card p-8 text-center max-w-md mx-auto">
         <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
           <svg
+            aria-hidden="true"
             className="w-10 h-10 text-red-600 dark:text-red-400"
             fill="none"
             stroke="currentColor"

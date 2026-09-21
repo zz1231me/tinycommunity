@@ -9,6 +9,7 @@ const NotFound = () => {
       <div className="w-full max-w-md text-center">
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
           <svg
+            aria-hidden="true"
             className="h-10 w-10 text-slate-500 dark:text-slate-400"
             fill="none"
             viewBox="0 0 24 24"

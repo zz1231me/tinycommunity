@@ -112,6 +112,7 @@ function PasswordResetRequest() {
             ) : (
               <div className="w-16 h-16 bg-primary-600 rounded-2xl mx-auto mb-5 flex items-center justify-center shadow-md">
                 <svg
+                  aria-hidden="true"
                   className="w-8 h-8 text-white"
                   fill="none"
                   stroke="currentColor"
@@ -294,6 +295,7 @@ function PasswordResetRequest() {
             <div className="space-y-5">
               <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl flex items-start gap-3">
                 <svg
+                  aria-hidden="true"
                   className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5"
                   fill="none"
                   stroke="currentColor"

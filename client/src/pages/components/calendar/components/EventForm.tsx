@@ -192,6 +192,7 @@ export const EventForm: React.FC<EventFormProps> = ({
         {!formData.category && (
           <p className="mt-2 text-sm text-red-500 dark:text-red-400 flex items-center gap-1.5">
             <svg
+              aria-hidden="true"
               className="w-4 h-4 flex-shrink-0"
               fill="none"
               stroke="currentColor"
@@ -267,6 +268,7 @@ export const EventForm: React.FC<EventFormProps> = ({
           <div className="relative">
             <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
               <svg
+                aria-hidden="true"
                 className="w-4 h-4 text-slate-400"
                 fill="none"
                 stroke="currentColor"
@@ -335,7 +337,13 @@ export const EventForm: React.FC<EventFormProps> = ({
             </>
           ) : mode === 'create' ? (
             <>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                aria-hidden="true"
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -347,7 +355,13 @@ export const EventForm: React.FC<EventFormProps> = ({
             </>
           ) : (
             <>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                aria-hidden="true"
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"

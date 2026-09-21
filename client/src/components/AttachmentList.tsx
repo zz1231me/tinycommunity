@@ -116,6 +116,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({ attachments, boardType,
       <section className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 transition-colors duration-300">
         <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
           <svg
+            aria-hidden="true"
             className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 dark:text-slate-400"
             fill="none"
             stroke="currentColor"

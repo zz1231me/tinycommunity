@@ -396,6 +396,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="flex flex-col items-center gap-4 text-white">
             <svg
+              aria-hidden="true"
               className="w-16 h-16 text-red-400"
               fill="none"
               stroke="currentColor"
@@ -425,11 +426,18 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
         <div className="flex items-center gap-1 bg-black/80 rounded-lg px-3 py-2 backdrop-blur-sm">
           <button
             onClick={handleZoomOut}
+            aria-label="축소"
             className="text-white hover:text-blue-400 p-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="축소 (-)"
             disabled={isLoading || error || scale <= minScale}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              aria-hidden="true"
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
             </svg>
           </button>
@@ -444,7 +452,13 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
             title="확대 (+)"
             disabled={isLoading || error || scale >= maxScale}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              aria-hidden="true"
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -456,11 +470,18 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
           <button
             onClick={handleResetZoom}
+            aria-label="원본 크기"
             className="text-white hover:text-blue-400 p-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="원본 크기 (0)"
             disabled={isLoading || error}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              aria-hidden="true"
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -473,10 +494,17 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
         <button
           onClick={onClose}
+          aria-label="닫기"
           className="text-white hover:text-red-400 bg-black/80 p-2 rounded-lg transition-colors backdrop-blur-sm"
           title="닫기 (ESC)"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            aria-hidden="true"
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"

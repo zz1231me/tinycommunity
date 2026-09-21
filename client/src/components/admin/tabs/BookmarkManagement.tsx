@@ -215,6 +215,7 @@ export function BookmarkManagement() {
                           className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                         >
                           <svg
+                            aria-hidden="true"
                             className="w-3 h-3 text-slate-500"
                             fill="none"
                             stroke="currentColor"
@@ -235,6 +236,7 @@ export function BookmarkManagement() {
                           className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                         >
                           <svg
+                            aria-hidden="true"
                             className="w-3 h-3 text-slate-500"
                             fill="none"
                             stroke="currentColor"

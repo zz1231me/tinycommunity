@@ -151,6 +151,7 @@ const BoardProtectedRoute = ({ children, action = 'read' }: Props) => {
         <div className="text-center p-8 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 max-w-md">
           <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg
+              aria-hidden="true"
               className="w-8 h-8 text-red-600 dark:text-red-400"
               fill="none"
               stroke="currentColor"

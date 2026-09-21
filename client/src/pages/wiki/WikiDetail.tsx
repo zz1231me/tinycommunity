@@ -74,6 +74,7 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
                 <React.Fragment key={p.id}>
                   {i > 0 && (
                     <svg
+                      aria-hidden="true"
                       className="w-3.5 h-3.5 text-slate-400 flex-shrink-0"
                       fill="none"
                       stroke="currentColor"
@@ -114,7 +115,13 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
                       : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    aria-hidden="true"
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -127,7 +134,13 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
               )}
               {canEdit && (
                 <button onClick={onEdit} className="btn-primary">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    aria-hidden="true"
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -143,7 +156,13 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
                   onClick={onDelete}
                   className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg font-medium bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    aria-hidden="true"
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -160,7 +179,13 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
           {/* 메타 정보 */}
           <div className="flex items-center gap-4 text-xs text-slate-400 mb-6 pb-6 border-b border-slate-100 dark:border-slate-800">
             <span className="flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                aria-hidden="true"
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -223,6 +248,7 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
                   >
                     <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
                       <svg
+                        aria-hidden="true"
                         className="w-4 h-4 text-primary-600 dark:text-primary-400"
                         fill="none"
                         stroke="currentColor"
@@ -240,6 +266,7 @@ export const WikiDetail: React.FC<WikiDetailProps> = ({
                       {child.title}
                     </span>
                     <svg
+                      aria-hidden="true"
                       className="w-4 h-4 text-slate-400 ml-auto opacity-0 group-hover:opacity-100 transition-all"
                       fill="none"
                       stroke="currentColor"

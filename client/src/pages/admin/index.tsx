@@ -67,6 +67,7 @@ const AdminUserPage = () => {
           description="시스템 전체를 관리하는 컨트롤 센터"
           icon={
             <svg
+              aria-hidden="true"
               className="w-8 h-8 text-primary-600 dark:text-primary-400"
               fill="none"
               stroke="currentColor"

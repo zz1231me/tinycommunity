@@ -51,6 +51,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
         <Command label="명령어 팔레트">
           <div className="command-input-wrapper">
             <svg
+              aria-hidden="true"
               className="command-search-icon"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"

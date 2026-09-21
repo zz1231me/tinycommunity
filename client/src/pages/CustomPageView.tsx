@@ -53,6 +53,7 @@ export default function CustomPageView() {
       {/* 제목바 */}
       <div className="flex flex-shrink-0 items-center gap-3 border-b border-slate-200 bg-white/80 px-5 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
         <svg
+          aria-hidden="true"
           className="h-5 w-5 text-slate-400"
           fill="none"
           stroke="currentColor"

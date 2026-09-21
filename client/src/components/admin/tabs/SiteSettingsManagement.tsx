@@ -63,6 +63,7 @@ const AssetUploader: React.FC<AssetUploaderProps> = ({ label, hint, accept, valu
             />
           ) : (
             <svg
+              aria-hidden="true"
               className="w-6 h-6 text-slate-400"
               fill="none"
               stroke="currentColor"

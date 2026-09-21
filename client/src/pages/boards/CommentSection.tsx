@@ -85,6 +85,7 @@ const ErrorBanner: React.FC<ErrorBannerProps> = ({ message, onDismiss, onRetry }
     className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl"
   >
     <svg
+      aria-hidden="true"
       className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5"
       fill="none"
       stroke="currentColor"
@@ -409,6 +410,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
             <div className="flex items-start gap-3">
               {isReply && (
                 <svg
+                  aria-hidden="true"
                   className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-3"
                   fill="none"
                   stroke="currentColor"
@@ -596,6 +598,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                         }`}
                       >
                         <svg
+                          aria-hidden="true"
                           className="w-3.5 h-3.5"
                           fill={comment.liked ? 'currentColor' : 'none'}
                           stroke="currentColor"
@@ -689,6 +692,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                           ) : (
                             <>
                               <svg
+                                aria-hidden="true"
                                 className="w-3.5 h-3.5"
                                 fill="none"
                                 stroke="currentColor"
@@ -804,7 +808,13 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
               >
                 {copied ? (
                   <>
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg
+                      aria-hidden="true"
+                      className="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -816,7 +826,13 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                   </>
                 ) : (
                   <>
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg
+                      aria-hidden="true"
+                      className="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -900,6 +916,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                   ) : (
                     <>
                       <svg
+                        aria-hidden="true"
                         className="w-4 h-4"
                         fill="none"
                         stroke="currentColor"
@@ -925,6 +942,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
           <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 text-center">
             <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-3">
               <svg
+                aria-hidden="true"
                 className="w-6 h-6 text-slate-400"
                 fill="none"
                 stroke="currentColor"
