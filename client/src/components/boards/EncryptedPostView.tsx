@@ -69,7 +69,7 @@ export const EncryptedPostView: React.FC<EncryptedPostViewProps> = ({
 
         <div className="card overflow-hidden mb-6">
           {/* 게시글 헤더 */}
-          <header className="px-6 py-5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+          <header className="card-header block bg-slate-50 py-5 dark:bg-slate-900">
             <div className="flex items-center gap-2 mb-3">
               <span className="badge border border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-900/30 dark:text-emerald-400">
                 <ShieldCheck className="w-3.5 h-3.5" />

@@ -119,7 +119,7 @@ export default function UserProfile() {
           </section>
 
           <section className="card overflow-hidden">
-            <h3 className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            <h3 className="card-header block bg-slate-50 text-sm font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-300">
               최근 글
             </h3>
             {data.recentPosts.length === 0 ? (
@@ -130,7 +130,7 @@ export default function UserProfile() {
                   <li key={post.id}>
                     <Link
                       to={`/dashboard/posts/${post.boardType}/${post.id}`}
-                      className="block px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
+                      className="block px-4 py-3 transition-colors hover:bg-slate-50 sm:px-6 dark:hover:bg-slate-800"
                     >
                       <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
                         {post.title}

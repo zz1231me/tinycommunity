@@ -35,14 +35,14 @@ function Panel({
 }) {
   return (
     <section className="card overflow-hidden">
-      <header className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+      <header className="card-header justify-between gap-3">
         <h2 className="card-title flex items-center gap-2">
           <span className="text-primary-600 dark:text-primary-400">{icon}</span>
           {title}
         </h2>
         {action}
       </header>
-      <div className="p-3">{children}</div>
+      <div className="card-body">{children}</div>
     </section>
   );
 }

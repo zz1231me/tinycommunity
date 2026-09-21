@@ -32,7 +32,7 @@ function FeatureRow({
   const settingsLink = FEATURE_SETTINGS[feature.key];
 
   return (
-    <div className="flex items-start gap-4 px-4 py-3.5">
+    <div className="flex items-start gap-4 px-4 py-3.5 sm:px-6">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
@@ -156,7 +156,7 @@ const FeatureManagement = () => {
             if (items.length === 0) return null;
             return (
               <div key={groupKey} className="card overflow-hidden">
-                <h3 className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+                <h3 className="card-header block bg-slate-50 text-sm font-semibold text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
                   {groupLabel}
                 </h3>
                 <div className="divide-y divide-slate-100 dark:divide-slate-800">

@@ -27,7 +27,7 @@ function KindRow({
   pending: boolean;
 }) {
   return (
-    <div className="flex items-start gap-4 px-4 py-3.5">
+    <div className="flex items-start gap-4 px-4 py-3.5 sm:px-6">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
@@ -112,7 +112,7 @@ export function NotificationSettings() {
   return (
     <div className="space-y-6">
       <section className="card overflow-hidden">
-        <h3 className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+        <h3 className="card-header bg-slate-50 text-sm font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-300">
           <Bell className="h-4 w-4" />
           알림 받기
         </h3>
@@ -137,7 +137,7 @@ export function NotificationSettings() {
 
       {subscriptionsEnabled && (
         <section className="card overflow-hidden">
-          <h3 className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          <h3 className="card-header bg-slate-50 text-sm font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-300">
             <Users className="h-4 w-4" />
             구독·팔로우
           </h3>
