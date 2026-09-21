@@ -209,8 +209,11 @@ const TagManagement = () => {
                     className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl flex flex-wrap gap-4 items-end border border-slate-200 dark:border-slate-600"
                   >
                     <div>
-                      <label className="form-label">태그명 *</label>
+                      <label className="form-label" htmlFor="tag-name">
+                        태그명 *
+                      </label>
                       <input
+                        id="tag-name"
                         type="text"
                         value={form.name}
                         onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -220,9 +223,12 @@ const TagManagement = () => {
                       />
                     </div>
                     <div>
-                      <label className="form-label">색상</label>
+                      <label className="form-label" htmlFor="tag-color">
+                        색상
+                      </label>
                       <div className="flex items-center gap-2">
                         <input
+                          id="tag-color"
                           type="color"
                           value={form.color}
                           onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
@@ -263,8 +269,11 @@ const TagManagement = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="form-label">설명</label>
+                      <label className="form-label" htmlFor="tag-desc">
+                        설명
+                      </label>
                       <input
+                        id="tag-desc"
                         type="text"
                         value={form.description}
                         onChange={e => setForm(f => ({ ...f, description: e.target.value }))}

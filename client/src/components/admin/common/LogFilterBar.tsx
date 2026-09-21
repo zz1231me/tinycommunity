@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { AdminFormField } from './AdminFormField';
 
 /**
  * 로그 탭들의 필터 줄. 라벨+입력 한 쌍을 반복하던 마크업을 모았다.
@@ -10,9 +11,8 @@ export const LogFilterBar = ({ children }: { children: ReactNode }) => (
   </div>
 );
 
+// 라벨과 입력칸을 이어 준다(AdminFormField 가 id 를 붙여 준다). 이어 주지 않으면
+// 라벨을 눌러도 칸에 들어가지 않고, 화면 낭독기는 칸 이름을 읽어 주지 못한다.
 export const LogFilterField = ({ label, children }: { label: string; children: ReactNode }) => (
-  <div>
-    <label className="form-label">{label}</label>
-    {children}
-  </div>
+  <AdminFormField label={label}>{children}</AdminFormField>
 );

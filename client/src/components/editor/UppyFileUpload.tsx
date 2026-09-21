@@ -170,13 +170,16 @@ const UppyFileUpload: React.FC<UppyFileUploadProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <label className="form-label">첨부파일</label>
+        {/* 입력칸 하나가 아니라 올리기 영역 전체의 이름이다 */}
+        <span className="form-label" id="uppy-label">
+          첨부파일
+        </span>
         <span className="text-xs text-slate-500 dark:text-slate-400">
           최대 {maxFiles}개, 각 {Math.round(maxFileSize / 1024 / 1024)}MB 이하
         </span>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3" role="group" aria-labelledby="uppy-label">
         {/* Existing attachments (edit mode) */}
         {isEditMode && existingFiles.length > 0 && (
           <div className="space-y-1">

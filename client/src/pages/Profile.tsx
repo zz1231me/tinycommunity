@@ -713,8 +713,11 @@ export default function Profile() {
                       },
                     ].map(({ key, label, note, autocomplete }) => (
                       <div key={key}>
-                        <label className="form-label">{label}</label>
+                        <label className="form-label" htmlFor={`pw-${key}`}>
+                          {label}
+                        </label>
                         <input
+                          id={`pw-${key}`}
                           type="password"
                           value={(passwordForm as Record<string, string>)[key]}
                           onChange={e =>

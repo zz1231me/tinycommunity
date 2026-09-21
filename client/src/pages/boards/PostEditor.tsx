@@ -573,10 +573,14 @@ const PostEditor = ({ mode }: Props) => {
           )}
 
           {/* 태그 선택 */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+          <div role="group" aria-labelledby="post-tags-label">
+            {/* 입력칸 하나가 아니라 고르는 영역이라 label 로 이을 수 없다 */}
+            <span
+              id="post-tags-label"
+              className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+            >
               태그
-            </label>
+            </span>
             <TagSelector
               selectedTags={selectedTags}
               onChange={setSelectedTags}

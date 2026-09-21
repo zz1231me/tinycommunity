@@ -357,8 +357,11 @@ export function BoardManagePanel({
           <section className="space-y-3">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">기본 정보</h3>
             <div>
-              <label className="form-label">게시판 이름</label>
+              <label className="form-label" htmlFor="board-name">
+                게시판 이름
+              </label>
               <input
+                id="board-name"
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
@@ -367,8 +370,11 @@ export function BoardManagePanel({
               />
             </div>
             <div>
-              <label className="form-label">설명</label>
+              <label className="form-label" htmlFor="board-desc">
+                설명
+              </label>
               <textarea
+                id="board-desc"
                 value={description}
                 onChange={e => setDescription(e.target.value)}
                 maxLength={500}

@@ -77,9 +77,12 @@ const SecretPostModal: React.FC<SecretPostModalProps> = ({
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="form-label">비밀번호</label>
+              <label className="form-label" htmlFor="secret-password">
+                비밀번호
+              </label>
               <div className="relative">
                 <input
+                  id="secret-password"
                   ref={inputRef}
                   type={showPassword ? 'text' : 'password'}
                   value={password}

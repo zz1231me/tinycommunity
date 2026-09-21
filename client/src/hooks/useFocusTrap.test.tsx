@@ -239,7 +239,13 @@ describe('열려 있는 동안 배경 스크롤을 잠근다', () => {
 
 describe('겹쳐 열린 대화상자', () => {
   /** 바깥 대화상자 위에 확인 상자가 하나 더 열린 화면 */
-  function Nested({ onOuterClose, onInnerClose }: { onOuterClose: () => void; onInnerClose: () => void }) {
+  function Nested({
+    onOuterClose,
+    onInnerClose,
+  }: {
+    onOuterClose: () => void;
+    onInnerClose: () => void;
+  }) {
     const outer = useRef<HTMLDivElement>(null);
     const inner = useRef<HTMLDivElement>(null);
     useFocusTrap(outer, onOuterClose);

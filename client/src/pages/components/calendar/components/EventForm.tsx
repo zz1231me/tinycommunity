@@ -1,5 +1,5 @@
 // client/src/pages/components/calendar/components/EventForm.tsx
-import React, { useMemo } from 'react';
+import React, { useId, useMemo } from 'react';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import { ClassicEditor, type EditorConfig } from 'ckeditor5';
 import { buildEditorConfig } from '../../../../components/editor/core/editorConfig';
@@ -63,9 +63,18 @@ interface EventFormProps {
 // 공통 input 클래스 — 디자인 시스템 프리미티브(.input)에 위임
 const inputCls = 'input';
 
-function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
+function FieldLabel({
+  children,
+  required,
+  htmlFor,
+}: {
+  children: React.ReactNode;
+  required?: boolean;
+  /** 이어 줄 입력칸의 id. 이어 주지 않으면 라벨을 눌러도 칸에 들어가지 않는다. */
+  htmlFor?: string;
+}) {
   return (
-    <label className="form-label">
+    <label className="form-label" htmlFor={htmlFor}>
       {children}
       {required && <span className="text-red-500 ml-1">*</span>}
     </label>
@@ -81,6 +90,7 @@ export const EventForm: React.FC<EventFormProps> = ({
   submitting = false,
 }) => {
   // 관리자 설정값 — 서버 검증과 동일 한도를 클라이언트에서도 사전 차단
+  const fieldId = useId();
   const eventBodyMax = useSiteSettings(s => s.settings.eventBodyMaxLength);
   const eventLocationMax = useSiteSettings(s => s.settings.eventLocationMaxLength);
   const editorConfig = useMemo<EditorConfig>(
@@ -106,8 +116,11 @@ export const EventForm: React.FC<EventFormProps> = ({
       className="space-y-3"
     >
       {/* 일정 종류 */}
-      <div>
-        <FieldLabel required>일정 종류</FieldLabel>
+      <div role="group" aria-labelledby={`${fieldId}-category`}>
+        {/* 입력칸이 아니라 단추 묶음이라 label 로 이을 수 없다 — 묶음 이름으로 알린다 */}
+        <span className="form-label" id={`${fieldId}-category`}>
+          일정 종류<span className="text-red-500 ml-1">*</span>
+        </span>
         {/* 종류 고르기 — 카드마다 왼쪽에 그 종류의 색 띠를 세로로 붙인다.
             예전에는 고른 칸만 색으로 가득 채웠는데, 고르기 전에는 색을 알 수 없고
             고른 뒤에는 그 칸만 튀어서 폼 안에서 겉돌았다. 색은 늘 왼쪽 띠로 보여 주고,
@@ -198,8 +211,11 @@ export const EventForm: React.FC<EventFormProps> = ({
 
       {/* 제목 */}
       <div>
-        <FieldLabel required>제목</FieldLabel>
+        <FieldLabel required htmlFor={`${fieldId}-title`}>
+          제목
+        </FieldLabel>
         <input
+          id={`${fieldId}-title`}
           type="text"
           value={formData.title}
           onChange={e => onChange({ title: e.target.value })}
@@ -212,8 +228,11 @@ export const EventForm: React.FC<EventFormProps> = ({
       {/* 날짜 · 장소 — 넓은 모달 폭을 활용해 3열 배치 (세로 스크롤 최소화) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
-          <FieldLabel required>시작일</FieldLabel>
+          <FieldLabel required htmlFor={`${fieldId}-start`}>
+            시작일
+          </FieldLabel>
           <input
+            id={`${fieldId}-start`}
             type="date"
             value={formData.start}
             onChange={e => {
@@ -229,8 +248,11 @@ export const EventForm: React.FC<EventFormProps> = ({
           />
         </div>
         <div>
-          <FieldLabel required>종료일</FieldLabel>
+          <FieldLabel required htmlFor={`${fieldId}-end`}>
+            종료일
+          </FieldLabel>
           <input
+            id={`${fieldId}-end`}
             type="date"
             value={formData.end}
             min={formData.start}
@@ -241,7 +263,7 @@ export const EventForm: React.FC<EventFormProps> = ({
           />
         </div>
         <div>
-          <FieldLabel>장소</FieldLabel>
+          <FieldLabel htmlFor={`${fieldId}-location`}>장소</FieldLabel>
           <div className="relative">
             <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
               <svg
@@ -265,6 +287,7 @@ export const EventForm: React.FC<EventFormProps> = ({
               </svg>
             </div>
             <input
+              id={`${fieldId}-location`}
               type="text"
               value={formData.location || ''}
               onChange={e => onChange({ location: e.target.value.slice(0, eventLocationMax) })}
@@ -277,8 +300,11 @@ export const EventForm: React.FC<EventFormProps> = ({
       </div>
 
       {/* 상세 내용 — CKEditor */}
-      <div>
-        <FieldLabel>상세 내용</FieldLabel>
+      <div role="group" aria-labelledby={`${fieldId}-body`}>
+        {/* CKEditor 는 input 이 아니다 — label 대신 묶음 이름으로 알린다 */}
+        <span className="form-label" id={`${fieldId}-body`}>
+          상세 내용
+        </span>
         <div
           className="event-ck-editor-wrapper rounded-lg overflow-hidden
                         border border-slate-200 dark:border-slate-700"

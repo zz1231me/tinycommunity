@@ -156,16 +156,20 @@ const CKEditorWrapper: React.FC<CKEditorWrapperProps> = ({
           예전에는 분할 보기 토글이 위쪽에 자기 줄을 하나 차지해, 태그와 내용 사이에
           80px 가까운 빈 띠가 생겼다 — 무엇을 조작하는 버튼인지도 멀어서 알기 어려웠다. */}
       <div className="mb-2 flex items-center justify-between gap-2">
-        <label
+        <span
           id="post-editor-label"
           className="block text-sm font-semibold text-slate-900 dark:text-slate-100"
         >
           내용
-        </label>
+        </span>
         {headerAction}
       </div>
       <MentionAutocomplete editor={mentionEditor} />
-      <div className="ck-editor-wrapper post-ck-editor-wrapper">
+      <div
+        className="ck-editor-wrapper post-ck-editor-wrapper"
+        role="group"
+        aria-labelledby="post-editor-label"
+      >
         <CKEditor
           editor={ClassicEditor}
           config={editorConfig}

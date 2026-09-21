@@ -1,5 +1,5 @@
 // client/src/components/boards/ReportButton.tsx - 신고 버튼 + 모달
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { createReport, ReportReason, ReportTargetType, REASON_LABELS } from '../../api/reports';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
@@ -10,6 +10,8 @@ interface ReportButtonProps {
 }
 
 export function ReportButton({ targetType, targetId, className = '' }: ReportButtonProps) {
+  // 이 단추는 글·댓글마다 하나씩 그려진다 — 라벨을 이어 줄 id 도 그만큼 달라야 한다
+  const fieldId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [reason, setReason] = useState<ReportReason>('spam');
   const [description, setDescription] = useState('');
@@ -162,10 +164,15 @@ export function ReportButton({ targetType, targetId, className = '' }: ReportBut
                 <>
                   {/* 신고 사유 */}
                   <div className="mb-4">
-                    <label className="form-label">
+                    {/* 입력칸이 아니라 단추 묶음이라 label 로 이을 수 없다 */}
+                    <span className="form-label" id={`${fieldId}-reason`}>
                       신고 사유 <span className="text-red-500">*</span>
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
+                    </span>
+                    <div
+                      className="grid grid-cols-2 gap-2"
+                      role="group"
+                      aria-labelledby={`${fieldId}-reason`}
+                    >
                       {(Object.entries(REASON_LABELS) as [ReportReason, string][]).map(
                         ([value, label]) => (
                           <button
@@ -186,10 +193,11 @@ export function ReportButton({ targetType, targetId, className = '' }: ReportBut
 
                   {/* 상세 설명 */}
                   <div className="mb-4">
-                    <label className="form-label">
+                    <label className="form-label" htmlFor={`${fieldId}-desc`}>
                       상세 설명 <span className="text-slate-400 font-normal">(선택)</span>
                     </label>
                     <textarea
+                      id={`${fieldId}-desc`}
                       value={description}
                       onChange={e => setDescription(e.target.value)}
                       maxLength={500}

@@ -135,8 +135,11 @@ export function BookmarkManagement() {
       <AdminSection title="북마크 추가">
         <div className="flex flex-wrap gap-3 items-end">
           <div>
-            <label className="form-label">이름</label>
+            <label className="form-label" htmlFor="bm-name">
+              이름
+            </label>
             <input
+              id="bm-name"
               type="text"
               value={formData.name}
               onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -145,8 +148,11 @@ export function BookmarkManagement() {
             />
           </div>
           <div>
-            <label className="form-label">URL</label>
+            <label className="form-label" htmlFor="bm-url">
+              URL
+            </label>
             <input
+              id="bm-url"
               type="text"
               value={formData.url}
               onChange={e => setFormData({ ...formData, url: e.target.value })}

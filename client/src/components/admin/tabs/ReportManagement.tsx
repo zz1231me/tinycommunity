@@ -278,8 +278,11 @@ export const ReportManagement = React.memo(() => {
             </h3>
 
             <div className="mb-4">
-              <label className="form-label">처리 결과</label>
-              <div className="grid grid-cols-3 gap-2">
+              {/* 입력칸이 아니라 단추 묶음이라 label 로 이을 수 없다 — 묶음 이름으로 알린다 */}
+              <span className="form-label" id="rpt-status">
+                처리 결과
+              </span>
+              <div className="grid grid-cols-3 gap-2" role="group" aria-labelledby="rpt-status">
                 {(
                   [
                     { value: 'reviewed', label: '검토 완료' },
@@ -303,10 +306,11 @@ export const ReportManagement = React.memo(() => {
             </div>
 
             <div className="mb-4">
-              <label className="form-label">
+              <label className="form-label" htmlFor="rpt-note">
                 처리 메모 <span className="text-slate-400 font-normal">(선택)</span>
               </label>
               <textarea
+                id="rpt-note"
                 value={reviewNote}
                 onChange={e => setReviewNote(e.target.value)}
                 rows={3}

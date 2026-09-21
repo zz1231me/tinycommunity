@@ -86,8 +86,11 @@ export default function LoginTwoFactor() {
           {/* 폼 */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="form-label">인증 코드</label>
+              <label className="form-label" htmlFor="login2fa-code">
+                인증 코드
+              </label>
               <input
+                id="login2fa-code"
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"

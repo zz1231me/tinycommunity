@@ -80,7 +80,12 @@ const FallbackEditor = forwardRef<FallbackEditorRef, FallbackEditorProps>((props
 
   return (
     <div className="space-y-3 w-full">
-      <label className="block text-sm font-semibold text-slate-900 dark:text-slate-100">내용</label>
+      <label
+        className="block text-sm font-semibold text-slate-900 dark:text-slate-100"
+        htmlFor="fallback-editor-body"
+      >
+        내용
+      </label>
 
       {/* 마크다운 툴바 */}
       <div className="flex flex-wrap gap-2 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-lg">
@@ -145,6 +150,7 @@ const FallbackEditor = forwardRef<FallbackEditorRef, FallbackEditorProps>((props
       {/* 텍스트 영역 */}
       <div className="border border-slate-200 dark:border-slate-700 rounded-b-lg overflow-hidden">
         <textarea
+          id="fallback-editor-body"
           ref={textareaRef}
           value={content}
           onChange={handleContentChange}

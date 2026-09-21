@@ -290,8 +290,11 @@ export const CustomPageManagement = () => {
           {/* 공통: 제목 / slug */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="form-label">제목 *</label>
+              <label className="form-label" htmlFor="cp-title">
+                제목 *
+              </label>
               <input
+                id="cp-title"
                 className="input"
                 value={form.title}
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
@@ -299,8 +302,11 @@ export const CustomPageManagement = () => {
               />
             </div>
             <div>
-              <label className="form-label">주소(slug) *</label>
+              <label className="form-label" htmlFor="cp-slug">
+                주소(slug) *
+              </label>
               <input
+                id="cp-slug"
                 className="input font-mono"
                 value={form.slug}
                 onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}
@@ -316,9 +322,12 @@ export const CustomPageManagement = () => {
           {/* 모드별 본문 */}
           {mode === 'html' ? (
             <div>
-              <label className="form-label">HTML</label>
+              <label className="form-label" htmlFor="cp-html">
+                HTML
+              </label>
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 <textarea
+                  id="cp-html"
                   className="input min-h-[360px] font-mono text-xs leading-relaxed"
                   value={form.html}
                   onChange={e => setForm(f => ({ ...f, html: e.target.value }))}
@@ -341,8 +350,11 @@ export const CustomPageManagement = () => {
           ) : mode === 'url' ? (
             <div className="space-y-3">
               <div>
-                <label className="form-label">임베드할 URL *</label>
+                <label className="form-label" htmlFor="cp-embed-url">
+                  임베드할 URL *
+                </label>
                 <input
+                  id="cp-embed-url"
                   className="input font-mono"
                   type="url"
                   inputMode="url"
@@ -389,7 +401,8 @@ export const CustomPageManagement = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              <label className="form-label">폴더(ZIP) 업로드</label>
+              {/* 아래 드롭존이 이미 파일 칸을 감싼 라벨이다 — 여기는 제목일 뿐이라 span */}
+              <span className="form-label">폴더(ZIP) 업로드</span>
               {/* 드롭존/파일선택 */}
               <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 py-8 text-center transition-colors hover:border-secondary-400 hover:bg-secondary-50/40 dark:border-slate-700 dark:hover:border-secondary-600 dark:hover:bg-secondary-900/10">
                 <UploadCloud className="h-8 w-8 text-slate-400" />
@@ -422,8 +435,11 @@ export const CustomPageManagement = () => {
               {/* 진입 파일 선택 (업로드/편집으로 목록이 있을 때) */}
               {bundleHtmlFiles.length > 0 && (
                 <div>
-                  <label className="form-label">처음 열릴 파일</label>
+                  <label className="form-label" htmlFor="cp-entry-file">
+                    처음 열릴 파일
+                  </label>
                   <select
+                    id="cp-entry-file"
                     className="input"
                     value={bundleEntry}
                     onChange={e => setBundleEntry(e.target.value)}

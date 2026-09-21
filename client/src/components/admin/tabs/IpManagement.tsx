@@ -203,8 +203,11 @@ const IpManagement: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* 타입 */}
             <div>
-              <label className="form-label">규칙 유형</label>
+              <label className="form-label" htmlFor="ip-rule-type">
+                규칙 유형
+              </label>
               <select
+                id="ip-rule-type"
                 value={formType}
                 onChange={e => setFormType(e.target.value as IpRuleType)}
                 className="input-field w-full"
@@ -215,8 +218,11 @@ const IpManagement: React.FC = () => {
             </div>
             {/* IP */}
             <div>
-              <label className="form-label">IP 주소 / CIDR</label>
+              <label className="form-label" htmlFor="ip-address">
+                IP 주소 / CIDR
+              </label>
               <input
+                id="ip-address"
                 type="text"
                 value={formIp}
                 onChange={e => setFormIp(e.target.value)}
@@ -226,8 +232,11 @@ const IpManagement: React.FC = () => {
             </div>
             {/* 설명 */}
             <div>
-              <label className="form-label">설명 (선택)</label>
+              <label className="form-label" htmlFor="ip-desc">
+                설명 (선택)
+              </label>
               <input
+                id="ip-desc"
                 type="text"
                 value={formDesc}
                 onChange={e => setFormDesc(e.target.value)}

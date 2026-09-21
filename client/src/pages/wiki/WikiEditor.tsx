@@ -443,10 +443,11 @@ export const WikiEditor: React.FC<WikiEditorProps> = ({
         {/* 제목 + 슬러그 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="form-label">
+            <label className="form-label" htmlFor="wiki-title">
               제목 <span className="text-red-500">*</span>
             </label>
             <input
+              id="wiki-title"
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
@@ -456,7 +457,7 @@ export const WikiEditor: React.FC<WikiEditorProps> = ({
             />
           </div>
           <div>
-            <label className="form-label">
+            <label className="form-label" htmlFor="wiki-slug">
               슬러그 (URL) <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -464,6 +465,7 @@ export const WikiEditor: React.FC<WikiEditorProps> = ({
                 /
               </span>
               <input
+                id="wiki-slug"
                 type="text"
                 value={slug}
                 onChange={e => {
@@ -490,8 +492,11 @@ export const WikiEditor: React.FC<WikiEditorProps> = ({
         {/* 상위 페이지 + 공개 여부 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="form-label">상위 페이지</label>
+            <label className="form-label" htmlFor="wiki-parent">
+              상위 페이지
+            </label>
             <select
+              id="wiki-parent"
               value={parentId ?? ''}
               onChange={e => {
                 const val = parseInt(e.target.value);
@@ -539,8 +544,15 @@ export const WikiEditor: React.FC<WikiEditorProps> = ({
 
         {/* CKEditor 내용 */}
         <div>
-          <label className="form-label">내용</label>
-          <div className="wiki-ck-editor-wrapper border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
+          {/* CKEditor 는 input 이 아니다 — label 대신 묶음 이름으로 알린다 */}
+          <span className="form-label" id="wiki-body-label">
+            내용
+          </span>
+          <div
+            role="group"
+            aria-labelledby="wiki-body-label"
+            className="wiki-ck-editor-wrapper border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden"
+          >
             <CKEditor
               editor={ClassicEditor}
               config={editorConfig}

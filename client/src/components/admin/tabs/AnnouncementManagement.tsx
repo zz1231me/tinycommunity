@@ -180,8 +180,11 @@ export const AnnouncementManagement = () => {
       >
         <div className="space-y-4">
           <div>
-            <label className="form-label">제목 *</label>
+            <label className="form-label" htmlFor="ann-title">
+              제목 *
+            </label>
             <input
+              id="ann-title"
               className="input"
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
@@ -190,8 +193,11 @@ export const AnnouncementManagement = () => {
           </div>
 
           <div>
-            <label className="form-label">내용</label>
+            <label className="form-label" htmlFor="ann-content">
+              내용
+            </label>
             <textarea
+              id="ann-content"
               className="input min-h-[120px] leading-relaxed"
               value={form.content}
               onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
@@ -201,8 +207,11 @@ export const AnnouncementManagement = () => {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="form-label">게시 시작일</label>
+              <label className="form-label" htmlFor="ann-start">
+                게시 시작일
+              </label>
               <input
+                id="ann-start"
                 type="date"
                 className="input"
                 value={form.startDate}
@@ -210,10 +219,11 @@ export const AnnouncementManagement = () => {
               />
             </div>
             <div>
-              <label className="form-label">
+              <label className="form-label" htmlFor="ann-end">
                 게시 종료일 <span className="font-normal text-slate-400">(비우면 무기한)</span>
               </label>
               <input
+                id="ann-end"
                 type="date"
                 className="input"
                 min={form.startDate}

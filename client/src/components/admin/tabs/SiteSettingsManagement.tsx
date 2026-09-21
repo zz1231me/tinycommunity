@@ -845,8 +845,11 @@ export const SiteSettingsManagement = () => {
       {/* ── 6. 로그인 페이지 설정 ─────────────────────────────────────────── */}
       <AdminSection title="로그인 페이지 설정">
         <div>
-          <label className="form-label">로그인 페이지 안내 메시지</label>
+          <label className="form-label" htmlFor="site-login-notice">
+            로그인 페이지 안내 메시지
+          </label>
           <textarea
+            id="site-login-notice"
             value={settings.loginMessage ?? ''}
             onChange={e => set('loginMessage', e.target.value || null)}
             rows={3}

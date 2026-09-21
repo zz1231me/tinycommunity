@@ -302,8 +302,11 @@ export const TwoFactorSettings = () => {
 
             {/* 인증 코드 입력 */}
             <div>
-              <label className="form-label">인증 코드 입력</label>
+              <label className="form-label" htmlFor="tfa-code">
+                인증 코드 입력
+              </label>
               <input
+                id="tfa-code"
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
