@@ -10,7 +10,7 @@ import { toast } from '../../../utils/toast';
 import { ListState } from '../../common/ListState';
 
 export const RoleManagement = () => {
-  const { roles, addRole, updateRole, deleteRole, loading } = useRoleManagement();
+  const { roles, addRole, updateRole, deleteRole, loading, fetchError } = useRoleManagement();
   const { user: currentUser } = useAuth();
 
   const [roleForm, setRoleForm] = useState({ id: '', name: '', description: '' });
@@ -131,7 +131,15 @@ export const RoleManagement = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {roles.length === 0 ? (
+              {fetchError ? (
+                <tr>
+                  {/* 훅이 실패를 알려 주는데 화면이 받아 쓰지 않아, 못 불러온 것이
+                      '등록된 역할이 없습니다' 로 보였다 */}
+                  <td colSpan={5}>
+                    <ListState>{fetchError}</ListState>
+                  </td>
+                </tr>
+              ) : roles.length === 0 ? (
                 <tr>
                   <td colSpan={5}>
                     <ListState>등록된 역할이 없습니다.</ListState>

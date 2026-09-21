@@ -30,7 +30,7 @@ import { LoadingSpinner } from '../common/LoadingSpinner';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import { toast } from '../../../utils/toast';
 import { getApiErrorMessage } from '../../../api/utils';
-import { ListState } from '../../common/ListState';
+import { ListState, ListError } from '../../common/ListState';
 
 const EMPTY: CustomPageInput = {
   slug: '',
@@ -58,7 +58,11 @@ export const CustomPageManagement = () => {
   const [bundleHtmlFiles, setBundleHtmlFiles] = useState<string[]>([]);
   const [editingSlug, setEditingSlug] = useState(''); // 편집 시작 시점의 서버 slug(미리보기 링크용)
 
-  const { data: pages = [], isPending: loading } = useQuery<CustomPage[]>({
+  const {
+    data: pages = [],
+    isPending: loading,
+    isError,
+  } = useQuery<CustomPage[]>({
     queryKey: adminKeys.customPages.all,
     queryFn: fetchAllPages,
   });
@@ -494,7 +498,9 @@ export const CustomPageManagement = () => {
           </button>
         }
       >
-        {pages.length === 0 ? (
+        {isError ? (
+          <ListError what="페이지 목록" />
+        ) : pages.length === 0 ? (
           <ListState size="roomy">아직 페이지가 없습니다. “새 페이지”로 만들어보세요.</ListState>
         ) : (
           <div className="space-y-2">

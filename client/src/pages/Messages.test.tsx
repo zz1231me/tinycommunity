@@ -38,7 +38,11 @@ vi.mock('../components/messages/NewConversationButton', () => ({
 
 // PageContainer 의 등장 애니메이션은 happy-dom 에서 언마운트할 때 취소되며
 // 잡히지 않는 AbortError 를 남긴다. 여기서 볼 것과 무관하므로 평범한 div 로 바꾼다.
-vi.mock('framer-motion', () => ({ motion: new Proxy({}, { get: () => 'div' }) }));
+// 확인 대화상자(ConfirmationModal)가 AnimatePresence 도 쓴다 — 함께 대신해 둔다
+vi.mock('framer-motion', () => ({
+  motion: new Proxy({}, { get: () => 'div' }),
+  AnimatePresence: ({ children }: { children?: unknown }) => children,
+}));
 
 const CONVERSATION_ID = 'CONV1';
 

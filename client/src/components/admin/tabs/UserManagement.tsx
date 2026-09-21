@@ -42,8 +42,17 @@ const lastSeenOf = (u: User): string | null => {
 
 export const UserManagement = () => {
   const { user: currentUser } = useAuth();
-  const { users, roles, fetchUsers, addUser, updateUserRole, deleteUser, resetPassword, loading } =
-    useUserManagement();
+  const {
+    users,
+    roles,
+    fetchUsers,
+    addUser,
+    updateUserRole,
+    deleteUser,
+    resetPassword,
+    loading,
+    fetchError,
+  } = useUserManagement();
 
   const [userForm, setUserForm] = useState({ id: '', name: '', role: '' });
   const [newUserInfo, setNewUserInfo] = useState<{ id: string; password: string } | null>(null);
@@ -793,7 +802,13 @@ export const UserManagement = () => {
               ))}
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {table.getRowModel().rows.length === 0 ? (
+              {fetchError ? (
+                <tr>
+                  <td colSpan={columns.length}>
+                    <ListState>{fetchError}</ListState>
+                  </td>
+                </tr>
+              ) : table.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length}>
                     <ListState>

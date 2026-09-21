@@ -13,7 +13,7 @@ import { AdminSection } from '../common/AdminSection';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import { toast } from '../../../utils/toast';
-import { ListState } from '../../common/ListState';
+import { ListState, ListError } from '../../common/ListState';
 
 export function BookmarkManagement() {
   const queryClient = useQueryClient();
@@ -23,7 +23,11 @@ export function BookmarkManagement() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // isPending 은 '첫 로드 중'만 참이므로, 재조회 때 목록이 스피너로 깜빡이지 않는다.
-  const { data: bookmarks = [], isPending: loading } = useQuery<Bookmark[]>({
+  const {
+    data: bookmarks = [],
+    isPending: loading,
+    isError,
+  } = useQuery<Bookmark[]>({
     queryKey: adminKeys.bookmarks.all,
     queryFn: fetchAllBookmarks,
   });
@@ -177,9 +181,16 @@ export function BookmarkManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {bookmarks.length === 0 ? (
+              {isError ? (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={5}>
+                    <ListError what="북마크" />
+                  </td>
+                </tr>
+              ) : bookmarks.length === 0 ? (
+                <tr>
+                  {/* 머리글이 다섯 칸이다 — 여섯으로 두면 없는 칸까지 걸쳐 줄이 어긋난다 */}
+                  <td colSpan={5}>
                     <ListState>등록된 북마크가 없습니다.</ListState>
                   </td>
                 </tr>

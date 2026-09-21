@@ -13,6 +13,8 @@ import { getApiErrorMessage } from '../api/utils';
 import { formatRelativeDate } from '../utils/date';
 import { toast } from '../utils/toast';
 import { useSiteSettings } from '../store/siteSettings';
+import { useState } from 'react';
+import { ConfirmationModal } from '../components/admin/common/ConfirmationModal';
 
 function DraftRow({
   draft,
@@ -73,6 +75,9 @@ function DraftRow({
 
 export default function Drafts() {
   const queryClient = useQueryClient();
+  // 되돌릴 수 없는 삭제라 한 번 묻는다 — 글·메모·일정·관리자 화면은 모두 그렇게 한다.
+  // 예전에는 휴지통을 누르는 즉시 사라져, 잘못 누르면 되찾을 길이 없었다.
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   // 관리자가 정한 "임시저장 만료 시간" — 자동 삭제 대신 오래된 초안 표시에 쓴다
   const expiryMinutes = useSiteSettings(s => s.settings.draftExpiryMinutes) ?? 60;
 
@@ -120,13 +125,25 @@ export default function Drafts() {
                   key={draft.id}
                   draft={draft}
                   stale={Date.now() - new Date(draft.updatedAt).getTime() > expiryMinutes * 60_000}
-                  onDelete={id => remove.mutate(id)}
+                  onDelete={id => setPendingDelete(id)}
                 />
               ))}
             </ul>
           )}
         </div>
       </section>
+
+      <ConfirmationModal
+        open={pendingDelete !== null}
+        title="이 임시저장을 지울까요?"
+        message="지우면 되돌릴 수 없습니다."
+        confirmLabel="삭제"
+        onConfirm={async () => {
+          if (pendingDelete) await remove.mutateAsync(pendingDelete);
+          setPendingDelete(null);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </PageContainer>
   );
 }

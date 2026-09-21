@@ -10,6 +10,7 @@ import { toast } from '../../../utils/toast';
 import { formatDateShort } from '../../../utils/date';
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
 import { SearchInput } from '../../common/SearchInput';
+import { ListError } from '../../common/ListState';
 
 type FileItem = AdminFileItem;
 
@@ -60,7 +61,11 @@ export const FileManagement = React.memo(() => {
   const confirmPanelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(confirmPanelRef, () => setConfirmDelete(null), !!confirmDelete);
 
-  const { data, isPending: loading } = useQuery({
+  const {
+    data,
+    isPending: loading,
+    isError,
+  } = useQuery({
     queryKey: adminKeys.files.list({ page, typeFilter, search: debouncedSearch }),
     queryFn: ({ signal }) =>
       fetchAdminFiles(
@@ -152,6 +157,8 @@ export const FileManagement = React.memo(() => {
       {/* 목록 */}
       {loading ? (
         <LoadingSpinner message="파일 목록 불러오는 중..." />
+      ) : isError ? (
+        <ListError what="파일 목록" />
       ) : files.length === 0 ? (
         <div className="text-center py-12 text-slate-400">
           <svg

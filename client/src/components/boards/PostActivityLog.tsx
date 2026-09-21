@@ -11,6 +11,7 @@ import { ChevronDown, FileText, History, Paperclip, PenLine, UserRound } from 'l
 import { fetchActivity, fetchWorkStatuses, type ActivityEntry } from '../../api/tasks';
 import { taskKeys } from '../../api/queryKeys';
 import { formatFullDateTime, formatRelativeDate, toISOString } from '../../utils/date';
+import { ListError } from '../common/ListState';
 
 /** 접었을 때 보여 줄 줄 수 — 대부분의 글은 이 안에서 끝난다 */
 const COLLAPSED_COUNT = 4;
@@ -33,7 +34,11 @@ interface Props {
 export function PostActivityLog({ boardType, postId, onOpenRevisions }: Props) {
   const [expanded, setExpanded] = useState(false);
 
-  const { data: entries = [], isLoading } = useQuery({
+  const {
+    data: entries = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: taskKeys.activity(boardType, postId),
     queryFn: ({ signal }) => fetchActivity(boardType, postId, signal),
     staleTime: 30_000,
@@ -48,6 +53,18 @@ export function PostActivityLog({ boardType, postId, onOpenRevisions }: Props) {
   });
   const statusLabel = (key: string | null | undefined) =>
     statuses.find(s => s.key === key)?.label ?? key ?? '없음';
+
+  // 실패는 조용히 감추지 않는다. 아무것도 안 그리면 '활동이 없는 글' 과 구분되지 않는다.
+  if (isError) {
+    return (
+      <section className="card overflow-hidden">
+        <header className="card-header">
+          <h2 className="card-title">활동 기록</h2>
+        </header>
+        <ListError what="활동 기록" />
+      </section>
+    );
+  }
 
   if (isLoading || entries.length === 0) return null;
 

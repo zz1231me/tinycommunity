@@ -242,8 +242,16 @@ function SortableBoardRow({
 }
 
 export const BoardManagement = () => {
-  const { boards, addBoard, updateBoard, reorderBoards, deleteBoard, loading, dataLoaded } =
-    useBoardManagement();
+  const {
+    boards,
+    addBoard,
+    updateBoard,
+    reorderBoards,
+    deleteBoard,
+    loading,
+    dataLoaded,
+    fetchError,
+  } = useBoardManagement();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -463,7 +471,15 @@ export const BoardManagement = () => {
                   <th className="admin-th text-right w-40">작업</th>
                 </tr>
               </thead>
-              {boards.length === 0 ? (
+              {fetchError ? (
+                <tbody>
+                  <tr>
+                    <td colSpan={8}>
+                      <ListState>{fetchError}</ListState>
+                    </td>
+                  </tr>
+                </tbody>
+              ) : boards.length === 0 ? (
                 <tbody>
                   <tr>
                     <td colSpan={8}>

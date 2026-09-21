@@ -17,6 +17,7 @@ import { LoadingSpinner } from '../common/LoadingSpinner';
 import { AdminSection } from '../common/AdminSection';
 import { toast } from '../../../utils/toast';
 import { formatDateShort } from '../../../utils/date';
+import { ListError } from '../../common/ListState';
 
 const STATUS_BADGE: Record<ReportStatus, string> = {
   pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
@@ -151,6 +152,9 @@ export const ReportManagement = React.memo(() => {
       {/* 목록 */}
       {loading ? (
         <LoadingSpinner message="신고 목록 불러오는 중..." />
+      ) : listQuery.isError ? (
+        // 못 불러온 것을 '신고 내역이 없습니다' 로 보여 주면, 밀린 신고를 없는 것으로 읽는다
+        <ListError what="신고 내역" />
       ) : reports.length === 0 ? (
         <div className="text-center py-12 text-slate-400">
           <svg

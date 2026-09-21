@@ -9,7 +9,7 @@ import { LoadingSpinner } from '../common/LoadingSpinner';
 import { AdminSection } from '../common/AdminSection';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import { toast } from '../../../utils/toast';
-import { ListState } from '../../common/ListState';
+import { ListState, ListError } from '../../common/ListState';
 
 // 태그 색 팔레트 — 새 태그마다 여기서 랜덤 기본색을 뽑고, 원클릭 스와치로도 제공.
 // (임의 RGB 대신 큐레이션 팔레트로 대비·톤을 보장)
@@ -38,7 +38,11 @@ const TagManagement = () => {
   const [form, setForm] = useState({ name: '', color: randomTagColor(), description: '' });
   const [confirmDeleteId, setConfirmDeleteId] = useState<{ id: number; name: string } | null>(null);
 
-  const { data: boards = [], isPending: loadingBoards } = useQuery<BoardWithManagers[]>({
+  const {
+    data: boards = [],
+    isPending: loadingBoards,
+    isError: boardsFailed,
+  } = useQuery<BoardWithManagers[]>({
     queryKey: adminKeys.boardManagers.all,
     queryFn: getAllBoardsWithManagers,
   });
@@ -152,6 +156,12 @@ const TagManagement = () => {
               게시판 선택
             </h3>
             <div className="space-y-1.5 max-h-96 overflow-y-auto">
+              {/* 게시판을 못 불러오면 고를 것이 하나도 없는 빈 칸이 된다 — 왜인지 밝힌다
+                  (태그 목록 쪽은 이미 이렇게 한다) */}
+              {boardsFailed && <ListError what="게시판 목록" />}
+              {!boardsFailed && !loadingBoards && boards.length === 0 && (
+                <ListState>게시판이 없습니다.</ListState>
+              )}
               {boards.map(board => (
                 <button
                   key={board.id}

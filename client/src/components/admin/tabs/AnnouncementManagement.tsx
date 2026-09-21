@@ -16,7 +16,7 @@ import { LoadingSpinner } from '../common/LoadingSpinner';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import { toast } from '../../../utils/toast';
 import { getApiErrorMessage } from '../../../api/utils';
-import { ListState } from '../../common/ListState';
+import { ListState, ListError } from '../../common/ListState';
 
 interface FormState {
   title: string;
@@ -94,7 +94,11 @@ export const AnnouncementManagement = () => {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [confirmDelete, setConfirmDelete] = useState<Announcement | null>(null);
 
-  const { data: items = [], isPending: loading } = useQuery<Announcement[]>({
+  const {
+    data: items = [],
+    isPending: loading,
+    isError,
+  } = useQuery<Announcement[]>({
     queryKey: adminKeys.announcements.all,
     queryFn: fetchAllAnnouncements,
   });
@@ -265,7 +269,10 @@ export const AnnouncementManagement = () => {
           </button>
         }
       >
-        {items.length === 0 ? (
+        {isError ? (
+          // 못 불러온 것을 '없다' 로 보여 주면, 있는 공지가 사라진 것으로 읽힌다
+          <ListError what="공지" />
+        ) : items.length === 0 ? (
           <ListState size="roomy">등록된 공지가 없습니다.</ListState>
         ) : (
           <div className="space-y-2">

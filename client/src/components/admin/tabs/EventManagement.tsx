@@ -35,6 +35,7 @@ export const EventManagement = () => {
     loading,
     dataLoaded,
     permissionsError,
+    fetchError,
   } = useEventManagement();
 
   // 이벤트 목록은 useQuery 가 자동으로 가져온다. 권한은 로컬 관리라 한 번만 로드.
@@ -285,9 +286,12 @@ export const EventManagement = () => {
                 <tr>
                   <td colSpan={5}>
                     <ListState>
-                      {events.length === 0
-                        ? '등록된 일정이 없습니다.'
-                        : '조건에 맞는 일정이 없습니다.'}
+                      {/* 못 불러온 것을 '없다' 로 보여 주면 있는 일정이 사라진 것으로 읽힌다 */}
+                      {fetchError
+                        ? fetchError
+                        : events.length === 0
+                          ? '등록된 일정이 없습니다.'
+                          : '조건에 맞는 일정이 없습니다.'}
                     </ListState>
                   </td>
                 </tr>

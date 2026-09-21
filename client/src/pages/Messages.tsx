@@ -36,6 +36,7 @@ import {
 import { formatFullDateTime, formatRelativeDate } from '../utils/date';
 import { toast } from '../utils/toast';
 import { useSubmitLock } from '../hooks/useSubmitLock';
+import { ConfirmationModal } from '../components/admin/common/ConfirmationModal';
 
 function ConversationRow({
   conversation,
@@ -95,6 +96,8 @@ function ConversationRow({
 function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: () => void }) {
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState('');
+  // 지우기는 한 번 묻는다 — 내 목록에서만 사라지지만 되돌릴 수 없다
+  const [confirmHide, setConfirmHide] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // 서버는 커서로 이전 메시지를 더 주는데 화면에는 그것을 불러올 방법이 없었다.
@@ -210,7 +213,7 @@ function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: 
         </span>
         <button
           type="button"
-          onClick={() => hide.mutate()}
+          onClick={() => setConfirmHide(true)}
           disabled={hide.isPending}
           aria-label="대화 지우기"
           title="내 목록에서만 지웁니다"
@@ -303,6 +306,18 @@ function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: 
           </p>
         )}
       </div>
+
+      <ConfirmationModal
+        open={confirmHide}
+        title="이 대화를 지울까요?"
+        message="내 목록에서만 지웁니다. 상대에게는 그대로 남고, 되돌릴 수 없습니다."
+        confirmLabel="지우기"
+        onConfirm={async () => {
+          await hide.mutateAsync();
+          setConfirmHide(false);
+        }}
+        onCancel={() => setConfirmHide(false)}
+      />
     </div>
   );
 }
