@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
-import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // happy-dom 에서 애니메이션이 취소되면 잡히지 않는 AbortError 를 남긴다
@@ -30,16 +30,24 @@ vi.mock('../../store/siteSettings', () => ({
 
 import PostList from './PostList';
 
-/** 지금 주소를 화면에 적어 두고 검사에 쓴다 */
+/** 지금 주소를 화면에 적어 두고 검사에 쓴다. 뒤로가기 단추도 함께 둔다. */
 function ShowUrl() {
   const loc = useLocation();
-  return <div data-testid="url">{loc.pathname + loc.search}</div>;
+  const navigate = useNavigate();
+  return (
+    <>
+      <div data-testid="url">{loc.pathname + loc.search}</div>
+      <button onClick={() => navigate(-1)}>뒤로</button>
+    </>
+  );
 }
 
-const renderAt = (entry: string) =>
+const renderAt = (...entries: string[]) =>
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter initialEntries={[entry]}>
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <MemoryRouter initialEntries={entries} initialIndex={entries.length - 1}>
         <ShowUrl />
         <Routes>
           <Route path="/dashboard/posts/:boardType" element={<PostList />} />
@@ -83,5 +91,15 @@ describe('목록의 검색 조건', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('목록에 머문 채 뒤로 가면 검색칸도 함께 돌아간다', async () => {
+    renderAt('/dashboard/posts/free', '/dashboard/posts/free?q=보고서');
+    await waitFor(() => expect(searchBox()).toHaveValue('보고서'));
+
+    fireEvent.click(screen.getByText('뒤로'));
+
+    await waitFor(() => expect(url()).toBe('/dashboard/posts/free'));
+    await waitFor(() => expect(searchBox()).toHaveValue(''));
   });
 });

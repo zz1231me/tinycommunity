@@ -192,6 +192,15 @@ const PostList = () => {
     return () => clearTimeout(timer);
   }, [localSearch, setSearchParams]);
 
+  // 뒤로/앞으로 가면 주소의 q 만 바뀌고 검색칸은 그대로 남아, 주소와 목록이 어긋난다.
+  // 직접 적은 값(prevLocalSearch)과 다를 때만 되돌려 놓아 디바운스와 부딪히지 않게 한다.
+  useEffect(() => {
+    if (urlSearch === prevLocalSearch.current) return;
+    prevLocalSearch.current = urlSearch;
+    setLocalSearch(urlSearch);
+    setDebouncedSearch(urlSearch);
+  }, [urlSearch]);
+
   // 게시판이 바뀌면 필터를 초기화한다. page 는 URL 이 달라지며 함께 초기화된다.
   // 처음 그릴 때는 비우지 않는다 — 주소에 담겨 온 검색어(?q=)를 곧바로 지워 버리면
   // 뒤로가기로 돌아와도 검색이 사라진다.
