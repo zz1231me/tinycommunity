@@ -4,6 +4,7 @@ import { LoadingSpinner } from '../components/common/LoadingStates';
 import { Link } from 'react-router-dom';
 import { requestPasswordReset, verifyPasswordReset } from '../api/auth';
 import { useSiteSettings } from '../store/siteSettings';
+import { messageFor } from '../api/transportError';
 
 type Step = 'request' | 'verify' | 'done';
 
@@ -38,7 +39,7 @@ function PasswordResetRequest() {
       setNotice(res.message);
       setStep('verify');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '요청 처리 중 오류가 발생했습니다.');
+      setError(messageFor(err, '요청 처리 중 오류가 발생했습니다.'));
     } finally {
       setIsLoading(false);
     }
@@ -52,7 +53,7 @@ function PasswordResetRequest() {
       setNotice('인증번호를 다시 발급했습니다. 관리자에게 새 인증번호를 확인해주세요.');
       setCode('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '재발급 중 오류가 발생했습니다.');
+      setError(messageFor(err, '재발급 중 오류가 발생했습니다.'));
     } finally {
       setIsLoading(false);
     }
@@ -70,7 +71,7 @@ function PasswordResetRequest() {
       await verifyPasswordReset(loginId.trim(), code, password);
       setStep('done');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '비밀번호 변경 중 오류가 발생했습니다.');
+      setError(messageFor(err, '비밀번호 변경 중 오류가 발생했습니다.'));
     } finally {
       setIsLoading(false);
     }

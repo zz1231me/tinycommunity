@@ -8,6 +8,7 @@ import { getSiteSettings } from '../api/siteSettings';
 import { login as loginAPI } from '../api/auth';
 import { logger, authLogger } from '../utils/logger';
 import { useTheme } from '../contexts/ThemeContext';
+import { messageFor } from '../api/transportError';
 
 function Login() {
   const { setUser, isAuthenticated } = useAuth();
@@ -109,8 +110,7 @@ function Login() {
         replace: true,
       });
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : '아이디 또는 비밀번호가 올바르지 않습니다.';
+      const message = messageFor(err, '아이디 또는 비밀번호가 올바르지 않습니다.');
       authLogger.error('로그인 실패', { error: message });
       setError(message);
     } finally {

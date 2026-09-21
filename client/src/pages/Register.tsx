@@ -14,6 +14,7 @@ import { register } from '../api/auth';
 import { useSiteSettings } from '../store/siteSettings';
 import { logger } from '../utils/logger';
 import { PasswordRequirements } from '../components/common/PasswordRequirements';
+import { messageFor } from '../api/transportError';
 
 function Register() {
   const { settings } = useSiteSettings();
@@ -122,7 +123,7 @@ function Register() {
         },
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : '회원가입 중 오류가 발생했습니다.';
+      const message = messageFor(err, '회원가입 중 오류가 발생했습니다.');
       logger.error('회원가입 실패', err);
       setError(message);
     } finally {
