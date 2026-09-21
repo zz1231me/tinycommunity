@@ -60,7 +60,7 @@ const CalendarHeaderBase: React.FC<CalendarHeaderProps> = ({
               onClick={onPrev}
               aria-label="이전 달"
               title="이전"
-              className="p-1.5 rounded-md text-slate-500 dark:text-slate-400
+              className="p-2.5 rounded-md text-slate-500 dark:text-slate-400
                          hover:bg-white dark:hover:bg-slate-700
                          hover:text-slate-800 dark:hover:text-slate-200
                          hover:shadow-sm transition-all duration-150"
@@ -84,7 +84,7 @@ const CalendarHeaderBase: React.FC<CalendarHeaderProps> = ({
               onClick={onNext}
               aria-label="다음 달"
               title="다음"
-              className="p-1.5 rounded-md text-slate-500 dark:text-slate-400
+              className="p-2.5 rounded-md text-slate-500 dark:text-slate-400
                          hover:bg-white dark:hover:bg-slate-700
                          hover:text-slate-800 dark:hover:text-slate-200
                          hover:shadow-sm transition-all duration-150"

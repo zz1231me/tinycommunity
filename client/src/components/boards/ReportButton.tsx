@@ -117,7 +117,7 @@ export function ReportButton({ targetType, targetId, className = '' }: ReportBut
                 ref={closeBtnRef}
                 onClick={handleClose}
                 aria-label="닫기"
-                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                className="tap-target p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
               >
                 <svg
                   aria-hidden="true"

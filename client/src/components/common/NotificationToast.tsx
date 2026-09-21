@@ -96,7 +96,7 @@ function ToastCard({ n, more, onClose }: { n: Notification; more: number; onClos
         type="button"
         onClick={onClose}
         aria-label="알림 닫기"
-        className="absolute right-2 top-2 rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+        className="tap-target absolute right-2 top-2 rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"
       >
         <X className="h-4 w-4" />
       </button>

@@ -186,7 +186,7 @@ function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: 
           type="button"
           onClick={onClosed}
           aria-label="대화 목록으로"
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 lg:hidden"
+          className="tap-target rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 lg:hidden"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>

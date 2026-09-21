@@ -418,11 +418,11 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
       {/* 컨트롤 UI */}
       <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-        <div className="flex items-center gap-1 bg-black/80 rounded-lg px-3 py-2 backdrop-blur-sm">
+        <div className="flex items-center gap-2 bg-black/80 rounded-lg px-3 py-2 backdrop-blur-sm">
           <button
             onClick={handleZoomOut}
             aria-label="축소"
-            className="text-white hover:text-blue-400 p-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-white hover:text-blue-400 p-2.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="축소 (-)"
             disabled={isLoading || error || scale <= minScale}
           >
@@ -443,7 +443,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
           <button
             onClick={handleZoomIn}
-            className="text-white hover:text-blue-400 p-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-white hover:text-blue-400 p-2.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="확대 (+)"
             disabled={isLoading || error || scale >= maxScale}
           >
@@ -466,7 +466,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
           <button
             onClick={handleResetZoom}
             aria-label="원본 크기"
-            className="text-white hover:text-blue-400 p-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-white hover:text-blue-400 p-2.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="원본 크기 (0)"
             disabled={isLoading || error}
           >

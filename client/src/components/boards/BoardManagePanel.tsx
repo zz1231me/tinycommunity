@@ -319,7 +319,7 @@ export function BoardManagePanel({
             ref={closeBtnRef}
             onClick={onClose}
             aria-label="닫기"
-            className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            className="tap-target p-2 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           >
             <svg
               aria-hidden="true"

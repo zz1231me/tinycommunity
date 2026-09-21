@@ -85,7 +85,7 @@ function ChecklistRow({ item, first, last, onPatch, onMove, onDelete }: RowProps
           type="button"
           onClick={onDelete}
           aria-label={`${item.label} 삭제`}
-          className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10"
+          className="tap-target rounded-md p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10"
         >
           <Trash2 className="h-4 w-4" />
         </button>

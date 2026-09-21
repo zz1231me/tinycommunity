@@ -97,7 +97,7 @@ export function RevisionHistory({
             type="button"
             onClick={onClose}
             aria-label={`${heading} 닫기`}
-            className="rounded p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
+            className="tap-target rounded p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
           >
             <X className="h-4 w-4" />
           </button>
