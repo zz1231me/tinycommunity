@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlarmClock, LogOut } from 'lucide-react';
 import { ModalShell } from '../common/ModalShell';
+import { useBlinkingTitle } from './useBlinkingTitle';
 import { attendanceKeys } from '../../api/queryKeys';
 import { checkOut as requestCheckOut, fetchMyAttendance } from '../../api/attendance';
 import { getApiErrorMessage } from '../../api/utils';
@@ -25,7 +26,6 @@ import { reminderRecord, notifyStage, type NoticeStage } from './reminderRule';
 /** 남은 시간을 다시 세어 보는 간격 */
 const CHECK_MS = 30_000;
 /** 탭 제목이 번갈아 바뀌는 간격 */
-const BLINK_MS = 1_000;
 
 const seenKey = (workDate: string, stage: NoticeStage) => `attendanceNotice:${workDate}:${stage}`;
 /** 단계를 나누기 전에 쓰던 표시 — 하루에 하나였다 */
@@ -48,24 +48,6 @@ function markNoticed(workDate: string, stage: NoticeStage): void {
   } catch {
     // localStorage 를 못 써도 알림 자체는 동작해야 한다 (그 세션에서 한 번 더 뜰 뿐)
   }
-}
-
-/** 알림이 떠 있는 동안 탭 제목을 번갈아 보여 준다 */
-function useBlinkingTitle(active: boolean, message: string): void {
-  useEffect(() => {
-    if (!active) return;
-    const original = document.title;
-    let on = false;
-    const timer = window.setInterval(() => {
-      on = !on;
-      document.title = on ? message : original;
-    }, BLINK_MS);
-    return () => {
-      window.clearInterval(timer);
-      // App 이 사이트 설정으로 제목을 다시 넣기 전까지의 값을 되돌린다
-      document.title = original;
-    };
-  }, [active, message]);
 }
 
 export function AttendanceReminder() {

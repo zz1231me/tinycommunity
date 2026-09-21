@@ -7,7 +7,7 @@
 //   · 관리자: 정상 사용(점검 모드를 끌 수 있어야 하므로) + 상단 안내 배너.
 //   · 그 외(비로그인/일반 사용자): 점검 안내 페이지. 단 로그인 경로는 열어둬 관리자가
 //     로그인해 점검을 해제할 수 있게 한다.
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Wrench } from 'lucide-react';
 import { useSiteSettings } from '../store/siteSettings';
@@ -45,16 +45,50 @@ const MaintenancePage: React.FC<{ message: string | null; siteName: string }> = 
   </div>
 );
 
+/**
+ * 배너 높이만큼 대시보드 틀을 줄인다.
+ * 예전에는 화면에 고정된 띠(fixed)라 자리를 차지하지 않아 머리글 위쪽 절반(로고·메뉴
+ * 단추)을 덮었고, 덮인 부분은 눌러도 배너가 먹었다. 이제 흐름 안의 줄로 두는 대신,
+ * 100vh 를 쓰는 틀이 그만큼 화면 밖으로 밀리지 않게 높이를 줄여 준다.
+ *
+ * 높이는 재서 쓴다. 글이 길어 좁은 화면에서는 두 줄이 되고, 글자 크기도 sm 에서
+ * 달라진다 — 고정값을 적어 두면 그때마다 어긋난다.
+ */
+function useMaintenanceBarSpace(barRef: React.RefObject<HTMLDivElement | null>, active: boolean) {
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!active) return;
+    root.classList.add('has-maintenance-bar');
+
+    const bar = barRef.current;
+    const apply = () => {
+      root.style.setProperty('--maintenance-bar-h', `${bar?.offsetHeight ?? 0}px`);
+    };
+    apply();
+    const ro = bar ? new ResizeObserver(apply) : null;
+    if (bar) ro?.observe(bar);
+
+    return () => {
+      ro?.disconnect();
+      root.classList.remove('has-maintenance-bar');
+      root.style.removeProperty('--maintenance-bar-h');
+    };
+  }, [barRef, active]);
+}
+
 export const MaintenanceGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const maintenanceMode = useSiteSettings(s => s.settings.maintenanceMode);
   const maintenanceMessage = useSiteSettings(s => s.settings.maintenanceMessage);
   const siteName = useSiteSettings(s => s.settings.siteName);
   const { isAuthenticated, getUserRole } = useAuth();
   const location = useLocation();
+  const isAdmin = isAuthenticated && getUserRole() === 'admin';
+
+  // 훅은 조기 반환보다 위에 둔다 — 렌더마다 호출 순서가 같아야 한다
+  const barRef = useRef<HTMLDivElement>(null);
+  useMaintenanceBarSpace(barRef, maintenanceMode && isAdmin);
 
   if (!maintenanceMode) return <>{children}</>;
-
-  const isAdmin = isAuthenticated && getUserRole() === 'admin';
 
   // 관리자가 아니고 인증/로그인 경로도 아니면 점검 페이지 표시
   if (!isAdmin && !AUTH_PATHS.includes(location.pathname)) {
@@ -65,7 +99,10 @@ export const MaintenanceGate: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <>
       {isAdmin && (
-        <div className="fixed top-0 inset-x-0 z-[60] bg-amber-500 text-white text-xs sm:text-sm text-center py-1.5 px-4 font-medium shadow">
+        <div
+          ref={barRef}
+          className="maintenance-bar bg-amber-500 text-white text-xs sm:text-sm text-center py-1.5 px-4 font-medium shadow"
+        >
           🔧 점검 모드가 켜져 있습니다 — 일반 사용자에게는 점검 안내가 표시됩니다. (관리자만 이용
           가능)
         </div>

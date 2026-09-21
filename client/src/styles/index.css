@@ -172,6 +172,15 @@ html.dark {
   color-scheme: dark;
 }
 
+/* ── 점검 배너가 켜져 있을 때의 화면 높이 ──────────────────────────────────
+ * 배너는 대시보드 틀 위에 줄 하나로 들어간다. 틀이 여전히 100vh 면 그만큼 아래가
+ * 화면 밖으로 밀려 목록 마지막 줄이 잘린다.
+ * 층(@layer) 밖에 둔다 — Tailwind 의 h-screen 은 utilities 층이라 components 층에
+ * 적으면 지고, 여기서는 이겨야 한다. */
+html.has-maintenance-bar .app-shell {
+  height: calc(100vh - var(--maintenance-bar-h, 0px));
+}
+
 body {
   font-family: var(--font-sans);
   @apply bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100;

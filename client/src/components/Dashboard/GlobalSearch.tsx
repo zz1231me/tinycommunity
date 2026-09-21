@@ -9,6 +9,7 @@ import { useAuthStore } from '../../store/auth';
 import { useSearchHistory } from '../../hooks/useSearchHistory';
 import { useUIOverlays } from '../../store/uiOverlays';
 import { lockScroll, unlockScroll } from '../../utils/scrollLock';
+import { hasOpenDialog } from '../../hooks/useFocusTrap';
 
 type ResultType = 'post' | 'wiki' | 'event' | 'memo';
 
@@ -171,18 +172,35 @@ export function GlobalSearch() {
 
   // ⌘K / Ctrl+K 전역 단축키
   useEffect(() => {
+    // 기능이 꺼져 있으면 그리지도 않는다 — 단축키만 살아 있으면 보이지 않는 검색이
+    // 열려 배경 스크롤이 잠기고, 화면에는 원인이 보이지 않는다
+    if (!featureEnabled) return;
+
     const handleGlobalKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsOpen(prev => !prev);
-        if (!isOpen) {
-          setTimeout(() => inputRef.current?.focus(), 100);
-        }
+      if (!(e.metaKey || e.ctrlKey) || e.key !== 'k') return;
+
+      // 글을 쓰는 중이면 그쪽 몫이다 — 편집기에서 Ctrl+K 는 링크 넣기다.
+      // 이 검색칸 안에서 누른 것은 닫으려는 뜻이므로 그대로 받는다.
+      const target = e.target instanceof Element ? e.target : null;
+      const inSearch = !!(target && searchRef.current?.contains(target));
+      const typing = !!target?.closest(
+        'input, textarea, select, [contenteditable="true"], .ck-editor'
+      );
+      if (typing && !inSearch) return;
+
+      // 대화상자가 떠 있으면 그 아래로 열린다 — 보이지도 않는 칸으로 포커스만 끌려가고,
+      // ESC 한 번에 검색과 대화상자가 함께 닫힌다
+      if (hasOpenDialog()) return;
+
+      e.preventDefault();
+      setIsOpen(prev => !prev);
+      if (!isOpen) {
+        setTimeout(() => inputRef.current?.focus(), 100);
       }
     };
     document.addEventListener('keydown', handleGlobalKey);
     return () => document.removeEventListener('keydown', handleGlobalKey);
-  }, [isOpen, setIsOpen]);
+  }, [featureEnabled, isOpen, setIsOpen]);
 
   const handleClickOutside = useCallback(
     (event: MouseEvent) => {
@@ -208,6 +226,8 @@ export function GlobalSearch() {
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        // 열린 사이에 대화상자가 떠올랐다면 ESC 는 그쪽 몫이다 — 둘이 함께 닫히지 않게
+        if (hasOpenDialog()) return;
         setIsOpen(false);
         return;
       }
@@ -231,8 +251,11 @@ export function GlobalSearch() {
     [setIsOpen]
   );
 
+  // 그리는 조건과 똑같이 건다 — 기능이 꺼져 아무것도 그리지 않는 동안 잠금만 남으면
+  // 페이지가 굳는다(바깥 클릭으로도 못 푼다 — 가리킬 패널이 없다)
+  const listening = featureEnabled && isOpen;
   useEffect(() => {
-    if (isOpen) {
+    if (listening) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleKeyDown);
       lockScroll();
@@ -240,9 +263,9 @@ export function GlobalSearch() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
-      if (isOpen) unlockScroll();
+      if (listening) unlockScroll();
     };
-  }, [isOpen, handleClickOutside, handleKeyDown]);
+  }, [listening, handleClickOutside, handleKeyDown]);
 
   useEffect(() => {
     return () => {

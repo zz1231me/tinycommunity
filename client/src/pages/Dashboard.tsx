@@ -56,7 +56,7 @@ function Dashboard() {
   }, [location.pathname, closeAll]);
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+    <div className="app-shell h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
       {/* 헤더 */}
       {/* 앱 바 — 반투명 유리가 아니라 불투명한 면으로 둔다.
           아래 내용이 비쳐 보이면 스크롤할 때마다 머리 부분이 미세하게 일렁여
