@@ -378,7 +378,13 @@ export class AttendanceService extends BaseService {
     summary: Omit<UserSummary, 'userId' | 'userName'>;
     policy: PolicyView;
   }> {
-    const target = /^\d{4}-\d{2}$/.test(month) ? month : today().slice(0, 7);
+    // 달까지 본다. /^\d{4}-\d{2}$/ 만 보던 때는 '2026-13' 이 통과해, 문자열 비교로 아무것도
+    // 걸리지 않는 조건이 되어 '그 달에는 기록이 없다' 처럼 조용히 빈 목록을 줬다.
+    const wellFormed =
+      /^\d{4}-\d{2}$/.test(month) &&
+      Number(month.slice(5, 7)) >= 1 &&
+      Number(month.slice(5, 7)) <= 12;
+    const target = wellFormed ? month : today().slice(0, 7);
     const [records, policy] = await Promise.all([
       AttendanceRecord.findAll({
         where: { UserId: userId, workDate: { [Op.between]: [`${target}-01`, `${target}-31`] } },
@@ -404,7 +410,8 @@ export class AttendanceService extends BaseService {
     page?: number;
     limit?: number;
   }): Promise<{ records: RecordView[]; total: number; page: number; totalPages: number }> {
-    const page = Math.max(1, params.page ?? 1);
+    // 위쪽도 막는다 — 아주 큰 page 는 offset 이 지수 표기가 되어 DB 가 거절했다(500)
+    const page = Math.min(1000, Math.max(1, params.page ?? 1));
     // 한 사람의 기록은 하루 한 건(attendance_user_date)이라 기간 상한(366일)만큼 한 번에
     // 줘도 무겁지 않다 — 날짜별 그래프가 한 페이지(30건)만 그리면 한 달도 다 못 담는다.
     // 전체 인원 조회는 그대로 100 건으로 묶는다.

@@ -26,7 +26,14 @@ const imagesDir = path.join(__dirname, '../../uploads/images');
  * @returns 안전한 절대경로 or null (검증 실패 시)
  */
 function resolveSecureFilePath(filename: string, baseDir: string): string | null {
-  const decoded = decodeURIComponent(filename);
+  // Express 5 는 경로 조각을 이미 풀어서 준다. 여기서 또 풀면 '%' 한 글자만 들어와도
+  // URIError 가 나 500 이 됐다(아래 허용 문자 검사가 진짜 방어선이다).
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(filename);
+  } catch {
+    return null;
+  }
   if (!/^[a-zA-Z0-9_\-\.]+$/.test(decoded) || decoded.includes('..')) {
     return null;
   }

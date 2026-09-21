@@ -62,7 +62,8 @@ export class SecurityLogService extends BaseService {
    * 로그 조회 (관리자용)
    */
   async getLogs(params: GetLogsDTO) {
-    const page = params.page || 1;
+    // 위쪽도 막는다 — 아주 큰 page 는 offset 이 지수 표기가 되어 DB 가 거절했다(500)
+    const page = Math.min(1000, Math.max(1, params.page || 1));
     const limit = params.limit || 20;
     const offset = (page - 1) * limit;
 

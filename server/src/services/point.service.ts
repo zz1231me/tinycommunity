@@ -313,7 +313,8 @@ export const pointService = {
       where: { UserId: userId },
       order: [['id', 'DESC']],
       limit: safeLimit,
-      offset: (Math.max(1, page) - 1) * safeLimit,
+      // 위쪽 상한이 없으면 아주 큰 page 에서 offset 이 지수 표기가 되어 DB 오류가 난다
+      offset: (Math.min(1000, Math.max(1, page)) - 1) * safeLimit,
     });
     return {
       entries: rows.map(r => ({

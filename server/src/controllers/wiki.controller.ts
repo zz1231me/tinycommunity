@@ -92,6 +92,11 @@ export const createPage = async (req: AuthRequest, res: Response): Promise<void>
   }
 
   const { slug, title, content, parentId, isPublished } = req.body;
+  // 문자열이 아니면 여기서 돌려보낸다 — 숫자·객체가 오면 .trim 에서 터져 500 이 됐다
+  if (typeof slug !== 'string')
+    return sendValidationError(res, 'slug', '슬러그는 문자열이어야 합니다.');
+  if (typeof title !== 'string')
+    return sendValidationError(res, 'title', '제목은 문자열이어야 합니다.');
   if (!slug || !slug.trim()) return sendValidationError(res, 'slug', '슬러그는 필수입니다.');
   if (!SLUG_REGEX.test(slug))
     return sendValidationError(

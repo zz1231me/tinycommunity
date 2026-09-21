@@ -187,8 +187,14 @@ export const getMyActivity = async (req: AuthRequest, res: Response): Promise<vo
 };
 
 // GET /api/users/search?q=name  → 사용자 이름 검색 (비밀글 대상 설정용)
+/** ?q=a&q=b 처럼 같은 이름이 두 번 오면 Express 는 배열을 준다 — 첫 값만 쓴다 */
+function asScalar(value: unknown): string {
+  if (Array.isArray(value)) return typeof value[0] === 'string' ? value[0] : '';
+  return typeof value === 'string' ? value : '';
+}
+
 export const searchUsers = async (req: AuthRequest, res: Response): Promise<void> => {
-  const q = ((req.query.q as string) || '').trim();
+  const q = asScalar(req.query.q).trim();
   if (q.length < 1) {
     sendSuccess(res, []);
     return;
@@ -196,7 +202,7 @@ export const searchUsers = async (req: AuthRequest, res: Response): Promise<void
 
   // 특정 게시판을 볼 수 있는 사람만 (담당자 지정처럼 대상이 제한된 경우).
   // 고를 수 없는 사람을 목록에 띄워 놓고 고른 뒤에 거절하면 고르는 사람만 헛수고한다.
-  const boardType = ((req.query.boardType as string) || '').trim();
+  const boardType = asScalar(req.query.boardType).trim();
 
   try {
     const audienceWhere = boardType ? await getBoardAudienceWhere(boardType) : undefined;

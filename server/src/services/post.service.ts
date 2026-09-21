@@ -684,6 +684,10 @@ export class PostService extends BaseService {
     // 비밀글 비밀번호 검증 및 해시
     let hashedPassword: string | null = null;
     if (isSecret && secretType === 'password') {
+      // 숫자·객체가 오면 truthy 라 그대로 .trim 까지 가 터졌다(500). 제목·본문처럼 형을 먼저 본다.
+      if (typeof secretPassword !== 'string') {
+        throw new AppError(400, '비밀글 비밀번호를 입력해주세요.');
+      }
       if (!secretPassword || secretPassword.trim().length < getPostSecretPasswordMinLength()) {
         throw new AppError(
           400,

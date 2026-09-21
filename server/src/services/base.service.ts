@@ -30,7 +30,9 @@ export abstract class BaseService {
    * 페이지네이션 파라미터를 안전하게 정규화
    */
   protected buildPagination(params: PaginationParams): PaginationResult {
-    const page = Math.max(1, params.page ?? PAGINATION.DEFAULT_PAGE);
+    // 위쪽도 막는다. 1e21 을 넘으면 offset 이 '3e+22' 같은 지수 표기로 질의에 실려
+    // DB 가 타입 오류를 내고 500 이 됐다(utils/pagination 은 이미 1000 으로 막고 있다).
+    const page = Math.min(1000, Math.max(1, params.page ?? PAGINATION.DEFAULT_PAGE));
     const limit = Math.min(
       Math.max(1, params.limit ?? PAGINATION.DEFAULT_LIMIT),
       PAGINATION.MAX_LIMIT
