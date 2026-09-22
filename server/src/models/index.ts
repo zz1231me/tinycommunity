@@ -49,6 +49,7 @@ import { AttendanceRecord } from './AttendanceRecord';
 import { AttendanceChecklistItem } from './AttendanceChecklistItem';
 import { AttendancePolicy } from './AttendancePolicy';
 import { AttendanceAttack } from './AttendanceAttack';
+import { PointAttack } from './PointAttack';
 
 // User 관련 관계
 
@@ -392,6 +393,9 @@ AttendanceRecord.belongsTo(User, { foreignKey: 'UserId', as: 'user' });
 AttendanceAttack.belongsTo(User, { foreignKey: 'attackerId', as: 'attacker' });
 AttendanceAttack.belongsTo(User, { foreignKey: 'targetId', as: 'target' });
 
+PointAttack.belongsTo(User, { foreignKey: 'attackerId', as: 'attacker' });
+PointAttack.belongsTo(User, { foreignKey: 'targetId', as: 'target' });
+
 // 포인트 관련 관계
 User.hasOne(UserPoint, { foreignKey: 'UserId', as: 'point', onDelete: 'CASCADE', hooks: true });
 UserPoint.belongsTo(User, { foreignKey: 'UserId', as: 'user' });
@@ -546,6 +550,7 @@ export {
   AttendanceChecklistItem,
   AttendancePolicy,
   AttendanceAttack,
+  PointAttack,
 };
 
 // 데이터베이스 동기화 헬퍼

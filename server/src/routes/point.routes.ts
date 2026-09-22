@@ -7,6 +7,7 @@ import {
   getMyPointHistory,
   getPointRanking,
 } from '../controllers/point.controller';
+import { getPointAttackState, halvePoints } from '../controllers/pointAttack.controller';
 import {
   getDuels,
   createDuel,
@@ -18,7 +19,12 @@ import {
 import { authenticate } from '../middlewares/auth.middleware';
 import { requireFeature } from '../middlewares/featureGate.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
-import { duelAcceptSchema, duelCreateSchema, duelTauntSchema } from '../validators/schemas';
+import {
+  duelAcceptSchema,
+  duelCreateSchema,
+  duelTauntSchema,
+  pointAttackSchema,
+} from '../validators/schemas';
 import { AuthRequest } from '../types/auth-request';
 
 const router = Router();
@@ -201,5 +207,44 @@ duels.delete(
 );
 
 router.use('/duels', duels);
+
+// 포인트 절반 날리기. 따로 끌 수 있고, 위의 requireFeature('tools.lottery') 로 포인트가 꺼지면 함께 닫힌다.
+const attack = Router();
+attack.use(requireFeature('tools.pointAttack'));
+
+/**
+ * @swagger
+ * /api/points/attack:
+ *   get:
+ *     summary: 포인트 절반 날리기의 값·확률과 오늘 남은 횟수
+ *     tags: [Points]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: 값, 성공 확률, 남은 횟수 }
+ */
+attack.get(
+  '/',
+  asyncHandler((req, res) => getPointAttackState(req as AuthRequest, res))
+);
+
+/**
+ * @swagger
+ * /api/points/attack/halve:
+ *   post:
+ *     summary: 한 번 던진다 (성공하면 상대 포인트의 절반이 사라진다)
+ *     description: 성공 여부는 서버가 정한다. 실패해도 값은 돌려주지 않으며, 누가 걸었는지는 상대에게 알리지 않는다.
+ *     tags: [Points]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: 성공 여부와 사라진 포인트 }
+ *       429: { description: 오늘 횟수를 모두 사용함 }
+ */
+attack.post(
+  '/halve',
+  validateBody(pointAttackSchema),
+  asyncHandler((req, res) => halvePoints(req as AuthRequest, res))
+);
+
+router.use('/attack', attack);
 
 export default router;

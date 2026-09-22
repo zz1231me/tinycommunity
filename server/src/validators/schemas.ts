@@ -119,6 +119,10 @@ export const createTagSchema = z.object({
 
 export const updateTagSchema = createTagSchema.partial();
 
+export const pointAttackSchema = z.object({
+  targetId: z.string().trim().min(1, '상대를 골라주세요.').max(50),
+});
+
 export const duelCreateSchema = z.object({
   opponentId: z.string().trim().min(1, '상대를 골라주세요.').max(50),
   // 여기서는 절대 상한만 막는다. 관리자가 정한 범위는 duel.service.create 가 검사한다.

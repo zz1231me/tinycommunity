@@ -179,6 +179,15 @@ export const FEATURES = {
     // 포인트 자체가 없으면 걸 것도 없다
     requires: ['tools.lottery'],
   },
+  'tools.pointAttack': {
+    label: '포인트 절반 날리기',
+    description:
+      '포인트를 내고 남에게 던집니다. 100번에 1번 통하며, 통하면 상대의 포인트 절반이 사라집니다(아무에게도 가지 않습니다). 누가 걸었는지는 상대에게 알리지 않습니다. 하루 횟수는 퇴근 공격권과 함께 셉니다.',
+    group: 'tools',
+    defaultEnabled: false,
+    // 포인트가 없으면 낼 것도 없앨 것도 없다
+    requires: ['tools.lottery'],
+  },
   'tools.attendance': {
     label: '출퇴근 기록',
     description: '직원이 출근·퇴근을 직접 기록하고, 관리자는 인원별 기록을 봅니다.',

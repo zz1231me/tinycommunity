@@ -143,3 +143,30 @@ export const fetchPointHistory = async (
   page = 1
 ): Promise<{ entries: PointEntry[]; total: number; page: number; totalPages: number }> =>
   unwrap(await api.get(`/points/history?page=${page}`));
+
+export interface PointAttackState {
+  /** 한 번 던지는 값. 실패해도 돌아오지 않는다. */
+  cost: number;
+  /** 성공 확률(%) */
+  successPercent: number;
+  balance: number;
+  dailyLimit: number;
+  /** 퇴근 공격권과 합쳐 센 오늘 사용 횟수 */
+  usedToday: number;
+  remainingToday: number;
+}
+
+export interface PointAttackResult {
+  succeeded: boolean;
+  /** 사라진 포인트. 실패하면 0. */
+  lost: number;
+  targetName: string;
+  /** 값을 낸 뒤 내 잔액 */
+  balance: number;
+}
+
+export const fetchPointAttackState = async (): Promise<PointAttackState> =>
+  unwrap(await api.get('/points/attack'));
+
+export const halvePoints = async (targetId: string): Promise<PointAttackResult> =>
+  unwrap(await api.post('/points/attack/halve', { targetId }));

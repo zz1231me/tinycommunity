@@ -22,6 +22,7 @@ import { LotteryPanel } from '../components/points/LotteryPanel';
 import { PointRanking } from '../components/points/PointRanking';
 import { DuelPanel } from '../components/points/DuelPanel';
 import { AttackPanel } from '../components/points/AttackPanel';
+import { HalvePanel } from '../components/points/HalvePanel';
 import { useFeature, type FeatureKey } from '../store/features';
 import { useAuth } from '../store/auth';
 import { useSiteSettings } from '../store/siteSettings';
@@ -130,6 +131,7 @@ export default function Profile() {
   const duelEnabled = useFeature('tools.pointDuel');
   // 공격권도 포인트로 사지만, 서버 스위치가 출퇴근 기능까지 요구해 이것만 따로 꺼져 있을 수 있다.
   const attackEnabled = useFeature('tools.attendanceAttack');
+  const halveEnabled = useFeature('tools.pointAttack');
   // 공격권을 쓰면 잔액이 준다. 뽑기 판도 다시 읽게 신호를 보내 한 화면에 서로 다른 잔액이 뜨지 않게 한다.
   const [pointsVersion, setPointsVersion] = useState(0);
   const bumpPoints = useCallback(() => setPointsVersion(v => v + 1), []);
@@ -639,6 +641,9 @@ export default function Profile() {
                 )}
                 {attackEnabled && (
                   <AttackPanel myId={user.id} refreshSignal={pointsVersion} onSpent={bumpPoints} />
+                )}
+                {halveEnabled && (
+                  <HalvePanel myId={user.id} refreshSignal={pointsVersion} onSpent={bumpPoints} />
                 )}
                 <PointRanking refreshSignal={pointsVersion} />
               </div>

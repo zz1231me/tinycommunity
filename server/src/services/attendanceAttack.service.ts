@@ -24,6 +24,7 @@ import {
   isAttackKind,
   type AttackKind,
 } from '../config/attendanceAttack';
+import { attacksUsedToday } from './attackQuota';
 import { getAttackSettings } from '../utils/settingsCache';
 import { notificationService } from './notification.service';
 import { logError } from '../utils/logger';
@@ -110,7 +111,8 @@ export const attendanceAttackService = {
     const [queue, balanceRow, usedToday] = await Promise.all([
       liveQueue(userId),
       UserPoint.findByPk(userId, { attributes: ['UserId', 'balance'] }),
-      AttendanceAttack.count({ where: { attackerId: userId, workDate: today() } }),
+      // 하루 횟수는 포인트 절반 날리기와 함께 센다.
+      attacksUsedToday(userId, today()),
     ]);
 
     return {
@@ -171,10 +173,7 @@ export const attendanceAttackService = {
         // 잠금은 아이디 순으로 고정해 A↔B 교착을 피한다.
         const rows = await lockBothBalances(attackerId, targetId, t);
 
-        const used = await AttendanceAttack.count({
-          where: { attackerId, workDate: day },
-          transaction: t,
-        });
+        const used = await attacksUsedToday(attackerId, day, t);
         if (used >= rules.dailyLimitPerAttacker) {
           throw new AppError(429, `오늘은 ${rules.dailyLimitPerAttacker}번을 모두 사용했습니다.`);
         }

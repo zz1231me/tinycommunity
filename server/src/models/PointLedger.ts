@@ -26,7 +26,9 @@ export type PointReason =
   | 'duel_win'
   | 'duel_refund'
   | 'attack_cost'
-  | 'defend_cost';
+  | 'defend_cost'
+  /** 포인트 절반 날리기를 당해 사라진 몫. 누가 걸었는지는 memo 에 적지 않는다(익명). */
+  | 'point_attack_loss';
 
 class PointLedgerModel extends Model<
   InferAttributes<PointLedgerModel>,
