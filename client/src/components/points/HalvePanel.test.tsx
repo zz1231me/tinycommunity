@@ -151,6 +151,9 @@ describe('던진 결과', () => {
     fireEvent.click(throwBtn());
     await waitFor(() => expect(mockHalve).toHaveBeenCalledTimes(1));
 
+    // 던지는 동안은 잠겨 있다. 풀릴 때까지 기다리지 않고 누르면 무시되어 테스트가 흔들린다.
+    await waitFor(() => expect(throwBtn()).toBeEnabled());
+
     expect(screen.getByRole('button', { name: '고름:피해자' })).toBeInTheDocument();
     fireEvent.click(throwBtn());
     await waitFor(() => expect(mockHalve).toHaveBeenCalledTimes(2));

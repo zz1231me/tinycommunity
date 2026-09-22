@@ -136,6 +136,9 @@ describe('공격 보내기', () => {
     fireEvent.click(sendBtn());
     await waitFor(() => expect(mockSendAttack).toHaveBeenCalledTimes(1));
 
+    // 보내는 동안은 잠겨 있다. 풀릴 때까지 기다리지 않고 누르면 무시되어 테스트가 흔들린다.
+    await waitFor(() => expect(sendBtn()).toBeEnabled());
+
     // 고르는 단계를 거치지 않고 곧바로 한 번 더
     expect(screen.getByRole('button', { name: /고름:/ })).toBeInTheDocument();
     fireEvent.click(sendBtn());
