@@ -130,7 +130,7 @@ export function RecentPostsMenu() {
         )}
         {unreadCount > 0 && (
           <span
-            className="badge-count animate-pulse flex-shrink-0 bg-red-500 text-white"
+            className="badge-count animate-pulse flex-shrink-0 bg-red-600 text-white"
             aria-hidden="true"
           >
             {unreadCount > 9 ? '9+' : unreadCount}

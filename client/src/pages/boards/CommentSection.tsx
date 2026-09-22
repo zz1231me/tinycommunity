@@ -496,7 +496,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                                 </span>
                                 <button
                                   onClick={() => ops.handleDelete(comment.id)}
-                                  className="px-2 py-1 text-xs font-medium text-red-500 dark:text-red-400
+                                  className="px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400
                                              hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                                 >
                                   확인
@@ -514,7 +514,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                         ) : (
                           <button
                             onClick={() => ops.setDeleteConfirmId(comment.id)}
-                            className="px-2 py-1 text-xs font-medium text-red-500 dark:text-red-400
+                            className="px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400
                                        hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                           >
                             삭제
@@ -781,7 +781,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                     className={`px-3 py-1 text-xs rounded-full transition-colors ${
                       sortBy === option
                         ? 'bg-primary-600 text-white'
-                        : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                     }`}
                   >
                     {option === 'oldest' ? '등록순' : '최신순'}
