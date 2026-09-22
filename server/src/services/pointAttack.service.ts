@@ -3,7 +3,7 @@
 
 import crypto from 'crypto';
 import { sequelize } from '../config/sequelize';
-import { PointAttack } from '../models/PointAttack';
+import PointAttackModel, { PointAttack } from '../models/PointAttack';
 import { UserPoint } from '../models/UserPoint';
 import { User } from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
@@ -38,7 +38,69 @@ function notifyVictim(userId: string, lost: number, attackId: number): void {
     .catch(err => logError('포인트 공격 알림 생성 실패', err, { userId, attackId }));
 }
 
+interface AttackLogRow {
+  id: number;
+  attackerId: string;
+  attackerName: string;
+  targetId: string;
+  targetName: string;
+  succeeded: boolean;
+  cost: number;
+  amountLost: number;
+  createdAt: Date;
+}
+
+const withNames = [
+  { model: User, as: 'attacker', attributes: ['id', 'name'], required: false },
+  { model: User, as: 'target', attributes: ['id', 'name'], required: false },
+];
+
+function nameOf(row: PointAttackModel, key: 'attacker' | 'target', fallback: string): string {
+  const joined = row as unknown as Record<string, { name?: string } | undefined>;
+  return joined[key]?.name ?? fallback;
+}
+
 export const pointAttackService = {
+  /**
+   * 관리자용 기록. 익명은 당한 사람에게만 지키는 규칙이고, 관리자는 누가 걸었는지 봐야 한다 —
+   * 되돌릴 수 없는 공격이라 한 사람만 노리는 일이 생겨도 이 목록 말고는 알 길이 없다.
+   */
+  async listForAdmin(params: { page?: number; limit?: number }): Promise<{
+    rows: AttackLogRow[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
+    // 아주 큰 page 는 offset 이 지수 표기가 되어 DB 가 거절한다.
+    const page = Math.min(1000, Math.max(1, params.page ?? 1));
+    const limit = Math.min(Math.max(1, params.limit ?? 30), 100);
+
+    const { rows, count } = await PointAttack.findAndCountAll({
+      include: withNames,
+      // 같은 시각이면 페이지 사이로 행이 새므로 id 로 확정 순서를 준다.
+      order: [['id', 'DESC']],
+      limit,
+      offset: (page - 1) * limit,
+    });
+
+    return {
+      rows: rows.map(row => ({
+        id: row.id,
+        attackerId: row.attackerId,
+        attackerName: nameOf(row, 'attacker', row.attackerId),
+        targetId: row.targetId,
+        targetName: nameOf(row, 'target', row.targetId),
+        succeeded: row.succeeded,
+        cost: row.cost,
+        amountLost: row.amountLost,
+        createdAt: row.createdAt,
+      })),
+      total: count,
+      page,
+      totalPages: Math.max(1, Math.ceil(count / limit)),
+    };
+  },
+
   /** 값과 확률, 오늘 남은 횟수 */
   async state(userId: string) {
     const rules = getAttackSettings();

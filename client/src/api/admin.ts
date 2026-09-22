@@ -66,6 +66,12 @@ export const fetchLoginHistory = (params?: Record<string, string | number>, sign
 export const fetchUserLoginHistory = (userId: string, params?: Record<string, string | number>) =>
   api.get(`/admin/users/${userId}/login-history`, { params }).then(unwrap);
 
+/** 포인트 절반 날리기 기록. 익명은 당한 사람에게만 지키는 규칙이라 여기에는 공격자가 있다. */
+export const fetchPointAttackLog = (
+  params?: Record<string, string | number>,
+  signal?: AbortSignal
+) => api.get('/admin/point-attacks', { params, signal }).then(unwrap);
+
 export const fetchAuditLogs = (params?: Record<string, string | number>, signal?: AbortSignal) =>
   api.get('/admin/audit-logs', { params, signal }).then(unwrap);
 

@@ -25,6 +25,7 @@ import {
   Code,
   Megaphone,
   Clock,
+  Bomb,
   type LucideIcon,
 } from 'lucide-react';
 import { TabType } from '../../../types/admin.types';
@@ -85,6 +86,7 @@ export const TabNavigation = React.memo(() => {
           { id: 'error-logs', label: '에러 로그', icon: Bug },
           { id: 'login-history', label: '로그인 이력', icon: History },
           { id: 'audit-logs', label: '감사 로그', icon: ClipboardList },
+          { id: 'point-attacks', label: '포인트 공격', icon: Bomb },
           { id: 'ip-management', label: 'IP 관리', icon: Globe },
         ],
       },

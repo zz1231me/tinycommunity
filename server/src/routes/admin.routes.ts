@@ -57,6 +57,7 @@ import {
   reorderAttendanceChecklist,
   updateAttendancePolicy,
 } from '../controllers/attendance.controller';
+import { getPointAttackLog } from '../controllers/pointAttack.controller';
 import {
   attendanceChecklistCreateSchema,
   attendanceChecklistUpdateSchema,
@@ -130,6 +131,7 @@ router.delete('/events/:id', deleteEventAsAdmin as RequestHandler);
 // 기능을 꺼도 지난 기록은 봐야 하므로 requireFeature 를 걸지 않는다.
 // 정적 라우트를 :id 라우트보다 먼저 정의해야 한다.
 router.get('/attendance/records', getAttendanceRecords as RequestHandler);
+router.get('/point-attacks', getPointAttackLog as RequestHandler);
 router.get('/attendance/today', getAttendanceToday as RequestHandler);
 router.get('/attendance/summary', getAttendanceSummary as RequestHandler);
 router.get('/attendance/settings', getAttendanceSettings as RequestHandler);

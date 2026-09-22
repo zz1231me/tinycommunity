@@ -213,7 +213,8 @@ export type TabType =
   | 'board-managers'
   | 'custom-pages'
   | 'announcements'
-  | 'attendance';
+  | 'attendance'
+  | 'point-attacks';
 
 // 관리자 대시보드 통계(GET /admin/stats)
 export interface AdminStatsBucket {

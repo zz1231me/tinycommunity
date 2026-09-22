@@ -24,12 +24,30 @@ export const getPointAttackState = async (req: AuthRequest, res: Response): Prom
 export const halvePoints = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const result = await pointAttackService.halve(req.user.id, { targetId: req.body?.targetId });
+    // 사라진 액수는 돌려주지 않는다. 절반을 알려 주면 상대의 잔액을 그대로 알려 주는 셈이다.
     sendSuccess(
       res,
-      result,
+      { succeeded: result.succeeded, targetName: result.targetName, balance: result.balance },
       result.succeeded ? '공격이 통했습니다!' : '아무 일도 일어나지 않았습니다.'
     );
   } catch (err) {
     fail(res, err, '공격하지 못했습니다.', { userId: req.user.id });
+  }
+};
+
+/** GET /api/admin/point-attacks — 관리자용 기록. 익명은 당한 사람에게만 지킨다. */
+export const getPointAttackLog = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const page = Number.parseInt(String(req.query.page ?? '1'), 10);
+    const limit = Number.parseInt(String(req.query.limit ?? '30'), 10);
+    sendSuccess(
+      res,
+      await pointAttackService.listForAdmin({
+        page: Number.isFinite(page) ? page : 1,
+        limit: Number.isFinite(limit) ? limit : 30,
+      })
+    );
+  } catch (err) {
+    fail(res, err, '공격 기록을 불러오지 못했습니다.', { userId: req.user.id });
   }
 };

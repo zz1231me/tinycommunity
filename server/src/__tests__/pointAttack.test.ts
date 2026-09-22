@@ -172,6 +172,17 @@ describe('익명', () => {
     expect(body).not.toContain(`${ATK}이름`);
   });
 
+  it('응답에 사라진 액수도 없다 — 절반을 알면 상대의 잔액을 아는 것과 같다', async () => {
+    const res = await throwAt(atkCookie, TGT);
+    expect(res.status).toBe(200);
+    expect(res.body.data).not.toHaveProperty('lost');
+    expect(res.body.data).not.toHaveProperty('amountLost');
+    // 상대의 잔액(2,468)이나 그 절반(1,234)이 어떤 형태로도 실려 있으면 안 된다
+    const body = JSON.stringify(res.body);
+    expect(body).not.toContain('2468');
+    expect(body).not.toContain('1234');
+  });
+
   it('당한 사람의 알림과 원장에도 공격자가 없다', async () => {
     await pointAttackService.halve(ATK, { targetId: TGT }, always);
 
@@ -249,6 +260,50 @@ describe('기능 스위치', () => {
   it('꺼 두면 상태 조회도 막힌다', async () => {
     await setFlags(false);
     expect((await state(atkCookie)).status).toBe(403);
+  });
+});
+
+describe('관리자 기록 화면', () => {
+  const log = (cookie: string) =>
+    request(app).get('/api/admin/point-attacks').set('Cookie', cookie);
+
+  it('관리자는 누가 걸었는지 본다 — 익명은 당한 사람에게만 지키는 규칙이다', async () => {
+    await pointAttackService.halve(ATK, { targetId: TGT }, always);
+
+    const adminCookie = await loginAs('admin', 'TestAdmin123!');
+    const res = await log(adminCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.total).toBe(1);
+    const row = res.body.data.rows[0];
+    expect(row.attackerId).toBe(ATK);
+    expect(row.attackerName).toBe(`${ATK}이름`);
+    expect(row.targetId).toBe(TGT);
+    expect(row.succeeded).toBe(true);
+    expect(row.amountLost).toBe(1234);
+  });
+
+  it('빗나간 것도 보인다 — 한 사람만 노리는 일은 빗나간 것까지 봐야 드러난다', async () => {
+    await pointAttackService.halve(ATK, { targetId: TGT }, never);
+    const adminCookie = await loginAs('admin', 'TestAdmin123!');
+    const rows = (await log(adminCookie)).body.data.rows;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].succeeded).toBe(false);
+  });
+
+  it('최근 것이 먼저 온다', async () => {
+    await pointAttackService.halve(ATK, { targetId: TGT }, never);
+    await pointAttackService.halve(ATK, { targetId: TGT }, always);
+    const adminCookie = await loginAs('admin', 'TestAdmin123!');
+    const rows = (await log(adminCookie)).body.data.rows;
+    expect(rows.map((r: { succeeded: boolean }) => r.succeeded)).toEqual([true, false]);
+  });
+
+  it('관리자가 아니면 볼 수 없다 — 여기서 새면 익명이 무너진다', async () => {
+    await pointAttackService.halve(ATK, { targetId: TGT }, always);
+    const res = await log(atkCookie);
+    expect(res.status).toBe(403);
+    expect(JSON.stringify(res.body)).not.toContain(ATK);
   });
 });
 
