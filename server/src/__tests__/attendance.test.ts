@@ -621,4 +621,31 @@ describe('퇴근 취소', () => {
     const closed = await AttendanceRecord.findOne({ where: { UserId: U, workDate: yesterday } });
     expect(closed?.checkOutAt).not.toBeNull();
   });
+
+  // 어제 퇴근을 안 찍은 사람은 오늘 퇴근을 잘못 눌러도 되돌릴 수 없었다. 열린 기록이 하나라도
+  // 있으면 막았기 때문인데, 그 기록은 퇴근보다 먼저 열린 것이라 되돌려도 누르기 직전 상태일 뿐이다.
+  it('어제 퇴근을 안 찍어 열린 기록이 남아 있어도 오늘 퇴근은 되돌릴 수 있다', async () => {
+    const d = new Date(Date.now() - 86_400_000);
+    const yesterday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    await AttendanceRecord.create({
+      UserId: U,
+      workDate: yesterday,
+      checkInAt: new Date(Date.now() - 20 * 60 * 60_000),
+    });
+    expect((await checkIn(cookie, answers())).status).toBe(201);
+    expect((await checkOut(cookie)).status).toBe(200);
+
+    expect((await status()).body.data.undoCheckOutUntil).not.toBeNull();
+    expect((await undo()).status).toBe(200);
+
+    const todayRow = await AttendanceRecord.findOne({
+      where: { UserId: U, workDate: (await status()).body.data.workDate },
+    });
+    expect(todayRow?.checkOutAt).toBeNull();
+    // 어제 것은 건드리지 않는다.
+    const openYesterday = await AttendanceRecord.findOne({
+      where: { UserId: U, workDate: yesterday },
+    });
+    expect(openYesterday?.checkOutAt).toBeNull();
+  });
 });

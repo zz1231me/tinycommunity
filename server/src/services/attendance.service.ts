@@ -645,7 +645,12 @@ function undoDeadline(record: AttendanceRecord): Date {
   return new Date(record.checkOutAt!.getTime() + (CHECKOUT_UNDO_MINUTES + 1) * 60_000);
 }
 
-/** 되돌릴 수 있는 퇴근. 열린 기록이 있으면 막는다(퇴근은 오늘 것만 닫는다). */
+/**
+ * 되돌릴 수 있는 퇴근. 그 퇴근 뒤에 새로 찍은 출근이 있으면 막는다 — 되돌리면 열린 기록이
+ * 둘이 되고, 퇴근은 오늘 것만 닫으므로 예전 것이 영영 열린 채 남는다.
+ * 퇴근보다 먼저 열려 있던 기록(어제 퇴근을 안 찍은 것)은 막지 않는다. 되돌려 봐야 누르기
+ * 직전 상태로 돌아갈 뿐인데, 막으면 잘못 누른 퇴근을 되돌릴 길이 사라진다.
+ */
 async function findUndoableCheckOut(userId: string): Promise<AttendanceRecord | null> {
   const last = await AttendanceRecord.findOne({
     where: { UserId: userId, checkOutAt: { [Op.ne]: null } },
@@ -655,11 +660,11 @@ async function findUndoableCheckOut(userId: string): Promise<AttendanceRecord | 
     ],
   });
   if (!last || undoDeadline(last).getTime() <= Date.now()) return null;
-  const open = await AttendanceRecord.findOne({
-    where: { UserId: userId, checkOutAt: null },
+  const restarted = await AttendanceRecord.findOne({
+    where: { UserId: userId, checkOutAt: null, checkInAt: { [Op.gt]: last.checkOutAt! } },
     attributes: ['id'],
   });
-  return open ? null : last;
+  return restarted ? null : last;
 }
 
 async function findOpenPreviousDay(userId: string, workDate: string) {
