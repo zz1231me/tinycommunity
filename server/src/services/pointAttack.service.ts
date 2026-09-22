@@ -63,7 +63,10 @@ function nameOf(row: PointAttackModel, key: 'attacker' | 'target', fallback: str
 export const pointAttackService = {
   /**
    * 관리자용 기록. 익명은 당한 사람에게만 지키는 규칙이고, 관리자는 누가 걸었는지 봐야 한다 —
-   * 되돌릴 수 없는 공격이라 한 사람만 노리는 일이 생겨도 이 목록 말고는 알 길이 없다.
+   * 되돌릴 수 없는 공격이라 포인트가 사라진 건은 누가 걸었는지 남아 있어야 한다.
+   *
+   * 통한 것만 보여 준다. 빗나간 것은 100 건 중 99 건이라 목록을 덮어 버리고, 아무 일도
+   * 일어나지 않은 일이다. 행 자체는 그대로 쌓이므로 필요해지면 조건만 풀면 된다.
    */
   async listForAdmin(params: { page?: number; limit?: number }): Promise<{
     rows: AttackLogRow[];
@@ -76,6 +79,7 @@ export const pointAttackService = {
     const limit = Math.min(Math.max(1, params.limit ?? 30), 100);
 
     const { rows, count } = await PointAttack.findAndCountAll({
+      where: { succeeded: true },
       include: withNames,
       // 같은 시각이면 페이지 사이로 행이 새므로 id 로 확정 순서를 준다.
       order: [['id', 'DESC']],

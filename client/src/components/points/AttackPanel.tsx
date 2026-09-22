@@ -107,8 +107,8 @@ export function AttackPanel({
         ),
         stack: sent.stack,
       });
-      // 성공한 뒤에만 비운다. 거절되는 경우가 많아 미리 비우면 상대를 다시 골라야 한다.
-      setPicked([]);
+      // 보낸 뒤에도 고른 사람을 그대로 둔다. 같은 사람에게 이어 보내는 일이 많은데,
+      // 비우면 그때마다 이름을 다시 쳐야 한다.
       await queryClient.invalidateQueries({ queryKey: attendanceKeys.attack }).catch(() => {});
       onSpent?.();
     } catch (err) {

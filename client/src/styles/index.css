@@ -556,6 +556,35 @@ body {
   animation: crownFloat 2.4s ease-in-out infinite;
 }
 
+/*
+ * 1등 이름. 글자는 읽히는 것이 먼저라 또렷한 금색으로 두고, 옆의 별만 반짝인다.
+ * 글자에 흐르는 그라데이션을 걸면 밝은 띠가 지날 때 이름이 흐려지고, 움직임을 줄인 PC 에서는
+ * 그 띠가 멈춘 자리에 그대로 굳는다.
+ */
+.champion-name {
+  font-weight: 700;
+  color: #b45309; /* amber-700 — 흰 바탕에서 5:1 */
+  text-shadow: 0 0 10px rgb(245 158 11 / 0.45);
+}
+.dark .champion-name {
+  color: #fcd34d; /* amber-300 */
+}
+
+@keyframes championTwinkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.25) rotate(12deg);
+  }
+}
+.animate-championTwinkle {
+  animation: championTwinkle 1.8s ease-in-out infinite;
+}
+
 /* 새 알림 팝업의 남은 시간 막대 — 길이는 인라인 animation-duration 으로 준다 */
 @keyframes toastLife {
   from {

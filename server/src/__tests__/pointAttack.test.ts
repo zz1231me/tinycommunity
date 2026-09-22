@@ -283,20 +283,23 @@ describe('관리자 기록 화면', () => {
     expect(row.amountLost).toBe(1234);
   });
 
-  it('빗나간 것도 보인다 — 한 사람만 노리는 일은 빗나간 것까지 봐야 드러난다', async () => {
+  it('빗나간 것은 보여 주지 않는다 — 99%가 빗나가 목록을 덮는다', async () => {
     await pointAttackService.halve(ATK, { targetId: TGT }, never);
     const adminCookie = await loginAs('admin', 'TestAdmin123!');
-    const rows = (await log(adminCookie)).body.data.rows;
-    expect(rows).toHaveLength(1);
-    expect(rows[0].succeeded).toBe(false);
+    const body = (await log(adminCookie)).body.data;
+    expect(body.rows).toHaveLength(0);
+    expect(body.total).toBe(0);
+    // 행 자체는 남는다 — 필요해지면 조건만 풀면 된다
+    expect(await PointAttack.count()).toBe(1);
   });
 
   it('최근 것이 먼저 온다', async () => {
-    await pointAttackService.halve(ATK, { targetId: TGT }, never);
+    await pointAttackService.halve(ATK, { targetId: TGT }, always);
+    await grant(TGT, 1000);
     await pointAttackService.halve(ATK, { targetId: TGT }, always);
     const adminCookie = await loginAs('admin', 'TestAdmin123!');
     const rows = (await log(adminCookie)).body.data.rows;
-    expect(rows.map((r: { succeeded: boolean }) => r.succeeded)).toEqual([true, false]);
+    expect(rows.map((r: { amountLost: number }) => r.amountLost)).toEqual([500, 1234]);
   });
 
   it('관리자가 아니면 볼 수 없다 — 여기서 새면 익명이 무너진다', async () => {

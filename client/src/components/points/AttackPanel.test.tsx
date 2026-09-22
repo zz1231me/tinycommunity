@@ -128,18 +128,18 @@ describe('공격 보내기', () => {
     expect(screen.getByRole('button', { name: /고름:/ })).toBeInTheDocument();
   });
 
-  it('보내고 나면 고른 사람을 비운다 — 양성 대조', async () => {
-    // 위 테스트만 있으면 '아무 때도 비우지 않는' 구현도 통과한다
+  it('보낸 뒤에도 남아 있어 이름을 다시 치지 않고 또 보낸다', async () => {
+    // 같은 사람에게 이어 보내는 일이 많다. 보낼 때마다 비우면 매번 이름을 다시 쳐야 한다.
     await show();
 
     fireEvent.click(screen.getByRole('button', { name: '상대 고르기' }));
-    expect(screen.getByRole('button', { name: /고름:/ })).toBeInTheDocument();
-
     fireEvent.click(sendBtn());
+    await waitFor(() => expect(mockSendAttack).toHaveBeenCalledTimes(1));
 
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: '상대 고르기' })).toBeInTheDocument()
-    );
+    // 고르는 단계를 거치지 않고 곧바로 한 번 더
+    expect(screen.getByRole('button', { name: /고름:/ })).toBeInTheDocument();
+    fireEvent.click(sendBtn());
+    await waitFor(() => expect(mockSendAttack).toHaveBeenCalledTimes(2));
   });
 
   it('종류에 따라 값이 다르게 적힌다', async () => {

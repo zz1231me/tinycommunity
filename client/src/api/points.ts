@@ -121,7 +121,8 @@ export interface RankingEntry {
   name: string;
   /** 프로필 사진 주소 */
   avatar?: string | null;
-  balance: number;
+  /** 1등과 본인 것만 온다. 나머지는 null — 서버가 아예 내보내지 않는다. */
+  balance: number | null;
 }
 
 export interface PointRanking {

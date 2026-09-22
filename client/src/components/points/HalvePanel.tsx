@@ -52,7 +52,8 @@ export function HalvePanel({
     try {
       const result = await halvePoints(picked[0].id);
       setShot({ key: Date.now(), name: result.targetName, succeeded: result.succeeded });
-      setPicked([]);
+      // 고른 사람은 그대로 둔다. 100 번에 한 번 통하는 공격이라 같은 사람에게 거듭 던지게 되는데,
+      // 던질 때마다 비우면 매번 이름을 다시 쳐야 한다.
       await queryClient.invalidateQueries({ queryKey: pointKeys.attack }).catch(() => {});
       onSpent?.();
     } catch (err) {

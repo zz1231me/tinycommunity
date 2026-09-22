@@ -17,7 +17,7 @@ vi.mock('../../api/points', () => ({
   fetchPointRanking: () => mockFetchRanking(),
 }));
 
-const entry = (rank: number, userId: string, name: string, balance: number) => ({
+const entry = (rank: number, userId: string, name: string, balance: number | null) => ({
   rank,
   userId,
   name,
@@ -25,7 +25,7 @@ const entry = (rank: number, userId: string, name: string, balance: number) => (
 });
 
 const data = (over: Partial<Ranking> = {}): Ranking => ({
-  top: [entry(1, 'alice', '앨리스', 900), entry(2, 'bobby', '바비', 500)],
+  top: [entry(1, 'alice', '앨리스', 900), entry(2, 'bobby', '바비', null)],
   me: null,
   ...over,
 });
@@ -198,5 +198,51 @@ describe('다른 판에서 포인트가 움직이면', () => {
     rerender(<PointRanking refreshSignal={3} />);
 
     expect(mockFetchRanking).not.toHaveBeenCalled();
+  });
+});
+
+describe('점수는 1등과 내 것만', () => {
+  it('1등 점수는 보여 준다', async () => {
+    mockFetchRanking.mockResolvedValue(data());
+    render(<PointRanking />);
+    expect(await screen.findByText('900')).toBeInTheDocument();
+  });
+
+  it('점수가 오지 않은 사람 자리에는 아무 숫자도 적지 않는다', async () => {
+    // 0 으로 떨어뜨려 '0P' 를 적으면 빈털터리라고 잘못 알리는 셈이다
+    mockFetchRanking.mockResolvedValue(data());
+    render(<PointRanking />);
+
+    const podium = await screen.findByTestId('podium');
+    const [firstBalance, secondBalance] = within(podium).getAllByTestId('podium-balance');
+    // 1등 자리는 채워지고 2등 자리는 비어 있어야 한다 — 둘을 함께 재야 판별력이 있다.
+    expect(firstBalance).toHaveTextContent('900');
+    expect(secondBalance.textContent).toBe('');
+  });
+
+  it('상위권 밖이어도 내 점수는 보인다', async () => {
+    mockFetchRanking.mockResolvedValue(
+      data({ me: { rank: 7, userId: 'me', name: '나', balance: 120 } })
+    );
+    render(<PointRanking />);
+    expect(await screen.findByText('120')).toBeInTheDocument();
+  });
+});
+
+describe('1등 이름', () => {
+  it('금빛 표시가 붙는다 — 누가 1등인지 이름만 봐도 안다', async () => {
+    mockFetchRanking.mockResolvedValue(data());
+    render(<PointRanking />);
+
+    const first = await screen.findByText('앨리스');
+    expect(first).toHaveClass('champion-name');
+  });
+
+  it('2등부터는 붙지 않는다', async () => {
+    mockFetchRanking.mockResolvedValue(data());
+    render(<PointRanking />);
+
+    const second = await screen.findByText('바비');
+    expect(second).not.toHaveClass('champion-name');
   });
 });

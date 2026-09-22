@@ -1,7 +1,7 @@
 // 포인트 순위표. 상위 목록과 본인 순위를 함께 보여 주며, 같은 화면의 LotteryPanel 과 같이 useEffect 로 받아 온다.
 
 import { useEffect, useState } from 'react';
-import { Crown, Trophy } from 'lucide-react';
+import { Crown, Sparkles, Trophy } from 'lucide-react';
 import { fetchPointRanking, type PointRanking as Ranking } from '../../api/points';
 import { ListState } from '../common/ListState';
 import { LoadingSpinner } from '../common/LoadingStates';
@@ -45,6 +45,23 @@ const SLOT = [
 
 type Entry = Ranking['top'][number];
 
+/**
+ * 1등 이름. 금빛으로 흐르고 옆에 별이 붙는다.
+ * 움직임을 줄여 달라고 한 PC 에서는 흐름만 멈추고 금빛과 별은 그대로 둔다 — 누가 1등인지는
+ * 여전히 보여야 한다.
+ */
+function ChampionName({ name }: { name: string }) {
+  return (
+    <span className="inline-flex min-w-0 items-center justify-center gap-1">
+      <Sparkles
+        aria-hidden
+        className="animate-championTwinkle h-3.5 w-3.5 shrink-0 fill-amber-300 text-amber-500"
+      />
+      <span className="champion-name min-w-0 truncate">{name}</span>
+    </span>
+  );
+}
+
 function Podium({ entries, myId }: { entries: Entry[]; myId?: string }) {
   return (
     <ol data-testid="podium" className="mt-1 flex items-end justify-center gap-2 sm:gap-4">
@@ -76,16 +93,24 @@ function Podium({ entries, myId }: { entries: Entry[]; myId?: string }) {
               </span>
             </div>
             <p className="mt-2 w-full truncate text-center text-sm font-semibold text-slate-800 dark:text-slate-100">
-              {e.name}
+              {e.rank === 1 ? <ChampionName name={e.name} /> : e.name}
             </p>
             {mine && (
               <span className="badge mt-0.5 bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-300">
                 나
               </span>
             )}
-            <p className="mt-0.5 text-xs font-semibold tabular-nums text-slate-600 dark:text-slate-300">
-              {e.balance.toLocaleString()}
-              <span className="ml-0.5 font-medium text-slate-400">P</span>
+            {/* 점수는 1등과 본인 것만 온다. 없는 자리는 비워 둔다 — 자리를 남겨야 받침대가 어긋나지 않는다. */}
+            <p
+              data-testid="podium-balance"
+              className="mt-0.5 h-4 text-xs font-semibold tabular-nums text-slate-600 dark:text-slate-300"
+            >
+              {e.balance !== null && (
+                <>
+                  {e.balance.toLocaleString()}
+                  <span className="ml-0.5 font-medium text-slate-400">P</span>
+                </>
+              )}
             </p>
             <div
               aria-hidden
@@ -111,7 +136,8 @@ function Row({
   userId: string;
   name: string;
   avatar?: string | null;
-  balance: number;
+  /** 1등과 본인 것만 온다 */
+  balance: number | null;
   mine: boolean;
 }) {
   return (
@@ -128,10 +154,12 @@ function Row({
         {name}
         {mine && <span className="ml-1.5 text-xs text-primary-600 dark:text-primary-400">나</span>}
       </span>
-      <span className="shrink-0 text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">
-        {balance.toLocaleString()}
-        <span className="ml-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">P</span>
-      </span>
+      {balance !== null && (
+        <span className="shrink-0 text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+          {balance.toLocaleString()}
+          <span className="ml-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">P</span>
+        </span>
+      )}
     </li>
   );
 }
@@ -170,7 +198,7 @@ export function PointRanking({ refreshSignal = 0 }: { refreshSignal?: number }) 
       icon={<Trophy className="h-5 w-5" />}
       tone="gold"
       title="포인트 순위"
-      description="보유 포인트가 많은 순서입니다."
+      description="보유 포인트가 많은 순서입니다. 점수는 1등과 내 것만 보입니다."
     >
       {loading ? (
         <LoadingSpinner size="sm" message="순위를 불러오는 중..." />

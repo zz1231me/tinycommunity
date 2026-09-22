@@ -144,6 +144,18 @@ describe('던진 결과', () => {
     await waitFor(() => expect(onSpent).toHaveBeenCalled());
   });
 
+  it('던진 뒤에도 남아 있어 이름을 다시 치지 않고 또 던진다', async () => {
+    // 100 번에 한 번 통하는 공격이라 같은 사람에게 거듭 던지게 된다.
+    await show();
+    pick();
+    fireEvent.click(throwBtn());
+    await waitFor(() => expect(mockHalve).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByRole('button', { name: '고름:피해자' })).toBeInTheDocument();
+    fireEvent.click(throwBtn());
+    await waitFor(() => expect(mockHalve).toHaveBeenCalledTimes(2));
+  });
+
   it('거절당하면 고른 사람을 그대로 둔다 — 다시 고르게 하지 않는다', async () => {
     mockHalve.mockRejectedValue(new Error('오늘은 모두 사용했습니다.'));
     await show();

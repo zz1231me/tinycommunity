@@ -29,8 +29,7 @@ const COLUMNS: LogColumn[] = [
   // 마지막 칸이 0 으로 찌그러져 사라진 포인트가 보이지 않는다.
   { label: '던진 사람' },
   { label: '당한 사람' },
-  { label: '결과', width: '100px' },
-  { label: '사라진 포인트', width: '130px' },
+  { label: '사라진 포인트', width: '140px' },
 ];
 
 const Who = ({ name, id }: { name: string; id: string }) => (
@@ -64,15 +63,15 @@ export const PointAttackManagement = () => {
         actions={<span className="text-sm text-slate-500 dark:text-slate-400">총 {total}건</span>}
       >
         <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-          당한 사람에게는 누가 걸었는지 알리지 않습니다. 이 목록은 관리자만 봅니다. 빗나간 것도
-          남습니다.
+          실제로 포인트가 사라진 건만 보여 줍니다. 당한 사람에게는 누가 걸었는지 알리지 않으며, 이
+          목록은 관리자만 봅니다.
         </p>
 
         <VirtualLogTable
           columns={COLUMNS}
           rows={records}
           loading={loading}
-          emptyMessage="아직 던진 사람이 없습니다."
+          emptyMessage="아직 통한 공격이 없습니다."
           error={error}
           page={page}
           totalPages={totalPages}
@@ -87,19 +86,8 @@ export const PointAttackManagement = () => {
               <td className="admin-td whitespace-nowrap">
                 <Who name={row.targetName} id={row.targetId} />
               </td>
-              <td className="admin-td whitespace-nowrap">
-                <span
-                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    row.succeeded
-                      ? 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300'
-                      : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  {row.succeeded ? '명중' : '빗나감'}
-                </span>
-              </td>
-              <td className="admin-td whitespace-nowrap tabular-nums">
-                {row.succeeded ? `${row.amountLost.toLocaleString()}P` : '—'}
+              <td className="admin-td whitespace-nowrap font-semibold tabular-nums">
+                {row.amountLost.toLocaleString()}P
               </td>
             </>
           )}

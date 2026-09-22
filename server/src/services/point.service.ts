@@ -299,12 +299,14 @@ export const pointService = {
       limit: 10,
     });
 
+    // 점수는 1등과 본인 것만 내보낸다. 화면에서 가리기만 하면 응답에는 그대로 실려
+    // 누구든 남의 잔액을 읽을 수 있다.
     const top = rows.map((row, i) => ({
       rank: i + 1,
       userId: row.UserId,
       name: nameOf(row, row.UserId),
       avatar: avatarOf(row),
-      balance: row.balance,
+      balance: i === 0 || row.UserId === userId ? row.balance : null,
     }));
 
     const mine = await UserPoint.findOne({ where: { UserId: userId }, include: [visible] });

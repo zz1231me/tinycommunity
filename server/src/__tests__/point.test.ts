@@ -380,6 +380,23 @@ describe('포인트 순위', () => {
     expect(res.body.data.top[0].name).toBe('일등');
   });
 
+  it('점수는 1등과 내 것만 내보낸다 — 화면에서 가리는 것으로는 부족하다', async () => {
+    await UserPoint.upsert({ UserId: 'ranktop', balance: 900 });
+    await UserPoint.upsert({ UserId: 'rankmid', balance: 500 });
+    await UserPoint.upsert({ UserId: USER, balance: 100 });
+
+    const top = (await ranking()).body.data.top as Array<{
+      userId: string;
+      balance: number | null;
+    }>;
+
+    expect(top.find(t => t.userId === 'ranktop')?.balance).toBe(900);
+    // 남의 점수는 응답에 실리지 않는다
+    expect(top.find(t => t.userId === 'rankmid')?.balance).toBeNull();
+    // 내 것은 내가 봐도 되는 값이다
+    expect(top.find(t => t.userId === USER)?.balance).toBe(100);
+  });
+
   it('프로필 사진 주소를 함께 준다 — 없으면 null', async () => {
     await User.update({ avatar: '/uploads/avatars/top.png' }, { where: { id: 'ranktop' } });
     await User.update({ avatar: null }, { where: { id: 'rankmid' } });
