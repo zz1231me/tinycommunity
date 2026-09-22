@@ -24,10 +24,12 @@ import { toast } from '../../utils/toast';
 import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { useFeature } from '../../store/features';
 import { useNotificationArrival } from '../../hooks/useNotificationArrival';
+import { ConfirmationModal } from '../../components/admin/common/ConfirmationModal';
 import {
   formatClock,
   formatDay,
   formatMinutes,
+  minutesBetween,
   formatMonth,
   shiftMonth,
   todayString,
@@ -49,6 +51,8 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
 export default function AttendancePage() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  // 기준 시간을 못 채우고 퇴근을 누르면 한 번 더 묻는다. 그때까지 일한 분을 담아 둔다.
+  const [askingWorked, setAskingWorked] = useState<number | null>(null);
   // 달은 서버가 알려 준 근무일을 기준으로 잡는다. 브라우저 시계가 어긋나면 빈 달이 보인다.
   const [pickedMonth, setPickedMonth] = useState<string | null>(null);
 
@@ -149,6 +153,15 @@ export default function AttendancePage() {
   const liveWorkDate = openPrevious?.workDate ?? serverToday;
   const standard = status.data?.policy.standardWorkMinutes ?? 480;
   const summary = history.data?.summary;
+  const doCheckOut = () => runCheckOut(() => checkOutMutation.mutateAsync().catch(() => {}));
+
+  // 기준 시간을 못 채웠으면 바로 찍지 않고 한 번 묻는다. 누른 순간으로 다시 센다.
+  const askThenCheckOut = () => {
+    const worked = live ? minutesBetween(live.checkInAt, new Date()) : 0;
+    if (worked >= standard) return doCheckOut();
+    setAskingWorked(worked);
+  };
+
   // 오늘은 퇴근이 없는 것이 정상이라 빠뜨린 날에서 뺀다.
   const todayOpen = Boolean(live && !live.checkOutAt && month === live.workDate.slice(0, 7));
   const unclosedDays = Math.max(0, (summary?.openDays ?? 0) - (todayOpen ? 1 : 0));
@@ -193,7 +206,7 @@ export default function AttendancePage() {
             attackLevel={attackEnabled && underAttack ? Math.max(1, waiting + 1) : 0}
             checkingOut={checkOutMutation.isPending}
             onCheckIn={() => setDialogOpen(true)}
-            onCheckOut={() => runCheckOut(() => checkOutMutation.mutateAsync().catch(() => {}))}
+            onCheckOut={askThenCheckOut}
             undoCheckOutUntil={status.data?.undoCheckOutUntil ?? null}
             clockOffset={clockOffset}
             undoingCheckOut={undoMutation.isPending}
@@ -350,6 +363,20 @@ export default function AttendancePage() {
           </>
         )}
       </section>
+
+      <ConfirmationModal
+        open={askingWorked !== null}
+        title="아직 기준 시간 전입니다"
+        message={`기준 ${formatMinutes(standard)} 중 ${formatMinutes(askingWorked ?? 0)} 근무했습니다. ${formatMinutes(standard - (askingWorked ?? 0))} 모자랍니다. 지금 퇴근할까요?`}
+        confirmLabel="퇴근"
+        cancelLabel="더 근무"
+        variant="primary"
+        onConfirm={() => {
+          setAskingWorked(null);
+          doCheckOut();
+        }}
+        onCancel={() => setAskingWorked(null)}
+      />
 
       {dialogOpen && status.data && (
         <CheckInDialog

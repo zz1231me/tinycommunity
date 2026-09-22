@@ -15,7 +15,7 @@ const files = Object.entries(modules).map(([path, text]) => ({ path, text }));
  * 대화상자를 먼저 닫아 버리는 곳은 잠글 필요가 없다 — 상자가 사라지므로 두 번 누를 수 없다.
  * 그런 자리만 여기에 적어 둔다.
  */
-const CLOSES_FIRST = ['PostDetail.tsx', 'CustomPageManagement.tsx'];
+const CLOSES_FIRST = ['PostDetail.tsx', 'CustomPageManagement.tsx', 'AttendancePage.tsx'];
 
 function droppedPromises(source: string): number[] {
   const lines: number[] = [];
