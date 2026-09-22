@@ -7,13 +7,12 @@ import { Bomb, Loader2 } from 'lucide-react';
 import { fetchPointAttackState, halvePoints } from '../../api/points';
 import { UserPicker } from '../common/UserPicker';
 import type { UserSuggestion } from '../../api/users';
+import { pointKeys } from '../../api/queryKeys';
 import { PointsSection } from './PointsSection';
 import { ListState } from '../common/ListState';
 import { LoadingSpinner } from '../common/LoadingStates';
 import { getApiErrorMessage } from '../../api/utils';
 import { toast } from '../../utils/toast';
-
-const KEY = ['points', 'attack'] as const;
 
 /**
  * @param myId 대상 목록에서 제외할 내 id
@@ -30,14 +29,14 @@ export function HalvePanel({
   refreshSignal?: number;
 }) {
   const queryClient = useQueryClient();
-  const query = useQuery({ queryKey: KEY, queryFn: fetchPointAttackState });
+  const query = useQuery({ queryKey: pointKeys.attack, queryFn: fetchPointAttackState });
   const state = query.data ?? null;
   const [sending, setSending] = useState(false);
   const [picked, setPicked] = useState<UserSuggestion[]>([]);
 
   useEffect(() => {
     if (refreshSignal === 0) return;
-    void queryClient.invalidateQueries({ queryKey: KEY });
+    void queryClient.invalidateQueries({ queryKey: pointKeys.attack });
   }, [refreshSignal, queryClient]);
 
   // 방금 던진 결과. key 를 바꿔 연달아 던져도 다시 나오게 한다.
@@ -60,7 +59,7 @@ export function HalvePanel({
         lost: result.lost,
       });
       setPicked([]);
-      await queryClient.invalidateQueries({ queryKey: KEY }).catch(() => {});
+      await queryClient.invalidateQueries({ queryKey: pointKeys.attack }).catch(() => {});
       onSpent?.();
     } catch (err) {
       toast.error(getApiErrorMessage(err, '공격하지 못했습니다.'));

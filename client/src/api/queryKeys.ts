@@ -90,6 +90,11 @@ export const attendanceKeys = {
   attack: ['attendance', 'attack'] as const,
 } as const;
 
+export const pointKeys = {
+  /** 포인트 절반 날리기의 값·확률·남은 횟수 */
+  attack: ['points', 'attack'] as const,
+} as const;
+
 export const adminKeys = {
   stats: {
     all: ['admin', 'stats'] as const,
