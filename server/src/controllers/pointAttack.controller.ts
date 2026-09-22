@@ -24,10 +24,11 @@ export const getPointAttackState = async (req: AuthRequest, res: Response): Prom
 export const halvePoints = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const result = await pointAttackService.halve(req.user.id, { targetId: req.body?.targetId });
-    // 사라진 액수는 돌려주지 않는다. 절반을 알려 주면 상대의 잔액을 그대로 알려 주는 셈이다.
+    // 사라진 액수도 함께 보낸다. 그 두 배가 상대의 잔액이지만, 1% × 300P 라 잔액을 캐는
+    // 수단으로 쓰기에는 값이 터무니없다. 공격자가 무엇을 했는지 아는 편이 낫다.
     sendSuccess(
       res,
-      { succeeded: result.succeeded, targetName: result.targetName, balance: result.balance },
+      result,
       result.succeeded ? '공격이 통했습니다!' : '아무 일도 일어나지 않았습니다.'
     );
   } catch (err) {

@@ -44,6 +44,7 @@ export function HalvePanel({
     key: number;
     name: string;
     succeeded: boolean;
+    lost: number;
   } | null>(null);
 
   const handleThrow = async () => {
@@ -51,7 +52,12 @@ export function HalvePanel({
     setSending(true);
     try {
       const result = await halvePoints(picked[0].id);
-      setShot({ key: Date.now(), name: result.targetName, succeeded: result.succeeded });
+      setShot({
+        key: Date.now(),
+        name: result.targetName,
+        succeeded: result.succeeded,
+        lost: result.lost,
+      });
       // 고른 사람은 그대로 둔다. 100 번에 한 번 통하는 공격이라 같은 사람에게 거듭 던지게 되는데,
       // 던질 때마다 비우면 매번 이름을 다시 쳐야 한다.
       await queryClient.invalidateQueries({ queryKey: pointKeys.attack }).catch(() => {});
@@ -88,8 +94,8 @@ export function HalvePanel({
           <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
             {state.successPercent}% 확률로 통합니다. 통하면 상대가 가진 포인트의 절반이 그대로
             사라집니다 — 내게 오지는 않습니다. 빗나가도 낸 값은 돌아오지 않습니다. 상대는 공격받은
-            사실만 알 뿐, <b>누가 걸었는지는 알 수 없습니다.</b> 나도{' '}
-            <b>얼마가 사라졌는지는 알 수 없습니다.</b> 하루 횟수는 퇴근 공격권과 함께 셉니다.
+            사실만 알 뿐, <b>누가 걸었는지는 알 수 없습니다.</b> 하루 횟수는 퇴근 공격권과 함께
+            셉니다.
           </p>
 
           <div className="mt-3">
@@ -127,7 +133,9 @@ export function HalvePanel({
               }`}
             >
               {shot.succeeded
-                ? `명중! ${shot.name}님의 포인트 절반이 사라졌습니다.`
+                ? shot.lost > 0
+                  ? `명중! ${shot.name}님의 포인트 절반 ${shot.lost.toLocaleString()}P 가 사라졌습니다.`
+                  : `명중했지만 ${shot.name}님에게는 날릴 포인트가 없었습니다.`
                 : `빗나갔습니다. ${shot.name}님은 아무 일도 없었습니다.`}
             </p>
           )}

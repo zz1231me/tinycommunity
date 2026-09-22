@@ -58,7 +58,7 @@ const pick = () => fireEvent.click(screen.getByRole('button', { name: '상대 �
 beforeEach(() => {
   vi.clearAllMocks();
   mockFetchState.mockResolvedValue(state());
-  mockHalve.mockResolvedValue({ succeeded: false, targetName: '피해자', balance: 700 });
+  mockHalve.mockResolvedValue({ succeeded: false, lost: 0, targetName: '피해자', balance: 700 });
 });
 
 describe('누르기 전에 알려 주는 것', () => {
@@ -73,8 +73,6 @@ describe('누르기 전에 알려 주는 것', () => {
     // 이 문구가 사라지면 사람들은 상대가 자기를 알아본다고 오해한다
     await show();
     expect(screen.getByText(/누가 걸었는지는 알 수 없습니다/)).toBeInTheDocument();
-    // 나도 얼마가 날아갔는지 모른다는 것까지 적어 둔다
-    expect(screen.getByText(/얼마가 사라졌는지는 알 수 없습니다/)).toBeInTheDocument();
   });
 
   it('날린 포인트가 내게 오지 않는다고 적어 둔다', async () => {
@@ -114,17 +112,29 @@ describe('던질 수 없는 상태', () => {
 });
 
 describe('던진 결과', () => {
-  it('통하면 통했다고만 알려 준다 — 액수는 말하지 않는다', async () => {
-    // 절반을 알려 주면 상대의 잔액을 그대로 알려 주는 셈이라 서버가 아예 보내지 않는다.
-    mockHalve.mockResolvedValue({ succeeded: true, targetName: '피해자', balance: 700 });
+  it('통하면 몇 점을 날렸는지 알려 준다', async () => {
+    mockHalve.mockResolvedValue({
+      succeeded: true,
+      lost: 1234,
+      targetName: '피해자',
+      balance: 700,
+    });
     await show();
     pick();
     fireEvent.click(throwBtn());
 
     const hit = await screen.findByText(/명중!/);
-    expect(hit).toHaveTextContent('포인트 절반이 사라졌습니다');
-    expect(hit.textContent ?? '').not.toMatch(/\d/);
+    expect(hit).toHaveTextContent('1,234');
     await waitFor(() => expect(mockHalve).toHaveBeenCalledWith('victim'));
+  });
+
+  it('통했는데 상대가 빈털터리면 그렇게 말한다 — 0P 가 사라졌다고 하지 않는다', async () => {
+    mockHalve.mockResolvedValue({ succeeded: true, lost: 0, targetName: '피해자', balance: 700 });
+    await show();
+    pick();
+    fireEvent.click(throwBtn());
+
+    expect(await screen.findByText(/날릴 포인트가 없었습니다/)).toBeInTheDocument();
   });
 
   it('빗나가면 아무 일도 없었다고 알려 준다', async () => {

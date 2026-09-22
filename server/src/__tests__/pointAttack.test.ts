@@ -172,15 +172,12 @@ describe('익명', () => {
     expect(body).not.toContain(`${ATK}이름`);
   });
 
-  it('응답에 사라진 액수도 없다 — 절반을 알면 상대의 잔액을 아는 것과 같다', async () => {
+  it('사라진 액수는 던진 사람에게 알려 준다 — 가려야 하는 것은 이름뿐이다', async () => {
     const res = await throwAt(atkCookie, TGT);
     expect(res.status).toBe(200);
-    expect(res.body.data).not.toHaveProperty('lost');
-    expect(res.body.data).not.toHaveProperty('amountLost');
-    // 상대의 잔액(2,468)이나 그 절반(1,234)이 어떤 형태로도 실려 있으면 안 된다
-    const body = JSON.stringify(res.body);
-    expect(body).not.toContain('2468');
-    expect(body).not.toContain('1234');
+    expect(res.body.data).toHaveProperty('lost');
+    // 빗나가면 0, 통하면 절반. 어느 쪽이든 숫자로 온다.
+    expect([0, 1234]).toContain(res.body.data.lost);
   });
 
   it('당한 사람의 알림과 원장에도 공격자가 없다', async () => {

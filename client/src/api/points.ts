@@ -159,10 +159,11 @@ export interface PointAttackState {
 
 export interface PointAttackResult {
   succeeded: boolean;
+  /** 사라진 포인트. 빗나갔거나 상대가 빈털터리면 0. */
+  lost: number;
   targetName: string;
   /** 값을 낸 뒤 내 잔액 */
   balance: number;
-  // 사라진 액수는 오지 않는다 — 절반을 알면 상대의 잔액을 아는 것과 같다.
 }
 
 export const fetchPointAttackState = async (): Promise<PointAttackState> =>
