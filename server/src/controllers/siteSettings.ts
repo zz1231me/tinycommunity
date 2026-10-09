@@ -190,6 +190,8 @@ function toPayload(s: SiteSettings) {
     attackDefendCost: s.attackDefendCost ?? DEFAULTS.attackDefendCost,
     attackBlockSeconds: s.attackBlockSeconds ?? DEFAULTS.attackBlockSeconds,
     attackDailyLimit: s.attackDailyLimit ?? DEFAULTS.attackDailyLimit,
+    attackMaxStack: s.attackMaxStack ?? DEFAULTS.attackMaxStack,
+    attackHideTotalMaxSeconds: s.attackHideTotalMaxSeconds ?? DEFAULTS.attackHideTotalMaxSeconds,
     pointAttackCost: s.pointAttackCost ?? DEFAULTS.pointAttackCost,
     pointAttackPercent: s.pointAttackPercent ?? DEFAULTS.pointAttackPercent,
     pointAttackLossPercent: s.pointAttackLossPercent ?? DEFAULTS.pointAttackLossPercent,
@@ -313,6 +315,8 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       attackDefendCost,
       attackBlockSeconds,
       attackDailyLimit,
+      attackMaxStack,
+      attackHideTotalMaxSeconds,
       pointAttackCost,
       pointAttackPercent,
       pointAttackLossPercent,
@@ -622,6 +626,13 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       attackDefendCost: intOrKeep(attackDefendCost, settings.attackDefendCost, 0, 100000),
       attackBlockSeconds: intOrKeep(attackBlockSeconds, settings.attackBlockSeconds, 5, 600),
       attackDailyLimit: intOrKeep(attackDailyLimit, settings.attackDailyLimit, 1, 100),
+      attackMaxStack: intOrKeep(attackMaxStack, settings.attackMaxStack, 1, 50),
+      attackHideTotalMaxSeconds: intOrKeep(
+        attackHideTotalMaxSeconds,
+        settings.attackHideTotalMaxSeconds,
+        5,
+        300
+      ),
       pointAttackCost: intOrKeep(pointAttackCost, settings.pointAttackCost, 0, 100000),
       // 0% 면 아무도 못 맞히고 100% 면 던질 때마다 맞는다. 둘 다 운영자가 고를 수 있어야 한다.
       pointAttackPercent: intOrKeep(pointAttackPercent, settings.pointAttackPercent, 0, 100),

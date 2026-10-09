@@ -186,6 +186,8 @@ export const attendancePolicySchema = z.object({
   standardWorkMinutes: z.number().int().min(30).max(1440).optional(),
   // 상한은 서비스(updatePolicy)와 같은 값이다.
   checkInGraceMinutes: z.number().int().min(0).max(60).optional(),
+  /** 잘못 누른 퇴근을 되돌릴 수 있는 시간(분). 0 이면 끈다. */
+  undoMinutes: z.number().int().min(0).max(60).optional(),
   requireChecklist: z.boolean().optional(),
   noticeText: z.string().max(300, '안내 문구는 300자를 넘을 수 없습니다.').optional(),
 });

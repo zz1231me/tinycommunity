@@ -106,6 +106,10 @@ export interface SiteSettings {
   attackBlockSeconds: number;
   /** 한 사람이 하루에 쓸 수 있는 공격 횟수 */
   attackDailyLimit: number;
+  /** 한 사람에게 한꺼번에 쌓일 수 있는 공격 수 */
+  attackMaxStack: number;
+  /** 숨기기로 한 번에 가려 둘 수 있는 시간의 합(초) */
+  attackHideTotalMaxSeconds: number;
   /** 포인트 절반 날리기 — 한 번 던지는 값 */
   pointAttackCost: number;
   /** 포인트 절반 날리기 — 통할 확률(%) */

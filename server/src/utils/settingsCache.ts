@@ -143,6 +143,8 @@ export const SETTINGS_DEFAULTS = {
   attackDefendCost: ATTACK_DEFAULTS.defendCost,
   attackBlockSeconds: ATTACK_DEFAULTS.blockSeconds,
   attackDailyLimit: ATTACK_DEFAULTS.dailyLimitPerAttacker,
+  attackMaxStack: ATTACK_DEFAULTS.maxStack,
+  attackHideTotalMaxSeconds: ATTACK_DEFAULTS.hideTotalMaxSeconds,
   pointAttackCost: POINT_ATTACK_DEFAULTS.cost,
   pointAttackPercent: POINT_ATTACK_DEFAULTS.successPercent,
   pointAttackLossPercent: POINT_ATTACK_DEFAULTS.lossPercent,
@@ -211,6 +213,9 @@ export async function loadSettingsCache(): Promise<void> {
         attackDefendCost: settings.attackDefendCost ?? DEFAULTS.attackDefendCost,
         attackBlockSeconds: settings.attackBlockSeconds ?? DEFAULTS.attackBlockSeconds,
         attackDailyLimit: settings.attackDailyLimit ?? DEFAULTS.attackDailyLimit,
+        attackMaxStack: settings.attackMaxStack ?? DEFAULTS.attackMaxStack,
+        attackHideTotalMaxSeconds:
+          settings.attackHideTotalMaxSeconds ?? DEFAULTS.attackHideTotalMaxSeconds,
         pointAttackCost: settings.pointAttackCost ?? DEFAULTS.pointAttackCost,
         pointAttackPercent: settings.pointAttackPercent ?? DEFAULTS.pointAttackPercent,
         pointAttackLossPercent: settings.pointAttackLossPercent ?? DEFAULTS.pointAttackLossPercent,
@@ -340,6 +345,9 @@ export function getAttackSettings() {
     defendCost: cachedSettings?.attackDefendCost ?? DEFAULTS.attackDefendCost,
     blockSeconds: cachedSettings?.attackBlockSeconds ?? DEFAULTS.attackBlockSeconds,
     dailyLimitPerAttacker: cachedSettings?.attackDailyLimit ?? DEFAULTS.attackDailyLimit,
+    maxStack: cachedSettings?.attackMaxStack ?? DEFAULTS.attackMaxStack,
+    hideTotalMaxSeconds:
+      cachedSettings?.attackHideTotalMaxSeconds ?? DEFAULTS.attackHideTotalMaxSeconds,
   };
 }
 

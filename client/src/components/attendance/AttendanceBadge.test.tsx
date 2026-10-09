@@ -42,6 +42,7 @@ const status = (over: Partial<AttendanceStatus> = {}): AttendanceStatus => ({
     requireChecklist: false,
     noticeText: '',
     checkInGraceMinutes: 0,
+    undoMinutes: 10,
   },
   ...over,
 });

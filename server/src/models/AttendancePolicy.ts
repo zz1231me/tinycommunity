@@ -21,6 +21,7 @@ class AttendancePolicyModel extends Model<
   declare public noticeText: CreationOptional<string>;
   /** 출근 시각을 이만큼(분) 앞당겨 기록한다. 0 이면 누른 시각 그대로. */
   declare public checkInGraceMinutes: CreationOptional<number>;
+  declare public undoMinutes: CreationOptional<number>;
   declare public readonly createdAt: CreationOptional<Date>;
   declare public readonly updatedAt: CreationOptional<Date>;
 }
@@ -36,6 +37,7 @@ AttendancePolicyModel.init(
       defaultValue: '출퇴근을 기록합니다. 전체 기록은 관리자만 봅니다.',
     },
     checkInGraceMinutes: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    undoMinutes: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 10 },
     createdAt: { type: DataTypes.DATE, allowNull: false },
     updatedAt: { type: DataTypes.DATE, allowNull: false },
   },

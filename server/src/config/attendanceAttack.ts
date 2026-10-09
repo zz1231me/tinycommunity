@@ -28,7 +28,7 @@ export const ATTACK_NAME: Record<AttackKind, string> = {
   quiz: '퇴근 문제 내기',
 };
 
-/** 한 사람에게 한꺼번에 쌓일 수 있는 공격 수. 차례로 적용된다. */
+/** 한 사람에게 한꺼번에 쌓일 수 있는 공격 수의 기본값. 실제 값은 관리자 설정에서 온다. */
 export const ATTACK_MAX_STACK = 20;
 
 /**
@@ -50,6 +50,10 @@ export const ATTACK_DEFAULTS = {
   hideSeconds: 20,
   /** 한 사람이 하루에 쓸 수 있는 공격 횟수 (종류 합쳐서) */
   dailyLimitPerAttacker: 5,
+  /** 한 사람에게 한꺼번에 쌓일 수 있는 공격 수 */
+  maxStack: ATTACK_MAX_STACK,
+  /** 숨기기로 한 번에 가려 둘 수 있는 시간의 합(초) */
+  hideTotalMaxSeconds: HIDE_TOTAL_MAX_SECONDS,
   // as const 를 붙이지 않는다. 리터럴 타입으로 굳으면 DB 에서 읽은 number 를 넣을 수 없다.
 };
 

@@ -594,6 +594,37 @@ describe('퇴근 취소', () => {
     expect((await undo()).status).toBe(409);
   });
 
+  it('허용 시간을 관리자가 바꾸면 그 시간을 따른다', async () => {
+    const { attendanceService } = await import('../services/attendance.service');
+    await attendanceService.updatePolicy({ undoMinutes: 30 });
+    try {
+      await checkIn(cookie, answers());
+      await checkOut(cookie);
+      // 기본 10분이라면 지났을 시각이지만 30분 설정에서는 아직 되돌릴 수 있다
+      await AttendanceRecord.update(
+        { checkOutAt: new Date(Date.now() - 20 * 60_000) },
+        { where: { UserId: U } }
+      );
+      expect((await status()).body.data.undoCheckOutUntil).not.toBeNull();
+      expect((await undo()).status).toBe(200);
+    } finally {
+      await attendanceService.updatePolicy({ undoMinutes: 10 });
+    }
+  });
+
+  it('0 분으로 두면 되돌리기가 꺼진다', async () => {
+    const { attendanceService } = await import('../services/attendance.service');
+    await attendanceService.updatePolicy({ undoMinutes: 0 });
+    try {
+      await checkIn(cookie, answers());
+      await checkOut(cookie);
+      expect((await status()).body.data.undoCheckOutUntil).toBeNull();
+      expect((await undo()).status).toBe(409);
+    } finally {
+      await attendanceService.updatePolicy({ undoMinutes: 10 });
+    }
+  });
+
   it('퇴근한 적이 없으면 취소할 것이 없다', async () => {
     await checkIn(cookie, answers());
     expect((await undo()).status).toBe(409);

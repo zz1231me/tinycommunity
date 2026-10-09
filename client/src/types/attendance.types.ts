@@ -38,6 +38,8 @@ export interface AttendancePolicy {
   noticeText: string;
   /** 출근 시각을 이만큼(분) 앞당겨 기록한다. 0 이면 누른 그대로. */
   checkInGraceMinutes: number;
+  /** 잘못 누른 퇴근을 되돌릴 수 있는 시간(분). 0 이면 되돌릴 수 없다. */
+  undoMinutes: number;
 }
 
 export interface AttendanceStatus {

@@ -16,9 +16,7 @@ import {
   withLockRetry,
 } from './point.service';
 import {
-  ATTACK_MAX_STACK,
   ATTACK_NAME,
-  HIDE_TOTAL_MAX_SECONDS,
   attackCost,
   attackSeconds,
   isAttackKind,
@@ -125,7 +123,7 @@ export const attendanceAttackService = {
         blockSeconds: rules.blockSeconds,
         hideSeconds: rules.hideSeconds,
         dailyLimit: rules.dailyLimitPerAttacker,
-        maxStack: ATTACK_MAX_STACK,
+        maxStack: rules.maxStack,
       },
       balance: balanceRow?.balance ?? 0,
       /** 지금 걸려 있는 공격. 줄의 맨 앞이며 없으면 null. */
@@ -179,8 +177,8 @@ export const attendanceAttackService = {
         }
 
         const queue = await liveQueue(targetId, t);
-        if (queue.length >= ATTACK_MAX_STACK) {
-          throw new AppError(409, `이미 공격이 ${ATTACK_MAX_STACK}개 쌓여 있습니다.`);
+        if (queue.length >= rules.maxStack) {
+          throw new AppError(409, `이미 공격이 ${rules.maxStack}개 쌓여 있습니다.`);
         }
 
         // 잠근 뒤에 다시 확인한다. 위의 확인은 잠금 밖이라 그 사이에 퇴근할 수 있다.
@@ -198,10 +196,10 @@ export const attendanceAttackService = {
               0
             );
           const lifeMs = attackSeconds(kind, rules) * 1000;
-          if (queuedHideMs + lifeMs > HIDE_TOTAL_MAX_SECONDS * 1000) {
+          if (queuedHideMs + lifeMs > rules.hideTotalMaxSeconds * 1000) {
             throw new AppError(
               409,
-              `숨기기는 한 번에 ${HIDE_TOTAL_MAX_SECONDS}초까지만 쌓을 수 있습니다. 방해나 문제 내기를 써 보세요.`
+              `숨기기는 한 번에 ${rules.hideTotalMaxSeconds}초까지만 쌓을 수 있습니다. 방해나 문제 내기를 써 보세요.`
             );
           }
         }

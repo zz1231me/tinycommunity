@@ -79,6 +79,8 @@ export interface SiteSettingsInstance extends Model<
   attackDefendCost: CreationOptional<number>;
   attackBlockSeconds: CreationOptional<number>;
   attackDailyLimit: CreationOptional<number>;
+  attackMaxStack: CreationOptional<number>;
+  attackHideTotalMaxSeconds: CreationOptional<number>;
   pointAttackCost: CreationOptional<number>;
   pointAttackPercent: CreationOptional<number>;
   pointAttackLossPercent: CreationOptional<number>;
@@ -164,6 +166,8 @@ export class SiteSettings
   declare public attackDefendCost: CreationOptional<number>;
   declare public attackBlockSeconds: CreationOptional<number>;
   declare public attackDailyLimit: CreationOptional<number>;
+  declare public attackMaxStack: CreationOptional<number>;
+  declare public attackHideTotalMaxSeconds: CreationOptional<number>;
   declare public pointAttackCost: CreationOptional<number>;
   declare public pointAttackPercent: CreationOptional<number>;
   declare public pointAttackLossPercent: CreationOptional<number>;
@@ -564,6 +568,18 @@ SiteSettings.init(
       allowNull: false,
       defaultValue: ATTACK_DEFAULTS.defendCost,
       field: 'attack_defend_cost',
+    },
+    attackMaxStack: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: ATTACK_DEFAULTS.maxStack,
+      field: 'attack_max_stack',
+    },
+    attackHideTotalMaxSeconds: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: ATTACK_DEFAULTS.hideTotalMaxSeconds,
+      field: 'attack_hide_total_max_seconds',
     },
     pointAttackCost: {
       type: DataTypes.INTEGER,

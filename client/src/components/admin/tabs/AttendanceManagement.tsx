@@ -833,6 +833,42 @@ const AttendanceManagement = () => {
                   </div>
                 </div>
 
+                <div className="flex items-start justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                      퇴근 취소 허용 시간
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                      잘못 누른 퇴근을 이 시간 안에만 되돌릴 수 있습니다. 길게 두면 '퇴근 → 취소' 로
+                      근무 시간을 늘릴 수 있고, 0 이면 되돌리기를 끕니다.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      // 서버도 0~60 으로 막는다(attendance.service.updatePolicy)
+                      max={60}
+                      key={policy.undoMinutes}
+                      defaultValue={policy.undoMinutes}
+                      onBlur={e => {
+                        const next = Number(e.target.value);
+                        if (!Number.isInteger(next) || next < 0 || next > 60) {
+                          e.target.value = String(policy.undoMinutes);
+                          toast.error('퇴근 취소 허용 시간은 0~60분 사이여야 합니다.');
+                          return;
+                        }
+                        if (next !== policy.undoMinutes) {
+                          savePolicy.mutate({ undoMinutes: next });
+                        }
+                      }}
+                      aria-label="퇴근 취소 허용 시간(분)"
+                      className="input input-sm w-24 text-right"
+                    />
+                    <span className="text-xs text-slate-500 dark:text-slate-400">분</span>
+                  </div>
+                </div>
+
                 <div className="rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800">
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
                     출근 확인 화면 안내 문구

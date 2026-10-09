@@ -31,6 +31,7 @@ vi.mock('../../api/attendance', () => ({
       requireChecklist: true,
       noticeText: '',
       checkInGraceMinutes: 0,
+      undoMinutes: 10,
     },
   }),
 }));
@@ -64,6 +65,7 @@ const statusWorking = (minutesWorked: number): AttendanceStatus => ({
     requireChecklist: true,
     noticeText: '',
     checkInGraceMinutes: 0,
+    undoMinutes: 10,
   },
   undoCheckOutUntil: null,
 });

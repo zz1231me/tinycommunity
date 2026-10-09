@@ -18,7 +18,7 @@ const MAX_DESCRIPTION = 500;
 /** 명단에 올릴 사용자 수 상한 */
 const USER_LIMIT = 500;
 
-/** 퇴근 취소 허용 시간(분). 퇴근 시각은 분 단위로 잘려 저장된다. */
+/** 퇴근 취소 허용 시간(분)의 기본값. 실제 값은 관리자가 정하는 정책에서 온다. */
 export const CHECKOUT_UNDO_MINUTES = 10;
 
 /** 명단이 상한에서 잘렸으면 경고 로그를 남긴다. */
@@ -38,6 +38,8 @@ export interface PolicyView {
   noticeText: string;
   /** 출근 시각을 이만큼(분) 앞당겨 기록한다. 0 이면 누른 그대로. */
   checkInGraceMinutes: number;
+  /** 잘못 누른 퇴근을 되돌릴 수 있는 시간(분) */
+  undoMinutes: number;
 }
 
 export interface ChecklistItemView {
@@ -146,6 +148,7 @@ function toPolicyView(policy: AttendancePolicy): PolicyView {
     requireChecklist: policy.requireChecklist,
     noticeText: policy.noticeText,
     checkInGraceMinutes: policy.checkInGraceMinutes,
+    undoMinutes: policy.undoMinutes,
   };
 }
 
@@ -209,7 +212,7 @@ export class AttendanceService extends BaseService {
     // checkOut 이 닫는 대상과 같은 기준으로 고른다. 오늘 것이 있으면 어제 것은 내보내지 않는다.
     const openPrevious = record ? null : await findOpenPreviousDay(userId, workDate);
 
-    const undoable = await findUndoableCheckOut(userId);
+    const undoable = await findUndoableCheckOut(userId, policy.undoMinutes);
 
     return {
       workDate,
@@ -218,7 +221,7 @@ export class AttendanceService extends BaseService {
       checklist: items.map(toItemView),
       policy: toPolicyView(policy),
       /** 방금 누른 퇴근을 이 시각까지 되돌릴 수 있다 (없으면 null) */
-      undoCheckOutUntil: undoable ? undoDeadline(undoable).toISOString() : null,
+      undoCheckOutUntil: undoable ? undoDeadline(undoable, policy.undoMinutes).toISOString() : null,
     };
   }
 
@@ -293,11 +296,14 @@ export class AttendanceService extends BaseService {
 
   /** 방금 누른 퇴근을 되돌린다. 가장 최근에 닫은 기록 하나만, CHECKOUT_UNDO_MINUTES 안에만 된다. */
   async undoCheckOut(userId: string): Promise<RecordView> {
-    const record = await findUndoableCheckOut(userId);
+    const policy = await this.getPolicy();
+    const record = await findUndoableCheckOut(userId, policy.undoMinutes);
     if (!record) {
       throw new AppError(
         409,
-        `퇴근은 누른 뒤 ${CHECKOUT_UNDO_MINUTES}분 안에만 취소할 수 있습니다.`
+        policy.undoMinutes > 0
+          ? `퇴근은 누른 뒤 ${policy.undoMinutes}분 안에만 취소할 수 있습니다.`
+          : '퇴근 취소가 꺼져 있습니다.'
       );
     }
     // 동시에 여러 번 눌러도 한 번만 되돌린다.
@@ -592,6 +598,14 @@ export class AttendanceService extends BaseService {
       }
       policy.checkInGraceMinutes = grace;
     }
+    if (data.undoMinutes !== undefined) {
+      const minutes = data.undoMinutes;
+      // 0 이면 되돌릴 수 없고, 너무 길면 '퇴근 → 취소' 로 근무 시간을 늘릴 수 있다.
+      if (!Number.isInteger(minutes) || minutes < 0 || minutes > 60) {
+        throw new AppError(400, '퇴근 취소 허용 시간은 0~60분 사이의 정수여야 합니다.');
+      }
+      policy.undoMinutes = minutes;
+    }
     if (data.requireChecklist !== undefined) policy.requireChecklist = data.requireChecklist;
     if (data.noticeText !== undefined) {
       // 빈 안내는 머리글이 비어 보이므로 기본 문구로 되돌린다
@@ -641,8 +655,8 @@ function shiftDay(day: string, delta: number): string {
 }
 
 /** 퇴근 취소 마감. 분 단위로 잘린 1분을 더 쳐 준다. */
-function undoDeadline(record: AttendanceRecord): Date {
-  return new Date(record.checkOutAt!.getTime() + (CHECKOUT_UNDO_MINUTES + 1) * 60_000);
+function undoDeadline(record: AttendanceRecord, undoMinutes: number): Date {
+  return new Date(record.checkOutAt!.getTime() + (undoMinutes + 1) * 60_000);
 }
 
 /**
@@ -651,7 +665,12 @@ function undoDeadline(record: AttendanceRecord): Date {
  * 퇴근보다 먼저 열려 있던 기록(어제 퇴근을 안 찍은 것)은 막지 않는다. 되돌려 봐야 누르기
  * 직전 상태로 돌아갈 뿐인데, 막으면 잘못 누른 퇴근을 되돌릴 길이 사라진다.
  */
-async function findUndoableCheckOut(userId: string): Promise<AttendanceRecord | null> {
+async function findUndoableCheckOut(
+  userId: string,
+  undoMinutes: number
+): Promise<AttendanceRecord | null> {
+  // 0 분이면 되돌리기를 아예 끈 것이다.
+  if (undoMinutes <= 0) return null;
   const last = await AttendanceRecord.findOne({
     where: { UserId: userId, checkOutAt: { [Op.ne]: null } },
     order: [
@@ -659,7 +678,7 @@ async function findUndoableCheckOut(userId: string): Promise<AttendanceRecord | 
       ['id', 'DESC'],
     ],
   });
-  if (!last || undoDeadline(last).getTime() <= Date.now()) return null;
+  if (!last || undoDeadline(last, undoMinutes).getTime() <= Date.now()) return null;
   const restarted = await AttendanceRecord.findOne({
     where: { UserId: userId, checkOutAt: null, checkInAt: { [Op.gt]: last.checkOutAt! } },
     attributes: ['id'],

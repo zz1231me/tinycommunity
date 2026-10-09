@@ -773,6 +773,24 @@ export const SiteSettingsManagement = () => {
               unit="회"
             />
             <NumberInput
+              label="한 사람에게 쌓이는 공격 수"
+              description="이보다 많이 쌓이면 더 보낼 수 없습니다"
+              min={1}
+              max={50}
+              value={settings.attackMaxStack}
+              onChange={v => set('attackMaxStack', v)}
+              unit="개"
+            />
+            <NumberInput
+              label="숨기기 합계 상한"
+              description="숨기기만 실제로 누를 수 없어 개수와 별개로 합계를 제한합니다"
+              min={5}
+              max={300}
+              value={settings.attackHideTotalMaxSeconds}
+              onChange={v => set('attackHideTotalMaxSeconds', v)}
+              unit="초"
+            />
+            <NumberInput
               label="포인트 날리기 — 값"
               description="한 번 던지는 값입니다. 빗나가도 돌려주지 않습니다"
               min={0}
