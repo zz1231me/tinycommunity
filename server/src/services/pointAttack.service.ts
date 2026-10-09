@@ -67,6 +67,48 @@ function nameOf(row: PointAttackModel, key: 'attacker' | 'target', fallback: str
   return joined[key]?.name ?? fallback;
 }
 
+/** 한 발 던지기 전에 한 번만 해 두면 되는 것들 */
+interface ThrowContext {
+  rules: ReturnType<typeof getAttackSettings>;
+  point: ReturnType<typeof getPointAttackSettings>;
+  target: { id: string; name: string };
+  targetId: string;
+}
+
+/**
+ * 상대를 찾고 잔액 행을 보장한다. 열 발을 던져도 한 번이면 된다 —
+ * 매 발마다 하면 같은 사용자 조회가 열 번 나간다.
+ */
+async function prepareThrow(attackerId: string, rawTargetId: string): Promise<ThrowContext> {
+  if (attackerId === rawTargetId) {
+    throw new AppError(400, '자기 자신에게는 쓸 수 없습니다.');
+  }
+
+  const target = await User.findByPk(rawTargetId, {
+    attributes: ['id', 'name', 'isActive', 'isDeleted'],
+  });
+  if (!target || !target.isActive || target.isDeleted) {
+    throw new AppError(404, '상대를 찾을 수 없습니다.');
+  }
+  // 대소문자를 가리지 않는 DB 가 있으므로 입력값이 아니라 DB 가 돌려준 아이디를 쓴다.
+  const targetId = target.id;
+  if (attackerId === targetId) {
+    throw new AppError(400, '자기 자신에게는 쓸 수 없습니다.');
+  }
+
+  await ensureBalanceRow(attackerId);
+  await ensureBalanceRow(targetId);
+
+  return {
+    // 설정은 한 번 읽어 열 발이 같은 규칙으로 돌게 한다. 중간에 관리자가 바꿔도
+    // 한 요청 안에서는 값이 흔들리지 않는다.
+    rules: getAttackSettings(),
+    point: getPointAttackSettings(),
+    target: { id: target.id, name: target.name },
+    targetId,
+  };
+}
+
 export const pointAttackService = {
   /**
    * 관리자용 기록. 익명은 당한 사람에게만 지키는 규칙이고, 관리자는 누가 걸었는지 봐야 한다 —
@@ -143,12 +185,15 @@ export const pointAttackService = {
   ) {
     const count = Math.min(MAX_THROWS_AT_ONCE, Math.max(1, Math.floor(input.count)));
     const throws: Array<{ succeeded: boolean; lost: number }> = [];
-    let last: Awaited<ReturnType<typeof pointAttackService.halve>> | null = null;
+    let last: Awaited<ReturnType<typeof pointAttackService.throwOnce>> | null = null;
     let stopped: string | null = null;
+
+    // 상대 조회와 잔액 행 보장은 한 번만. 열 발이면 열 번 하던 것이다.
+    const ready = await prepareThrow(attackerId, input.targetId);
 
     for (let i = 0; i < count; i += 1) {
       try {
-        last = await pointAttackService.halve(attackerId, { targetId: input.targetId }, roll);
+        last = await pointAttackService.throwOnce(attackerId, ready, roll);
         throws.push({ succeeded: last.succeeded, lost: last.lost });
       } catch (err) {
         // 첫 번째부터 막히면 평소처럼 오류를 돌려준다. 몇 번이라도 던졌으면 거기까지가 결과다.
@@ -171,27 +216,16 @@ export const pointAttackService = {
    * @param roll 테스트에서 결과를 정할 때만 넣는다. 1~100.
    */
   async halve(attackerId: string, input: { targetId: string }, roll: () => number = rollPercent) {
-    const rules = getAttackSettings();
-    const point = getPointAttackSettings();
+    const ready = await prepareThrow(attackerId, input.targetId);
+    return pointAttackService.throwOnce(attackerId, ready, roll);
+  },
 
-    if (attackerId === input.targetId) {
-      throw new AppError(400, '자기 자신에게는 쓸 수 없습니다.');
-    }
-
-    const target = await User.findByPk(input.targetId, {
-      attributes: ['id', 'name', 'isActive', 'isDeleted'],
-    });
-    if (!target || !target.isActive || target.isDeleted) {
-      throw new AppError(404, '상대를 찾을 수 없습니다.');
-    }
-    // 대소문자를 가리지 않는 DB 가 있으므로 입력값이 아니라 DB 가 돌려준 아이디를 쓴다.
-    const targetId = target.id;
-    if (attackerId === targetId) {
-      throw new AppError(400, '자기 자신에게는 쓸 수 없습니다.');
-    }
-
-    await ensureBalanceRow(attackerId);
-    await ensureBalanceRow(targetId);
+  /**
+   * 준비가 끝난 상태에서 한 발. halveMany 가 열 번 부를 때 상대 조회와 잔액 행 보장을
+   * 되풀이하지 않도록 나눠 두었다.
+   */
+  async throwOnce(attackerId: string, ready: ThrowContext, roll: () => number = rollPercent) {
+    const { rules, point, target, targetId } = ready;
 
     // 잠그기 전에 한 번 거른다. 이것이 없으면 하루 횟수를 넘긴 요청도 잔액 행을 잠그고 들어가,
     // 몰아칠 때 이미 틀린 요청들이 트랜잭션 줄을 메워 서로를 기다리게 만든다.

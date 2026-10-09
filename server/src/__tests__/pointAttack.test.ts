@@ -288,6 +288,18 @@ describe('한 번에 여러 발', () => {
     ).rejects.toThrow(/모자랍니다/);
   });
 
+  it('열 발을 던져도 상대는 한 번만 찾는다', async () => {
+    // 매 발마다 찾으면 같은 조회가 열 번 나간다. 한 요청 안에서 바뀔 값이 아니다.
+    const spy = jest.spyOn(User, 'findByPk');
+    try {
+      await pointAttackService.halveMany(ATK, { targetId: TGT, count: 4 }, never);
+      const targetLookups = spy.mock.calls.filter(c => c[0] === TGT).length;
+      expect(targetLookups).toBe(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('상한을 넘겨 보내도 상한까지만', async () => {
     const result = await pointAttackService.halveMany(ATK, { targetId: TGT, count: 999 }, never);
     // 하루 횟수가 먼저 걸리지만, 어느 쪽이든 요청한 999 번이 되지는 않는다
