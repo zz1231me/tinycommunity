@@ -24,6 +24,7 @@ import { toast } from '../../utils/toast';
 import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { useFeature } from '../../store/features';
 import { useNotificationArrival } from '../../hooks/useNotificationArrival';
+import { useNotificationStore } from '../../store/notifications';
 import { ConfirmationModal } from '../../components/admin/common/ConfirmationModal';
 import {
   formatClock,
@@ -117,14 +118,20 @@ export default function AttendancePage() {
   // 퇴근 공격은 퇴근 버튼만 잠근다. 서버 기록은 이 상태를 보지 않는다.
   const attackEnabled = useFeature('tools.attendanceAttack');
 
+  // 알림이 살아 있으면 주기적인 확인을 늦춘다. 공격은 알림이 먼저 알려 준다.
+  const notificationsLive = useNotificationStore(s => s.isLive);
+
   const attack = useQuery({
     queryKey: attendanceKeys.attack,
     queryFn: fetchAttackState,
     enabled: attackEnabled,
-    // 공격은 1분이면 풀리므로 근무 중일 때만 짧은 주기로 확인한다. 알림이 끊겼을 때의 대비다.
+    // 공격은 1분이면 풀리므로 근무 중일 때만 주기적으로 확인한다. 알림이 끊겼을 때의 대비다.
+    // SSE 가 살아 있으면 공격이 오는 순간 아래 useNotificationArrival 이 다시 읽으므로,
+    // 주기는 어긋남을 바로잡는 정도로 늦춘다 — 10초마다 묻는 것은 사람 수만큼 쌓인다.
     refetchInterval: () => {
-      const live = status.data?.record ?? status.data?.openPrevious ?? null;
-      return live && !live.checkOutAt ? 10_000 : false;
+      const open = status.data?.record ?? status.data?.openPrevious ?? null;
+      if (!open || open.checkOutAt) return false;
+      return notificationsLive ? 60_000 : 10_000;
     },
     // 다른 탭에 있다 돌아왔을 때 그 사이 걸린 공격이 보이도록 여기서만 켠다.
     refetchOnWindowFocus: true,

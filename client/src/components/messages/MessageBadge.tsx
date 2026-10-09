@@ -1,24 +1,38 @@
-// 헤더의 메시지 아이콘과 안 읽은 수. 실시간은 알림 벨이 맡고 여기서는 주기적으로 다시 확인한다.
+// 헤더의 메시지 아이콘과 안 읽은 수.
+//
+// 새 메시지는 SSE 알림이 먼저 알려 주므로 주기적인 확인은 그것이 끊겼을 때의 대비다.
+// 연결이 살아 있는 동안 1 분마다 묻는 것은 사람 수만큼 쌓이는 헛된 요청이다.
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { MessagesSquare } from 'lucide-react';
 import { fetchUnreadMessageCount } from '../../api/messages';
 import { messageKeys } from '../../api/queryKeys';
 import { useFeature } from '../../store/features';
+import { useNotificationStore } from '../../store/notifications';
+import { useNotificationArrival } from '../../hooks/useNotificationArrival';
 
-/** 다시 확인하는 주기 */
+/** 알림이 끊겼을 때 쓰는 주기 */
 const REFETCH_MS = 60_000;
+/** 알림이 살아 있을 때. 새 메시지는 알림이 알려 주므로 이것은 어긋남을 바로잡는 용도다. */
+const REFETCH_MS_WITH_SSE = 5 * 60_000;
 
 export function MessageBadge() {
   const enabled = useFeature('social.dm');
+  const queryClient = useQueryClient();
+  const live = useNotificationStore(s => s.isLive);
 
   const { data: count = 0 } = useQuery({
     queryKey: messageKeys.unread,
     queryFn: ({ signal }) => fetchUnreadMessageCount(signal),
     enabled,
-    refetchInterval: REFETCH_MS,
+    refetchInterval: live ? REFETCH_MS_WITH_SSE : REFETCH_MS,
     refetchOnWindowFocus: true,
+  });
+
+  // 알림이 오면 바로 센다. 주기를 늦춘 만큼 이것이 실제 반영을 맡는다.
+  useNotificationArrival(['MESSAGE'], () => {
+    void queryClient.invalidateQueries({ queryKey: messageKeys.unread });
   });
 
   if (!enabled) return null;
