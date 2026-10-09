@@ -7,7 +7,14 @@ import PointAttackModel, { PointAttack } from '../models/PointAttack';
 import { UserPoint } from '../models/UserPoint';
 import { User } from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
-import { apply, ensureBalanceRow, lockBothBalances, today, withLockRetry } from './point.service';
+import {
+  apply,
+  ensureBalanceRow,
+  lockBothBalances,
+  runSerialPerUser,
+  today,
+  withLockRetry,
+} from './point.service';
 import { attacksUsedToday } from './attackQuota';
 import {
   HALVE_ANONYMOUS,
@@ -33,7 +40,9 @@ function notifyVictim(userId: string, lost: number, attackId: number): void {
       type: 'POINT_ATTACK',
       // 이름을 넣지 않는다. 익명이 이 기능의 규칙이다.
       message: `${HALVE_ANONYMOUS}의 공격으로 포인트 절반(${lost.toLocaleString()}P)이 사라졌습니다.`,
-      link: '/dashboard/points',
+      // 링크를 두지 않는다. 포인트 화면은 /profile 의 탭이라 따로 들어갈 주소가 없고,
+      // 없는 주소를 달아 두면 눌렀을 때 '페이지를 찾을 수 없습니다' 가 뜬다.
+      // 당한 사실만 알리면 되는 알림이라 팝업과 벨에 남는 것으로 충분하다.
       relatedId: String(attackId),
     })
     .catch(err => logError('포인트 공격 알림 생성 실패', err, { userId, attackId }));
@@ -149,41 +158,50 @@ export const pointAttackService = {
     await ensureBalanceRow(attackerId);
     await ensureBalanceRow(targetId);
 
-    return withLockRetry(() =>
-      sequelize.transaction(async t => {
-        const day = today();
-        // 세기 전에 두 사람을 먼저 잠근다. count 만으로는 동시 요청을 막지 못한다.
-        const rows = await lockBothBalances(attackerId, targetId, t);
+    // 잠그기 전에 한 번 거른다. 이것이 없으면 하루 횟수를 넘긴 요청도 잔액 행을 잠그고 들어가,
+    // 몰아칠 때 이미 틀린 요청들이 트랜잭션 줄을 메워 서로를 기다리게 만든다.
+    // 아래 트랜잭션 안의 검사가 여전히 최종 판정이다 — 이것은 빨리 돌려보내기 위한 것뿐이다.
+    if ((await attacksUsedToday(attackerId, today())) >= rules.dailyLimitPerAttacker) {
+      throw new AppError(429, `오늘은 ${rules.dailyLimitPerAttacker}번을 모두 사용했습니다.`);
+    }
 
-        const used = await attacksUsedToday(attackerId, day, t);
-        if (used >= rules.dailyLimitPerAttacker) {
-          throw new AppError(429, `오늘은 ${rules.dailyLimitPerAttacker}번을 모두 사용했습니다.`);
-        }
+    return runSerialPerUser(attackerId, () =>
+      withLockRetry(() =>
+        sequelize.transaction(async t => {
+          const day = today();
+          // 세기 전에 두 사람을 먼저 잠근다. count 만으로는 동시 요청을 막지 못한다.
+          const rows = await lockBothBalances(attackerId, targetId, t);
 
-        const mine = rows[attackerId];
-        if (mine.balance < HALVE_COST) {
-          throw new AppError(
-            400,
-            `포인트가 모자랍니다. ${HALVE_COST.toLocaleString()}P 가 필요합니다 (보유 ${mine.balance.toLocaleString()}P).`
+          const used = await attacksUsedToday(attackerId, day, t);
+          if (used >= rules.dailyLimitPerAttacker) {
+            throw new AppError(429, `오늘은 ${rules.dailyLimitPerAttacker}번을 모두 사용했습니다.`);
+          }
+
+          const mine = rows[attackerId];
+          if (mine.balance < HALVE_COST) {
+            throw new AppError(
+              400,
+              `포인트가 모자랍니다. ${HALVE_COST.toLocaleString()}P 가 필요합니다 (보유 ${mine.balance.toLocaleString()}P).`
+            );
+          }
+          await apply(mine, -HALVE_COST, 'attack_cost', HALVE_NAME, t);
+
+          const succeeded = roll() <= HALVE_SUCCESS_PERCENT;
+          const victim = rows[targetId];
+          const lost = succeeded ? halfOf(victim.balance) : 0;
+          if (lost > 0) {
+            // memo 에도 이름을 남기지 않는다 — 원장은 당한 사람이 그대로 본다.
+            await apply(victim, -lost, 'point_attack_loss', `${HALVE_ANONYMOUS}의 공격`, t);
+          }
+
+          const made = await PointAttack.create(
+            { attackerId, targetId, workDate: day, cost: HALVE_COST, succeeded, amountLost: lost },
+            { transaction: t }
           );
-        }
-        await apply(mine, -HALVE_COST, 'attack_cost', HALVE_NAME, t);
 
-        const succeeded = roll() <= HALVE_SUCCESS_PERCENT;
-        const victim = rows[targetId];
-        const lost = succeeded ? halfOf(victim.balance) : 0;
-        if (lost > 0) {
-          // memo 에도 이름을 남기지 않는다 — 원장은 당한 사람이 그대로 본다.
-          await apply(victim, -lost, 'point_attack_loss', `${HALVE_ANONYMOUS}의 공격`, t);
-        }
-
-        const made = await PointAttack.create(
-          { attackerId, targetId, workDate: day, cost: HALVE_COST, succeeded, amountLost: lost },
-          { transaction: t }
-        );
-
-        return { id: made.id, succeeded, lost, targetName: target.name, balance: mine.balance };
-      })
+          return { id: made.id, succeeded, lost, targetName: target.name, balance: mine.balance };
+        })
+      )
     ).then(result => {
       if (result.succeeded && result.lost > 0) notifyVictim(targetId, result.lost, result.id);
       return {

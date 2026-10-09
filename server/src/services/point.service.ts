@@ -104,6 +104,31 @@ async function withLockRetry<T>(run: () => Promise<T>, attempts = 12): Promise<T
   }
 }
 
+/**
+ * 같은 사람의 포인트 요청을 한 줄로 세운다.
+ *
+ * 몰아치면 같은 잔액 행을 두고 트랜잭션끼리 서로를 기다리다 연결 풀이 바닥나,
+ * 포인트와 무관한 화면까지 열리지 않았다(동시 15건에 13건이 끝내 응답하지 못했다).
+ * 한 사람 안에서만 줄을 세우므로 다른 사람의 요청은 그대로 지나간다.
+ *
+ * 서버가 여러 대면 대마다 줄이 따로 생긴다. 그래도 한 대가 받는 양이 줄어 효과는 남고,
+ * 하루 횟수와 잔액은 트랜잭션이 끝까지 지킨다.
+ */
+const userQueues = new Map<string, Promise<unknown>>();
+
+export function runSerialPerUser<T>(userId: string, task: () => Promise<T>): Promise<T> {
+  const prev = userQueues.get(userId) ?? Promise.resolve();
+  // 앞 요청이 실패해도 다음은 돌아야 한다.
+  const result = prev.then(task, task);
+  const tail = result.catch(() => undefined);
+  userQueues.set(userId, tail);
+  void tail.then(() => {
+    // 내가 마지막이면 지운다. 남겨 두면 Map 이 사용자 수만큼 계속 자란다.
+    if (userQueues.get(userId) === tail) userQueues.delete(userId);
+  });
+  return result;
+}
+
 /** 잔액과 원장을 한 트랜잭션에서 함께 움직인다 */
 async function apply(
   row: UserPointModel,
@@ -197,52 +222,55 @@ export const pointService = {
     if (prizes.length === 0) throw new AppError(400, '추첨 상품이 설정되지 않았습니다.');
     await ensureBalanceRow(userId);
 
-    return withLockRetry(() =>
-      sequelize.transaction(async t => {
-        const row = await lockBalance(userId, t);
-        const { start, end } = dayRange(today());
-        const drawsSoFar = await PointLedger.count({
-          where: {
-            UserId: userId,
-            reason: 'lottery',
-            createdAt: { [Op.gte]: start, [Op.lt]: end },
-          },
-          transaction: t,
-        });
-        if (drawsSoFar >= dailyLimit) {
-          throw new AppError(
-            429,
-            `오늘은 ${dailyLimit}번을 모두 사용했습니다. 내일 다시 도전해주세요.`
-          );
-        }
-
-        // 참가비. 잔액 확인과 차감은 같은 잠금 안에서 해야 한다.
-        const cost = Math.max(0, drawCost);
-        if (cost > 0) {
-          if (row.balance < cost) {
+    // 뽑기도 같은 사람 것끼리는 한 줄로. 연타·자동 요청이 겹치면 공격과 같은 식으로 멎는다.
+    return runSerialPerUser(userId, () =>
+      withLockRetry(() =>
+        sequelize.transaction(async t => {
+          const row = await lockBalance(userId, t);
+          const { start, end } = dayRange(today());
+          const drawsSoFar = await PointLedger.count({
+            where: {
+              UserId: userId,
+              reason: 'lottery',
+              createdAt: { [Op.gte]: start, [Op.lt]: end },
+            },
+            transaction: t,
+          });
+          if (drawsSoFar >= dailyLimit) {
             throw new AppError(
-              400,
-              `포인트가 모자랍니다. 한 번 뽑는 데 ${cost.toLocaleString()}P 가 필요합니다 (보유 ${row.balance.toLocaleString()}P).`
+              429,
+              `오늘은 ${dailyLimit}번을 모두 사용했습니다. 내일 다시 도전해주세요.`
             );
           }
-          await apply(row, -cost, 'lottery_cost', `뽑기 참가비 ${cost}p`, t);
-        }
 
-        const prize = drawPrize(prizes);
-        const amount = prize?.amount ?? 0;
-        const memo = prize ? `로또 ${amount}p 당첨` : '로또 꽝';
-        const balance = await apply(row, amount, 'lottery', memo, t);
+          // 참가비. 잔액 확인과 차감은 같은 잠금 안에서 해야 한다.
+          const cost = Math.max(0, drawCost);
+          if (cost > 0) {
+            if (row.balance < cost) {
+              throw new AppError(
+                400,
+                `포인트가 모자랍니다. 한 번 뽑는 데 ${cost.toLocaleString()}P 가 필요합니다 (보유 ${row.balance.toLocaleString()}P).`
+              );
+            }
+            await apply(row, -cost, 'lottery_cost', `뽑기 참가비 ${cost}p`, t);
+          }
 
-        const drawsToday = drawsSoFar + 1;
-        return {
-          amount,
-          cost,
-          isBlank: prize === null,
-          balance,
-          drawsToday,
-          drawsLeft: Math.max(0, dailyLimit - drawsToday),
-        };
-      })
+          const prize = drawPrize(prizes);
+          const amount = prize?.amount ?? 0;
+          const memo = prize ? `로또 ${amount}p 당첨` : '로또 꽝';
+          const balance = await apply(row, amount, 'lottery', memo, t);
+
+          const drawsToday = drawsSoFar + 1;
+          return {
+            amount,
+            cost,
+            isBlank: prize === null,
+            balance,
+            drawsToday,
+            drawsLeft: Math.max(0, dailyLimit - drawsToday),
+          };
+        })
+      )
     );
   },
 

@@ -51,6 +51,14 @@ export const RATE_LIMIT = {
   LOGIN_FAIL_MAX: 50,
   REGISTER_WINDOW_MS: 60 * 60 * 1000,
   REGISTER_MAX: 10,
+  /**
+   * 포인트를 움직이는 요청(뽑기·대결·공격). 한 사람 기준.
+   * 하루 횟수 제한과는 다른 것을 막는다 — 횟수는 지켜지지만, 한꺼번에 몰아치면 같은 잔액 행을
+   * 두고 트랜잭션이 줄을 서다 연결이 바닥나 사이트 전체가 응답하지 못한다.
+   * 사람이 누르는 속도보다 넉넉하되(10초에 15회) 폭주는 막는 선이다.
+   */
+  POINT_SPEND_WINDOW_MS: 10 * 1000,
+  POINT_SPEND_MAX: 15,
 } as const;
 
 // Cache TTL (초)

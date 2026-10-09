@@ -110,3 +110,32 @@ export const twoFactorLimiter = rateLimit({
     });
   },
 });
+
+/**
+ * 포인트를 움직이는 요청 (사용자 단위). authenticate 뒤에 두어야 req.user 가 채워진다.
+ *
+ * 하루 횟수 제한이 따로 있어도 이것이 필요하다. 횟수 제한은 트랜잭션 안에서 지켜지지만,
+ * 수십 건이 한꺼번에 들어오면 같은 잔액 행을 두고 트랜잭션이 줄을 서다 연결 풀이 바닥나
+ * 포인트와 무관한 화면까지 열리지 않는다. 실제로 동시 12건에 사이트 전체가 멎었다.
+ */
+export const pointSpendLimiter = rateLimit({
+  windowMs: RATE_LIMIT.POINT_SPEND_WINDOW_MS,
+  max: RATE_LIMIT.POINT_SPEND_MAX,
+  // 테스트는 한 사람으로 수십 건을 일부러 몰아친다. 여기서 막아 버리면 정작 봐야 할
+  // '몰아쳐도 멎지 않는가'(services/point.service 의 사람별 줄 세우기)를 못 본다.
+  skip: () => process.env.NODE_ENV === 'test',
+  standardHeaders: 'draft-6',
+  legacyHeaders: false,
+  keyGenerator: req => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userId = (req as any).user?.id;
+    return userId ? `point-spend:user:${userId}` : `point-spend:ip:${ipKeyGenerator(req.ip ?? '')}`;
+  },
+  handler: (req, res) => {
+    logWarning('포인트 요청 과다', { ip: req.ip });
+    res.status(429).json({
+      success: false,
+      message: '너무 빠르게 요청했습니다. 잠시 후 다시 시도해주세요.',
+    });
+  },
+});

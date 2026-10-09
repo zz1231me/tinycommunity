@@ -18,6 +18,7 @@ import {
 } from '../controllers/duel.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { requireFeature } from '../middlewares/featureGate.middleware';
+import { pointSpendLimiter } from '../middlewares/bruteForceGuard';
 import { validateBody } from '../middlewares/validate.middleware';
 import {
   duelAcceptSchema,
@@ -32,6 +33,12 @@ const router = Router();
 // 기능 스위치는 서버에서 막는다.
 router.use(authenticate as RequestHandler);
 router.use(requireFeature('tools.lottery'));
+// 포인트를 움직이는 요청은 사람이 누르는 속도를 넘지 않게 막는다. 하루 횟수와 별개로,
+// 한꺼번에 몰아치면 트랜잭션이 줄을 서다 연결이 바닥나 사이트 전체가 멎는다.
+// Express 5 는 '*' 경로를 거부하므로(기동 자체가 깨진다) 메서드로 가른다.
+router.use((req, res, next) =>
+  req.method === 'POST' ? pointSpendLimiter(req, res, next) : next()
+);
 
 /**
  * @swagger
