@@ -9,7 +9,7 @@ import { Board } from '../models/Board';
 import { PostLike } from '../models/PostLike';
 import User from '../models/User';
 import { getBoardAudienceWhere } from '../services/boardAudience';
-import { Op, fn, col, literal } from 'sequelize';
+import { Op, fn, col, literal, type Order, type OrderItem } from 'sequelize';
 import { sequelize } from '../config/sequelize';
 
 // GET /api/users/me/posts  → 내 게시글
@@ -194,10 +194,6 @@ function asScalar(value: unknown): string {
 
 export const searchUsers = async (req: AuthRequest, res: Response): Promise<void> => {
   const q = asScalar(req.query.q).trim();
-  if (q.length < 1) {
-    sendSuccess(res, []);
-    return;
-  }
 
   // 특정 게시판을 볼 수 있는 사람만 고른다. 고를 수 없는 사람을 띄우면 고른 뒤에 거절된다.
   const boardType = asScalar(req.query.boardType).trim();
@@ -211,34 +207,40 @@ export const searchUsers = async (req: AuthRequest, res: Response): Promise<void
     }
 
     const escapedQ = q.replace(/[%_\\]/g, '\\$&');
-    const users = await User.findAll({
-      where: {
-        // @멘션은 아이디로 걸리므로 이름뿐 아니라 아이디로도 찾는다.
-        [Op.and]: [
+    // 검색어가 없으면 이름순 첫 쪽을 준다. 빈 목록을 주면 화면에서 '고를 수 있는 사람이 없습니다'
+    // 가 떠서, 한 글자라도 쳐야 고를 수 있다고 오해하게 된다.
+    const match = q
+      ? [
           {
+            // @멘션은 아이디로 걸리므로 이름뿐 아니라 아이디로도 찾는다.
             [Op.or]: [
               { name: { [Op.like]: `%${escapedQ}%` } },
               { id: { [Op.like]: `%${escapedQ}%` } },
             ],
           },
-          ...(audienceWhere ? [audienceWhere] : []),
-        ],
+        ]
+      : [];
+    // 이름으로 맞은 사람을 먼저 보여 준다. 정렬이 없으면 아이디에 그 글자가 든 사람이 위로 온다.
+    const ranked: Order = q
+      ? [
+          [
+            literal(
+              `CASE WHEN name LIKE ${sequelize.escape(escapedQ + '%')} THEN 0` +
+                ` WHEN name LIKE ${sequelize.escape('%' + escapedQ + '%')} THEN 1` +
+                ` ELSE 2 END`
+            ),
+            'ASC',
+          ],
+        ]
+      : [];
+    const users = await User.findAll({
+      where: {
+        [Op.and]: [...match, ...(audienceWhere ? [audienceWhere] : [])],
         isActive: true,
         isDeleted: false,
       },
       attributes: ['id', 'name'],
-      // 이름으로 맞은 사람을 먼저 보여 준다. 정렬이 없으면 아이디에 그 글자가 든 사람이 위로 온다.
-      order: [
-        [
-          literal(
-            `CASE WHEN name LIKE ${sequelize.escape(escapedQ + '%')} THEN 0` +
-              ` WHEN name LIKE ${sequelize.escape('%' + escapedQ + '%')} THEN 1` +
-              ` ELSE 2 END`
-          ),
-          'ASC',
-        ],
-        ['name', 'ASC'],
-      ],
+      order: [...(ranked as OrderItem[]), ['name', 'ASC']],
       limit: 10,
     });
     sendSuccess(

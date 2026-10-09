@@ -394,6 +394,25 @@ describe('담당자 후보 검색', () => {
     expect(res.body.data.map((u: { id: string }) => u.id)).toContain('testuser');
   });
 
+  // 검색어 없이도 목록이 와야 한다. 빈 배열을 주면 화면에 '고를 수 있는 사람이 없습니다' 가
+  // 떠서, 한 글자라도 쳐야 고를 수 있다고 오해하게 된다 — 클릭만으로 고르지 못한다.
+  it('검색어가 없으면 이름순 첫 쪽을 준다', async () => {
+    const res = await request(app).get('/api/users/search').set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    expect(res.body.data.length).toBeGreaterThan(0);
+    expect(res.body.data.length).toBeLessThanOrEqual(10);
+    const names = res.body.data.map((u: { name: string }) => u.name);
+    expect([...names].sort()).toEqual(names);
+  });
+
+  it('검색어가 없어도 게시판 조건은 그대로 건다', async () => {
+    const res = await request(app)
+      .get('/api/users/search?boardType=taskonly')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    expect(res.body.data.map((u: { id: string }) => u.id)).not.toContain('testuser');
+  });
+
   it('볼 수 있는 게시판이면 후보에 남는다', async () => {
     const res = await request(app)
       .get('/api/users/search?q=testuser&boardType=notice')
