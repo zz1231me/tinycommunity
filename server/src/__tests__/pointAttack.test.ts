@@ -6,10 +6,12 @@ import { PointLedger } from '../models/PointLedger';
 import { PointAttack } from '../models/PointAttack';
 import { AttendanceAttack } from '../models/AttendanceAttack';
 import { FeatureFlag } from '../models/FeatureFlag';
+import { SiteSettings } from '../models/SiteSettings';
+import { refreshSettingsCache } from '../utils/settingsCache';
 import { featureFlagService } from '../services/featureFlag.service';
 import { pointAttackService } from '../services/pointAttack.service';
 import { today } from '../services/point.service';
-import { HALVE_COST, HALVE_SUCCESS_PERCENT } from '../config/pointAttack';
+import { POINT_ATTACK_DEFAULTS } from '../config/pointAttack';
 import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
 import { Notification } from '../models/Notification';
 
@@ -89,7 +91,7 @@ async function waitForNotice(userId: string) {
 }
 
 /** 반드시 맞는 주사위 / 반드시 빗나가는 주사위 */
-const always = () => HALVE_SUCCESS_PERCENT;
+const always = () => POINT_ATTACK_DEFAULTS.successPercent;
 const never = () => 100;
 
 beforeAll(async () => {
@@ -116,7 +118,7 @@ describe('포인트 절반 날리기', () => {
     expect(result.lost).toBe(1234); // 2,468 의 절반
     expect(await balanceOf(TGT)).toBe(1234);
     // 공격자는 값만 냈다. 날린 몫은 어디로도 가지 않는다.
-    expect(await balanceOf(ATK)).toBe(before - HALVE_COST);
+    expect(await balanceOf(ATK)).toBe(before - POINT_ATTACK_DEFAULTS.cost);
     await expectLedgerConsistent(ATK);
     await expectLedgerConsistent(TGT);
   });
@@ -127,7 +129,7 @@ describe('포인트 절반 날리기', () => {
     expect(result.succeeded).toBe(false);
     expect(result.lost).toBe(0);
     expect(await balanceOf(TGT)).toBe(2_468);
-    expect(await balanceOf(ATK)).toBe(10_000 - HALVE_COST);
+    expect(await balanceOf(ATK)).toBe(10_000 - POINT_ATTACK_DEFAULTS.cost);
   });
 
   it('홀수는 버림이라 상대에게 1P 유리하다', async () => {
@@ -148,7 +150,7 @@ describe('포인트 절반 날리기', () => {
   });
 
   it('포인트가 모자라면 던질 수 없다', async () => {
-    await grant(ATK, HALVE_COST - 1);
+    await grant(ATK, POINT_ATTACK_DEFAULTS.cost - 1);
     await expect(pointAttackService.halve(ATK, { targetId: TGT }, always)).rejects.toThrow(
       /모자랍니다/
     );
@@ -246,6 +248,57 @@ describe('하루 횟수는 퇴근 공격권과 함께 센다', () => {
     const res = await state(atkCookie);
     expect(res.body.data.usedToday).toBe(1);
     expect(res.body.data.remainingToday).toBe(limit - 1);
+  });
+});
+
+describe('관리자 설정', () => {
+  // 값·확률·비율이 코드에 박혀 있으면 운영자가 손을 댈 수 없다.
+  async function setRules(patch: Record<string, number>) {
+    const row = await SiteSettings.findOne();
+    if (row) await row.update(patch);
+    else await SiteSettings.create(patch as never);
+    await refreshSettingsCache();
+  }
+
+  afterEach(async () => {
+    await setRules({
+      pointAttackCost: POINT_ATTACK_DEFAULTS.cost,
+      pointAttackPercent: POINT_ATTACK_DEFAULTS.successPercent,
+      pointAttackLossPercent: POINT_ATTACK_DEFAULTS.lossPercent,
+    });
+  });
+
+  it('값을 바꾸면 그만큼 깎는다', async () => {
+    await setRules({ pointAttackCost: 1000 });
+    const before = await balanceOf(ATK);
+    await pointAttackService.halve(ATK, { targetId: TGT }, never);
+    expect(await balanceOf(ATK)).toBe(before - 1000);
+  });
+
+  it('없앨 비율을 바꾸면 그만큼만 날아간다', async () => {
+    await setRules({ pointAttackLossPercent: 10 });
+    await grant(TGT, 1000);
+    const result = await pointAttackService.halve(ATK, { targetId: TGT }, always);
+    expect(result.lost).toBe(100);
+    expect(await balanceOf(TGT)).toBe(900);
+  });
+
+  it('확률을 바꾸면 주사위 기준도 함께 바뀐다', async () => {
+    await setRules({ pointAttackPercent: 30 });
+    // 기본값 1% 라면 빗나갈 눈금이지만 30% 에서는 맞는다
+    expect((await pointAttackService.halve(ATK, { targetId: TGT }, () => 25)).succeeded).toBe(true);
+    await grant(TGT, 2_468);
+    expect((await pointAttackService.halve(ATK, { targetId: TGT }, () => 31)).succeeded).toBe(
+      false
+    );
+  });
+
+  it('바꾼 값은 화면에도 그대로 내려간다', async () => {
+    await setRules({ pointAttackCost: 777, pointAttackPercent: 7, pointAttackLossPercent: 25 });
+    const res = await state(atkCookie);
+    expect(res.body.data.cost).toBe(777);
+    expect(res.body.data.successPercent).toBe(7);
+    expect(res.body.data.lossPercent).toBe(25);
   });
 });
 

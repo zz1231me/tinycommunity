@@ -3,6 +3,7 @@ import { logInfo, logError } from './logger';
 import { LOTTERY_DEFAULTS, type LotteryPrize } from '../config/lottery';
 import { DUEL_DEFAULTS } from '../config/duel';
 import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
+import { POINT_ATTACK_DEFAULTS } from '../config/pointAttack';
 
 export const DEFAULT_ALLOWED_EXTENSIONS = {
   IMAGE: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.ico'],
@@ -142,6 +143,9 @@ export const SETTINGS_DEFAULTS = {
   attackDefendCost: ATTACK_DEFAULTS.defendCost,
   attackBlockSeconds: ATTACK_DEFAULTS.blockSeconds,
   attackDailyLimit: ATTACK_DEFAULTS.dailyLimitPerAttacker,
+  pointAttackCost: POINT_ATTACK_DEFAULTS.cost,
+  pointAttackPercent: POINT_ATTACK_DEFAULTS.successPercent,
+  pointAttackLossPercent: POINT_ATTACK_DEFAULTS.lossPercent,
   maxLoginAttempts: 5,
   accountLockMinutes: 30,
   maxFileCount: 5,
@@ -207,6 +211,9 @@ export async function loadSettingsCache(): Promise<void> {
         attackDefendCost: settings.attackDefendCost ?? DEFAULTS.attackDefendCost,
         attackBlockSeconds: settings.attackBlockSeconds ?? DEFAULTS.attackBlockSeconds,
         attackDailyLimit: settings.attackDailyLimit ?? DEFAULTS.attackDailyLimit,
+        pointAttackCost: settings.pointAttackCost ?? DEFAULTS.pointAttackCost,
+        pointAttackPercent: settings.pointAttackPercent ?? DEFAULTS.pointAttackPercent,
+        pointAttackLossPercent: settings.pointAttackLossPercent ?? DEFAULTS.pointAttackLossPercent,
         maxLoginAttempts: settings.maxLoginAttempts ?? DEFAULTS.maxLoginAttempts,
         accountLockMinutes: settings.accountLockMinutes ?? DEFAULTS.accountLockMinutes,
         maxFileCount: settings.maxFileCount ?? DEFAULTS.maxFileCount,
@@ -333,6 +340,15 @@ export function getAttackSettings() {
     defendCost: cachedSettings?.attackDefendCost ?? DEFAULTS.attackDefendCost,
     blockSeconds: cachedSettings?.attackBlockSeconds ?? DEFAULTS.attackBlockSeconds,
     dailyLimitPerAttacker: cachedSettings?.attackDailyLimit ?? DEFAULTS.attackDailyLimit,
+  };
+}
+
+/** 포인트 절반 날리기의 값·확률·비율. 관리자 화면에서 바꾼다. */
+export function getPointAttackSettings() {
+  return {
+    cost: cachedSettings?.pointAttackCost ?? DEFAULTS.pointAttackCost,
+    successPercent: cachedSettings?.pointAttackPercent ?? DEFAULTS.pointAttackPercent,
+    lossPercent: cachedSettings?.pointAttackLossPercent ?? DEFAULTS.pointAttackLossPercent,
   };
 }
 

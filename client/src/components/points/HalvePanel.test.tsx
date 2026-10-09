@@ -40,6 +40,7 @@ vi.mock('../../utils/toast', () => ({
 const state = (over: Partial<PointAttackState> = {}): PointAttackState => ({
   cost: 300,
   successPercent: 1,
+  lossPercent: 50,
   balance: 1000,
   dailyLimit: 5,
   usedToday: 0,
@@ -65,6 +66,8 @@ describe('누르기 전에 알려 주는 것', () => {
   it('확률과 값, 돌려받지 못한다는 사실을 적어 둔다', async () => {
     await show();
     expect(screen.getByText(/1% 확률로 통합니다/)).toBeInTheDocument();
+    // 비율도 관리자가 바꾼다 — 화면이 '절반' 으로 굳어 있으면 설정과 어긋난다
+    expect(screen.getByText(/50% 가 그대로 사라집니다/)).toBeInTheDocument();
     expect(screen.getByText(/빗나가도 낸 값은 돌아오지 않습니다/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /던지기/ })).toHaveTextContent('300');
   });

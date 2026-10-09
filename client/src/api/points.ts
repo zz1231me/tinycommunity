@@ -150,6 +150,8 @@ export interface PointAttackState {
   cost: number;
   /** 성공 확률(%) */
   successPercent: number;
+  /** 통했을 때 없앨 비율(%). 50 이면 절반 */
+  lossPercent: number;
   balance: number;
   dailyLimit: number;
   /** 퇴근 공격권과 합쳐 센 오늘 사용 횟수 */

@@ -106,6 +106,12 @@ export interface SiteSettings {
   attackBlockSeconds: number;
   /** 한 사람이 하루에 쓸 수 있는 공격 횟수 */
   attackDailyLimit: number;
+  /** 포인트 절반 날리기 — 한 번 던지는 값 */
+  pointAttackCost: number;
+  /** 포인트 절반 날리기 — 통할 확률(%) */
+  pointAttackPercent: number;
+  /** 포인트 절반 날리기 — 통했을 때 없앨 비율(%) */
+  pointAttackLossPercent: number;
 }
 
 /** 사이트 설정 조회(공개). 보안 관련 값은 응답에서 빠지므로 관리자 폼은 getAdminSiteSettings() 를 쓴다. */

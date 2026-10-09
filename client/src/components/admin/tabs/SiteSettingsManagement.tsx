@@ -765,12 +765,39 @@ export const SiteSettingsManagement = () => {
             />
             <NumberInput
               label="하루 공격 횟수"
-              description="방해와 숨기기를 합쳐서 셉니다"
+              description="퇴근 공격과 포인트 날리기를 합쳐서 셉니다"
               min={1}
               max={100}
               value={settings.attackDailyLimit}
               onChange={v => set('attackDailyLimit', v)}
               unit="회"
+            />
+            <NumberInput
+              label="포인트 날리기 — 값"
+              description="한 번 던지는 값입니다. 빗나가도 돌려주지 않습니다"
+              min={0}
+              max={100000}
+              value={settings.pointAttackCost}
+              onChange={v => set('pointAttackCost', v)}
+              unit="P"
+            />
+            <NumberInput
+              label="포인트 날리기 — 통할 확률"
+              description="0 이면 아무도 못 맞히고, 100 이면 던질 때마다 맞습니다"
+              min={0}
+              max={100}
+              value={settings.pointAttackPercent}
+              onChange={v => set('pointAttackPercent', v)}
+              unit="%"
+            />
+            <NumberInput
+              label="포인트 날리기 — 없앨 비율"
+              description="통했을 때 상대 포인트에서 없앨 몫입니다. 50 이면 절반"
+              min={1}
+              max={100}
+              value={settings.pointAttackLossPercent}
+              onChange={v => set('pointAttackLossPercent', v)}
+              unit="%"
             />
           </SettingList>
         </div>

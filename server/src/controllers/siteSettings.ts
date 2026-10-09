@@ -190,6 +190,9 @@ function toPayload(s: SiteSettings) {
     attackDefendCost: s.attackDefendCost ?? DEFAULTS.attackDefendCost,
     attackBlockSeconds: s.attackBlockSeconds ?? DEFAULTS.attackBlockSeconds,
     attackDailyLimit: s.attackDailyLimit ?? DEFAULTS.attackDailyLimit,
+    pointAttackCost: s.pointAttackCost ?? DEFAULTS.pointAttackCost,
+    pointAttackPercent: s.pointAttackPercent ?? DEFAULTS.pointAttackPercent,
+    pointAttackLossPercent: s.pointAttackLossPercent ?? DEFAULTS.pointAttackLossPercent,
   };
 }
 
@@ -310,6 +313,9 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       attackDefendCost,
       attackBlockSeconds,
       attackDailyLimit,
+      pointAttackCost,
+      pointAttackPercent,
+      pointAttackLossPercent,
     } = req.body;
 
     if (bcryptRounds !== undefined) {
@@ -616,6 +622,16 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       attackDefendCost: intOrKeep(attackDefendCost, settings.attackDefendCost, 0, 100000),
       attackBlockSeconds: intOrKeep(attackBlockSeconds, settings.attackBlockSeconds, 5, 600),
       attackDailyLimit: intOrKeep(attackDailyLimit, settings.attackDailyLimit, 1, 100),
+      pointAttackCost: intOrKeep(pointAttackCost, settings.pointAttackCost, 0, 100000),
+      // 0% 면 아무도 못 맞히고 100% 면 던질 때마다 맞는다. 둘 다 운영자가 고를 수 있어야 한다.
+      pointAttackPercent: intOrKeep(pointAttackPercent, settings.pointAttackPercent, 0, 100),
+      // 0% 면 날아가는 것이 없어 기능이 무의미하다. 최소 1%.
+      pointAttackLossPercent: intOrKeep(
+        pointAttackLossPercent,
+        settings.pointAttackLossPercent,
+        1,
+        100
+      ),
       workStatusLabels:
         parsedWorkStatusLabels !== undefined
           ? JSON.stringify(parsedWorkStatusLabels)

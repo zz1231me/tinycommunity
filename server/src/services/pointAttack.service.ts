@@ -16,14 +16,8 @@ import {
   withLockRetry,
 } from './point.service';
 import { attacksUsedToday } from './attackQuota';
-import {
-  HALVE_ANONYMOUS,
-  HALVE_COST,
-  HALVE_NAME,
-  HALVE_SUCCESS_PERCENT,
-  halfOf,
-} from '../config/pointAttack';
-import { getAttackSettings } from '../utils/settingsCache';
+import { HALVE_ANONYMOUS, HALVE_NAME, lossOf } from '../config/pointAttack';
+import { getAttackSettings, getPointAttackSettings } from '../utils/settingsCache';
 import { notificationService } from './notification.service';
 import { logError } from '../utils/logger';
 
@@ -118,13 +112,15 @@ export const pointAttackService = {
   /** 값과 확률, 오늘 남은 횟수 */
   async state(userId: string) {
     const rules = getAttackSettings();
+    const point = getPointAttackSettings();
     const [balanceRow, usedToday] = await Promise.all([
       UserPoint.findByPk(userId, { attributes: ['UserId', 'balance'] }),
       attacksUsedToday(userId, today()),
     ]);
     return {
-      cost: HALVE_COST,
-      successPercent: HALVE_SUCCESS_PERCENT,
+      cost: point.cost,
+      successPercent: point.successPercent,
+      lossPercent: point.lossPercent,
       balance: balanceRow?.balance ?? 0,
       dailyLimit: rules.dailyLimitPerAttacker,
       usedToday,
@@ -138,6 +134,7 @@ export const pointAttackService = {
    */
   async halve(attackerId: string, input: { targetId: string }, roll: () => number = rollPercent) {
     const rules = getAttackSettings();
+    const point = getPointAttackSettings();
 
     if (attackerId === input.targetId) {
       throw new AppError(400, '자기 자신에게는 쓸 수 없습니다.');
@@ -178,24 +175,24 @@ export const pointAttackService = {
           }
 
           const mine = rows[attackerId];
-          if (mine.balance < HALVE_COST) {
+          if (mine.balance < point.cost) {
             throw new AppError(
               400,
-              `포인트가 모자랍니다. ${HALVE_COST.toLocaleString()}P 가 필요합니다 (보유 ${mine.balance.toLocaleString()}P).`
+              `포인트가 모자랍니다. ${point.cost.toLocaleString()}P 가 필요합니다 (보유 ${mine.balance.toLocaleString()}P).`
             );
           }
-          await apply(mine, -HALVE_COST, 'attack_cost', HALVE_NAME, t);
+          await apply(mine, -point.cost, 'attack_cost', HALVE_NAME, t);
 
-          const succeeded = roll() <= HALVE_SUCCESS_PERCENT;
+          const succeeded = roll() <= point.successPercent;
           const victim = rows[targetId];
-          const lost = succeeded ? halfOf(victim.balance) : 0;
+          const lost = succeeded ? lossOf(victim.balance, point.lossPercent) : 0;
           if (lost > 0) {
             // memo 에도 이름을 남기지 않는다 — 원장은 당한 사람이 그대로 본다.
             await apply(victim, -lost, 'point_attack_loss', `${HALVE_ANONYMOUS}의 공격`, t);
           }
 
           const made = await PointAttack.create(
-            { attackerId, targetId, workDate: day, cost: HALVE_COST, succeeded, amountLost: lost },
+            { attackerId, targetId, workDate: day, cost: point.cost, succeeded, amountLost: lost },
             { transaction: t }
           );
 

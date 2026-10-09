@@ -7,6 +7,7 @@ import {
 } from 'sequelize';
 import { sequelize } from '../config/sequelize';
 import { LOTTERY_DEFAULTS } from '../config/lottery';
+import { POINT_ATTACK_DEFAULTS } from '../config/pointAttack';
 import { DUEL_DEFAULTS } from '../config/duel';
 import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
 
@@ -78,6 +79,9 @@ export interface SiteSettingsInstance extends Model<
   attackDefendCost: CreationOptional<number>;
   attackBlockSeconds: CreationOptional<number>;
   attackDailyLimit: CreationOptional<number>;
+  pointAttackCost: CreationOptional<number>;
+  pointAttackPercent: CreationOptional<number>;
+  pointAttackLossPercent: CreationOptional<number>;
   memoMaxPerUser: CreationOptional<number>;
   /** 사이드바에서 위키가 게시판 목록 몇 번째에 오는지 */
   wikiOrder: CreationOptional<number>;
@@ -160,6 +164,9 @@ export class SiteSettings
   declare public attackDefendCost: CreationOptional<number>;
   declare public attackBlockSeconds: CreationOptional<number>;
   declare public attackDailyLimit: CreationOptional<number>;
+  declare public pointAttackCost: CreationOptional<number>;
+  declare public pointAttackPercent: CreationOptional<number>;
+  declare public pointAttackLossPercent: CreationOptional<number>;
   declare public memoMaxPerUser: CreationOptional<number>;
   declare public wikiOrder: CreationOptional<number>;
   declare public commentContentMaxLength: CreationOptional<number>;
@@ -557,6 +564,24 @@ SiteSettings.init(
       allowNull: false,
       defaultValue: ATTACK_DEFAULTS.defendCost,
       field: 'attack_defend_cost',
+    },
+    pointAttackCost: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: POINT_ATTACK_DEFAULTS.cost,
+      field: 'point_attack_cost',
+    },
+    pointAttackPercent: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: POINT_ATTACK_DEFAULTS.successPercent,
+      field: 'point_attack_percent',
+    },
+    pointAttackLossPercent: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: POINT_ATTACK_DEFAULTS.lossPercent,
+      field: 'point_attack_loss_percent',
     },
     attackBlockSeconds: {
       type: DataTypes.INTEGER,
