@@ -54,9 +54,6 @@ interface AttackLogRow {
   createdAt: Date;
 }
 
-/** 한 번에 던질 수 있는 최대 횟수. 화면의 'x10' 과 같은 값이다. */
-export const MAX_THROWS_AT_ONCE = 10;
-
 const withNames = [
   { model: User, as: 'attacker', attributes: ['id', 'name'], required: false },
   { model: User, as: 'target', attributes: ['id', 'name'], required: false },
@@ -166,6 +163,7 @@ export const pointAttackService = {
       cost: point.cost,
       successPercent: point.successPercent,
       lossPercent: point.lossPercent,
+      maxBurst: point.maxBurst,
       balance: balanceRow?.balance ?? 0,
       dailyLimit: rules.dailyLimitPerAttacker,
       usedToday,
@@ -183,7 +181,9 @@ export const pointAttackService = {
     input: { targetId: string; count: number },
     roll: () => number = rollPercent
   ) {
-    const count = Math.min(MAX_THROWS_AT_ONCE, Math.max(1, Math.floor(input.count)));
+    // 상한은 관리자 설정에서 온다. 화면도 같은 값을 받아 쓰므로 둘이 어긋나지 않는다.
+    const maxBurst = getPointAttackSettings().maxBurst;
+    const count = Math.min(maxBurst, Math.max(1, Math.floor(input.count)));
     const throws: Array<{ succeeded: boolean; lost: number }> = [];
     let last: Awaited<ReturnType<typeof pointAttackService.throwOnce>> | null = null;
     let stopped: string | null = null;

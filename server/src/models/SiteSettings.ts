@@ -84,6 +84,7 @@ export interface SiteSettingsInstance extends Model<
   pointAttackCost: CreationOptional<number>;
   pointAttackPercent: CreationOptional<number>;
   pointAttackLossPercent: CreationOptional<number>;
+  pointAttackMaxBurst: CreationOptional<number>;
   memoMaxPerUser: CreationOptional<number>;
   /** 사이드바에서 위키가 게시판 목록 몇 번째에 오는지 */
   wikiOrder: CreationOptional<number>;
@@ -171,6 +172,7 @@ export class SiteSettings
   declare public pointAttackCost: CreationOptional<number>;
   declare public pointAttackPercent: CreationOptional<number>;
   declare public pointAttackLossPercent: CreationOptional<number>;
+  declare public pointAttackMaxBurst: CreationOptional<number>;
   declare public memoMaxPerUser: CreationOptional<number>;
   declare public wikiOrder: CreationOptional<number>;
   declare public commentContentMaxLength: CreationOptional<number>;
@@ -598,6 +600,12 @@ SiteSettings.init(
       allowNull: false,
       defaultValue: POINT_ATTACK_DEFAULTS.lossPercent,
       field: 'point_attack_loss_percent',
+    },
+    pointAttackMaxBurst: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: POINT_ATTACK_DEFAULTS.maxBurst,
+      field: 'point_attack_max_burst',
     },
     attackBlockSeconds: {
       type: DataTypes.INTEGER,

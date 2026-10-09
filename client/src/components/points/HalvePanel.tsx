@@ -10,9 +10,6 @@ import type { UserSuggestion } from '../../api/users';
 import { pointKeys } from '../../api/queryKeys';
 import { PointsSection } from './PointsSection';
 import { WinFanfare } from './WinFanfare';
-
-/** 한 번에 던질 수 있는 최대 횟수. 서버의 MAX_THROWS_AT_ONCE 와 같아야 한다. */
-const MAX_BURST = 10;
 import { ListState } from '../common/ListState';
 import { LoadingSpinner } from '../common/LoadingStates';
 import { getApiErrorMessage } from '../../api/utils';
@@ -105,10 +102,11 @@ export function HalvePanel({
    * 한 번에 던질 수 있는 수. 남은 횟수와 가진 포인트로 잘라 둔다 —
    * 못 던질 수를 적어 두면 눌러 봐야 중간에 멈춘다.
    */
+  const maxBurst = state?.maxBurst ?? 1;
   const burst = Math.min(
-    MAX_BURST,
+    maxBurst,
     state?.remainingToday ?? 0,
-    state && state.cost > 0 ? Math.floor(state.balance / state.cost) : MAX_BURST
+    state && state.cost > 0 ? Math.floor(state.balance / state.cost) : maxBurst
   );
 
   return (

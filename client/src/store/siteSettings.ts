@@ -79,6 +79,8 @@ export interface SiteSettings {
   pointAttackPercent: number;
   /** 포인트 절반 날리기 — 통했을 때 없앨 비율(%) */
   pointAttackLossPercent: number;
+  /** 포인트 절반 날리기 — 한 번에 이어 던질 수 있는 최대 횟수 */
+  pointAttackMaxBurst: number;
   maxLoginAttempts: number;
   accountLockMinutes: number;
   bcryptRounds: number;
@@ -186,6 +188,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   pointAttackCost: 300,
   pointAttackPercent: 1,
   pointAttackLossPercent: 50,
+  pointAttackMaxBurst: 10,
   maxLoginAttempts: 5,
   accountLockMinutes: 30,
   bcryptRounds: 10,

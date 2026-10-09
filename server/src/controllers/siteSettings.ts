@@ -195,6 +195,7 @@ function toPayload(s: SiteSettings) {
     pointAttackCost: s.pointAttackCost ?? DEFAULTS.pointAttackCost,
     pointAttackPercent: s.pointAttackPercent ?? DEFAULTS.pointAttackPercent,
     pointAttackLossPercent: s.pointAttackLossPercent ?? DEFAULTS.pointAttackLossPercent,
+    pointAttackMaxBurst: s.pointAttackMaxBurst ?? DEFAULTS.pointAttackMaxBurst,
   };
 }
 
@@ -320,6 +321,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       pointAttackCost,
       pointAttackPercent,
       pointAttackLossPercent,
+      pointAttackMaxBurst,
     } = req.body;
 
     if (bcryptRounds !== undefined) {
@@ -643,6 +645,8 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
         1,
         100
       ),
+      // 1 이면 묶음 단추가 사라진다. 너무 크면 한 요청이 길어져 상한을 둔다.
+      pointAttackMaxBurst: intOrKeep(pointAttackMaxBurst, settings.pointAttackMaxBurst, 1, 50),
       workStatusLabels:
         parsedWorkStatusLabels !== undefined
           ? JSON.stringify(parsedWorkStatusLabels)

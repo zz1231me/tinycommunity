@@ -152,6 +152,8 @@ export interface PointAttackState {
   successPercent: number;
   /** 통했을 때 없앨 비율(%). 50 이면 절반 */
   lossPercent: number;
+  /** 한 번에 이어 던질 수 있는 최대 횟수. 'xN' 단추가 쓴다. */
+  maxBurst: number;
   balance: number;
   dailyLimit: number;
   /** 퇴근 공격권과 합쳐 센 오늘 사용 횟수 */

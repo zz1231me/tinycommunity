@@ -148,6 +148,7 @@ export const SETTINGS_DEFAULTS = {
   pointAttackCost: POINT_ATTACK_DEFAULTS.cost,
   pointAttackPercent: POINT_ATTACK_DEFAULTS.successPercent,
   pointAttackLossPercent: POINT_ATTACK_DEFAULTS.lossPercent,
+  pointAttackMaxBurst: POINT_ATTACK_DEFAULTS.maxBurst,
   maxLoginAttempts: 5,
   accountLockMinutes: 30,
   maxFileCount: 5,
@@ -219,6 +220,7 @@ export async function loadSettingsCache(): Promise<void> {
         pointAttackCost: settings.pointAttackCost ?? DEFAULTS.pointAttackCost,
         pointAttackPercent: settings.pointAttackPercent ?? DEFAULTS.pointAttackPercent,
         pointAttackLossPercent: settings.pointAttackLossPercent ?? DEFAULTS.pointAttackLossPercent,
+        pointAttackMaxBurst: settings.pointAttackMaxBurst ?? DEFAULTS.pointAttackMaxBurst,
         maxLoginAttempts: settings.maxLoginAttempts ?? DEFAULTS.maxLoginAttempts,
         accountLockMinutes: settings.accountLockMinutes ?? DEFAULTS.accountLockMinutes,
         maxFileCount: settings.maxFileCount ?? DEFAULTS.maxFileCount,
@@ -357,6 +359,7 @@ export function getPointAttackSettings() {
     cost: cachedSettings?.pointAttackCost ?? DEFAULTS.pointAttackCost,
     successPercent: cachedSettings?.pointAttackPercent ?? DEFAULTS.pointAttackPercent,
     lossPercent: cachedSettings?.pointAttackLossPercent ?? DEFAULTS.pointAttackLossPercent,
+    maxBurst: cachedSettings?.pointAttackMaxBurst ?? DEFAULTS.pointAttackMaxBurst,
   };
 }
 

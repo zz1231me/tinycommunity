@@ -809,6 +809,15 @@ export const SiteSettingsManagement = () => {
               unit="%"
             />
             <NumberInput
+              label="포인트 날리기 — 한 번에 던지는 수"
+              description="화면의 'xN' 단추가 이 값을 씁니다. 1 이면 묶음 단추를 숨깁니다"
+              min={1}
+              max={50}
+              value={settings.pointAttackMaxBurst}
+              onChange={v => set('pointAttackMaxBurst', v)}
+              unit="회"
+            />
+            <NumberInput
               label="포인트 날리기 — 없앨 비율"
               description="통했을 때 상대 포인트에서 없앨 몫입니다. 50 이면 절반"
               min={1}

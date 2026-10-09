@@ -14,6 +14,8 @@ export const POINT_ATTACK_DEFAULTS = {
   successPercent: 1,
   /** 통했을 때 없앨 비율(%). 50 이면 절반. */
   lossPercent: 50,
+  /** 한 번에 이어 던질 수 있는 최대 횟수. 화면의 'xN' 단추가 이 값을 쓴다. */
+  maxBurst: 10,
   // as const 를 붙이지 않는다. 리터럴 타입으로 굳으면 DB 에서 읽은 number 를 넣을 수 없다.
 };
 

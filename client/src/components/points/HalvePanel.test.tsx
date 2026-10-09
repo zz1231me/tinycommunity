@@ -41,6 +41,7 @@ const state = (over: Partial<PointAttackState> = {}): PointAttackState => ({
   cost: 300,
   successPercent: 1,
   lossPercent: 50,
+  maxBurst: 10,
   balance: 1000,
   dailyLimit: 5,
   usedToday: 0,

@@ -9,7 +9,7 @@ import { FeatureFlag } from '../models/FeatureFlag';
 import { SiteSettings } from '../models/SiteSettings';
 import { refreshSettingsCache } from '../utils/settingsCache';
 import { featureFlagService } from '../services/featureFlag.service';
-import { MAX_THROWS_AT_ONCE, pointAttackService } from '../services/pointAttack.service';
+import { pointAttackService } from '../services/pointAttack.service';
 import { today } from '../services/point.service';
 import { POINT_ATTACK_DEFAULTS } from '../config/pointAttack';
 import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
@@ -303,7 +303,7 @@ describe('한 번에 여러 발', () => {
   it('상한을 넘겨 보내도 상한까지만', async () => {
     const result = await pointAttackService.halveMany(ATK, { targetId: TGT, count: 999 }, never);
     // 하루 횟수가 먼저 걸리지만, 어느 쪽이든 요청한 999 번이 되지는 않는다
-    expect(result.throws.length).toBeLessThanOrEqual(MAX_THROWS_AT_ONCE);
+    expect(result.throws.length).toBeLessThanOrEqual(POINT_ATTACK_DEFAULTS.maxBurst);
   });
 });
 
@@ -321,6 +321,7 @@ describe('관리자 설정', () => {
       pointAttackCost: POINT_ATTACK_DEFAULTS.cost,
       pointAttackPercent: POINT_ATTACK_DEFAULTS.successPercent,
       pointAttackLossPercent: POINT_ATTACK_DEFAULTS.lossPercent,
+      pointAttackMaxBurst: POINT_ATTACK_DEFAULTS.maxBurst,
     });
   });
 
@@ -349,12 +350,20 @@ describe('관리자 설정', () => {
     );
   });
 
+  it('한 번에 던지는 수도 설정을 따른다', async () => {
+    await setRules({ pointAttackMaxBurst: 3 });
+    const result = await pointAttackService.halveMany(ATK, { targetId: TGT, count: 10 }, never);
+    expect(result.throws).toHaveLength(3);
+  });
+
   it('바꾼 값은 화면에도 그대로 내려간다', async () => {
     await setRules({ pointAttackCost: 777, pointAttackPercent: 7, pointAttackLossPercent: 25 });
     const res = await state(atkCookie);
     expect(res.body.data.cost).toBe(777);
     expect(res.body.data.successPercent).toBe(7);
     expect(res.body.data.lossPercent).toBe(25);
+    // 화면이 'xN' 단추를 그릴 때 쓰는 값. 서버와 어긋나면 눌러 봐야 상한에서 잘린다.
+    expect(res.body.data.maxBurst).toBe(POINT_ATTACK_DEFAULTS.maxBurst);
   });
 });
 
