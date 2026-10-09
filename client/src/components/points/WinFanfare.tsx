@@ -1,4 +1,5 @@
-// 대결에서 이겼을 때의 축하 연출. 클릭은 통과시키고, 움직임 줄이기에서는 글자만 띄운다.
+// 한 방 터뜨리는 축하 연출. 대결 승리와 포인트 공격 명중이 함께 쓴다.
+// 클릭은 통과시키고, 움직임 줄이기에서는 조각 없이 글자만 띄운다.
 
 import { useEffect, useMemo, useState } from 'react';
 import { prefersReducedMotion } from '../../utils/animations';
@@ -8,7 +9,17 @@ const PIECES = 26;
 /** 조각이 다 떨어지고 글자가 사라지기까지 */
 const LIFE_MS = 1800;
 
-export function WinFanfare({ amount, onDone }: { amount: number; onDone: () => void }) {
+export function WinFanfare({
+  title,
+  detail,
+  onDone,
+}: {
+  /** 큰 줄. 예: '🎉 이겼습니다!' */
+  title: string;
+  /** 작은 줄. 예: '+1,000P' */
+  detail: string;
+  onDone: () => void;
+}) {
   const [gone, setGone] = useState(false);
   const reduced = prefersReducedMotion();
 
@@ -62,9 +73,9 @@ export function WinFanfare({ amount, onDone }: { amount: number; onDone: () => v
         </div>
       )}
       {/* 알림 띠가 함께 떠 있을 수 있어 그 아래에 앉게 여유를 둔다 */}
-      <div className="animate-winPop mt-16 rounded-2xl bg-slate-900/85 px-5 py-2.5 text-center text-white shadow-xl backdrop-blur-sm dark:bg-slate-100/90 dark:text-slate-900">
-        <div className="text-lg font-extrabold">🎉 이겼습니다!</div>
-        <div className="text-sm font-semibold tabular-nums">+{amount.toLocaleString()}P</div>
+      <div className="animate-winPop mt-16 rounded-2xl bg-slate-900/85 px-6 py-3 text-center text-white shadow-xl backdrop-blur-sm dark:bg-slate-100/90 dark:text-slate-900">
+        <div className="text-xl font-extrabold">{title}</div>
+        <div className="mt-0.5 text-base font-semibold tabular-nums">{detail}</div>
       </div>
     </div>
   );

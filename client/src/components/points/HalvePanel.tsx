@@ -9,6 +9,7 @@ import { UserPicker } from '../common/UserPicker';
 import type { UserSuggestion } from '../../api/users';
 import { pointKeys } from '../../api/queryKeys';
 import { PointsSection } from './PointsSection';
+import { WinFanfare } from './WinFanfare';
 import { ListState } from '../common/ListState';
 import { LoadingSpinner } from '../common/LoadingStates';
 import { getApiErrorMessage } from '../../api/utils';
@@ -40,6 +41,9 @@ export function HalvePanel({
   }, [refreshSignal, queryClient]);
 
   // 방금 던진 결과. key 를 바꿔 연달아 던져도 다시 나오게 한다.
+  // 명중했을 때의 축하 연출. 끝나면 스스로 사라진다.
+  const [boom, setBoom] = useState<{ name: string; lost: number } | null>(null);
+
   const [shot, setShot] = useState<{
     key: number;
     name: string;
@@ -58,10 +62,16 @@ export function HalvePanel({
         succeeded: result.succeeded,
         lost: result.lost,
       });
+      // 100 번에 한 번이라 통했을 때는 크게 터뜨린다.
+      if (result.succeeded && result.lost > 0) {
+        setBoom({ name: result.targetName, lost: result.lost });
+      }
       // 고른 사람은 그대로 둔다. 100 번에 한 번 통하는 공격이라 같은 사람에게 거듭 던지게 되는데,
       // 던질 때마다 비우면 매번 이름을 다시 쳐야 한다.
-      await queryClient.invalidateQueries({ queryKey: pointKeys.attack }).catch(() => {});
-      onSpent?.();
+      // 부모가 refreshSignal 을 올리면 위의 효과가 다시 읽는다. 여기서 또 부르면
+      // 같은 요청이 두 번 나간다. 부모가 없을 때만 직접 읽는다.
+      if (onSpent) onSpent();
+      else await queryClient.invalidateQueries({ queryKey: pointKeys.attack }).catch(() => {});
     } catch (err) {
       toast.error(getApiErrorMessage(err, '공격하지 못했습니다.'));
     } finally {
@@ -73,74 +83,87 @@ export function HalvePanel({
   const affordable = (state?.balance ?? 0) >= (state?.cost ?? 0);
 
   return (
-    <PointsSection
-      icon={<Bomb className="h-5 w-5" />}
-      tone="violet"
-      title="포인트 절반 날리기"
-      badge={
-        state ? (
-          <span className="rounded-full bg-violet-100 px-2 py-0.5 text-2xs font-semibold tabular-nums text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
-            오늘 {state.remainingToday}/{state.dailyLimit}
-          </span>
-        ) : undefined
-      }
-    >
-      {query.isLoading ? (
-        <LoadingSpinner size="sm" message="불러오는 중..." />
-      ) : query.isError || !state ? (
-        <ListState>공격 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</ListState>
-      ) : (
-        <>
-          <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-            {state.successPercent}% 확률로 통합니다. 통하면 상대가 가진 포인트의 절반이 그대로
-            사라집니다 — 내게 오지는 않습니다. 빗나가도 낸 값은 돌아오지 않습니다. 상대는 공격받은
-            사실만 알 뿐, <b>누가 걸었는지는 알 수 없습니다.</b> 하루 횟수는 퇴근 공격권과 함께
-            셉니다.
-          </p>
-
-          <div className="mt-3">
-            <UserPicker
-              selected={picked}
-              onChange={setPicked}
-              single
-              excludeIds={[myId]}
-              placeholder="던질 사람을 검색"
-            />
-          </div>
-
-          <button
-            type="button"
-            disabled={picked.length === 0 || sending || soldOut || !affordable}
-            onClick={() => void handleThrow()}
-            className="btn-primary mt-3 inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bomb className="h-4 w-4" />}
-            {soldOut
-              ? '오늘은 모두 사용했어요'
-              : !affordable
-                ? '포인트가 모자랍니다'
-                : `던지기 (−${state.cost.toLocaleString()}P)`}
-          </button>
-
-          {shot && (
-            <p
-              key={shot.key}
-              role="status"
-              className={`animate-popIn mt-3 rounded-lg px-3 py-2 text-sm font-medium ${
-                shot.succeeded
-                  ? 'bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300'
-                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-              }`}
-            >
-              {shot.succeeded
-                ? shot.lost > 0
-                  ? `명중! ${shot.name}님의 포인트 절반 ${shot.lost.toLocaleString()}P 가 사라졌습니다.`
-                  : `명중했지만 ${shot.name}님에게는 날릴 포인트가 없었습니다.`
-                : `빗나갔습니다. ${shot.name}님은 아무 일도 없었습니다.`}
-            </p>
-          )}
-        </>
+    <>
+      {boom && (
+        <WinFanfare
+          title="💣 명중!"
+          detail={`${boom.name}님의 ${boom.lost.toLocaleString()}P 증발`}
+          onDone={() => setBoom(null)}
+        />
       )}
-    </PointsSection>
+      <PointsSection
+        icon={<Bomb className="h-5 w-5" />}
+        tone="violet"
+        title="포인트 절반 날리기"
+        badge={
+          state ? (
+            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-2xs font-semibold tabular-nums text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
+              오늘 {state.remainingToday}/{state.dailyLimit}
+            </span>
+          ) : undefined
+        }
+      >
+        {query.isLoading ? (
+          <LoadingSpinner size="sm" message="불러오는 중..." />
+        ) : query.isError || !state ? (
+          <ListState>공격 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</ListState>
+        ) : (
+          <>
+            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              {state.successPercent}% 확률로 통합니다. 통하면 상대가 가진 포인트의 절반이 그대로
+              사라집니다 — 내게 오지는 않습니다. 빗나가도 낸 값은 돌아오지 않습니다. 상대는 공격받은
+              사실만 알 뿐, <b>누가 걸었는지는 알 수 없습니다.</b> 하루 횟수는 퇴근 공격권과 함께
+              셉니다.
+            </p>
+
+            <div className="mt-3">
+              <UserPicker
+                selected={picked}
+                onChange={setPicked}
+                single
+                excludeIds={[myId]}
+                placeholder="던질 사람을 검색"
+              />
+            </div>
+
+            <button
+              type="button"
+              disabled={picked.length === 0 || sending || soldOut || !affordable}
+              onClick={() => void handleThrow()}
+              className="btn-primary mt-3 inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {sending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Bomb className="h-4 w-4" />
+              )}
+              {soldOut
+                ? '오늘은 모두 사용했어요'
+                : !affordable
+                  ? '포인트가 모자랍니다'
+                  : `던지기 (−${state.cost.toLocaleString()}P)`}
+            </button>
+
+            {shot && (
+              <p
+                key={shot.key}
+                role="status"
+                className={`animate-popIn mt-3 rounded-lg px-3 py-2 text-sm font-medium ${
+                  shot.succeeded
+                    ? 'bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300'
+                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                {shot.succeeded
+                  ? shot.lost > 0
+                    ? `명중! ${shot.name}님의 포인트 절반 ${shot.lost.toLocaleString()}P 가 사라졌습니다.`
+                    : `명중했지만 ${shot.name}님에게는 날릴 포인트가 없었습니다.`
+                  : `빗나갔습니다. ${shot.name}님은 아무 일도 없었습니다.`}
+              </p>
+            )}
+          </>
+        )}
+      </PointsSection>
+    </>
   );
 }

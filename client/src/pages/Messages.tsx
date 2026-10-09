@@ -17,6 +17,7 @@ import { PageHeader } from '../components/common/PageHeader';
 import { MessageBody } from '../components/messages/MessageBody';
 import { NewConversationButton } from '../components/messages/NewConversationButton';
 import { messageKeys } from '../api/queryKeys';
+import { useNotificationArrival } from '../hooks/useNotificationArrival';
 import { getApiErrorMessage } from '../api/utils';
 import {
   fetchConversation,
@@ -123,6 +124,14 @@ function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: 
     queryClient.invalidateQueries({ queryKey: messageKeys.conversations });
     queryClient.invalidateQueries({ queryKey: messageKeys.unread });
   }, [isFetching, data, queryClient]);
+
+  // 새 메시지 알림이 오면 보고 있는 대화를 다시 읽는다. 이것이 없으면 상대가 보낸 말이
+  // 새로고침할 때까지 보이지 않는다 — 창을 열어 둔 채로는 대화가 멈춘 것처럼 보인다.
+  useNotificationArrival(['MESSAGE'], () => {
+    void queryClient.invalidateQueries({ queryKey: messageKeys.conversation(conversationId) });
+    void queryClient.invalidateQueries({ queryKey: messageKeys.conversations });
+    void queryClient.invalidateQueries({ queryKey: messageKeys.unread });
+  });
 
   // 새 메시지가 왔을 때만 끝으로 내린다. 전체 길이에 걸면 이전 대화를 펼칠 때도 아래로 튄다.
   useEffect(() => {
@@ -304,12 +313,19 @@ function Chat({ conversationId, onClosed }: { conversationId: string; onClosed: 
 export default function Messages() {
   const { id: routeId } = useParams<{ id?: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: messageKeys.conversations,
     queryFn: ({ signal }) => fetchConversations(signal),
     // 헤더 배지는 60초마다 다시 센다. 목록이 전역 기본값(5분)이면 배지와 목록이 어긋난다.
     staleTime: 0,
+  });
+
+  // 대화를 열지 않고 목록만 보고 있어도 새 메시지가 올라와야 한다.
+  useNotificationArrival(['MESSAGE'], () => {
+    void queryClient.invalidateQueries({ queryKey: messageKeys.conversations });
+    void queryClient.invalidateQueries({ queryKey: messageKeys.unread });
   });
 
   const selectedId = routeId ?? null;

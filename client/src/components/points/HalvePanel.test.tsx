@@ -123,9 +123,34 @@ describe('던진 결과', () => {
     pick();
     fireEvent.click(throwBtn());
 
-    const hit = await screen.findByText(/명중!/);
+    // 판 안의 결과 줄. 같은 '명중' 이 축하 연출에도 뜨므로 역할로 집어 고른다.
+    const hit = await screen.findByRole('status');
     expect(hit).toHaveTextContent('1,234');
     await waitFor(() => expect(mockHalve).toHaveBeenCalledWith('victim'));
+  });
+
+  it('통하면 크게 터뜨린다 — 100 번에 한 번이라 조용히 지나가면 섭섭하다', async () => {
+    mockHalve.mockResolvedValue({
+      succeeded: true,
+      lost: 1234,
+      targetName: '피해자',
+      balance: 700,
+    });
+    await show();
+    pick();
+    fireEvent.click(throwBtn());
+
+    expect(await screen.findByText('💣 명중!')).toBeInTheDocument();
+    expect(screen.getByText(/1,234P 증발/)).toBeInTheDocument();
+  });
+
+  it('빗나가면 터뜨리지 않는다 — 양성 대조', async () => {
+    await show();
+    pick();
+    fireEvent.click(throwBtn());
+
+    await screen.findByRole('status');
+    expect(screen.queryByText('💣 명중!')).not.toBeInTheDocument();
   });
 
   it('통했는데 상대가 빈털터리면 그렇게 말한다 — 0P 가 사라졌다고 하지 않는다', async () => {

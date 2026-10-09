@@ -61,6 +61,12 @@ export const NOTIFICATION_KINDS = {
     defaultEnabled: true,
     configurable: true,
   },
+  POINT_ATTACK: {
+    label: '포인트 공격',
+    description: '누군가 내 포인트 절반을 날렸을 때 알립니다. 누가 걸었는지는 밝히지 않습니다.',
+    defaultEnabled: true,
+    configurable: true,
+  },
   SYSTEM: {
     label: '운영 공지',
     description: '점검·계정 관련 안내입니다. 끌 수 없습니다.',

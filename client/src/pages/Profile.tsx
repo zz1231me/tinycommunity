@@ -24,6 +24,7 @@ import { DuelPanel } from '../components/points/DuelPanel';
 import { AttackPanel } from '../components/points/AttackPanel';
 import { HalvePanel } from '../components/points/HalvePanel';
 import { useFeature, type FeatureKey } from '../store/features';
+import { useNotificationArrival } from '../hooks/useNotificationArrival';
 import { useAuth } from '../store/auth';
 import { useSiteSettings } from '../store/siteSettings';
 import { AvatarUpload } from '../components/AvatarUpload';
@@ -135,6 +136,9 @@ export default function Profile() {
   // 공격권을 쓰면 잔액이 준다. 뽑기 판도 다시 읽게 신호를 보내 한 화면에 서로 다른 잔액이 뜨지 않게 한다.
   const [pointsVersion, setPointsVersion] = useState(0);
   const bumpPoints = useCallback(() => setPointsVersion(v => v + 1), []);
+  // 내가 당했을 때도 숫자가 바로 바뀌어야 한다. 알림은 바로 오는데 잔액이 그대로면
+  // 새로고침할 때까지 포인트가 줄지 않은 것처럼 보인다.
+  useNotificationArrival(['POINT_ATTACK'], bumpPoints);
   // 꺼진 기능의 탭은 아예 보여주지 않는다 (서버도 requireFeature 로 막는다)
   const visibleTabs = TABS.filter(t => {
     const key = FEATURE_TABS[t.id];

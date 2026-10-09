@@ -334,7 +334,13 @@ export function DuelPanel({
 
   return (
     <>
-      {fanfare !== null && <WinFanfare amount={fanfare} onDone={() => setFanfare(null)} />}
+      {fanfare !== null && (
+        <WinFanfare
+          title="🎉 이겼습니다!"
+          detail={`+${fanfare.toLocaleString()}P`}
+          onDone={() => setFanfare(null)}
+        />
+      )}
       <PointsSection
         icon={<Swords className="h-5 w-5" />}
         tone="violet"

@@ -109,8 +109,10 @@ export function AttackPanel({
       });
       // 보낸 뒤에도 고른 사람을 그대로 둔다. 같은 사람에게 이어 보내는 일이 많은데,
       // 비우면 그때마다 이름을 다시 쳐야 한다.
-      await queryClient.invalidateQueries({ queryKey: attendanceKeys.attack }).catch(() => {});
-      onSpent?.();
+      // 부모가 refreshSignal 을 올리면 위의 효과가 다시 읽는다. 여기서 또 부르면
+      // 같은 요청이 두 번 나간다. 부모가 없을 때만 직접 읽는다.
+      if (onSpent) onSpent();
+      else await queryClient.invalidateQueries({ queryKey: attendanceKeys.attack }).catch(() => {});
     } catch (err) {
       toast.error(getApiErrorMessage(err, '공격권을 사용하지 못했습니다.'));
     } finally {

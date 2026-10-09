@@ -13,6 +13,7 @@ export interface Notification {
     | 'MESSAGE'
     | 'DUEL'
     | 'ATTACK'
+    | 'POINT_ATTACK'
     | 'SYSTEM';
   message: string;
   link: string | null;

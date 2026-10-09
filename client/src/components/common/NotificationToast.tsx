@@ -14,7 +14,7 @@ import { TopNotice, TopNoticeSlot } from './TopNotice';
 export const TOAST_MS = 6000;
 /** 받는 사람이 곧 움직여야 하는 알림의 표시 시간. */
 export const URGENT_TOAST_MS = 10_000;
-const URGENT = new Set<Notification['type']>(['ATTACK', 'DUEL']);
+const URGENT = new Set<Notification['type']>(['ATTACK', 'POINT_ATTACK', 'DUEL']);
 
 function ToastCard({ n, more, onClose }: { n: Notification; more: number; onClose: () => void }) {
   const navigate = useNavigate();
@@ -169,7 +169,7 @@ function UrgentNotice({ n, onClose }: { n: Notification; onClose: () => void }) 
 
   return (
     <TopNotice
-      icon={n.type === 'ATTACK' ? '💥' : '⚔️'}
+      icon={n.type === 'POINT_ATTACK' ? '💣' : n.type === 'ATTACK' ? '💥' : '⚔️'}
       title={kind.title}
       message={n.message}
       action={n.link ? '보러 가기' : undefined}

@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import {
   AtSign,
   Bell,
+  Bomb,
   BellRing,
   Heart,
   Mail,
@@ -82,6 +83,13 @@ export const NOTIFICATION_KIND: Record<Notification['type'], NotificationKind> =
     color: 'text-rose-600 dark:text-rose-400',
     accent: 'bg-rose-500',
     title: '퇴근 공격!',
+  },
+  POINT_ATTACK: {
+    icon: <Bomb className="w-4 h-4" />,
+    bg: 'bg-violet-100 dark:bg-violet-900/30',
+    color: 'text-violet-600 dark:text-violet-400',
+    accent: 'bg-violet-500',
+    title: '포인트 공격!',
   },
   SYSTEM: {
     icon: <Bell className="w-4 h-4" />,

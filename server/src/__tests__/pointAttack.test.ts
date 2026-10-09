@@ -81,7 +81,7 @@ const state = (cookie: string) => request(app).get('/api/points/attack').set('Co
 /** 알림은 정산과 묶지 않고 뒤따라 만들어진다 — 잠깐 기다린다 */
 async function waitForNotice(userId: string) {
   for (let i = 0; i < 20; i += 1) {
-    const row = await Notification.findOne({ where: { userId, type: 'ATTACK' } });
+    const row = await Notification.findOne({ where: { userId, type: 'POINT_ATTACK' } });
     if (row) return row;
     await new Promise(r => setTimeout(r, 25));
   }
@@ -188,6 +188,10 @@ describe('익명', () => {
     expect(note!.message).toContain('누군가');
     expect(note!.message).not.toContain(ATK);
     expect(note!.message).not.toContain(`${ATK}이름`);
+
+    // 퇴근 공격과 같은 종류로 보내면 받는 쪽에서 '퇴근 공격' 으로 읽히고,
+    // 알림 설정에서도 둘을 따로 끌 수 없다.
+    expect(note!.type).toBe('POINT_ATTACK');
 
     const entry = await PointLedger.findOne({
       where: { UserId: TGT, reason: 'point_attack_loss' },

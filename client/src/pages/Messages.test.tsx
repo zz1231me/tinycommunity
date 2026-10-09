@@ -8,10 +8,11 @@
 //    응답이 빨라 낡은 안 읽은 수를 받는다.
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Messages from './Messages';
+import { useNotificationStore } from '../store/notifications';
 import type { ConversationPage, ConversationSummary } from '../api/messages';
 
 const fetchConversations = vi.hoisted(() => vi.fn());
@@ -94,6 +95,43 @@ describe('Messages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     fetchConversations.mockResolvedValue([summary()]);
+    // 도착 수는 전역이라 테스트끼리 샌다
+    useNotificationStore.setState({ arrivals: {} });
+  });
+
+  /** SSE 로 새 메시지 알림이 도착한 것과 같은 상태를 만든다 */
+  const arriveMessage = () =>
+    act(() => {
+      useNotificationStore.setState(prev => ({
+        arrivals: { ...prev.arrivals, MESSAGE: (prev.arrivals.MESSAGE ?? 0) + 1 },
+      }));
+    });
+
+  // 알림은 SSE 로 바로 오는데 대화창이 그 신호를 쓰지 않아, 상대가 보낸 말이
+  // 새로고침할 때까지 보이지 않았다 — 창을 열어 둔 채로는 대화가 멈춘 것처럼 보였다.
+  it('새 메시지 알림이 오면 보고 있는 대화를 다시 읽는다', async () => {
+    fetchConversation
+      .mockResolvedValueOnce(page(['처음 메시지']))
+      .mockResolvedValueOnce(page(['처음 메시지', '방금 온 메시지']));
+
+    renderMessages();
+    expect(await screen.findByText('처음 메시지')).toBeInTheDocument();
+    expect(screen.queryByText('방금 온 메시지')).not.toBeInTheDocument();
+
+    arriveMessage();
+
+    expect(await screen.findByText('방금 온 메시지')).toBeInTheDocument();
+  });
+
+  it('알림이 없으면 혼자 다시 읽지 않는다 — 양성 대조', async () => {
+    fetchConversation.mockResolvedValue(page(['처음 메시지']));
+
+    renderMessages();
+    expect(await screen.findByText('처음 메시지')).toBeInTheDocument();
+    const calls = fetchConversation.mock.calls.length;
+
+    await new Promise(r => setTimeout(r, 300));
+    expect(fetchConversation.mock.calls.length).toBe(calls);
   });
 
   it('대화를 다시 열면 캐시가 신선해도 새로 받아 온다 (그동안 온 메시지가 보여야 한다)', async () => {

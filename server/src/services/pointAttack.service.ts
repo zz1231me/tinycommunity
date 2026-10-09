@@ -29,7 +29,8 @@ function notifyVictim(userId: string, lost: number, attackId: number): void {
   void notificationService
     .create({
       userId,
-      type: 'ATTACK',
+      // 퇴근 공격과 섞이지 않게 종류를 따로 둔다. 끄고 켜는 것도 따로다.
+      type: 'POINT_ATTACK',
       // 이름을 넣지 않는다. 익명이 이 기능의 규칙이다.
       message: `${HALVE_ANONYMOUS}의 공격으로 포인트 절반(${lost.toLocaleString()}P)이 사라졌습니다.`,
       link: '/dashboard/points',
