@@ -4,8 +4,9 @@
 // 고른 손이 그대로 서버에 가는지, 실패를 '대결 없음' 으로 그리지 않는지.
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DuelPanel } from './DuelPanel';
+import { useNotificationStore } from '../../store/notifications';
 import type { Duel, DuelBoard } from '../../api/points';
 
 const fetchDuels = vi.hoisted(() => vi.fn());
@@ -81,6 +82,8 @@ const board = (over: Partial<DuelBoard> = {}): DuelBoard => ({
 beforeEach(() => {
   vi.clearAllMocks();
   fetchDuels.mockResolvedValue(board());
+  // 도착 수는 전역이라 테스트끼리 샌다
+  useNotificationStore.setState({ arrivals: {} });
 });
 
 describe('받은 대결', () => {
@@ -632,5 +635,72 @@ describe('기다리는 판이 없을 때도 확인한다', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+// 내가 신청한 판은 상대가 받는 순간 끝난다. 그때는 결과 줄만 조용히 늘어나고 축하가 없었다 —
+// 같은 승리인데 받아서 이긴 쪽만 축하받았다.
+describe('내가 신청한 판이 끝났을 때', () => {
+  /** 내가 신청해서 이긴 판 */
+  const myWin = (id: number) =>
+    duel({
+      id,
+      status: 'done',
+      result: 'challenger',
+      challengerId: ME,
+      challengerName: '알파',
+      opponentId: 'bravo',
+      opponentName: '브라보',
+      challengerHand: 'rock',
+      opponentHand: 'scissors',
+      settledAt: new Date().toISOString(),
+    });
+
+  it('이겼으면 축하가 터진다', async () => {
+    fetchDuels.mockResolvedValue(board());
+    render(<DuelPanel myId={ME} />);
+    await screen.findByText('아직 끝난 대결이 없습니다.');
+
+    // 상대가 받아 승부가 났다 — 알림을 받고 다시 읽은 상황
+    fetchDuels.mockResolvedValue(board({ recent: [myWin(21)], balance: 1400 }));
+    act(() => {
+      useNotificationStore.setState(prev => ({
+        arrivals: { ...prev.arrivals, DUEL: (prev.arrivals.DUEL ?? 0) + 1 },
+      }));
+    });
+
+    expect(await screen.findByText('🎉 이겼습니다!')).toBeInTheDocument();
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith(expect.stringContaining('400')));
+  });
+
+  it('졌으면 터뜨리지 않는다 — 양성 대조', async () => {
+    fetchDuels.mockResolvedValue(board());
+    render(<DuelPanel myId={ME} />);
+    await screen.findByText('아직 끝난 대결이 없습니다.');
+
+    const lost = {
+      ...myWin(22),
+      result: 'opponent' as const,
+      challengerHand: 'rock' as const,
+      opponentHand: 'paper' as const,
+    };
+    fetchDuels.mockResolvedValue(board({ recent: [lost] }));
+    act(() => {
+      useNotificationStore.setState(prev => ({
+        arrivals: { ...prev.arrivals, DUEL: (prev.arrivals.DUEL ?? 0) + 1 },
+      }));
+    });
+
+    await waitFor(() => expect(fetchDuels).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText('🎉 이겼습니다!')).not.toBeInTheDocument();
+  });
+
+  it('처음 그릴 때 쌓여 있던 지난 승리로는 터지지 않는다', async () => {
+    fetchDuels.mockResolvedValue(board({ recent: [myWin(23)] }));
+    render(<DuelPanel myId={ME} />);
+
+    // 지난 판이 목록에 그려질 때까지 기다린 뒤에 본다
+    await screen.findByText(/브라보/);
+    expect(screen.queryByText('🎉 이겼습니다!')).not.toBeInTheDocument();
   });
 });

@@ -149,7 +149,7 @@ export function AttackPanel({
             근무 중인 사람의 퇴근 버튼을 {rules.blockSeconds}초 동안 성가시게 하거나(방해·문제 내기){' '}
             {rules.hideSeconds}초 동안 감춥니다. 기록되는 퇴근 시각은 어느 쪽이든 실제로 누른 순간
             그대로입니다. 한 사람에게 최대 {rules.maxStack}개까지 쌓이고, 쌓인 만큼 이어지며 더
-            사나워집니다.
+            사나워집니다. 하루 횟수는 포인트 날리기와 함께 셉니다.
           </p>
 
           <div className="mt-4 grid grid-cols-3 gap-2">

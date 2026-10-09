@@ -190,6 +190,30 @@ export function DuelPanel({
     void reload().catch(() => {});
   });
 
+  /**
+   * 끝난 판 중 축하를 이미 터뜨린 것. null 이면 아직 첫 조회 전이다.
+   *
+   * 내가 받아서 이겼을 때만 축하가 떴다. 내가 신청한 판은 상대가 받는 순간 끝나는데,
+   * 그때는 결과 줄만 조용히 늘어났다 — 같은 승리인데 한쪽만 축하받았다.
+   */
+  const celebrated = useRef<Set<number> | null>(null);
+  useEffect(() => {
+    if (!board) return;
+    const settled = board.recent.filter(d => d.status === 'done');
+    // 처음 그릴 때 쌓여 있던 지난 판은 축하 대상이 아니다.
+    if (celebrated.current === null) {
+      celebrated.current = new Set(settled.map(d => d.id));
+      return;
+    }
+    for (const duel of settled) {
+      if (celebrated.current.has(duel.id)) continue;
+      celebrated.current.add(duel.id);
+      if (outcomeOf(duel, myId) !== '승') continue;
+      setFanfare(duel.stake * 2);
+      toast.success(`이겼습니다! ${(duel.stake * 2).toLocaleString()}P 획득`);
+    }
+  }, [board, myId]);
+
   // 부모가 매 렌더 새 함수를 넘겨도 찾아가기를 다시 돌리지 않는다
   const focusHandled = useRef(onFocusHandled);
   useEffect(() => {
@@ -298,6 +322,8 @@ export function DuelPanel({
       if (mine === '승') {
         toast.success(`이겼습니다! ${(duel.stake * 2).toLocaleString()}P 획득`);
         setFanfare(duel.stake * 2);
+        // 여기서 이미 축하했으므로 아래 효과가 다시 터뜨리지 않게 표시해 둔다.
+        celebrated.current?.add(duel.id);
         // 이긴 판의 한마디 입력칸을 바로 열어 둔다.
         setTauntFor(duel.id);
         setTauntText('');
