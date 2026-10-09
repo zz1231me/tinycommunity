@@ -16,7 +16,7 @@ const mockHalve = vi.fn();
 vi.mock('../../api/points', async importOriginal => ({
   ...(await importOriginal<typeof import('../../api/points')>()),
   fetchPointAttackState: () => mockFetchState(),
-  halvePoints: (targetId: string) => mockHalve(targetId),
+  halvePoints: (targetId: string, count?: number) => mockHalve(targetId, count),
 }));
 
 vi.mock('../common/UserPicker', () => ({
@@ -48,6 +48,17 @@ const state = (over: Partial<PointAttackState> = {}): PointAttackState => ({
   ...over,
 });
 
+/** 서버가 돌려주는 모양. 던진 횟수만큼 결과가 줄줄이 온다. */
+const result = (
+  throws: Array<{ succeeded: boolean; lost: number }>,
+  stopped: string | null = null
+) => ({
+  throws,
+  stopped,
+  targetName: '피해자',
+  balance: 700,
+});
+
 const show = async (onSpent?: () => void) => {
   renderWithQuery(<HalvePanel myId="me" onSpent={onSpent} />);
   await screen.findByRole('button', { name: '상대 고르기' });
@@ -59,7 +70,7 @@ const pick = () => fireEvent.click(screen.getByRole('button', { name: '상대 �
 beforeEach(() => {
   vi.clearAllMocks();
   mockFetchState.mockResolvedValue(state());
-  mockHalve.mockResolvedValue({ succeeded: false, lost: 0, targetName: '피해자', balance: 700 });
+  mockHalve.mockResolvedValue(result([{ succeeded: false, lost: 0 }]));
 });
 
 describe('누르기 전에 알려 주는 것', () => {
@@ -116,12 +127,7 @@ describe('던질 수 없는 상태', () => {
 
 describe('던진 결과', () => {
   it('통하면 몇 점을 날렸는지 알려 준다', async () => {
-    mockHalve.mockResolvedValue({
-      succeeded: true,
-      lost: 1234,
-      targetName: '피해자',
-      balance: 700,
-    });
+    mockHalve.mockResolvedValue(result([{ succeeded: true, lost: 1234 }]));
     await show();
     pick();
     fireEvent.click(throwBtn());
@@ -129,16 +135,11 @@ describe('던진 결과', () => {
     // 판 안의 결과 줄. 같은 '명중' 이 축하 연출에도 뜨므로 역할로 집어 고른다.
     const hit = await screen.findByRole('status');
     expect(hit).toHaveTextContent('1,234');
-    await waitFor(() => expect(mockHalve).toHaveBeenCalledWith('victim'));
+    await waitFor(() => expect(mockHalve).toHaveBeenCalledWith('victim', 1));
   });
 
   it('통하면 크게 터뜨린다 — 100 번에 한 번이라 조용히 지나가면 섭섭하다', async () => {
-    mockHalve.mockResolvedValue({
-      succeeded: true,
-      lost: 1234,
-      targetName: '피해자',
-      balance: 700,
-    });
+    mockHalve.mockResolvedValue(result([{ succeeded: true, lost: 1234 }]));
     await show();
     pick();
     fireEvent.click(throwBtn());
@@ -157,7 +158,7 @@ describe('던진 결과', () => {
   });
 
   it('통했는데 상대가 빈털터리면 그렇게 말한다 — 0P 가 사라졌다고 하지 않는다', async () => {
-    mockHalve.mockResolvedValue({ succeeded: true, lost: 0, targetName: '피해자', balance: 700 });
+    mockHalve.mockResolvedValue(result([{ succeeded: true, lost: 0 }]));
     await show();
     pick();
     fireEvent.click(throwBtn());
@@ -180,6 +181,49 @@ describe('던진 결과', () => {
     fireEvent.click(throwBtn());
 
     await waitFor(() => expect(onSpent).toHaveBeenCalled());
+  });
+
+  it('x10 은 요청 한 번으로 열 발을 보낸다 — 열 번 부르면 서버가 줄을 선다', async () => {
+    const shots = Array.from({ length: 10 }, (_, i) => ({
+      succeeded: i === 3,
+      lost: i === 3 ? 500 : 0,
+    }));
+    mockHalve.mockResolvedValue(result(shots));
+    // 잔액과 남은 횟수가 적으면 묶음 수가 그만큼 줄어든다 — 여기서 볼 것이 아니다
+    mockFetchState.mockResolvedValue(state({ balance: 100_000, remainingToday: 10 }));
+    await show();
+    pick();
+
+    fireEvent.click(screen.getByRole('button', { name: /x10/ }));
+
+    await waitFor(() => expect(mockHalve).toHaveBeenCalledWith('victim', 10));
+    expect(mockHalve).toHaveBeenCalledTimes(1);
+    // 열 발 중 한 발만 맞았으니 합계가 보인다.
+    // 한 발씩 보여 준 뒤에야 요약이 뜨므로 기본 대기(1초)보다 길게 준다.
+    expect(await screen.findByRole('status', {}, { timeout: 5000 })).toHaveTextContent('500');
+  });
+
+  it('남은 횟수보다 많이 적어 두지 않는다', async () => {
+    mockFetchState.mockResolvedValue(state({ remainingToday: 3, balance: 100_000 }));
+    await show();
+    pick();
+    expect(screen.getByRole('button', { name: /x3/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /x10/ })).not.toBeInTheDocument();
+  });
+
+  it('남은 횟수가 한 번뿐이면 묶음 단추를 숨긴다', async () => {
+    mockFetchState.mockResolvedValue(state({ remainingToday: 1, balance: 100_000 }));
+    await show();
+    pick();
+    expect(screen.queryByRole('button', { name: /^x\d/ })).not.toBeInTheDocument();
+  });
+
+  it('가진 포인트로 던질 수 있는 만큼만 적어 둔다', async () => {
+    // 1,000P 에 한 발 300P 면 세 발이 한계다. x10 을 적어 두면 눌러 봐야 중간에 멈춘다.
+    mockFetchState.mockResolvedValue(state({ balance: 1000, remainingToday: 10 }));
+    await show();
+    pick();
+    expect(screen.getByRole('button', { name: /x3/ })).toBeInTheDocument();
   });
 
   it('던진 뒤에도 남아 있어 이름을 다시 치지 않고 또 던진다', async () => {

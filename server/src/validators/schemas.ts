@@ -121,6 +121,8 @@ export const updateTagSchema = createTagSchema.partial();
 
 export const pointAttackSchema = z.object({
   targetId: z.string().trim().min(1, '상대를 골라주세요.').max(50),
+  /** 한 번에 던질 횟수. 화면의 'x10' 이 쓴다. 상한은 서비스가 다시 자른다. */
+  count: z.number().int().min(1).max(10).optional(),
 });
 
 export const duelCreateSchema = z.object({

@@ -160,9 +160,10 @@ export interface PointAttackState {
 }
 
 export interface PointAttackResult {
-  succeeded: boolean;
-  /** 사라진 포인트. 빗나갔거나 상대가 빈털터리면 0. */
-  lost: number;
+  /** 던진 순서대로의 결과. 한 번만 던졌으면 길이 1. */
+  throws: Array<{ succeeded: boolean; lost: number }>;
+  /** 횟수나 포인트가 떨어져 중간에 멈췄으면 그 이유 */
+  stopped: string | null;
   targetName: string;
   /** 값을 낸 뒤 내 잔액 */
   balance: number;
@@ -171,5 +172,6 @@ export interface PointAttackResult {
 export const fetchPointAttackState = async (): Promise<PointAttackState> =>
   unwrap(await api.get('/points/attack'));
 
-export const halvePoints = async (targetId: string): Promise<PointAttackResult> =>
-  unwrap(await api.post('/points/attack/halve', { targetId }));
+/** @param count 한 번에 던질 횟수(1~10). 여러 번도 요청 하나로 보낸다. */
+export const halvePoints = async (targetId: string, count = 1): Promise<PointAttackResult> =>
+  unwrap(await api.post('/points/attack/halve', { targetId, count }));

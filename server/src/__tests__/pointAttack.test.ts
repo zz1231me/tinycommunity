@@ -9,7 +9,7 @@ import { FeatureFlag } from '../models/FeatureFlag';
 import { SiteSettings } from '../models/SiteSettings';
 import { refreshSettingsCache } from '../utils/settingsCache';
 import { featureFlagService } from '../services/featureFlag.service';
-import { pointAttackService } from '../services/pointAttack.service';
+import { MAX_THROWS_AT_ONCE, pointAttackService } from '../services/pointAttack.service';
 import { today } from '../services/point.service';
 import { POINT_ATTACK_DEFAULTS } from '../config/pointAttack';
 import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
@@ -177,9 +177,10 @@ describe('익명', () => {
   it('사라진 액수는 던진 사람에게 알려 준다 — 가려야 하는 것은 이름뿐이다', async () => {
     const res = await throwAt(atkCookie, TGT);
     expect(res.status).toBe(200);
-    expect(res.body.data).toHaveProperty('lost');
+    // 한 번 던져도 결과는 줄로 온다(x10 과 같은 모양).
+    expect(res.body.data.throws).toHaveLength(1);
     // 빗나가면 0, 통하면 절반. 어느 쪽이든 숫자로 온다.
-    expect([0, 1234]).toContain(res.body.data.lost);
+    expect([0, 1234]).toContain(res.body.data.throws[0].lost);
   });
 
   it('당한 사람의 알림과 원장에도 공격자가 없다', async () => {
@@ -248,6 +249,49 @@ describe('하루 횟수는 퇴근 공격권과 함께 센다', () => {
     const res = await state(atkCookie);
     expect(res.body.data.usedToday).toBe(1);
     expect(res.body.data.remainingToday).toBe(limit - 1);
+  });
+});
+
+describe('한 번에 여러 발', () => {
+  it('요청 하나로 여러 번 던진다', async () => {
+    const result = await pointAttackService.halveMany(ATK, { targetId: TGT, count: 3 }, never);
+    expect(result.throws).toHaveLength(3);
+    expect(await PointAttack.count({ where: { attackerId: ATK } })).toBe(3);
+    expect(await balanceOf(ATK)).toBe(10_000 - POINT_ATTACK_DEFAULTS.cost * 3);
+  });
+
+  it('하루 횟수가 떨어지면 거기까지만 하고 이유를 알려 준다', async () => {
+    const limit = ATTACK_DEFAULTS.dailyLimitPerAttacker;
+    const result = await pointAttackService.halveMany(
+      ATK,
+      { targetId: TGT, count: limit + 3 },
+      never
+    );
+
+    expect(result.throws).toHaveLength(limit);
+    expect(result.stopped).toMatch(/모두 사용/);
+    // 이미 던진 것은 되돌리지 않는다
+    expect(await PointAttack.count({ where: { attackerId: ATK } })).toBe(limit);
+  });
+
+  it('포인트가 모자라면 던질 수 있는 만큼만', async () => {
+    await grant(ATK, POINT_ATTACK_DEFAULTS.cost * 2);
+    const result = await pointAttackService.halveMany(ATK, { targetId: TGT, count: 5 }, never);
+    expect(result.throws).toHaveLength(2);
+    expect(result.stopped).toMatch(/모자랍니다/);
+  });
+
+  it('처음부터 막히면 평소처럼 오류를 돌려준다', async () => {
+    await grant(ATK, 0);
+    await expect(
+      pointAttackService.halveMany(ATK, { targetId: TGT, count: 5 }, never)
+    ).rejects.toThrow(/모자랍니다/);
+  });
+
+  it('상한을 넘겨 보내도 상한까지만', async () => {
+    const result = await pointAttackService.halveMany(ATK, { targetId: TGT, count: 999 }, never);
+    // 하루 횟수가 먼저 걸리지만, 어느 쪽이든 요청한 999 번이 되지는 않는다
+    expect(result.throws.length).toBeLessThanOrEqual(MAX_THROWS_AT_ONCE);
   });
 });
 

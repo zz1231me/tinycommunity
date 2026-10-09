@@ -54,6 +54,9 @@ interface AttackLogRow {
   createdAt: Date;
 }
 
+/** 한 번에 던질 수 있는 최대 횟수. 화면의 'x10' 과 같은 값이다. */
+export const MAX_THROWS_AT_ONCE = 10;
+
 const withNames = [
   { model: User, as: 'attacker', attributes: ['id', 'name'], required: false },
   { model: User, as: 'target', attributes: ['id', 'name'], required: false },
@@ -125,6 +128,41 @@ export const pointAttackService = {
       dailyLimit: rules.dailyLimitPerAttacker,
       usedToday,
       remainingToday: Math.max(0, rules.dailyLimitPerAttacker - usedToday),
+    };
+  },
+
+  /**
+   * 여러 번 이어 던진다. 한 번에 한 요청으로 끝내기 위한 것 —
+   * 열 번 던지자고 열 번 부르면 같은 사람의 요청이 겹쳐 트랜잭션이 줄을 선다.
+   * 중간에 횟수나 포인트가 떨어지면 거기까지 한 결과를 돌려준다(이미 던진 것은 되돌리지 않는다).
+   */
+  async halveMany(
+    attackerId: string,
+    input: { targetId: string; count: number },
+    roll: () => number = rollPercent
+  ) {
+    const count = Math.min(MAX_THROWS_AT_ONCE, Math.max(1, Math.floor(input.count)));
+    const throws: Array<{ succeeded: boolean; lost: number }> = [];
+    let last: Awaited<ReturnType<typeof pointAttackService.halve>> | null = null;
+    let stopped: string | null = null;
+
+    for (let i = 0; i < count; i += 1) {
+      try {
+        last = await pointAttackService.halve(attackerId, { targetId: input.targetId }, roll);
+        throws.push({ succeeded: last.succeeded, lost: last.lost });
+      } catch (err) {
+        // 첫 번째부터 막히면 평소처럼 오류를 돌려준다. 몇 번이라도 던졌으면 거기까지가 결과다.
+        if (throws.length === 0) throw err;
+        stopped = err instanceof AppError ? err.message : '더 던지지 못했습니다.';
+        break;
+      }
+    }
+
+    return {
+      throws,
+      stopped,
+      targetName: last?.targetName ?? '',
+      balance: last?.balance ?? 0,
     };
   },
 

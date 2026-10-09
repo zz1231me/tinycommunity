@@ -10,6 +10,9 @@ import type { UserSuggestion } from '../../api/users';
 import { pointKeys } from '../../api/queryKeys';
 import { PointsSection } from './PointsSection';
 import { WinFanfare } from './WinFanfare';
+
+/** 한 번에 던질 수 있는 최대 횟수. 서버의 MAX_THROWS_AT_ONCE 와 같아야 한다. */
+const MAX_BURST = 10;
 import { ListState } from '../common/ListState';
 import { LoadingSpinner } from '../common/LoadingStates';
 import { getApiErrorMessage } from '../../api/utils';
@@ -51,22 +54,38 @@ export function HalvePanel({
     lost: number;
   } | null>(null);
 
-  const handleThrow = async () => {
+  /** 여러 번 던질 때 한 발씩 보여 주는 자리. 'x x o x …' 로 쌓인다. */
+  const [rolling, setRolling] = useState<boolean[] | null>(null);
+
+  const handleThrow = async (count: number) => {
     if (!state || picked.length === 0 || sending) return;
     setSending(true);
+    setRolling(null);
     try {
-      const result = await halvePoints(picked[0].id);
+      const result = await halvePoints(picked[0].id, count);
+      const shots = result.throws;
+
+      // 한 발씩 보여 준다. 한꺼번에 띄우면 열 번 던진 맛이 없다.
+      if (shots.length > 1) {
+        for (let i = 0; i < shots.length; i += 1) {
+          setRolling(shots.slice(0, i + 1).map(t => t.succeeded));
+          await new Promise(r => setTimeout(r, 180));
+        }
+      }
+
+      const hits = shots.filter(t => t.succeeded);
+      const lost = hits.reduce((sum, t) => sum + t.lost, 0);
       setShot({
         key: Date.now(),
         name: result.targetName,
-        succeeded: result.succeeded,
-        lost: result.lost,
+        succeeded: hits.length > 0,
+        lost,
       });
-      // 100 번에 한 번이라 통했을 때는 크게 터뜨린다.
-      if (result.succeeded && result.lost > 0) {
-        setBoom({ name: result.targetName, lost: result.lost });
-      }
-      // 고른 사람은 그대로 둔다. 100 번에 한 번 통하는 공격이라 같은 사람에게 거듭 던지게 되는데,
+      // 통했을 때는 크게 터뜨린다.
+      if (lost > 0) setBoom({ name: result.targetName, lost });
+      if (result.stopped) toast.info(result.stopped);
+
+      // 고른 사람은 그대로 둔다. 좀처럼 통하지 않는 공격이라 같은 사람에게 거듭 던지게 되는데,
       // 던질 때마다 비우면 매번 이름을 다시 쳐야 한다.
       // 부모가 refreshSignal 을 올리면 위의 효과가 다시 읽는다. 여기서 또 부르면
       // 같은 요청이 두 번 나간다. 부모가 없을 때만 직접 읽는다.
@@ -81,6 +100,16 @@ export function HalvePanel({
 
   const soldOut = (state?.remainingToday ?? 0) <= 0;
   const affordable = (state?.balance ?? 0) >= (state?.cost ?? 0);
+  const blocked = picked.length === 0 || sending || soldOut || !affordable;
+  /**
+   * 한 번에 던질 수 있는 수. 남은 횟수와 가진 포인트로 잘라 둔다 —
+   * 못 던질 수를 적어 두면 눌러 봐야 중간에 멈춘다.
+   */
+  const burst = Math.min(
+    MAX_BURST,
+    state?.remainingToday ?? 0,
+    state && state.cost > 0 ? Math.floor(state.balance / state.cost) : MAX_BURST
+  );
 
   return (
     <>
@@ -126,23 +155,48 @@ export function HalvePanel({
               />
             </div>
 
-            <button
-              type="button"
-              disabled={picked.length === 0 || sending || soldOut || !affordable}
-              onClick={() => void handleThrow()}
-              className="btn-primary mt-3 inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {sending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Bomb className="h-4 w-4" />
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={blocked}
+                onClick={() => void handleThrow(1)}
+                className="btn-primary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {sending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Bomb className="h-4 w-4" />
+                )}
+                {soldOut
+                  ? '오늘은 모두 사용했어요'
+                  : !affordable
+                    ? '포인트가 모자랍니다'
+                    : `던지기 (−${state.cost.toLocaleString()}P)`}
+              </button>
+
+              {/* 한 번씩 누르는 것이 번거로워 한 번에 여러 발. 서버에는 요청 하나로 간다. */}
+              {burst > 1 && (
+                <button
+                  type="button"
+                  disabled={blocked}
+                  onClick={() => void handleThrow(burst)}
+                  className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Bomb className="h-4 w-4" />
+                  {`x${burst} (−${(state.cost * burst).toLocaleString()}P)`}
+                </button>
               )}
-              {soldOut
-                ? '오늘은 모두 사용했어요'
-                : !affordable
-                  ? '포인트가 모자랍니다'
-                  : `던지기 (−${state.cost.toLocaleString()}P)`}
-            </button>
+            </div>
+
+            {rolling && (
+              <p aria-hidden className="mt-2 flex gap-1 text-lg leading-none">
+                {rolling.map((hit, i) => (
+                  <span key={i} className="animate-popIn">
+                    {hit ? '💥' : '·'}
+                  </span>
+                ))}
+              </p>
+            )}
 
             {shot && (
               <p
