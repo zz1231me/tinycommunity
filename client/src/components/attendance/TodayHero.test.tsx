@@ -636,7 +636,7 @@ describe('문제 내기 공격', () => {
 describe('퇴근 취소 남은 시간 막대', () => {
   // 서버 마감은 '퇴근 시각 + 11분' 이다(퇴근 시각의 초가 잘리므로 1분을 얹어 준다).
   // 600초를 기준으로 재던 때는 처음 1분 동안 막대가 가득 찬 채로 멈춰 있었다.
-  const bar = (untilSeconds: number) => {
+  const bar = (untilSeconds: number, undoMinutes = 10) => {
     const { container } = render(
       <TodayHero
         workDate="2026-09-20"
@@ -655,6 +655,7 @@ describe('퇴근 취소 남은 시간 막대', () => {
         canCheckOut={false}
         checkingOut={false}
         undoCheckOutUntil={new Date(Date.now() + untilSeconds * 1000).toISOString()}
+        undoMinutes={undoMinutes}
         onUndoCheckOut={vi.fn()}
         onCheckIn={vi.fn()}
         onCheckOut={vi.fn()}
@@ -674,6 +675,17 @@ describe('퇴근 취소 남은 시간 막대', () => {
 
   it('10분이 남았을 때 이미 가득 찬 것으로 보이지 않는다', () => {
     expect(bar(10 * 60)).toBeLessThan(96);
+  });
+
+  // 허용 시간은 관리자가 정한다. 막대가 10분으로 굳어 있으면 30분으로 바꾼 곳에서
+  // 20분이 남았는데도 가득 찬 채로 한참을 멈춰 있는다.
+  it('허용 시간을 늘리면 막대도 그 길이를 기준으로 센다', () => {
+    // 30분 설정에서 20분 남음 — 아직 3분의 2쯤 남은 것으로 보여야 한다
+    const long = bar(20 * 60, 30);
+    expect(long).toBeGreaterThan(55);
+    expect(long).toBeLessThan(75);
+    // 같은 20분이라도 10분 설정에서는 이미 넘친 상태다
+    expect(bar(20 * 60, 10)).toBe(100);
   });
 });
 

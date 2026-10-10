@@ -33,17 +33,36 @@ interface Props {
   onCheckOut: () => void;
   /** 이 시각까지 퇴근을 되돌릴 수 있다. 없으면 null. */
   undoCheckOutUntil?: string | null;
+  /** 관리자가 정한 퇴근 취소 허용 시간(분). 남은 시간 막대의 기준이 된다. */
+  undoMinutes?: number;
   /** 서버 시각 − 내 시계. 남은 시간은 서버 기준으로 센다. */
   clockOffset?: number;
   undoingCheckOut?: boolean;
   onUndoCheckOut?: () => void;
 }
 
-/** 퇴근 취소 막대의 기준 길이(초). 서버 마감은 '퇴근 시각 + 11분' 이라 600 이 아니다. */
-const UNDO_WINDOW_SECONDS = 660;
+/**
+ * 퇴근 취소 막대의 기준 길이(초).
+ * 서버 마감은 '퇴근 시각 + (허용 시간 + 1분)' 이다 — 퇴근 시각이 분 단위로 잘려 저장되므로
+ * 1분을 더 쳐 준다. 허용 시간은 관리자가 정하므로 여기서 숫자로 굳히면, 10분이 아닌 값에서
+ * 막대가 처음부터 가득 차 있거나 순식간에 비어 버린다.
+ */
+function undoWindowSeconds(undoMinutes: number): number {
+  return Math.max(1, (undoMinutes + 1) * 60);
+}
 
 /** 퇴근 취소 단추. 퇴근 단추 자리에 대신 선다. */
-function UndoCheckOut({ left, busy, onUndo }: { left: number; busy: boolean; onUndo: () => void }) {
+function UndoCheckOut({
+  left,
+  windowSeconds,
+  busy,
+  onUndo,
+}: {
+  left: number;
+  windowSeconds: number;
+  busy: boolean;
+  onUndo: () => void;
+}) {
   const m = Math.floor(left / 60);
   const ss = String(left % 60).padStart(2, '0');
   return (
@@ -61,7 +80,7 @@ function UndoCheckOut({ left, busy, onUndo }: { left: number; busy: boolean; onU
       <span
         aria-hidden
         className="absolute bottom-0 left-0 h-0.5 bg-amber-400 transition-[width] duration-1000 ease-linear"
-        style={{ width: `${Math.min(100, (left / UNDO_WINDOW_SECONDS) * 100)}%` }}
+        style={{ width: `${Math.min(100, (left / windowSeconds) * 100)}%` }}
       />
     </button>
   );
@@ -337,6 +356,7 @@ export function TodayHero({
   onCheckIn,
   onCheckOut,
   undoCheckOutUntil = null,
+  undoMinutes = 10,
   clockOffset = 0,
   undoingCheckOut = false,
   onUndoCheckOut,
@@ -446,7 +466,12 @@ export function TodayHero({
             출근
           </button>
           {canUndo ? (
-            <UndoCheckOut left={undoLeft} busy={undoingCheckOut} onUndo={onUndoCheckOut!} />
+            <UndoCheckOut
+              left={undoLeft}
+              windowSeconds={undoWindowSeconds(undoMinutes)}
+              busy={undoingCheckOut}
+              onUndo={onUndoCheckOut!}
+            />
           ) : attackKind === 'hide' ? (
             <HiddenSlot expiresAt={attackExpiresAt} clockOffset={clockOffset} />
           ) : (
