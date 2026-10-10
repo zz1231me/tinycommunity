@@ -241,3 +241,37 @@ describe('403 — 세션 무효와 평범한 권한 거부를 가른다', () => 
     expect(hrefSpy).not.toHaveBeenCalled();
   });
 });
+
+describe('503 — 점검이 켜진 것을 열어 둔 탭이 알아챈다', () => {
+  // 신호를 읽는 함수 자체는 maintenanceSignal.test.ts 가 본다. 여기서 보는 것은 '연결' 이다 —
+  // 인터셉터에서 부르는 줄이 빠지면 함수가 멀쩡해도 화면은 끝까지 평소처럼 남는다.
+  it('점검 응답을 받으면 사이트 설정을 점검 상태로 돌린다', async () => {
+    // freshApi 가 모듈을 다시 불러오므로 스토어도 그 뒤에 집는다. 먼저 집으면 인터셉터가
+    // 쓰는 것과 다른 인스턴스를 보게 되어 아무 일도 없는 것처럼 보인다.
+    const api = await freshApi();
+    const { useSiteSettings, DEFAULT_SETTINGS } = await import('../store/siteSettings');
+    useSiteSettings.setState({ settings: { ...DEFAULT_SETTINGS } });
+    queueResponses(api, [
+      { status: 503, data: { message: '19시에 다시 열립니다.', maintenanceMode: true } },
+    ]);
+
+    await expect(api.get('/api/posts/notice')).rejects.toBeTruthy();
+
+    expect(useSiteSettings.getState().settings.maintenanceMode).toBe(true);
+    expect(useSiteSettings.getState().settings.maintenanceMessage).toBe('19시에 다시 열립니다.');
+    expect(hrefSpy).not.toHaveBeenCalled(); // 점검은 세션 문제가 아니다
+  });
+
+  it('점검과 무관한 503 은 건드리지 않는다 — 양성 대조', async () => {
+    // freshApi 가 모듈을 다시 불러오므로 스토어도 그 뒤에 집는다. 먼저 집으면 인터셉터가
+    // 쓰는 것과 다른 인스턴스를 보게 되어 아무 일도 없는 것처럼 보인다.
+    const api = await freshApi();
+    const { useSiteSettings, DEFAULT_SETTINGS } = await import('../store/siteSettings');
+    useSiteSettings.setState({ settings: { ...DEFAULT_SETTINGS } });
+    queueResponses(api, [{ status: 503, data: { message: '잠시 뒤 다시 시도해주세요.' } }]);
+
+    await expect(api.get('/api/posts/notice')).rejects.toBeTruthy();
+
+    expect(useSiteSettings.getState().settings.maintenanceMode).toBe(false);
+  });
+});

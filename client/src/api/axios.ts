@@ -3,6 +3,7 @@ import { refreshToken } from './auth';
 import { useAuth } from '../store/auth';
 import { flagSessionExpired } from '../utils/sessionExpiry';
 import { localizeTransportError } from './transportError';
+import { applyMaintenanceSignal } from './maintenanceSignal';
 
 const REDIRECT_LOGIN = '/';
 const REDIRECT_FORBIDDEN = '/forbidden';
@@ -92,6 +93,7 @@ api.interceptors.response.use(
   },
   async error => {
     localizeTransportError(error);
+    applyMaintenanceSignal(error);
     const originalRequest = error.config;
 
     const isAuthEndpoint = AUTH_ENDPOINTS.some(ep => originalRequest?.url?.includes(ep));
@@ -170,6 +172,7 @@ uploadApi.interceptors.response.use(
   response => response,
   async error => {
     localizeTransportError(error);
+    applyMaintenanceSignal(error);
     if (error.response?.status === 419 && !error.config._retry) {
       error.config._retry = true;
 

@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Wrench } from 'lucide-react';
 import { useSiteSettings } from '../store/siteSettings';
 import { useAuth } from '../store/auth';
+import { getSiteSettings } from '../api/siteSettings';
 
 // 점검 중에도 열어 두는 경로. '/'를 넣으면 점검 페이지 대신 로그인폼이 떠서 제외한다.
 const AUTH_PATHS = ['/login', '/login/2fa', '/password-reset-request', '/reset-password'];
@@ -32,6 +33,39 @@ const MaintenancePage: React.FC<{ message: string | null; siteName: string }> = 
     </div>
   </div>
 );
+
+/** 점검이 끝났는지 다시 물어보는 주기(ms). 서버 캐시가 30초이므로 그보다 길게 둔다. */
+const RECHECK_MS = 45_000;
+
+/**
+ * 점검 중 화면은 스스로 풀려야 한다.
+ *
+ * 설정은 앱이 시작할 때 한 번만 읽는다. 점검이 켜지는 쪽은 503 응답으로 알게 되지만
+ * (api/maintenanceSignal.ts), 끝나는 쪽은 알려 주는 것이 없어 새로고침할 때까지 안내 화면에
+ * 갇힌다. /site-settings 는 점검 중에도 열려 있으므로 여기서 다시 물어본다.
+ */
+function useMaintenanceRecheck(active: boolean) {
+  const setSettings = useSiteSettings(s => s.setSettings);
+
+  useEffect(() => {
+    if (!active) return;
+    let stopped = false;
+    const ask = async () => {
+      if (document.hidden) return; // 보고 있지 않은 탭은 묻지 않는다
+      try {
+        const next = await getSiteSettings();
+        if (!stopped) setSettings(next);
+      } catch {
+        // 점검 중에는 실패가 정상이다. 다음 차례에 다시 묻는다.
+      }
+    };
+    const timer = setInterval(ask, RECHECK_MS);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [active, setSettings]);
+}
 
 /**
  * 배너 높이만큼 대시보드 틀을 줄인다. 줄 수·글자 크기에 따라 달라지므로 실제로 재서 쓴다.
@@ -69,6 +103,7 @@ export const MaintenanceGate: React.FC<{ children: React.ReactNode }> = ({ child
   // 훅은 조기 반환보다 위에 둔다.
   const barRef = useRef<HTMLDivElement>(null);
   useMaintenanceBarSpace(barRef, maintenanceMode && isAdmin);
+  useMaintenanceRecheck(maintenanceMode && !isAdmin);
 
   if (!maintenanceMode) return <>{children}</>;
 
