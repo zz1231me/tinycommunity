@@ -240,6 +240,34 @@ describe('403 — 세션 무효와 평범한 권한 거부를 가른다', () => 
 
     expect(hrefSpy).not.toHaveBeenCalled();
   });
+
+  // 꺼진 기능을 읽는 함수는 featureSignal.test.ts 가 본다. 여기서 보는 것은 '연결' 이다.
+  it('꺼진 기능을 만나면 스위치 목록을 다시 읽는다', async () => {
+    const api = await freshApi();
+    const { useFeatures } = await import('../store/features');
+    useFeatures.setState({ features: { 'tools.memo': true }, loaded: true });
+    queueResponses(api, [
+      { status: 403, data: { code: 'FEATURE_DISABLED', details: { feature: 'tools.memo' } } },
+      { status: 200, data: { success: true, data: { 'tools.memo': false } } },
+    ]);
+
+    await expect(api.get('/api/memos')).rejects.toBeTruthy();
+
+    await vi.waitFor(() => expect(useFeatures.getState().features['tools.memo']).toBe(false));
+  });
+
+  it('평범한 권한 거부로는 목록을 다시 읽지 않는다 — 양성 대조', async () => {
+    const api = await freshApi();
+    const { useFeatures } = await import('../store/features');
+    useFeatures.setState({ features: { 'tools.memo': true }, loaded: true });
+    const calls = queueResponses(api, [
+      { status: 403, data: { message: '이 게시판에 글을 쓸 수 없습니다.' } },
+    ]);
+
+    await expect(api.get('/api/posts/notice')).rejects.toBeTruthy();
+
+    expect(calls).toEqual(['/api/posts/notice']);
+  });
 });
 
 describe('503 — 점검이 켜진 것을 열어 둔 탭이 알아챈다', () => {
