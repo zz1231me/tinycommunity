@@ -130,3 +130,48 @@ describe('앱을 열 때는 버릴 것이 없다', () => {
     expect(client.getQueryData(attendanceKeys.me)).toBeUndefined();
   });
 });
+
+describe('로그아웃한 탭에 다른 사람이 로그인하면', () => {
+  // '앱을 여는 중' 을 넘기는 예외가 여기까지 늘어나면 안 된다. 로그아웃으로 한 번 비운 뒤에도
+  // 늦게 도착한 앞 사람의 응답이 캐시에 앉을 수 있고, 캐시 열쇠에는 누구의 것인지가 없다.
+  it('null 을 거쳐 들어와도 앞 사람의 답을 버린다', () => {
+    useAuth.setState({ user: asUser('alice'), isAuthenticated: true });
+    render(
+      <QueryProvider>
+        <Probe />
+      </QueryProvider>
+    );
+
+    act(() => {
+      useAuth.setState({ user: null, isAuthenticated: false }); // 로그아웃
+    });
+    act(() => {
+      // 화면이 정리되는 사이 떠나 있던 alice 의 응답이 도착한 셈
+      client.setQueryData(attendanceKeys.me, { who: 'alice' });
+    });
+
+    act(() => {
+      useAuth.setState({ user: asUser('bob'), isAuthenticated: true });
+    });
+
+    expect(client.getQueryData(attendanceKeys.me)).toBeUndefined();
+  });
+
+  it('로그아웃 없이 바로 로그인하는 첫 한 번만 넘긴다', () => {
+    // 앱을 열자마자 로그인하는 흐름(탭에 앞 사람이 없었다)은 버릴 것이 없다
+    render(
+      <QueryProvider>
+        <Probe />
+      </QueryProvider>
+    );
+    act(() => {
+      client.setQueryData(attendanceKeys.me, { who: '방금 받은 것' });
+    });
+
+    act(() => {
+      useAuth.setState({ user: asUser('alice'), isAuthenticated: true });
+    });
+
+    expect(client.getQueryData(attendanceKeys.me)).toEqual({ who: '방금 받은 것' });
+  });
+});

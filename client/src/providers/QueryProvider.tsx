@@ -28,14 +28,22 @@ export const QueryProvider = ({ children }: QueryProviderProps) => {
   // 캐시 키에 사용자 구분이 없어, 로그인한 사람이 바뀌면 캐시를 전부 비운다.
   const userId = useAuth(s => s.user?.id ?? null);
   const seen = useRef(userId);
+  // 이 탭에서 누구인지가 바뀐 적이 있는지. '앱을 여는 중' 과 '사람이 바뀌는 중' 을 가른다.
+  const firstResolve = useRef(true);
   useEffect(() => {
     if (seen.current === userId) return;
     const before = seen.current;
     seen.current = userId;
-    // 앱을 열 때는 누구인지 모르는 상태(null)로 시작해 /auth/me 가 오면 채워진다. 그것까지
-    // '사람이 바뀌었다' 로 보면 매번 캐시를 통째로 버려, 그 사이 받아 둔 답(출퇴근 상태 등)을
-    // 곧바로 다시 묻는다. 비워야 할 남의 답은 애초에 없다 — 방금 열린 탭이니까.
-    if (before === null) return;
+    const opening = firstResolve.current;
+    firstResolve.current = false;
+    // 앱을 열 때는 누구인지 모르는 상태(null)로 시작해 /auth/me 가 오면 채워진다. 그 한 번만
+    // 넘긴다 — 방금 열린 탭이라 비워야 할 남의 답이 없는데, 버리면 그 사이 받아 둔 답
+    // (출퇴근 상태 등)을 곧바로 다시 묻는다.
+    //
+    // '처음 한 번' 으로 좁히는 것이 중요하다. 로그아웃(A -> null)으로 한 번 비운 뒤 다른
+    // 사람이 그 탭에서 바로 로그인하면 그것도 null -> 사용자 지만, 그 사이 늦게 도착한 A 의
+    // 응답이 캐시에 앉을 수 있다. 캐시 열쇠에 누구의 것인지가 없으므로 그때는 비워야 한다.
+    if (opening && before === null) return;
     queryClient.clear();
   }, [userId, queryClient]);
 
