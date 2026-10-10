@@ -197,6 +197,45 @@ describe('폴링 폴백 주기', () => {
     expect(mockGetNotifications).toHaveBeenCalledTimes(2);
   });
 
+  it('보이지 않는 탭에서는 주기 폴링을 쉰다 — 열어 둔 탭 수만큼 쌓이지 않게', async () => {
+    // 뱃지도 팝업도 보이지 않는 상태다. 돌아올 때 visibilitychange 가 한 번 훑는다.
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+    try {
+      useNotificationStore.getState().start();
+      mockGetNotifications.mockClear();
+
+      await vi.advanceTimersByTimeAsync(120_000); // 30초 주기면 네 번 나갈 시간
+
+      expect(mockGetNotifications).not.toHaveBeenCalled();
+    } finally {
+      hidden.mockRestore();
+    }
+  });
+
+  it('돌아온 직후에는 겹쳐 묻지 않는다 — 복귀 폴링과 주기 폴링', async () => {
+    // 숨어 있는 동안 주기는 계속 세어지므로, 복귀 폴링 뒤 바로 다음 tick 이 또 묻는다.
+    // SSE 가 살아 있으면(5분 주기) 그 겹침이 뚜렷하다.
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
+    try {
+      useNotificationStore.getState().start();
+      FakeEventSource.last!.emit('open');
+      await vi.advanceTimersByTimeAsync(0);
+      hidden.mockReturnValue(true);
+      await vi.advanceTimersByTimeAsync(10 * 60_000); // 10분을 숨어 있었다
+      mockGetNotifications.mockClear();
+
+      hidden.mockReturnValue(false);
+      document.dispatchEvent(new Event('visibilitychange'));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(mockGetNotifications).toHaveBeenCalledTimes(1); // 복귀 1회
+
+      await vi.advanceTimersByTimeAsync(31_000); // 바로 다음 tick
+      expect(mockGetNotifications).toHaveBeenCalledTimes(1);
+    } finally {
+      hidden.mockRestore();
+    }
+  });
+
   it('SSE 가 연결되면 폴링 주기가 5분으로 늘어난다', async () => {
     useNotificationStore.getState().start();
     FakeEventSource.last!.emit('open');

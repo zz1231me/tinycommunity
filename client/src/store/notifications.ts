@@ -219,9 +219,12 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     void get().poll(); // 마운트 즉시 1회(기준선 설정 + 초기 뱃지)
     get()._connect();
 
+    let elapsed = 0;
+
     // 탭이 화면에 나오면 밀린 것을 훑고, 물러나 있었으면 다시 연결한다.
     const onVisible = () => {
       if (document.hidden) return;
+      elapsed = 0; // 방금 훑었으니 주기를 처음부터 센다 (돌아온 직후 두 번 묻지 않게)
       void get().poll();
       if (get()._standDown && !get()._source) get()._connect();
     };
@@ -229,15 +232,18 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     set({ _onVisible: onVisible });
 
     // SSE 연결 여부에 따라 주기가 달라지므로 매 tick 마다 현재 상태를 확인한다.
-    let elapsed = 0;
     const timer = setInterval(() => {
       elapsed += POLL_INTERVAL_FALLBACK;
       const interval = get().isLive ? POLL_INTERVAL_WITH_SSE : POLL_INTERVAL_FALLBACK;
       if (elapsed < interval) return;
+      // 보이지 않는 탭에서는 쉰다. 뱃지도 팝업도 보이지 않고(탭 제목에도 숫자를 쓰지 않는다),
+      // 돌아오는 순간 위 onVisible 이 한 번 훑는다. SSE 가 끊긴 상태에서는 30초마다 묻게 되어
+      // 열어 둔 탭 수만큼 쌓인다.
+      if (document.hidden) return;
       elapsed = 0;
       void get().poll();
       // 물러나 있고 지금 보고 있는 탭이면 다시 연결을 시도한다.
-      if (get()._standDown && !document.hidden && !get()._source) get()._connect();
+      if (get()._standDown && !get()._source) get()._connect();
     }, POLL_INTERVAL_FALLBACK);
 
     set({ _timer: timer });
