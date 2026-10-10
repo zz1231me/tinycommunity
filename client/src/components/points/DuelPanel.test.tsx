@@ -619,6 +619,24 @@ describe('기다리는 판이 없을 때도 확인한다', () => {
     }
   });
 
+  it('보이지 않는 탭에서는 쉰다 — 열어 둔 탭이 사람 수만큼 요청을 쌓지 않게', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+    try {
+      fetchDuels.mockResolvedValue(board({ incoming: [duel({ id: 7 })] }));
+      render(<DuelPanel myId={ME} />);
+      expect(await screen.findByText('브라보')).toBeInTheDocument();
+      fetchDuels.mockClear();
+
+      await vi.advanceTimersByTimeAsync(121_000); // 15초 주기면 여덟 번 나갈 시간
+
+      expect(fetchDuels).not.toHaveBeenCalled();
+    } finally {
+      hidden.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
   it('기다리는 판이 있으면 더 자주 읽는다 — 대조', async () => {
     // shouldAdvanceTime: 화면이 그려질 때까지 기다리는 동안에도 시계가 흐르게 한다
     vi.useFakeTimers({ shouldAdvanceTime: true });

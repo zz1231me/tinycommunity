@@ -89,3 +89,44 @@ describe('사람이 바뀌면 받아 둔 답을 버린다', () => {
     expect(client.getQueryData(attendanceKeys.me)).toEqual({ who: 'alice' });
   });
 });
+
+describe('앱을 열 때는 버릴 것이 없다', () => {
+  it('누구인지 받아오기만 한 것으로는 캐시를 버리지 않는다', () => {
+    // 로그인 상태로 새로고침하면 null -> 사용자 로 한 번 바뀐다. 이것을 '사람이 바뀌었다' 로
+    // 보면 그 사이 받아 둔 답을 전부 버리고 곧바로 다시 묻는다(요청이 두 배가 된다).
+    render(
+      <QueryProvider>
+        <Probe />
+      </QueryProvider>
+    );
+    act(() => {
+      client.setQueryData(attendanceKeys.me, { who: '방금 받은 것' });
+    });
+
+    act(() => {
+      useAuth.setState({ user: asUser('alice'), isAuthenticated: true });
+    });
+
+    expect(client.getQueryData(attendanceKeys.me)).toEqual({ who: '방금 받은 것' });
+  });
+
+  it('그 뒤에 사람이 바뀌면 그때는 버린다 — 양성 대조', () => {
+    render(
+      <QueryProvider>
+        <Probe />
+      </QueryProvider>
+    );
+    act(() => {
+      useAuth.setState({ user: asUser('alice'), isAuthenticated: true });
+    });
+    act(() => {
+      client.setQueryData(attendanceKeys.me, { who: 'alice' });
+    });
+
+    act(() => {
+      useAuth.setState({ user: asUser('bob'), isAuthenticated: true });
+    });
+
+    expect(client.getQueryData(attendanceKeys.me)).toBeUndefined();
+  });
+});

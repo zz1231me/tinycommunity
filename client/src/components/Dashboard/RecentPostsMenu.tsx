@@ -19,6 +19,9 @@ function ago(iso: string): string {
   return new Date(iso).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
 }
 
+/** 창 포커스마다 다시 묻지 않는다. 자리를 떠나 있던 시간이 이보다 짧으면 새 글도 없다. */
+const FOCUS_MIN_GAP_MS = 30_000;
+
 export function RecentPostsMenu() {
   const navigate = useNavigate();
   // 다른 헤더 패널과 같은 store 를 쓴다. 따로 관리하면 다른 패널을 열어도 닫히지 않는다.
@@ -33,6 +36,7 @@ export function RecentPostsMenu() {
   const [tick, setTick] = useState(0); // 헤더 프리뷰 제목 회전 인덱스
   const ref = useRef<HTMLDivElement>(null);
 
+  const loadedAt = useRef(0);
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -40,6 +44,7 @@ export function RecentPostsMenu() {
     } catch {
       /* 헤더 보조 기능이라 실패는 무시한다 */
     } finally {
+      loadedAt.current = Date.now();
       setLoading(false);
     }
   }, []);
@@ -51,7 +56,12 @@ export function RecentPostsMenu() {
     const t = setInterval(() => {
       if (!document.hidden) void load();
     }, 120_000);
-    const onFocus = () => void load();
+    // 창을 오가는 것만으로 매번 묻지 않는다. 다른 창에서 잠깐 일하고 돌아오는 일이 잦아,
+    // 그대로 두면 사람 한 명이 짧은 사이에 같은 요청을 수십 번 보낸다.
+    const onFocus = () => {
+      if (Date.now() - loadedAt.current < FOCUS_MIN_GAP_MS) return;
+      void load();
+    };
     window.addEventListener('focus', onFocus);
     return () => {
       clearInterval(t);

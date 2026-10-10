@@ -63,6 +63,7 @@ const reset = () => {
     _timer: null,
     _retry: 0,
     _standDown: false,
+    _everOpened: false,
     _localChangeAt: 0,
     _source: null,
     _onVisible: null,
@@ -377,13 +378,33 @@ describe('스트림이 완전히 닫혔을 때', () => {
 });
 
 describe('스트림이 이어지면', () => {
-  it('한 번 훑는다 — 끊긴 동안 온 알림은 스트림으로 오지 않는다', async () => {
+  it('다시 이어졌을 때 한 번 훑는다 — 끊긴 동안 온 알림은 스트림으로 오지 않는다', async () => {
     useNotificationStore.setState({ lastSeenId: 10 });
     useNotificationStore.getState().start();
+    const first = FakeEventSource.last!;
+    first.emit('open');
+
+    // 끊고(브라우저가 스스로 잇지 않는 경우) 백오프 뒤 새 연결이 열린다
+    first.readyState = 2;
+    first.emit('error');
+    await vi.advanceTimersByTimeAsync(2100);
+    const second = FakeEventSource.last!;
+    expect(second).not.toBe(first);
     mockGetNotifications.mockClear();
 
-    FakeEventSource.last!.emit('open');
+    second.emit('open');
     await vi.waitFor(() => expect(mockGetNotifications).toHaveBeenCalled());
+  });
+
+  it('첫 연결에서는 훑지 않는다 — start 가 바로 앞에서 이미 읽었다', async () => {
+    // 훑으면 탭을 열 때마다 /notifications 가 두 번 나간다. 놓친 구간이 없으니 읽을 것도 없다.
+    useNotificationStore.getState().start();
+    expect(mockGetNotifications).toHaveBeenCalledTimes(1); // start 의 기준선 1회
+
+    FakeEventSource.last!.emit('open');
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(mockGetNotifications).toHaveBeenCalledTimes(1);
   });
 });
 

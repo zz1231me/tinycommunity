@@ -180,6 +180,9 @@ export function DuelPanel({
   useEffect(() => {
     const every = waitingCount > 0 ? 15_000 : 60_000;
     const id = window.setInterval(() => {
+      // 보이지 않는 탭에서는 쉰다. 열어 둔 채 다른 일을 하는 탭이 15초마다 묻는 것은
+      // 사람 수만큼 쌓인다. 돌아오면 다음 tick 과 알림(useNotificationArrival)이 따라잡는다.
+      if (document.hidden) return;
       void reload().catch(() => {});
     }, every);
     return () => window.clearInterval(id);

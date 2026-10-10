@@ -45,6 +45,8 @@ interface NotificationStoreState {
   _retry: number;
   /** 서버가 연결 수 상한으로 접은 상태. 탭이 화면에 나올 때까지 폴링만 한다. */
   _standDown: boolean;
+  /** 이 탭에서 스트림이 한 번이라도 열린 적이 있는지. 재연결인지 첫 연결인지 가른다. */
+  _everOpened: boolean;
   /** 마지막 로컬 읽음·삭제 시각. 그보다 먼저 떠난 조회 응답의 숫자는 버린다. */
   _localChangeAt: number;
   _source: EventSource | null;
@@ -76,6 +78,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   _timer: null,
   _retry: 0,
   _standDown: false,
+  _everOpened: false,
   _localChangeAt: 0,
   _source: null,
   _onVisible: null,
@@ -151,9 +154,12 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     }
 
     source.addEventListener('open', () => {
-      set({ isLive: true, _retry: 0, _standDown: false });
-      // 재연결 사이에 생긴 알림은 스트림으로 오지 않으므로 한 번 훑는다
-      void get().poll();
+      const reconnected = get()._everOpened;
+      set({ isLive: true, _retry: 0, _standDown: false, _everOpened: true });
+      // 끊겼던 사이에 생긴 알림은 스트림으로 오지 않으므로 한 번 훑는다. 첫 연결에는
+      // 놓친 구간이 없다 — start() 가 바로 앞에서 이미 한 번 읽었다. 그때도 훑으면
+      // 탭을 열 때마다 같은 요청이 두 번 나간다.
+      if (reconnected) void get().poll();
     });
 
     // 서버가 연결 수 상한으로 접은 경우. 바로 다시 이으면 탭끼리 서로 밀어내므로 폴링으로 지낸다.
@@ -251,6 +257,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       _source: null,
       _onVisible: null,
       _standDown: false,
+      _everOpened: false,
       _retry: 0,
       _localChangeAt: 0,
       isLive: false,

@@ -8,9 +8,12 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useRef } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
-const posts = vi.hoisted(() => ({ value: [] as unknown[] }));
+const posts = vi.hoisted(() => ({ value: [] as unknown[], calls: 0 }));
 vi.mock('../../api/posts', () => ({
-  fetchRecentPosts: () => Promise.resolve(posts.value),
+  fetchRecentPosts: () => {
+    posts.calls += 1;
+    return Promise.resolve(posts.value);
+  },
 }));
 
 import { RecentPostsMenu } from './RecentPostsMenu';
@@ -99,5 +102,53 @@ describe('최신 소식 메뉴', () => {
     // 대화상자를 닫으려던 한 번의 ESC 에 이 패널까지 닫히면 안 된다
     expect(onDialogClose).toHaveBeenCalledTimes(1);
     expect(isOpen()).toBe(true);
+  });
+});
+
+// 창을 오가는 것만으로 같은 요청이 계속 나가던 자리. 다른 창에서 잠깐 일하고 돌아오는 일이
+// 잦으므로, 포커스마다 묻는 것은 사람 한 명이 짧은 사이에 수십 번 보내는 것과 같다.
+describe('창 포커스로 다시 읽기', () => {
+  beforeEach(() => {
+    useUIOverlays.getState().closeAll();
+  });
+
+  it('방금 받아 왔으면 다시 묻지 않는다', async () => {
+    render(
+      <MemoryRouter>
+        <RecentPostsMenu />
+      </MemoryRouter>
+    );
+    await act(async () => {});
+    posts.calls = 0;
+
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+      window.dispatchEvent(new Event('focus'));
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    expect(posts.calls).toBe(0);
+  });
+
+  it('한참 지나서 돌아오면 다시 읽는다 — 양성 대조', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      render(
+        <MemoryRouter>
+          <RecentPostsMenu />
+        </MemoryRouter>
+      );
+      await act(async () => {});
+      posts.calls = 0;
+
+      await act(async () => {
+        vi.setSystemTime(Date.now() + 31_000);
+        window.dispatchEvent(new Event('focus'));
+      });
+
+      expect(posts.calls).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
