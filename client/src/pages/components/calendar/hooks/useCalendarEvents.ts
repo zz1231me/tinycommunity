@@ -7,6 +7,32 @@ import { dateUtils } from '../utils';
 import { toast } from '../../../../utils/toast';
 import { DEFAULT_EVENT_COLOR } from '../../../../constants/colors';
 
+/** 레일('오늘'·'다가오는 일정')이 보는 날수. */
+export const RAIL_DAYS = 31;
+/**
+ * 보이는 달과 레일 창을 한 번에 받는 최대 폭(일).
+ * 먼 달을 보는 중이면 합친 범위가 몇 달로 벌어지므로 그때는 둘로 나눠 받는다 —
+ * 요청 하나를 줄이려고 몇 달치를 끌어오면 바꾼 보람이 없다.
+ */
+const MAX_MERGED_DAYS = 100;
+const DAY_MS = 86_400_000;
+
+/** 레일이 보는 구간 [오늘 0시, +RAIL_DAYS). 보이는 달과 무관하게 오늘 기준이다. */
+export function railWindow(now: Date = new Date()): { start: Date; end: Date } {
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + RAIL_DAYS);
+  return { start, end };
+}
+
+/** 두 범위를 겹쳐 받았을 때 같은 일정이 두 번 들어오는 것을 걷는다. */
+function byId(lists: CalendarEvent[][]): CalendarEvent[] {
+  const seen = new Map<number, CalendarEvent>();
+  for (const list of lists) for (const ev of list) seen.set(ev.id, ev);
+  return [...seen.values()];
+}
+
 interface UseCalendarEventsProps {
   userId?: string;
   isAdmin?: boolean;
@@ -20,6 +46,8 @@ export const useCalendarEvents = ({
   calendarRef,
 }: UseCalendarEventsProps) => {
   const [events, setEvents] = useState<EventInput[]>([]);
+  // 레일은 보이는 달이 아니라 오늘 기준으로 고르므로 서버가 준 모양 그대로 들고 있는다.
+  const [rawEvents, setRawEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(false);
   // 요청 ID 로 늦게 도착한 응답을 걸러낸다.
   const loadRequestIdRef = useRef(0);
@@ -38,15 +66,26 @@ export const useCalendarEvents = ({
     if (!calendarApi) return;
 
     const view = calendarApi.view;
-    const start = view.activeStart;
-    const end = view.activeEnd;
+    const rail = railWindow();
+    // 보이는 달과 레일 창을 한 번에 받는다. 따로 받으면 화면을 열 때마다, 일정을 저장할
+    // 때마다 겹치는 범위를 두 번 묻게 된다.
+    const start = new Date(Math.min(view.activeStart.getTime(), rail.start.getTime()));
+    const end = new Date(Math.max(view.activeEnd.getTime(), rail.end.getTime()));
+    const merged = end.getTime() - start.getTime() <= MAX_MERGED_DAYS * DAY_MS;
 
     // 요청 ID 를 올려 두고, 나중에 도착한 이전 응답은 무시한다.
     const requestId = ++loadRequestIdRef.current;
     setLoading(true);
 
     try {
-      const eventData = await getEvents(start, end);
+      const eventData = merged
+        ? await getEvents(start, end)
+        : byId(
+            await Promise.all([
+              getEvents(view.activeStart, view.activeEnd),
+              getEvents(rail.start, rail.end),
+            ])
+          );
 
       // 가장 최근 요청의 응답만 반영한다.
       if (requestId !== loadRequestIdRef.current) return;
@@ -81,6 +120,7 @@ export const useCalendarEvents = ({
       }));
 
       setEvents(formattedEvents);
+      setRawEvents(eventData);
     } catch (error) {
       if (requestId !== loadRequestIdRef.current) return;
       if (import.meta.env.DEV) console.error('❌ 이벤트 로드 실패:', error);
@@ -172,6 +212,7 @@ export const useCalendarEvents = ({
 
   return {
     events,
+    rawEvents,
     loading,
     loadEvents,
     handleCreateEvent,

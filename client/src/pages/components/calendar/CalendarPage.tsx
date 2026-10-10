@@ -1,6 +1,6 @@
 // FullCalendar 기반 일정 화면
 import { DEFAULT_EVENT_COLOR } from '../../../constants/colors';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin, { EventResizeDoneArg } from '@fullcalendar/interaction';
@@ -8,12 +8,12 @@ import listPlugin from '@fullcalendar/list';
 import koLocale from '@fullcalendar/core/locales/ko';
 import { EventClickArg, DateSelectArg, EventDropArg } from '@fullcalendar/core';
 import { useAuth } from '../../../store/auth';
-import { updateEvent, getEvents } from '../../../api/events';
+import { updateEvent } from '../../../api/events';
 import { toast } from '../../../utils/toast';
 
 import { CalendarEvent, EventFormData, ModalMode } from './types';
 import { dateUtils } from './utils';
-import { useCalendarEvents } from './hooks/useCalendarEvents';
+import { useCalendarEvents, railWindow } from './hooks/useCalendarEvents';
 import { CalendarHeader, CalendarView } from './components/CalendarHeader';
 import { CalendarModal } from './components/CalendarModal';
 import { TodayRail } from './components/TodayRail';
@@ -40,6 +40,7 @@ const CalendarPage: React.FC = () => {
 
   const {
     events,
+    rawEvents,
     loading,
     loadEvents,
     handleCreateEvent,
@@ -71,7 +72,8 @@ const CalendarPage: React.FC = () => {
 
   useEffect(() => {
     if (user?.id) loadEvents();
-  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    // 자정을 넘기면 레일 창이 하루 밀리므로 그 범위까지 다시 받는다.
+  }, [user?.id, todayStr]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePrev = useCallback(() => calendarRef.current?.getApi().prev(), []);
   const handleNext = useCallback(() => calendarRef.current?.getApi().next(), []);
@@ -158,23 +160,20 @@ const CalendarPage: React.FC = () => {
     setIsModalOpen(true);
   }, []);
 
-  // 달력의 loadEvents 는 보이는 범위만 가져오므로 레일용은 따로 불러온다.
-  const [railEvents, setRailEvents] = useState<CalendarEvent[]>([]);
-  const loadRail = useCallback(async () => {
-    if (!user?.id) return;
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 31);
-    try {
-      setRailEvents(await getEvents(start, end));
-    } catch {
-      /* 레일은 보조 정보라 실패해도 달력 흐름을 막지 않는다 */
-    }
-  }, [user?.id]);
-  useEffect(() => {
-    loadRail();
-  }, [loadRail, todayStr]);
+  // 레일은 달력과 같은 응답에서 고른다. 따로 부르면 겹치는 범위를 두 번 묻게 된다
+  // (useCalendarEvents 가 보이는 달과 레일 창을 함께 받아 온다).
+  const railEvents = useMemo(() => {
+    const { start, end } = railWindow();
+    const from = dateUtils.toLocalDateString(start);
+    const to = dateUtils.toLocalDateString(end);
+    return rawEvents.filter(ev => {
+      const s = dateUtils.isoToLocalDate(ev.start);
+      const e = ev.end ? dateUtils.isoToLocalDate(ev.end) : s;
+      return s < to && e >= from; // 창에 걸치기만 해도 레일이 쓴다(여러 날 일정)
+    });
+    // todayStr 이 넘어가면 창도 하루 민다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawEvents, todayStr]);
 
   const applyEventDateChange = useCallback(
     async (
@@ -224,9 +223,8 @@ const CalendarPage: React.FC = () => {
 
       // 저장은 이미 끝났으므로 목록 갱신 실패로 되돌리지 않는다.
       await loadEvents().catch(() => {});
-      void loadRail();
     },
-    [canEditEvent, loadEvents, loadRail]
+    [canEditEvent, loadEvents]
   );
 
   const handleEventDrop = useCallback(
@@ -256,7 +254,6 @@ const CalendarPage: React.FC = () => {
       else if (modalMode === 'edit' && selectedEvent)
         await handleUpdateEvent(selectedEvent.id, formData, selectedEvent);
       setIsModalOpen(false);
-      void loadRail();
     } catch (err) {
       const msg = err instanceof Error ? err.message : '일정 저장에 실패했습니다.';
       toast.error(msg);
@@ -277,7 +274,6 @@ const CalendarPage: React.FC = () => {
     try {
       await handleDeleteEvent(selectedEvent.id);
       setIsModalOpen(false);
-      void loadRail();
     } catch {
       toast.error('일정 삭제에 실패했습니다.');
     } finally {
