@@ -7,6 +7,8 @@ import { Notification } from '../models/Notification';
 import { PostRead } from '../models/PostRead';
 import { SiteSettings } from '../models/SiteSettings';
 import { refreshSettingsCache } from '../utils/settingsCache';
+import { Post } from '../models/Post';
+import { sendDueReminders } from '../services/taskDue.service';
 
 // 담당자·업무 상태와 읽음 확인.
 //
@@ -450,6 +452,285 @@ describe('내 업무 모아 보기', () => {
 
     const res = await request(app).get('/api/posts/tasks/mine').set('Cookie', userCookie);
     expect(res.body.data.map((t: { id: string }) => t.id)).not.toContain(id);
+  });
+});
+
+describe('일정', () => {
+  it('시작일·마감일을 저장하면 내 업무 목록에 함께 온다 — 간트가 이 값으로 막대를 그린다', async () => {
+    const id = await createPost(adminCookie, `일정 ${Date.now()}`);
+    const res = await setTask(adminCookie, id, {
+      assigneeId: 'testuser',
+      workStatus: 'todo',
+      startDate: '2026-10-01',
+      dueDate: '2026-10-03',
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ startDate: '2026-10-01', dueDate: '2026-10-03' });
+
+    const list = await request(app).get('/api/posts/tasks/mine').set('Cookie', userCookie);
+    const task = list.body.data.find((t: { id: string }) => t.id === id);
+    expect(task).toMatchObject({ startDate: '2026-10-01', dueDate: '2026-10-03' });
+  });
+
+  it('일정만 바꾸는 요청도 받는다 — 막대를 끌 때 상태는 그대로다', async () => {
+    const id = await createPost(adminCookie, `일정만 ${Date.now()}`);
+    await setTask(adminCookie, id, { workStatus: 'doing' });
+    const res = await setTask(adminCookie, id, { startDate: '2026-10-05', dueDate: '2026-10-05' });
+    expect(res.status).toBe(200);
+    expect(res.body.data.workStatus).toBe('doing');
+  });
+
+  it('null 로 일정을 지울 수 있다', async () => {
+    const id = await createPost(adminCookie, `일정삭제 ${Date.now()}`);
+    await setTask(adminCookie, id, { startDate: '2026-10-01', dueDate: '2026-10-02' });
+    const res = await setTask(adminCookie, id, { startDate: null, dueDate: null });
+    expect(res.body.data).toMatchObject({ startDate: null, dueDate: null });
+  });
+
+  it('형식이 틀리거나 없는 날짜는 400', async () => {
+    const id = await createPost(adminCookie, `날짜형식 ${Date.now()}`);
+    // 0002년: 날짜 칸에 연도를 치는 도중의 값이 저장되면 마감이 '8천 일 지남' 이 된다
+    for (const bad of [
+      '2026/10/01',
+      '2026-02-30',
+      '2026-13-01',
+      20261001,
+      '0002-10-16',
+      '2101-01-01',
+    ]) {
+      const res = await setTask(adminCookie, id, { startDate: bad });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it('시작일이 마감일보다 늦으면 400 — 한쪽만 바꿔도 저장된 값과 맞춰 본다', async () => {
+    const id = await createPost(adminCookie, `역순 ${Date.now()}`);
+    await setTask(adminCookie, id, { startDate: '2026-10-01', dueDate: '2026-10-03' });
+    const res = await setTask(adminCookie, id, { startDate: '2026-10-09' });
+    expect(res.status).toBe(400);
+  });
+
+  it('상관없는 사람은 일정도 바꿀 수 없다', async () => {
+    const id = await createPost(adminCookie, `남의일정 ${Date.now()}`);
+    const res = await setTask(thirdCookie, id, { dueDate: '2026-10-03' });
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('주소의 게시판과 글의 게시판', () => {
+  it('다른 게시판 주소로는 바꿀 수 없다 — 라우터는 주소의 게시판 권한만 확인한다', async () => {
+    const id = await createPost(adminCookie, `게시판대조 ${Date.now()}`);
+    const res = await setTask(adminCookie, id, { workStatus: 'todo' }, 'plainboard');
+    expect(res.status).toBe(404);
+    const ok = await setTask(adminCookie, id, { workStatus: 'todo' });
+    expect(ok.status).toBe(200);
+  });
+});
+
+describe('되돌리기 충돌', () => {
+  it('ifWorkStatus 가 지금 상태와 다르면 409 — 남이 바꾼 상태를 덮어쓰지 않는다', async () => {
+    const id = await createPost(adminCookie, `되돌리기 ${Date.now()}`);
+    await setTask(adminCookie, id, { workStatus: 'done' });
+    // 그사이 다른 사람이 다시 진행 중으로 돌렸다
+    await setTask(adminCookie, id, { workStatus: 'doing' });
+
+    const undo = await setTask(adminCookie, id, { workStatus: 'todo', ifWorkStatus: 'done' });
+    expect(undo.status).toBe(409);
+    const detail = await request(app).get(`/api/posts/notice/${id}`).set('Cookie', adminCookie);
+    expect(detail.body.data.workStatus).toBe('doing');
+  });
+
+  it('상태가 그대로면 되돌린다', async () => {
+    const id = await createPost(adminCookie, `되돌리기성공 ${Date.now()}`);
+    await setTask(adminCookie, id, { workStatus: 'done' });
+    const undo = await setTask(adminCookie, id, { workStatus: 'todo', ifWorkStatus: 'done' });
+    expect(undo.status).toBe(200);
+    expect(undo.body.data.workStatus).toBe('todo');
+  });
+});
+
+describe('완료한 일과 끝나지 않은 일', () => {
+  it('완료한 일이 아무리 쌓여도 끝나지 않은 일이 목록에서 밀려나지 않는다', async () => {
+    // 오래된 순으로 한 번에 100건을 읽던 때는 완료 101건이 자리를 다 차지했다
+    const done = await Post.bulkCreate(
+      Array.from({ length: 101 }, (_, i) => ({
+        title: `쌓인 완료 ${i}`,
+        content: '<p>.</p>',
+        author: 'admin',
+        boardType: 'notice',
+        UserId: 'admin',
+        workStatus: 'done' as const,
+        assigneeId: 'testuser',
+      }))
+    );
+    try {
+      const open = await createPost(adminCookie, `밀려나면 안 되는 일 ${Date.now()}`);
+      await setTask(adminCookie, open, { assigneeId: 'testuser', workStatus: 'todo' });
+
+      const res = await request(app)
+        .get('/api/posts/tasks/mine?status=todo,doing,done')
+        .set('Cookie', userCookie);
+      const ids = res.body.data.map((t: { id: string }) => t.id);
+      expect(ids).toContain(open);
+      // 완료한 일은 최근 것만 일부 준다
+      expect(
+        res.body.data.filter((t: { workStatus: string }) => t.workStatus === 'done').length
+      ).toBeLessThanOrEqual(50);
+    } finally {
+      await Post.destroy({ where: { id: done.map(p => p.id) }, force: true });
+    }
+  });
+});
+
+describe('팀 보기', () => {
+  it('게시판을 읽을 수 있으면 남이 담당인 업무도 담당자와 함께 본다', async () => {
+    const id = await createPost(adminCookie, `팀업무 ${Date.now()}`);
+    await setTask(adminCookie, id, { assigneeId: 'admin', workStatus: 'doing' });
+
+    const res = await request(app).get('/api/posts/tasks/board/notice').set('Cookie', thirdCookie);
+    expect(res.status).toBe(200);
+    const task = res.body.data.find((t: { id: string }) => t.id === id);
+    expect(task.assignee).toMatchObject({ id: 'admin' });
+  });
+
+  it('바꿀 수 있는지(canEdit)를 서버의 권한 규칙대로 알려 준다', async () => {
+    const id = await createPost(adminCookie, `권한표시 ${Date.now()}`);
+    await setTask(adminCookie, id, { assigneeId: 'testuser', workStatus: 'todo' });
+
+    const find = async (cookie: string) =>
+      (
+        await request(app).get('/api/posts/tasks/board/notice').set('Cookie', cookie)
+      ).body.data.find((t: { id: string }) => t.id === id);
+    expect((await find(userCookie)).canEdit).toBe(true); // 담당자
+    expect((await find(adminCookie)).canEdit).toBe(true); // 작성자·관리자
+    expect((await find(thirdCookie)).canEdit).toBe(false);
+  });
+
+  it("상태 없음('none') 글은 업무가 아니라 넣지 않는다", async () => {
+    const id = await createPost(adminCookie, `일반글 ${Date.now()}`);
+    const res = await request(app)
+      .get('/api/posts/tasks/board/notice?status=none,todo,doing')
+      .set('Cookie', adminCookie);
+    expect(res.body.data.map((t: { id: string }) => t.id)).not.toContain(id);
+  });
+
+  it('업무용이 아닌 게시판은 400, 못 읽는 게시판은 막힌다', async () => {
+    const plain = await request(app)
+      .get('/api/posts/tasks/board/plainboard')
+      .set('Cookie', adminCookie);
+    expect(plain.status).toBe(400);
+    const hidden = await request(app)
+      .get('/api/posts/tasks/board/taskonly')
+      .set('Cookie', userCookie);
+    expect(hidden.status).toBe(403);
+  });
+
+  it('고를 수 있는 게시판은 업무용이면서 읽을 수 있는 것뿐이다', async () => {
+    const res = await request(app).get('/api/posts/tasks/boards').set('Cookie', userCookie);
+    const ids = res.body.data.map((b: { id: string }) => b.id);
+    expect(ids).toContain('notice');
+    expect(ids).not.toContain('plainboard');
+    expect(ids).not.toContain('taskonly');
+  });
+});
+
+describe('마감 알림', () => {
+  const now = new Date(2026, 9, 11, 10, 0);
+
+  it('마감이 오늘·내일인 담당자에게 하루 한 번만 알린다', async () => {
+    const today = await createPost(adminCookie, `오늘마감 ${Date.now()}`);
+    const tomorrow = await createPost(adminCookie, `내일마감 ${Date.now()}`);
+    const later = await createPost(adminCookie, `나중마감 ${Date.now()}`);
+    await setTask(adminCookie, today, {
+      assigneeId: 'testuser',
+      workStatus: 'todo',
+      dueDate: '2026-10-11',
+    });
+    await setTask(adminCookie, tomorrow, {
+      assigneeId: 'testuser',
+      workStatus: 'doing',
+      dueDate: '2026-10-12',
+    });
+    await setTask(adminCookie, later, {
+      assigneeId: 'testuser',
+      workStatus: 'todo',
+      dueDate: '2026-10-20',
+    });
+    // 담당자 지정 알림은 이 검사와 상관없다
+    await Notification.destroy({ where: {} });
+
+    await sendDueReminders(now);
+    const sent = await Notification.findAll({ where: { type: 'TASK_DUE', userId: 'testuser' } });
+    expect(sent.map(n => n.relatedId).sort()).toEqual([today, tomorrow].sort());
+    expect(sent.find(n => n.relatedId === today)?.message).toContain('오늘');
+
+    // 한 시간 뒤에 다시 돌아도 더 보내지 않는다
+    await sendDueReminders(new Date(2026, 9, 11, 11, 0));
+    expect(await Notification.count({ where: { type: 'TASK_DUE' } })).toBe(2);
+  });
+
+  it('지정 뒤에 볼 수 없게 된 글은 알리지 않는다 — 알림에 제목이 실린다', async () => {
+    // 못 읽는 게시판의 글. API 로는 지정이 막히므로 예전에 지정된 상태를 DB 로 만든다.
+    const hidden = await Post.create({
+      title: `못보는게시판 ${Date.now()}`,
+      content: '<p>.</p>',
+      author: 'admin',
+      boardType: 'taskonly',
+      UserId: 'admin',
+      workStatus: 'todo',
+      assigneeId: 'testuser',
+      dueDate: '2026-10-11',
+    });
+    // 비밀글이 되면서 명단에서 빠진 글
+    const secret = await createPost(adminCookie, `비밀이됨 ${Date.now()}`);
+    await setTask(adminCookie, secret, {
+      assigneeId: 'testuser',
+      workStatus: 'todo',
+      dueDate: '2026-10-11',
+    });
+    await Post.update(
+      { isSecret: true, secretType: 'users', secretUserIds: ['admin'] },
+      { where: { id: secret } }
+    );
+    await Notification.destroy({ where: {} });
+
+    try {
+      await sendDueReminders(now);
+      // 앞 검사에서 만든 '오늘 마감' 글은 여전히 알림 대상이라 이 두 글만 센다
+      expect(
+        await Notification.count({ where: { type: 'TASK_DUE', relatedId: [hidden.id, secret] } })
+      ).toBe(0);
+    } finally {
+      await Post.destroy({ where: { id: [hidden.id, secret] }, force: true });
+    }
+  });
+
+  it('정지된 계정에는 알리지 않는다', async () => {
+    const id = await createPost(adminCookie, `정지계정 ${Date.now()}`);
+    await setTask(adminCookie, id, {
+      assigneeId: 'thirduser',
+      workStatus: 'todo',
+      dueDate: '2026-10-11',
+    });
+    await Notification.destroy({ where: {} });
+    await User.update({ isActive: false }, { where: { id: 'thirduser' } });
+    try {
+      await sendDueReminders(now);
+      expect(await Notification.count({ where: { type: 'TASK_DUE', relatedId: id } })).toBe(0);
+    } finally {
+      await User.update({ isActive: true }, { where: { id: 'thirduser' } });
+    }
+  });
+
+  it('끝낸 일은 알리지 않는다', async () => {
+    const id = await createPost(adminCookie, `끝낸마감 ${Date.now()}`);
+    await setTask(adminCookie, id, {
+      assigneeId: 'testuser',
+      workStatus: 'done',
+      dueDate: '2026-10-11',
+    });
+    await sendDueReminders(now);
+    expect(await Notification.count({ where: { type: 'TASK_DUE', relatedId: id } })).toBe(0);
   });
 });
 

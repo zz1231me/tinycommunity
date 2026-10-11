@@ -29,6 +29,7 @@ import {
   fetchDeletedUsers as fetchDeletedUsersApi,
 } from '../../../api/admin';
 import { UserActivityModal } from './UserActivityModal';
+import { UserFeatureModal } from './UserFeatureModal';
 import { ListState } from '../../common/ListState';
 import { useSubmitLock } from '../../../hooks/useSubmitLock';
 
@@ -66,6 +67,9 @@ export const UserManagement = () => {
     userId: string;
     label: string;
   } | null>(null);
+  const [featureModal, setFeatureModal] = useState<{ userId: string; userName: string } | null>(
+    null
+  );
   const [activityModal, setActivityModal] = useState<{ userId: string; userName: string } | null>(
     null
   );
@@ -427,6 +431,12 @@ export const UserManagement = () => {
               className="px-3 py-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-600 dark:hover:bg-amber-900/20 transition-colors"
             >
               비활성화
+            </button>
+            <button
+              onClick={() => setFeatureModal({ userId: u.id, userName: u.name })}
+              className="px-3 py-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+            >
+              기능 예외
             </button>
             <button
               onClick={() => setActivityModal({ userId: u.id, userName: u.name })}
@@ -916,6 +926,13 @@ export const UserManagement = () => {
         )}
       </AdminSection>
 
+      {featureModal && (
+        <UserFeatureModal
+          userId={featureModal.userId}
+          userName={featureModal.userName}
+          onClose={() => setFeatureModal(null)}
+        />
+      )}
       {activityModal && (
         <UserActivityModal
           userId={activityModal.userId}

@@ -78,8 +78,8 @@ interface RegisterDTO {
 /** 오늘 몫의 출석 포인트를 지급한다. 지급 실패가 로그인을 막지 않도록 기다리지 않는다. */
 function grantAttendanceIfDue(userId: string): void {
   void featureFlagService
-    .isEnabled('tools.lottery')
-    .then(on => (on ? pointService.claimAttendance(userId) : null))
+    .resolveForUserId(userId)
+    .then(flags => (flags['tools.lottery'] ? pointService.claimAttendance(userId) : null))
     .catch(err => logError('출석 포인트 지급 실패', err, { userId }));
 }
 

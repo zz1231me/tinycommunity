@@ -7,6 +7,7 @@ import { Op, UniqueConstraintError } from 'sequelize';
 import { sequelize } from '../config/sequelize';
 import { userSessionService } from './userSession.service';
 import { USER_THEMES, type UserTheme } from '../config/themes';
+import { featureFlagService } from './featureFlag.service';
 
 export class UserService extends BaseService {
   async findById(id: string): Promise<UserInstance | null> {
@@ -238,6 +239,8 @@ export class UserService extends BaseService {
 
     // Soft Delete (beforeDestroy 훅에서 anonymizeAccount()가 호출되므로 여기서 직접 호출 불필요)
     await user.destroy();
+    // 개인 기능 예외도 함께 지운다. 남겨 두면 같은 id 가 다시 쓰일 일은 없어도 관리 화면에 쌓인다.
+    await featureFlagService.removeRulesFor('user', id).catch(() => {});
 
     return {
       message: '사용자 삭제 완료',

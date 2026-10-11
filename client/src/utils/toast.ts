@@ -25,6 +25,35 @@ function ensureContainer(): HTMLDivElement {
   return container;
 }
 
+const ACTION_CONTAINER_ID = 'app-toast-action-container';
+
+/**
+ * 단추가 있는 토스트(되돌리기)는 화면 아래 가운데에 띄운다. 오른쪽 위는 업무 화면의 거르기 줄을 가리고,
+ * 누르려고 손을 뻗는 자리로도 멀다.
+ */
+function ensureActionContainer(): HTMLDivElement {
+  let container = document.getElementById(ACTION_CONTAINER_ID) as HTMLDivElement | null;
+  if (container) return container;
+  container = document.createElement('div');
+  container.id = ACTION_CONTAINER_ID;
+  container.style.cssText = `
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+    max-width: calc(100vw - 2rem);
+  `;
+  container.setAttribute('aria-live', 'polite');
+  container.setAttribute('role', 'status');
+  document.body.appendChild(container);
+  return container;
+}
+
 function ensureAnimStyle(): void {
   if (document.getElementById(ANIM_STYLE_ID)) return;
   const style = document.createElement('style');
@@ -69,9 +98,20 @@ const BG_COLORS: Record<ToastType, string> = {
   warning: '#f59e0b',
 };
 
-function showBrowserToast(message: string, type: ToastType, durationMs = 3000): void {
+/** 토스트 안의 단추 하나. '되돌리기' 처럼 방금 한 일을 바로 무를 때 쓴다. */
+interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
+function showBrowserToast(
+  message: string,
+  type: ToastType,
+  durationMs = 3000,
+  action?: ToastAction
+): void {
   ensureAnimStyle();
-  const container = ensureContainer();
+  const container = action ? ensureActionContainer() : ensureContainer();
   const el = document.createElement('div');
   el.style.cssText = `
     background-color: ${BG_COLORS[type]};
@@ -84,7 +124,7 @@ function showBrowserToast(message: string, type: ToastType, durationMs = 3000): 
     gap: 0.75rem;
     font-family: system-ui, -apple-system, sans-serif;
     font-size: 0.875rem;
-    animation: appToastSlideIn 0.25s ease-out;
+    animation: ${action ? 'appToastFadeIn' : 'appToastSlideIn'} 0.25s ease-out;
     pointer-events: auto;
   `;
   el.setAttribute('role', type === 'error' ? 'alert' : 'status');
@@ -98,14 +138,37 @@ function showBrowserToast(message: string, type: ToastType, durationMs = 3000): 
   el.appendChild(iconSpan);
   el.appendChild(msgSpan);
 
-  container.appendChild(el);
-
+  let removed = false;
   const remove = () => {
-    el.style.animation = 'appToastSlideOut 0.25s ease-out';
+    if (removed) return;
+    removed = true;
+    el.style.animation = `${action ? 'appToastFadeOut' : 'appToastSlideOut'} 0.25s ease-out`;
     setTimeout(() => {
       el.parentNode?.removeChild(el);
     }, 250);
   };
+
+  if (action) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = action.label;
+    btn.style.cssText = `
+      margin-left: 0.5rem; padding: 0.25rem 0.625rem;
+      background: rgba(255, 255, 255, 0.2); color: white;
+      border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 0.375rem;
+      font-size: 0.8125rem; font-weight: 600; cursor: pointer;
+    `;
+    btn.addEventListener('click', e => {
+      // 토스트를 눌러 닫는 동작과 겹치지 않게 한다. 한 번만 무른다.
+      e.stopPropagation();
+      if (removed) return;
+      action.onClick();
+      remove();
+    });
+    el.appendChild(btn);
+  }
+
+  container.appendChild(el);
   setTimeout(remove, durationMs);
 
   el.addEventListener('click', remove);
@@ -233,5 +296,9 @@ export const toast = {
   warning: (message: string) => {
     if (import.meta.env.DEV) console.warn('⚠️ Toast Warning:', message);
     showBrowserToast(message, 'warning');
+  },
+  /** 방금 한 일을 알리고 몇 초 동안 '되돌리기' 를 준다. 묻는 확인창보다 흐름을 덜 끊는다. */
+  undo: (message: string, onUndo: () => void, durationMs = 6000) => {
+    showBrowserToast(message, 'info', durationMs, { label: '되돌리기', onClick: onUndo });
   },
 };

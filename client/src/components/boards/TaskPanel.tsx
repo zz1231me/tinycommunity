@@ -1,8 +1,8 @@
-// 글 상세의 업무 상태·담당자 영역. 권한이 없는 사람에게는 읽기 전용으로 보여 준다.
+// 글 상세의 업무 상태·담당자·일정 영역. 권한이 없는 사람에게는 읽기 전용으로 보여 준다.
 
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CircleDot, UserRound, X } from 'lucide-react';
+import { CalendarRange, CircleDot, UserRound, X } from 'lucide-react';
 import { Avatar } from '../Avatar';
 import { UserPicker } from '../common/UserPicker';
 import { WorkStatusBadge } from './WorkStatusBadge';
@@ -11,6 +11,10 @@ import { taskKeys } from '../../api/queryKeys';
 import { getApiErrorMessage } from '../../api/utils';
 import type { UserSuggestion } from '../../api/users';
 import { toast } from '../../utils/toast';
+import { useConfirm } from '../../hooks/useConfirm';
+import { DueBadge } from '../tasks/DueBadge';
+import { formatSchedule } from '../tasks/taskViews';
+import { DateRangePicker } from '../tasks/DateRangePicker';
 
 interface Props {
   boardType: string;
@@ -24,6 +28,7 @@ interface Props {
 export function TaskPanel({ boardType, postId, state, editable, onChange }: Props) {
   const queryClient = useQueryClient();
   const [pickingAssignee, setPickingAssignee] = useState(false);
+  const { confirm, dialog } = useConfirm();
 
   const { data: statuses = [] } = useQuery({
     queryKey: taskKeys.statuses,
@@ -43,8 +48,12 @@ export function TaskPanel({ boardType, postId, state, editable, onChange }: Prop
   }, []);
 
   const mutate = useMutation({
-    mutationFn: (change: { assigneeId?: string | null; workStatus?: WorkStatus }) =>
-      changeTask(boardType, postId, change),
+    mutationFn: (change: {
+      assigneeId?: string | null;
+      workStatus?: WorkStatus;
+      startDate?: string | null;
+      dueDate?: string | null;
+    }) => changeTask(boardType, postId, change),
     onSuccess: next => {
       if (!aliveRef.current) return;
       onChange(next);
@@ -59,8 +68,20 @@ export function TaskPanel({ boardType, postId, state, editable, onChange }: Prop
     },
   });
 
+  const hasSchedule = Boolean(state.startDate || state.dueDate);
+  const clearSchedule = async () => {
+    // 지운 날짜는 되살릴 길이 없어 묻는다
+    const ok = await confirm({
+      title: '일정을 지울까요?',
+      description: '시작일·마감일을 지웁니다. 마감 알림도 더 오지 않습니다.',
+      confirmLabel: '일정 지우기',
+      danger: true,
+    });
+    if (ok) mutate.mutate({ startDate: null, dueDate: null });
+  };
+
   // 상태가 없고 바꿀 수도 없으면 보여 줄 것이 없다
-  if (!editable && state.workStatus === 'none' && !state.assignee) return null;
+  if (!editable && state.workStatus === 'none' && !state.assignee && !hasSchedule) return null;
 
   return (
     <section
@@ -140,6 +161,28 @@ export function TaskPanel({ boardType, postId, state, editable, onChange }: Prop
         )}
       </div>
 
+      {/* 일정 */}
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <CalendarRange className="h-4 w-4 flex-shrink-0 text-slate-400" aria-hidden="true" />
+        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">일정</span>
+        {editable ? (
+          <DateRangePicker
+            value={state}
+            disabled={mutate.isPending}
+            onApply={schedule => mutate.mutate(schedule)}
+            onClear={clearSchedule}
+          />
+        ) : (
+          <span className="text-xs text-slate-600 dark:text-slate-300">
+            {formatSchedule(state.startDate, state.dueDate)}
+          </span>
+        )}
+        <DueBadge
+          task={{ dueDate: state.dueDate, workStatus: state.workStatus }}
+          today={new Date()}
+        />
+      </div>
+
       {pickingAssignee && editable && (
         <div className="w-full max-w-sm">
           <UserPicker
@@ -156,6 +199,7 @@ export function TaskPanel({ boardType, postId, state, editable, onChange }: Prop
           <p className="mt-1 text-xs text-slate-400">이 게시판을 볼 수 있는 사람만 나옵니다.</p>
         </div>
       )}
+      {dialog}
     </section>
   );
 }

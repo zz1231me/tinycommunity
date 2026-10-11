@@ -44,7 +44,13 @@ import { getLoginHistory, getGlobalLoginHistory } from '../controllers/loginHist
 import { getAuditLogs, getUserAuditLogs } from '../controllers/auditLog.controller';
 import { getUserSessions, forceLogoutSession } from '../controllers/userSession.controller';
 import { getAdminStats } from '../controllers/stats.controller';
-import { getFeatureCatalog, updateFeatures } from '../controllers/featureFlag.controller';
+import {
+  getFeatureCatalog,
+  updateFeatures,
+  updateRoleFeatureRules,
+  getUserFeatureRules,
+  updateUserFeatureRules,
+} from '../controllers/featureFlag.controller';
 import tagRoutes from './tag.routes';
 import {
   getAttendanceRecords,
@@ -87,6 +93,9 @@ router.get('/stats', getAdminStats as RequestHandler);
 // 기능 스위치 카탈로그 조회와 일괄 저장
 router.get('/features', getFeatureCatalog as RequestHandler);
 router.put('/features', updateFeatures as RequestHandler);
+router.put('/features/roles/:roleId', updateRoleFeatureRules as RequestHandler);
+router.get('/features/users/:userId', getUserFeatureRules as RequestHandler);
+router.put('/features/users/:userId', updateUserFeatureRules as RequestHandler);
 router.get('/users', getAllUsers as RequestHandler);
 router.get('/users/deleted', getDeletedUsers as RequestHandler);
 router.post('/users', createUser as RequestHandler);

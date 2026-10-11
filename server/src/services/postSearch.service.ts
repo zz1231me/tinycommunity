@@ -47,7 +47,8 @@ export async function globalSearch(params: SearchPostsParams) {
   }
 
   // 꺼진 기능은 검색에도 나오면 안 된다. 전역 검색은 search.global 하나만 통과하므로 여기서 걸러야 한다.
-  const flags = await featureFlagService.getAll();
+  // 역할·개인 예외까지 반영한 이 사람의 기능 상태로 거른다
+  const flags = await featureFlagService.resolveFor({ id: userId, roleId: userRole });
 
   // 이벤트 검색 권한. admin 은 항상 허용, 그 외 역할은 EventPermission.canRead 를 본다.
   let canReadEvents = userRole === ROLES.ADMIN;

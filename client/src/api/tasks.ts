@@ -1,5 +1,5 @@
 // client/src/api/tasks.ts
-// 담당자·업무 상태, 읽음 확인, 첨부 이전 버전.
+// 담당자·업무 상태·일정, 팀 보기, 읽음 확인, 첨부 이전 버전.
 
 import api from './axios';
 import { unwrap } from './utils';
@@ -21,6 +21,9 @@ export interface Assignee {
 export interface TaskState {
   workStatus: WorkStatus;
   assignee: Assignee | null;
+  /** YYYY-MM-DD. 정하지 않았으면 null */
+  startDate: string | null;
+  dueDate: string | null;
 }
 
 export interface MyTask {
@@ -29,6 +32,13 @@ export interface MyTask {
   boardType: string;
   boardName: string;
   workStatus: WorkStatus;
+  assignee: Assignee | null;
+  /** 지금 사용자가 상태·일정을 바꿀 수 있는지. 서버의 권한 규칙과 같다. */
+  canEdit: boolean;
+  /** YYYY-MM-DD. 아직 일정을 잡지 않았으면 null */
+  startDate: string | null;
+  /** YYYY-MM-DD, 당일 포함 */
+  dueDate: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -61,7 +71,14 @@ export async function fetchWorkStatuses(signal?: AbortSignal): Promise<WorkStatu
 export async function changeTask(
   boardType: string,
   postId: string,
-  change: { assigneeId?: string | null; workStatus?: WorkStatus }
+  change: {
+    assigneeId?: string | null;
+    workStatus?: WorkStatus;
+    startDate?: string | null;
+    dueDate?: string | null;
+    /** 이 상태일 때만 바꾼다. 다르면 서버가 409 로 거절한다(되돌리기용). */
+    ifWorkStatus?: WorkStatus;
+  }
 ): Promise<TaskState> {
   const res = await api.patch(`/posts/${boardType}/${postId}/task`, change);
   return unwrap(res);
@@ -70,6 +87,28 @@ export async function changeTask(
 export async function fetchMyTasks(status?: WorkStatus[], signal?: AbortSignal): Promise<MyTask[]> {
   const query = status?.length ? `?status=${status.join(',')}` : '';
   const res = await api.get(`/posts/tasks/mine${query}`, { signal });
+  return unwrap(res);
+}
+
+/** 한 게시판의 업무 전체(팀 보기) */
+export async function fetchBoardTasks(
+  boardType: string,
+  status?: WorkStatus[],
+  signal?: AbortSignal
+): Promise<MyTask[]> {
+  const query = status?.length ? `?status=${status.join(',')}` : '';
+  const res = await api.get(`/posts/tasks/board/${boardType}${query}`, { signal });
+  return unwrap(res);
+}
+
+export interface TaskBoard {
+  id: string;
+  name: string;
+}
+
+/** 팀 보기에서 고를 수 있는 업무용 게시판 */
+export async function fetchTaskBoards(signal?: AbortSignal): Promise<TaskBoard[]> {
+  const res = await api.get('/posts/tasks/boards', { signal });
   return unwrap(res);
 }
 
@@ -94,7 +133,7 @@ export async function fetchAttachmentVersions(
 /** 글에 일어난 일 한 줄 */
 export interface ActivityEntry {
   id: string;
-  kind: 'created' | 'edited' | 'attachment' | 'status' | 'assignee';
+  kind: 'created' | 'edited' | 'attachment' | 'status' | 'assignee' | 'schedule';
   at: string;
   actor: { id: string; name: string } | null;
   /** 수정 줄에서 diff 를 열 때 쓴다 */

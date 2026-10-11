@@ -13,7 +13,7 @@ import { getRoleBadgeClass, getRoleName } from '../../utils/roleUtils';
 import { ThemeToggle } from '../ThemeToggle';
 import { useUIOverlays } from '../../store/uiOverlays';
 import { hasOpenDialog } from '../../hooks/useFocusTrap';
-import { useFeature } from '../../store/features';
+import { useMenuVisible } from '../../store/features';
 
 export function UserDropdown() {
   const { getUserName, getUserRole, getUser, clearUser, isAdmin } = useAuth();
@@ -21,8 +21,8 @@ export function UserDropdown() {
   const [shareOpen, setShareOpen] = useState(false);
   // 개인 공간(개인 폴더) — 드롭다운에서 바로 진입. 보통 사용자당 1개.
   const { personalBoards } = useAccessibleBoards();
-  const showAttendance = useFeature('tools.attendance');
-  const showMemo = useFeature('tools.memo');
+  const showAttendance = useMenuVisible('tools.attendance');
+  const showMemo = useMenuVisible('tools.memo');
 
   // 통합 overlay store — NotificationBell/GlobalSearch와 자동 배타.
   // setIsOpen은 안정 ref 유지 (getState로 호출 시점 최신값 사용)

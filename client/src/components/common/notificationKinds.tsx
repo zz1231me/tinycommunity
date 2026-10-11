@@ -6,6 +6,7 @@ import {
   Bell,
   Bomb,
   BellRing,
+  CalendarClock,
   Heart,
   Mail,
   MessageSquare,
@@ -62,6 +63,13 @@ export const NOTIFICATION_KIND: Record<Notification['type'], NotificationKind> =
     color: 'text-cyan-600 dark:text-cyan-400',
     accent: 'bg-cyan-500',
     title: '담당자로 지정됐어요',
+  },
+  TASK_DUE: {
+    icon: <CalendarClock className="w-4 h-4" />,
+    bg: 'bg-orange-100 dark:bg-orange-900/30',
+    color: 'text-orange-600 dark:text-orange-400',
+    accent: 'bg-orange-500',
+    title: '업무 마감이 다가와요',
   },
   MESSAGE: {
     icon: <Mail className="w-4 h-4" />,

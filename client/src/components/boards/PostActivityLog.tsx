@@ -1,12 +1,21 @@
-// 글의 활동 기록. 작성·수정·첨부 교체·상태·담당자 변경을 한 줄기로 모은다.
+// 글의 활동 기록. 작성·수정·첨부 교체·상태·담당자·일정 변경을 한 줄기로 모은다.
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, FileText, History, Paperclip, PenLine, UserRound } from 'lucide-react';
+import {
+  CalendarRange,
+  ChevronDown,
+  FileText,
+  History,
+  Paperclip,
+  PenLine,
+  UserRound,
+} from 'lucide-react';
 import { fetchActivity, fetchWorkStatuses, type ActivityEntry } from '../../api/tasks';
 import { taskKeys } from '../../api/queryKeys';
 import { formatFullDateTime, formatRelativeDate, toISOString } from '../../utils/date';
 import { ListError } from '../common/ListState';
+import { formatSchedule } from '../tasks/taskViews';
 
 /** 접었을 때 보여 줄 줄 수 */
 const COLLAPSED_COUNT = 4;
@@ -17,6 +26,7 @@ const ICONS: Record<ActivityEntry['kind'], typeof History> = {
   attachment: Paperclip,
   status: History,
   assignee: UserRound,
+  schedule: CalendarRange,
 };
 
 interface Props {
@@ -141,5 +151,16 @@ function describe(entry: ActivityEntry, statusLabel: (key?: string | null) => st
       return entry.from?.value
         ? `담당자를 ${entry.from.label} 에서 ${entry.to.label} 로 바꿨습니다.`
         : `${entry.to.label} 를 담당자로 지정했습니다.`;
+    case 'schedule':
+      if (!entry.to?.value) return '일정을 지웠습니다.';
+      return entry.from?.value
+        ? `일정을 ${scheduleText(entry.from.value)} → ${scheduleText(entry.to.value)} 로 바꿨습니다.`
+        : `일정을 ${scheduleText(entry.to.value)} 로 정했습니다.`;
   }
+}
+
+/** 서버가 적은 '시작~마감' 한 줄을 읽는 글로 */
+function scheduleText(value: string): string {
+  const [start, due] = value.split('~');
+  return formatSchedule(start || null, due || null);
 }

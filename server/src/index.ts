@@ -94,6 +94,7 @@ import {
 } from './config/bootstrap';
 import { refreshUploaders } from './middlewares/upload/refresh';
 import { sweepAllExpiredDuels } from './services/duel.service';
+import { sendDueReminders } from './services/taskDue.service';
 
 const app = express();
 const PORT = env.PORT;
@@ -635,6 +636,12 @@ const startServer = async () => {
       void sweepAllExpiredDuels().catch(err => logError('만료 대결 정리 실패', err));
     sweepDuels();
     setInterval(sweepDuels, 2 * 60 * 1000);
+
+    // 업무 마감 알림 (시작 시 1회 + 1시간 주기). 같은 글은 하루 한 번만 보낸다.
+    const remindDue = () =>
+      void sendDueReminders().catch(err => logError('업무 마감 알림 실패', err));
+    remindDue();
+    setInterval(remindDue, 60 * 60 * 1000);
 
     httpServer = app.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 API 서버 시작: http://0.0.0.0:${PORT}`);

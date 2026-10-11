@@ -142,6 +142,7 @@ export const postActivityService = {
       attachment: 1,
       status: 2,
       assignee: 3,
+      schedule: 4,
     };
     entries.sort((a, b) => {
       const byTime = new Date(b.at).getTime() - new Date(a.at).getTime();

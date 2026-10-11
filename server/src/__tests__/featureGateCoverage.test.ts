@@ -25,8 +25,14 @@ function guardSites(key: string): string[] {
       }
       if (!entry.name.endsWith('.ts')) continue;
       const text = fs.readFileSync(full, 'utf-8');
-      // requireFeature('key') 로 라우트를 막거나, isEnabled('key') 로 코드 안에서 갈라진다
-      if (text.includes(`requireFeature('${key}')`) || text.includes(`isEnabled('${key}')`)) {
+      // requireFeature('key') 로 라우트를 막거나, isEnabled('key') 로 코드 안에서 갈라진다.
+      // 역할·개인 예외까지 보는 자리는 isEnabledFor('key', …) · filterUsers('key', …) 를 쓴다.
+      if (
+        text.includes(`requireFeature('${key}')`) ||
+        text.includes(`isEnabled('${key}')`) ||
+        text.includes(`isEnabledFor('${key}'`) ||
+        text.includes(`filterUsers('${key}'`)
+      ) {
         found.push(path.relative(SRC, full));
       }
     }

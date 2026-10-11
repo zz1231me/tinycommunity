@@ -19,7 +19,14 @@ vi.mock('../../hooks/useBookmarks', () => ({
   useBookmarks: () => ({ bookmarks: [], loading: false, error: null, openBookmark: vi.fn() }),
 }));
 vi.mock('../../api/customPages', () => ({ fetchPublishedPages: () => Promise.resolve([]) }));
-vi.mock('../../store/features', () => ({ useFeature: () => true }));
+// 본인이 숨긴 메뉴. 검사마다 바꾼다.
+const menu = vi.hoisted(() => ({ hidden: new Set<string>() }));
+vi.mock('../../store/features', () => ({
+  useFeature: () => true,
+  useMenuVisible: (key: string) => !menu.hidden.has(key),
+  useFeatures: (select: (s: { hidden: string[] }) => unknown) =>
+    select({ hidden: [...menu.hidden] }),
+}));
 vi.mock('../../store/auth', () => ({
   useAuth: () => ({
     user: { id: 'u1', name: '홍길동', role: 'user' },
@@ -74,5 +81,30 @@ describe('좁은 화면의 서랍 사이드바', () => {
     const { container } = renderSidebar(false);
     expect(container.querySelector('aside')).not.toHaveAttribute('inert');
     expect(screen.getByRole('navigation')).toBeInTheDocument();
+  });
+});
+
+describe('본인이 숨긴 메뉴', () => {
+  beforeEach(() => {
+    setWidth(1440);
+    menu.hidden.clear();
+  });
+
+  it('숨기지 않았으면 대시보드·탐색·위키가 보인다', () => {
+    const { getByRole } = renderSidebar(true);
+    expect(getByRole('button', { name: /대시보드/ })).toBeInTheDocument();
+    expect(getByRole('button', { name: /탐색/ })).toBeInTheDocument();
+  });
+
+  it('일정을 숨기면 대시보드 메뉴가 빠진다 — 눌러도 꺼짐 화면만 나오던 자리다', () => {
+    menu.hidden.add('tools.calendar');
+    const { queryByRole } = renderSidebar(true);
+    expect(queryByRole('button', { name: /대시보드/ })).not.toBeInTheDocument();
+  });
+
+  it('탐색을 숨기면 탐색 메뉴가 빠진다', () => {
+    menu.hidden.add('discovery.popular');
+    const { queryByRole } = renderSidebar(true);
+    expect(queryByRole('button', { name: /탐색/ })).not.toBeInTheDocument();
   });
 });

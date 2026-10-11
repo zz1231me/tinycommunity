@@ -1,0 +1,137 @@
+// 업무 거르기 줄. 보는 범위(내 업무·게시판), 제목 검색, 게시판, 마감 요약, 정렬.
+
+import { Search } from 'lucide-react';
+import type { TaskBoard } from '../../api/tasks';
+import {
+  DUE_FILTERS,
+  TASK_SORTS,
+  type DueFilter,
+  type TaskFilter,
+  type TaskSort,
+} from './taskViews';
+
+const DUE_TONE: Record<DueFilter, string> = {
+  overdue: 'text-rose-600 dark:text-rose-400',
+  today: 'text-orange-600 dark:text-orange-400',
+  week: 'text-amber-600 dark:text-amber-400',
+};
+
+interface Props {
+  /** '' 이면 내 업무, 아니면 그 게시판의 팀 보기 */
+  scope: string;
+  scopes: TaskBoard[];
+  onScopeChange: (scope: string) => void;
+  filter: TaskFilter;
+  onFilterChange: (filter: TaskFilter) => void;
+  /** 내 업무에서 고를 수 있는 게시판(지금 목록에 있는 것만) */
+  boards: TaskBoard[];
+  dueCounts: Record<DueFilter, number>;
+  /** 목록 보기에서만 정렬을 고른다 */
+  sort?: TaskSort;
+  onSortChange?: (sort: TaskSort) => void;
+}
+
+export function TaskFilters({
+  scope,
+  scopes,
+  onScopeChange,
+  filter,
+  onFilterChange,
+  boards,
+  dueCounts,
+  sort,
+  onSortChange,
+}: Props) {
+  const set = (patch: Partial<TaskFilter>) => onFilterChange({ ...filter, ...patch });
+
+  return (
+    <div className="mb-4 space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {scopes.length > 0 && (
+          <select
+            aria-label="보는 범위"
+            value={scope}
+            onChange={e => onScopeChange(e.target.value)}
+            className="input w-auto py-1.5 text-sm"
+          >
+            <option value="">내 업무</option>
+            {scopes.map(b => (
+              <option key={b.id} value={b.id}>
+                {b.name} 전체
+              </option>
+            ))}
+          </select>
+        )}
+        <label className="relative min-w-[10rem] flex-1">
+          <span className="sr-only">제목 검색</span>
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+            aria-hidden="true"
+          />
+          <input
+            type="search"
+            value={filter.query}
+            onChange={e => set({ query: e.target.value })}
+            placeholder="제목으로 찾기"
+            className="input w-full py-1.5 pl-8 text-sm"
+          />
+        </label>
+        {!scope && boards.length > 1 && (
+          <select
+            aria-label="게시판"
+            value={filter.boardType}
+            onChange={e => set({ boardType: e.target.value })}
+            className="input w-auto py-1.5 text-sm"
+          >
+            <option value="">모든 게시판</option>
+            {boards.map(b => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        )}
+        {sort && onSortChange && (
+          <select
+            aria-label="정렬"
+            value={sort}
+            onChange={e => onSortChange(e.target.value as TaskSort)}
+            className="input w-auto py-1.5 text-sm"
+          >
+            {TASK_SORTS.map(s => (
+              <option key={s.key} value={s.key}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* 마감 요약. 누르면 그 조건으로 좁히고, 다시 누르면 푼다. */}
+      <div role="group" aria-label="마감으로 거르기" className="flex flex-wrap gap-2">
+        {DUE_FILTERS.map(f => {
+          const active = filter.due === f.key;
+          const count = dueCounts[f.key];
+          return (
+            <button
+              key={f.key}
+              type="button"
+              aria-pressed={active}
+              onClick={() => set({ due: active ? null : f.key })}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                active
+                  ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-500 dark:bg-primary-500/10 dark:text-primary-300'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+              }`}
+            >
+              {f.label}{' '}
+              <span className={`tabular-nums ${count > 0 && !active ? DUE_TONE[f.key] : ''}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

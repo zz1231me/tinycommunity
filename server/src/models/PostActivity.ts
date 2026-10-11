@@ -1,4 +1,4 @@
-// 다른 테이블에 남지 않는 글 활동(업무 상태·담당자 변경)만 적는 append-only 이력.
+// 다른 테이블에 남지 않는 글 활동(업무 상태·담당자·일정 변경)만 적는 append-only 이력.
 
 import {
   DataTypes,
@@ -12,7 +12,7 @@ import {
 import { sequelize } from '../config/sequelize';
 
 /** 사건 종류. 값이 늘 수 있어 ENUM 이 아닌 문자열이다. */
-export type PostActivityKind = 'status' | 'assignee';
+export type PostActivityKind = 'status' | 'assignee' | 'schedule';
 
 class PostActivityModel extends Model<
   InferAttributes<PostActivityModel>,

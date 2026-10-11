@@ -40,6 +40,9 @@ export type Post = {
   /** 업무 상태. 추적하지 않는 글은 'none'. */
   workStatus?: WorkStatus;
   assignee?: Assignee | null;
+  /** 업무 일정 YYYY-MM-DD. 정하지 않았으면 null */
+  startDate?: string | null;
+  dueDate?: string | null;
   /** 이 글이 속한 게시판 */
   board?: { id: string; name: string; taskEnabled: boolean } | null;
   /** 이 글의 태그 */
@@ -142,6 +145,8 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
         pinnedUntil: data.pinnedUntil ?? null,
         workStatus: data.workStatus ?? 'none',
         assignee: data.assignee ?? null,
+        startDate: data.startDate ?? null,
+        dueDate: data.dueDate ?? null,
         board: data.board ?? null,
         tags: Array.isArray(data.tags) ? data.tags : [],
         user: data.user,

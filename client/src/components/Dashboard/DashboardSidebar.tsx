@@ -22,7 +22,7 @@ import { wikiInsertIndex } from '../../utils/sidebarOrder';
 import { useAccessibleBoards } from '../../hooks/useAccessibleBoards';
 import { useBookmarks } from '../../hooks/useBookmarks';
 import { useAuth } from '../../store/auth';
-import { useFeature } from '../../store/features';
+import { useFeature, useFeatures, useMenuVisible } from '../../store/features';
 import { logger } from '../../utils/logger';
 
 interface DashboardSidebarProps {
@@ -76,11 +76,14 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
   // store.isAdmin()은 role==='admin' + roleInfo.isActive 까지 확인(비활성 역할 차단)
   const isAdmin = isAdminCheck();
 
-  // 관리자가 끈 기능은 메뉴에서도 뺀다. 두 훅을 각각 호출한 뒤 합친다(|| 로 이으면 훅 순서가 어긋난다).
+  // 관리자가 끈 기능과 본인이 숨긴 메뉴는 빼고 보여 준다. 두 훅을 각각 호출한 뒤 합친다(|| 로 이으면 훅 순서가 어긋난다).
   const popularEnabled = useFeature('discovery.popular');
   const tagCloudEnabled = useFeature('discovery.tagCloud');
-  const showExplore = popularEnabled || tagCloudEnabled;
-  const showWiki = useFeature('tools.wiki');
+  const exploreHidden = useFeatures(s => s.hidden.includes('discovery.popular'));
+  const showExplore = (popularEnabled || tagCloudEnabled) && !exploreHidden;
+  // '대시보드' 는 일정 화면이다. 일정이 꺼졌거나 숨겼으면 메뉴에서 뺀다 — 누르면 '꺼져 있음' 화면만 나왔다.
+  const showDashboard = useMenuVisible('tools.calendar');
+  const showWiki = useMenuVisible('tools.wiki');
   const wikiOrder = useSiteSettings(st => st.settings.wikiOrder);
 
   // 게시판 목록에 위키를 끼워 넣는다. 자리 규칙은 utils/sidebarOrder 에 적어 두었다.
@@ -105,10 +108,10 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
     });
     return entries;
   }, [regularBoards, showWiki, wikiOrder]);
-  const showScraps = useFeature('post.scrap');
-  const showDrafts = useFeature('post.drafts');
-  const showTasks = useFeature('post.tasks');
-  const showMessages = useFeature('social.dm');
+  const showScraps = useMenuVisible('post.scrap');
+  const showDrafts = useMenuVisible('post.drafts');
+  const showTasks = useMenuVisible('post.tasks');
+  const showMessages = useMenuVisible('social.dm');
 
   const handleAdminClick = () => {
     navigate('/admin');
@@ -162,12 +165,14 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
           <div>
             <SectionLabel>메인</SectionLabel>
             <div className="space-y-0.5">
-              <SidebarNav
-                label="대시보드"
-                to="calendar"
-                closeSidebar={onClose}
-                icon={<Calendar className="w-4.5 h-4.5" />}
-              />
+              {showDashboard && (
+                <SidebarNav
+                  label="대시보드"
+                  to="calendar"
+                  closeSidebar={onClose}
+                  icon={<Calendar className="w-4.5 h-4.5" />}
+                />
+              )}
               {showExplore && (
                 <SidebarNav
                   label="탐색"

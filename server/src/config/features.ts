@@ -251,7 +251,15 @@ export function resolveFeatures(
   for (const key of FEATURE_KEYS) {
     if (stored[key] !== undefined) state[key] = stored[key] as boolean;
   }
+  return applyDependencies(state);
+}
 
+/**
+ * 선행 기능이 꺼진 기능을 끈다. 사이트 전체에도, 역할·사람별로 고친 상태에도 똑같이 건다
+ * — 역할에서 포인트를 끄면 그 역할은 포인트 대결도 쓸 수 없어야 한다.
+ */
+export function applyDependencies(input: Record<FeatureKey, boolean>): Record<FeatureKey, boolean> {
+  const state = { ...input };
   // 의존성이 여러 단계일 수 있어 더 이상 바뀌지 않을 때까지 훑는다.
   let changed = true;
   while (changed) {

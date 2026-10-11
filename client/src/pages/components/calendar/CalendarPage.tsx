@@ -13,7 +13,9 @@ import { toast } from '../../../utils/toast';
 
 import { CalendarEvent, EventFormData, ModalMode } from './types';
 import { dateUtils } from './utils';
+import { useNavigate } from 'react-router-dom';
 import { useCalendarEvents, railWindow } from './hooks/useCalendarEvents';
+import { useTaskEvents } from './hooks/useTaskEvents';
 import { CalendarHeader, CalendarView } from './components/CalendarHeader';
 import { CalendarModal } from './components/CalendarModal';
 import { TodayRail } from './components/TodayRail';
@@ -48,6 +50,11 @@ const CalendarPage: React.FC = () => {
     handleDeleteEvent,
     canEditEvent,
   } = useCalendarEvents({ userId: user?.id, isAdmin: isAdmin(), calendarRef });
+
+  // 내 업무의 일정. 달력 일정과 섞어 보여 주되, 누르면 그 글로 간다.
+  const taskEvents = useTaskEvents();
+  const calendarEvents = useMemo(() => [...events, ...taskEvents], [events, taskEvents]);
+  const navigate = useNavigate();
 
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -107,39 +114,47 @@ const CalendarPage: React.FC = () => {
     selectInfo.view.calendar.unselect();
   }, []);
 
-  const handleEventClick = useCallback((clickInfo: EventClickArg) => {
-    const event = clickInfo.event;
-    const originalEvent = event.extendedProps.originalEvent as CalendarEvent;
-    setSelectedEvent(originalEvent);
+  const handleEventClick = useCallback(
+    (clickInfo: EventClickArg) => {
+      const event = clickInfo.event;
+      const taskLink = event.extendedProps.taskLink as string | undefined;
+      if (taskLink) {
+        navigate(taskLink);
+        return;
+      }
+      const originalEvent = event.extendedProps.originalEvent as CalendarEvent;
+      setSelectedEvent(originalEvent);
 
-    const startDate = event.startStr
-      ? dateUtils.isoToLocalDate(event.startStr)
-      : event.start
-        ? dateUtils.toLocalDateString(event.start)
-        : dateUtils.isoToLocalDate(originalEvent.start);
+      const startDate = event.startStr
+        ? dateUtils.isoToLocalDate(event.startStr)
+        : event.start
+          ? dateUtils.toLocalDateString(event.start)
+          : dateUtils.isoToLocalDate(originalEvent.start);
 
-    const endDate = event.endStr
-      ? dateUtils.subtractDay(dateUtils.isoToLocalDate(event.endStr))
-      : event.end
-        ? dateUtils.subtractDay(dateUtils.toLocalDateString(event.end))
-        : originalEvent.end
-          ? dateUtils.subtractDay(dateUtils.isoToLocalDate(originalEvent.end))
-          : startDate;
+      const endDate = event.endStr
+        ? dateUtils.subtractDay(dateUtils.isoToLocalDate(event.endStr))
+        : event.end
+          ? dateUtils.subtractDay(dateUtils.toLocalDateString(event.end))
+          : originalEvent.end
+            ? dateUtils.subtractDay(dateUtils.isoToLocalDate(originalEvent.end))
+            : startDate;
 
-    setFormData({
-      title: event.title,
-      body: event.extendedProps.body || '',
-      isAllday: originalEvent.isAllday ?? event.allDay,
-      start: startDate,
-      end: endDate,
-      category: event.extendedProps.category || 'meeting',
-      location: event.extendedProps.location || '',
-      color: event.backgroundColor || DEFAULT_EVENT_COLOR,
-      backgroundColor: event.backgroundColor || DEFAULT_EVENT_COLOR,
-    });
-    setModalMode('view');
-    setIsModalOpen(true);
-  }, []);
+      setFormData({
+        title: event.title,
+        body: event.extendedProps.body || '',
+        isAllday: originalEvent.isAllday ?? event.allDay,
+        start: startDate,
+        end: endDate,
+        category: event.extendedProps.category || 'meeting',
+        location: event.extendedProps.location || '',
+        color: event.backgroundColor || DEFAULT_EVENT_COLOR,
+        backgroundColor: event.backgroundColor || DEFAULT_EVENT_COLOR,
+      });
+      setModalMode('view');
+      setIsModalOpen(true);
+    },
+    [navigate]
+  );
 
   const openEventDetail = useCallback((ev: CalendarEvent) => {
     setSelectedEvent(ev);
@@ -334,7 +349,7 @@ const CalendarPage: React.FC = () => {
               initialView="dayGridMonth"
               height="100%"
               expandRows={true}
-              events={events}
+              events={calendarEvents}
               selectable={true}
               selectMirror={true}
               unselectAuto={true}

@@ -159,7 +159,9 @@ export const subscriptionService = {
       const userIds = [...new Set(targets.map(t => t.userId))].filter(id => id !== post.authorId);
       if (userIds.length === 0) return;
 
-      const capped = userIds.slice(0, MAX_SUBSCRIBER_NOTIFICATIONS);
+      // 구독 기능을 쓸 수 없게 된 사람은 받지 않는다(구독은 남아 있어도 화면에서 볼 수 없다)
+      const allowed = await featureFlagService.filterUsers('social.subscriptions', userIds);
+      const capped = userIds.filter(id => allowed.has(id)).slice(0, MAX_SUBSCRIBER_NOTIFICATIONS);
 
       // 역할과 담당자를 한 번씩만 가져와 메모리에서 거른다. 사람마다 질의하면 왕복이 폭증한다.
       const [users, readableRoles, managers] = await Promise.all([

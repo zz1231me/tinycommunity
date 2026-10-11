@@ -40,6 +40,8 @@ import {
 import {
   changeTask,
   getMyTasks,
+  getBoardTasks,
+  getTaskBoards,
   getReaders,
   getActivity,
   getWorkStatuses,
@@ -110,6 +112,43 @@ router.get(
   authenticate as RequestHandler,
   requireFeature('post.tasks'),
   asyncHandler((req, res) => getMyTasks(req as AuthRequest, res))
+);
+
+/**
+ * @swagger
+ * /api/posts/tasks/boards:
+ *   get:
+ *     summary: 업무용 게시판 중 읽을 수 있는 것
+ *     tags: [Posts]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: '[{ id, name }]' }
+ */
+router.get(
+  '/tasks/boards',
+  authenticate as RequestHandler,
+  requireFeature('post.tasks'),
+  asyncHandler((req, res) => getTaskBoards(req as AuthRequest, res))
+);
+
+/**
+ * @swagger
+ * /api/posts/tasks/board/{boardType}:
+ *   get:
+ *     summary: 게시판의 업무 전체 (팀 보기)
+ *     description: 게시판을 읽을 수 있으면 볼 수 있다. 각 항목의 canEdit 이 바꿀 수 있는지 알려 준다.
+ *     tags: [Posts]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: 업무 목록 }
+ *       400: { description: 업무용 게시판이 아님 }
+ */
+router.get(
+  '/tasks/board/:boardType',
+  authenticate as RequestHandler,
+  requireFeature('post.tasks'),
+  checkReadAccess as RequestHandler,
+  asyncHandler((req, res) => getBoardTasks(req as AuthRequest, res))
 );
 
 /**
@@ -394,8 +433,10 @@ router.post(
  *             properties:
  *               assigneeId: { type: string, nullable: true }
  *               workStatus: { type: string, enum: [none, todo, doing, done] }
+ *               startDate: { type: string, format: date, nullable: true }
+ *               dueDate: { type: string, format: date, nullable: true }
  *     responses:
- *       200: { description: '{ workStatus, assignee }' }
+ *       200: { description: '{ workStatus, assignee, startDate, dueDate }' }
  *       403: { $ref: '#/components/responses/Forbidden' }
  */
 router.patch(

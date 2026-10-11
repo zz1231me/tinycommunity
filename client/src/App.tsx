@@ -54,6 +54,7 @@ function App() {
   const { clearUser } = useAuth();
   const { isAuthenticated } = useAuth();
   const loadFeatures = useFeatures(s => s.load);
+  const loadHiddenMenus = useFeatures(s => s.loadHidden);
 
   // 다중 탭 동기화. 다른 탭에서 로그아웃하거나 다른 계정으로 로그인한 경우.
   useEffect(() => {
@@ -73,8 +74,11 @@ function App() {
 
   // 기능 스위치는 인증이 필요하므로 로그인 상태가 되면 불러온다. 실패해도 막지 않는다.
   useEffect(() => {
-    if (isAuthenticated) loadFeatures();
-  }, [isAuthenticated, loadFeatures]);
+    if (isAuthenticated) {
+      loadFeatures();
+      loadHiddenMenus();
+    }
+  }, [isAuthenticated, loadFeatures, loadHiddenMenus]);
 
   // 세션 만료로 강제 로그아웃된 경우 1회 안내한다
   useEffect(() => {

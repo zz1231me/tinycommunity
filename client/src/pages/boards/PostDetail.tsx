@@ -140,7 +140,12 @@ const PostDetail = () => {
   // 고정 만료 시각. 무기한이면 null.
   const [pinnedUntil, setPinnedUntil] = useState<string | null>(null);
   // 업무 상태는 이 화면에서 바꾸므로 로컬로 들고 있는다
-  const [task, setTask] = useState<TaskState>({ workStatus: 'none', assignee: null });
+  const [task, setTask] = useState<TaskState>({
+    workStatus: 'none',
+    assignee: null,
+    startDate: null,
+    dueDate: null,
+  });
   const [postTags, setPostTags] = useState<Tag[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -157,7 +162,12 @@ const PostDetail = () => {
     if (!post) return;
     setIsPinned(post.isPinned || false);
     setPinnedUntil(post.pinnedUntil ?? null);
-    setTask({ workStatus: post.workStatus ?? 'none', assignee: post.assignee ?? null });
+    setTask({
+      workStatus: post.workStatus ?? 'none',
+      assignee: post.assignee ?? null,
+      startDate: post.startDate ?? null,
+      dueDate: post.dueDate ?? null,
+    });
     setPostTags(post.tags ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post?.id, post?.tags]);

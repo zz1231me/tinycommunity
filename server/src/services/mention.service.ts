@@ -46,7 +46,8 @@ interface NotifyParams {
 export async function notifyMentions(params: NotifyParams): Promise<void> {
   try {
     // 전용 라우트가 없어 글 저장 흐름 안에서 기능 플래그를 직접 확인한다.
-    if (!(await featureFlagService.isEnabled('social.mentions'))) return;
+    // 멘션을 쓸 수 없는 사람의 @ 는 알림을 만들지 않는다
+    if (!(await featureFlagService.resolveForUserId(params.actorId))['social.mentions']) return;
 
     const ids = extractMentions(params.content);
     if (ids.length === 0) return;
@@ -55,8 +56,10 @@ export async function notifyMentions(params: NotifyParams): Promise<void> {
     const targetIds = ids.filter(id => !exclude.has(id));
     if (targetIds.length === 0) return;
 
+    // 멘션 알림을 쓸 수 없는 사람은 받지 않는다
+    const allowed = await featureFlagService.filterUsers('social.mentions', targetIds);
     const users = await User.findAll({
-      where: { id: { [Op.in]: targetIds }, isActive: true, isDeleted: false },
+      where: { id: { [Op.in]: [...allowed] }, isActive: true, isDeleted: false },
       attributes: ['id'],
       include: [{ model: Role, as: 'roleInfo', attributes: ['id'] }],
     });

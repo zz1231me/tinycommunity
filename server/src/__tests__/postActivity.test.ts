@@ -212,3 +212,27 @@ describe('순서와 접근', () => {
     expect((await request(app).get('/api/posts/notice/whatever/activity')).status).toBe(401);
   });
 });
+
+describe('일정 변경 기록', () => {
+  it('시작일·마감일을 바꾸면 이전·이후 일정이 한 줄로 남는다', async () => {
+    const id = await createPost(`일정기록 ${Date.now()}`);
+    await setTask(id, { startDate: '2026-10-01', dueDate: '2026-10-03' });
+    await setTask(id, { dueDate: '2026-10-05' });
+
+    const entries: Entry[] = (await activity(adminCookie, id)).body.data;
+    const schedule = entries.filter(e => e.kind === 'schedule');
+    expect(schedule).toHaveLength(2);
+    // 최신이 위
+    expect(schedule[0].from?.value).toBe('2026-10-01~2026-10-03');
+    expect(schedule[0].to?.value).toBe('2026-10-01~2026-10-05');
+    expect(schedule[1].from?.value).toBeNull();
+  });
+
+  it('같은 날짜로 다시 저장하면 적지 않는다', async () => {
+    const id = await createPost(`일정같음 ${Date.now()}`);
+    await setTask(id, { dueDate: '2026-10-03' });
+    await setTask(id, { dueDate: '2026-10-03' });
+    const entries: Entry[] = (await activity(adminCookie, id)).body.data;
+    expect(entries.filter(e => e.kind === 'schedule')).toHaveLength(1);
+  });
+});

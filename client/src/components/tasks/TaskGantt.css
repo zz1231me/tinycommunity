@@ -1,0 +1,43 @@
+/* 업무 간트의 막대 모양. 막대 바탕은 SVAR 가 그리므로 템플릿에 붙인 표식으로 고른다. */
+
+/* 일정이 아직 없는 일: 점선으로 비워 '임시 자리' 임을 드러낸다.
+   하루짜리라 좁으므로 이름은 막대 밖으로 이어 쓴다. */
+.task-gantt .wx-bar:has(> .task-bar-unscheduled) {
+  overflow: visible;
+  background: transparent;
+  border: 1px dashed rgb(100 116 139);
+  color: rgb(71 85 105);
+}
+.dark .task-gantt .wx-bar:has(> .task-bar-unscheduled) {
+  border-color: rgb(148 163 184);
+  color: rgb(203 213 225);
+}
+
+/* 마감이 지난 일 */
+.task-gantt .wx-bar:has(> .task-bar-overdue) {
+  background: rgb(225 29 72);
+  border-color: rgb(225 29 72);
+}
+
+/* 끝낸 일은 흐리게 */
+.task-gantt .wx-bar:has(> .task-bar-done) {
+  opacity: 0.5;
+}
+
+/* 바꿀 권한이 없는 일은 끌 수 있어 보이지 않게 */
+.task-gantt .wx-bar:has(> .task-bar-locked) {
+  cursor: default;
+}
+
+/* 업무끼리 잇기·진행률은 쓰지 않는다. 손잡이가 보이면 눌러 보게 된다. */
+.task-gantt .wx-link,
+.task-gantt .wx-progress-marker,
+.task-gantt .wx-progress-wrapper {
+  display: none;
+}
+
+/* 오늘 칸. 주말 칠하기 자리를 빌려 쓰므로 주말 색을 덮는다. */
+.task-gantt .task-gantt-today {
+  background: rgb(59 130 246 / 0.12);
+  box-shadow: inset 2px 0 0 rgb(59 130 246);
+}

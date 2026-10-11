@@ -21,6 +21,7 @@ import { PostDraft } from './PostDraft';
 import { PostAttachmentVersion } from './PostAttachmentVersion';
 import { PostActivity } from './PostActivity';
 import { FeatureFlag } from './FeatureFlag';
+import { FeatureRule } from './FeatureRule';
 import { Subscription } from './Subscription';
 import { NotificationSetting } from './NotificationSetting';
 import { Conversation } from './Conversation';
@@ -522,6 +523,7 @@ export {
   PostAttachmentVersion,
   PostActivity,
   FeatureFlag,
+  FeatureRule,
   Subscription,
   NotificationSetting,
   Conversation,

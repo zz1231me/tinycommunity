@@ -45,6 +45,8 @@ interface PostLike {
   user?: { id: string; name: string; avatar: string | null } | null;
   workStatus?: string;
   assignee?: { id: string; name: string; avatar: string | null } | null;
+  startDate?: string | null;
+  dueDate?: string | null;
   board?: { id: string; name: string; taskEnabled: boolean } | null;
 }
 
@@ -58,10 +60,10 @@ async function loadViewerState(
   userId: string | undefined,
   canManage: boolean
 ): Promise<{ liked: boolean; likeCount: number; scrapped: boolean; canManage: boolean }> {
-  const [likeEnabled, scrapEnabled] = await Promise.all([
-    featureFlagService.isEnabled('post.like'),
-    featureFlagService.isEnabled('post.scrap'),
-  ]);
+  // 보는 사람 기준이다. 역할·개인 예외로 꺼진 사람에게는 좋아요·스크랩 상태를 묻지 않는다.
+  const flags = await featureFlagService.resolveForUserId(userId);
+  const likeEnabled = flags['post.like'];
+  const scrapEnabled = flags['post.scrap'];
 
   const [like, scrapped] = await Promise.all([
     userId && likeEnabled
@@ -107,8 +109,8 @@ async function loadSecretAllowedUsers(
  * 글을 읽을 때 함께 조인해 오므로 상세 화면에서 추가 조회가 없다.
  * 태그 기능이 꺼져 있으면 빈 배열이다.
  */
-async function pickTags(postData: { tags?: unknown[] }): Promise<unknown[]> {
-  if (!(await featureFlagService.isEnabled('post.tags'))) return [];
+async function pickTags(postData: { tags?: unknown[] }, userId?: string): Promise<unknown[]> {
+  if (!(await featureFlagService.resolveForUserId(userId))['post.tags']) return [];
   return postData.tags ?? [];
 }
 
@@ -147,6 +149,8 @@ function formatPostResponse(
     assignee: post.assignee
       ? { id: post.assignee.id, name: post.assignee.name, avatar: post.assignee.avatar ?? null }
       : null,
+    startDate: post.startDate ?? null,
+    dueDate: post.dueDate ?? null,
     // 게시판 이름과 용도. 화면이 게시판 목록을 따로 뒤지지 않아도 되게 함께 내린다.
     board: post.board
       ? { id: post.board.id, name: post.board.name, taskEnabled: !!post.board.taskEnabled }
@@ -310,7 +314,7 @@ export const getPostById = async (req: AuthRequest, res: Response): Promise<void
         htmlContent,
         ...(await Promise.all([
           loadViewerState(id, userId, req.board?.canManage === true),
-          pickTags(result.postData),
+          pickTags(result.postData, userId),
           loadSecretAllowedUsers(
             result.post as unknown as Parameters<typeof loadSecretAllowedUsers>[0],
             userId,
@@ -377,7 +381,7 @@ export const verifySecretPost = async (req: AuthRequest, res: Response): Promise
         htmlContent,
         ...(await Promise.all([
           loadViewerState(id, userId, req.board?.canManage === true),
-          pickTags(result.postData),
+          pickTags(result.postData, userId),
         ]))
       )
     );

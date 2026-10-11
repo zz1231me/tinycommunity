@@ -22,9 +22,11 @@ const STYLES: Record<Exclude<WorkStatus, 'none'>, { label: string; className: st
 interface Props {
   status: WorkStatus;
   size?: 'sm' | 'md';
+  /** 관리자가 바꾼 상태 이름. 없으면 기본 이름 */
+  label?: string;
 }
 
-export function WorkStatusBadge({ status, size = 'sm' }: Props) {
+export function WorkStatusBadge({ status, size = 'sm', label }: Props) {
   if (status === 'none') return null;
   const style = STYLES[status];
 
@@ -34,7 +36,7 @@ export function WorkStatusBadge({ status, size = 'sm' }: Props) {
         size === 'sm' ? 'px-2 py-0.5 text-2xs' : 'px-3 py-1 text-xs'
       } ${style.className}`}
     >
-      {style.label}
+      {label ?? style.label}
     </span>
   );
 }

@@ -41,6 +41,8 @@ export interface PostInstance extends Model<
   // 업무 추적
   workStatus: CreationOptional<WorkStatus>;
   assigneeId: CreationOptional<string | null>;
+  startDate: CreationOptional<string | null>;
+  dueDate: CreationOptional<string | null>;
   status: CreationOptional<'draft' | 'published' | 'archived'>;
   deletedAt: CreationOptional<Date | null>;
   UserId: ForeignKey<string | null>; // 삭제된 사용자면 null
@@ -76,6 +78,8 @@ class PostModel
   declare public pinnedUntil: CreationOptional<Date | null>;
   declare public workStatus: CreationOptional<WorkStatus>;
   declare public assigneeId: CreationOptional<string | null>;
+  declare public startDate: CreationOptional<string | null>;
+  declare public dueDate: CreationOptional<string | null>;
   declare public status: CreationOptional<'draft' | 'published' | 'archived'>;
   declare public deletedAt: CreationOptional<Date | null>;
   declare public UserId: ForeignKey<string | null>; // 삭제된 사용자면 null
@@ -202,6 +206,17 @@ PostModel.init(
       allowNull: true,
       // 담당자가 탈퇴해도 글은 남아야 하므로 FK 제약을 걸지 않는다
       comment: '담당자 사용자 id',
+    },
+    // 날짜만 쓴다. 시각을 넣으면 시간대에 따라 간트 막대가 하루씩 밀린다.
+    startDate: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+      comment: '업무 시작일 (YYYY-MM-DD)',
+    },
+    dueDate: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+      comment: '업무 마감일 (YYYY-MM-DD, 당일 포함)',
     },
     status: {
       type: DataTypes.ENUM('draft', 'published', 'archived'),

@@ -14,6 +14,8 @@ export const taskKeys = {
   all: ['tasks'] as const,
   statuses: ['tasks', 'statuses'] as const,
   mine: (status: string) => ['tasks', 'mine', status] as const,
+  board: (boardType: string, status: string) => ['tasks', 'board', boardType, status] as const,
+  boards: ['tasks', 'boards'] as const,
   readers: (boardType: string, postId: string) => ['tasks', 'readers', boardType, postId] as const,
   attachmentVersions: (boardType: string, postId: string) =>
     ['tasks', 'attachment-versions', boardType, postId] as const,
@@ -155,6 +157,7 @@ export const adminKeys = {
   },
   features: {
     all: ['admin', 'features'] as const,
+    user: (userId: string) => ['admin', 'features', 'user', userId] as const,
   },
   attendance: {
     all: ['admin', 'attendance'] as const,

@@ -7,7 +7,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useFeature, useFeatures } from './features';
+import { useFeature, useFeatures, useMenuVisible } from './features';
 
 const mockGet = vi.fn();
 vi.mock('../api/axios', () => ({
@@ -16,7 +16,7 @@ vi.mock('../api/axios', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  useFeatures.setState({ features: {}, loaded: false });
+  useFeatures.setState({ features: {}, loaded: false, hidden: [] });
 });
 
 describe('불러오기', () => {
@@ -69,5 +69,32 @@ describe('저장 직후 반영', () => {
     useFeatures.setState({ features: { 'tools.memo': true }, loaded: true });
     useFeatures.getState().set({ 'tools.memo': false });
     expect(renderHook(() => useFeature('tools.memo')).result.current).toBe(false);
+  });
+});
+
+describe('본인 메뉴 숨기기', () => {
+  it('숨긴 메뉴는 메뉴에서만 빠지고 기능 판정은 그대로다 — 주소로 들어가면 열린다', () => {
+    useFeatures.setState({
+      features: { 'tools.memo': true },
+      loaded: true,
+      hidden: ['tools.memo'],
+    });
+    expect(renderHook(() => useMenuVisible('tools.memo')).result.current).toBe(false);
+    expect(renderHook(() => useFeature('tools.memo')).result.current).toBe(true);
+  });
+
+  it('꺼진 기능은 숨기지 않았어도 메뉴에 없다', () => {
+    useFeatures.setState({ features: { 'tools.memo': false }, loaded: true, hidden: [] });
+    expect(renderHook(() => useMenuVisible('tools.memo')).result.current).toBe(false);
+  });
+
+  it('숨긴 목록을 서버에서 읽고, 실패하면 아무것도 숨기지 않는다', async () => {
+    mockGet.mockResolvedValue({ data: { data: ['tools.wiki'] } });
+    await useFeatures.getState().loadHidden();
+    expect(useFeatures.getState().hidden).toEqual(['tools.wiki']);
+
+    mockGet.mockRejectedValue(new Error('network'));
+    await useFeatures.getState().loadHidden();
+    expect(useFeatures.getState().hidden).toEqual([]);
   });
 });

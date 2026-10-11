@@ -29,6 +29,7 @@ import { useAuth } from '../store/auth';
 import { useSiteSettings } from '../store/siteSettings';
 import { AvatarUpload } from '../components/AvatarUpload';
 import { TwoFactorSettings } from '../components/TwoFactorSettings';
+import { MenuSettings } from '../components/MenuSettings';
 import {
   changePassword,
   updateProfile,
@@ -656,6 +657,8 @@ export default function Profile() {
 
             {activeTab === 'settings' && (
               <div className="space-y-6">
+                <MenuSettings />
+
                 {/* 비밀번호 변경 */}
                 <div className="card p-6">
                   <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-5">

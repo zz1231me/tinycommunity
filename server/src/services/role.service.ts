@@ -7,6 +7,8 @@ import { User } from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
 import { sequelize } from '../config/sequelize';
 import { UniqueConstraintError, Op } from 'sequelize';
+import { featureFlagService } from './featureFlag.service';
+import { FeatureRule } from '../models/FeatureRule';
 
 const PROTECTED_ROLES = ['admin', 'manager', 'guest'] as const;
 
@@ -103,12 +105,15 @@ export class RoleService extends BaseService {
         await User.update({ roleId: 'guest' }, { where: { roleId: id }, transaction: t });
         await BoardAccess.destroy({ where: { roleId: id }, transaction: t });
         await EventPermission.destroy({ where: { roleId: id }, transaction: t });
+        await FeatureRule.destroy({ where: { scope: 'role', targetId: id }, transaction: t });
         await role.destroy({ transaction: t });
       });
     } catch (error) {
       if (error instanceof AppError) throw error;
       throw new AppError(500, '역할 삭제 실패');
     }
+    // 지운 역할의 기능 규칙이 캐시에 남지 않게 한다
+    featureFlagService.invalidate();
   }
 
   async getBoardAccessPermissions(boardId: string) {

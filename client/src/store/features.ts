@@ -10,6 +10,10 @@ interface FeatureState {
   features: Record<FeatureKey, boolean>;
   loaded: boolean;
   load: () => Promise<void>;
+  /** 본인이 사이드바에서 숨긴 메뉴. 권한이 아니라 보기 설정이다. */
+  hidden: FeatureKey[];
+  loadHidden: () => Promise<void>;
+  setHidden: (hidden: FeatureKey[]) => void;
   /** 관리자 화면에서 저장한 직후 곧바로 반영하기 위한 것 */
   set: (features: Record<FeatureKey, boolean>) => void;
 }
@@ -27,9 +31,28 @@ export const useFeatures = create<FeatureState>(set => ({
     }
   },
   set: features => set({ features, loaded: true }),
+  hidden: [],
+  loadHidden: async () => {
+    try {
+      const res = await api.get('/features/hidden-menus');
+      set({ hidden: unwrap<FeatureKey[]>(res) });
+    } catch {
+      // 못 읽었으면 아무것도 숨기지 않는다
+      set({ hidden: [] });
+    }
+  },
+  setHidden: hidden => set({ hidden }),
 }));
 
 /** 화면 노출 여부. 못 읽었거나 목록에 없는 키는 켜진 것으로 본다. */
 export function useFeature(key: FeatureKey): boolean {
   return useFeatures(s => s.features[key] !== false);
+}
+
+/**
+ * 메뉴에 보일지. 기능이 켜져 있고 본인이 숨기지 않았을 때만.
+ * 숨긴 메뉴도 주소로 들어가면 열린다 — 화면(FeatureRoute)은 useFeature 만 본다.
+ */
+export function useMenuVisible(key: FeatureKey): boolean {
+  return useFeatures(s => s.features[key] !== false && !s.hidden.includes(key));
 }
