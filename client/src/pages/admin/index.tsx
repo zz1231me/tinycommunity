@@ -147,8 +147,11 @@ const AdminUserPage = () => {
                   <Route path="announcements" element={<AnnouncementManagement />} />
                   <Route path="attendance" element={<AttendanceManagement />} />
                   <Route path="point-attacks" element={<PointAttackManagement />} />
-                  {/* 잘못된 경로는 users로 리다이렉트 */}
-                  <Route path="*" element={<Navigate to="users" replace />} />
+                  {/* 잘못된 경로는 users로 리다이렉트.
+                      to 는 반드시 절대 경로여야 한다 — 상대 경로("users")는 지금 주소
+                      (= 매칭된 '*' 까지 포함)에 이어 붙어 /admin/<잘못된경로>/users 가 되고,
+                      그 역시 잘못된 경로라 다시 여기로 와 끝없이 /users 를 덧붙인다. */}
+                  <Route path="*" element={<Navigate to="/admin/users" replace />} />
                 </Routes>
               </Suspense>
             </div>
