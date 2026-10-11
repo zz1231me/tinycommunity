@@ -60,6 +60,12 @@ export default function AttendancePage() {
   const status = useQuery({
     queryKey: attendanceKeys.me,
     queryFn: fetchMyAttendance,
+    // 출근·퇴근은 다른 기기(휴대폰)나 다른 탭에서도 찍는다. 그런데 이 조회에는 주기도
+    // 알림도 없어서, 그렇게 찍고 이 화면으로 돌아오면 '출근 전' 인 채로 남아 있었다.
+    // 그러면 공격이 와도 근무 중이 아닌 줄 알고 아무 표시도 하지 않는다(실제로 그렇게 됐다).
+    // 탭으로 돌아올 때 다시 읽는다. 주기 조회는 두지 않는다 — 돌아올 때면 충분하다.
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
   });
 
   const month = pickedMonth ?? status.data?.workDate.slice(0, 7) ?? todayString().slice(0, 7);
@@ -139,9 +145,11 @@ export default function AttendancePage() {
 
   const refreshAttack = () => queryClient.invalidateQueries({ queryKey: attendanceKeys.attack });
 
-  // 공격 알림이 오면 바로 다시 읽는다.
+  // 공격 알림이 오면 바로 다시 읽는다. 오늘 상태도 같이 읽는다 — 다른 기기에서 출근을
+  // 찍었다면 이 화면은 아직 '출근 전' 이라, 공격 상태만 받아도 그릴 자리가 없다.
   useNotificationArrival(['ATTACK'], () => {
     void refreshAttack();
+    void queryClient.invalidateQueries({ queryKey: attendanceKeys.me });
   });
 
   // 내 시계와 서버 시계의 차이. 어긋나면 걸린 공격이 이미 끝난 것으로 보인다.
