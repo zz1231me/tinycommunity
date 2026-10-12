@@ -1,7 +1,7 @@
 // 달력에 얹는 내 업무. 일정 있는 것만, 마감일 당일까지 칠하고, 지난 마감은 붉게, 끌어 바꾸지 못하게.
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { MyTask } from '../../../../api/tasks';
 import { useFeatures } from '../../../../store/features';
@@ -78,5 +78,26 @@ describe('useTaskEvents', () => {
     await new Promise(r => setTimeout(r, 20));
     expect(fetchMyTasks).not.toHaveBeenCalled();
     expect(result.current).toEqual([]);
+  });
+
+  it('자정을 넘기면 지각 색으로 바뀐다 — 밤새 켜 둔 달력도 따라온다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      // 오늘이 마감인 업무. 자정을 넘기는 순간부터 '지난 마감' 이다.
+      vi.setSystemTime(new Date(2099, 5, 10, 23, 59, 30));
+      const due = '2099-06-10';
+      fetchMyTasks.mockResolvedValue([task('n', { dueDate: due })]);
+      const { result } = run();
+      await waitFor(() => expect(result.current).toHaveLength(1));
+      expect(result.current[0].backgroundColor).toBe('#f97316');
+
+      await act(async () => {
+        vi.advanceTimersByTime(90_000); // 자정 통과
+      });
+
+      await waitFor(() => expect(result.current[0].backgroundColor).toBe('#e11d48'));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

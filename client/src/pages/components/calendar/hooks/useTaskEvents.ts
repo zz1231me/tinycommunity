@@ -9,6 +9,7 @@ import { taskKeys } from '../../../../api/queryKeys';
 import { useFeature } from '../../../../store/features';
 import { dueInfo } from '../../../../components/tasks/taskViews';
 import { dateUtils } from '../utils';
+import { useToday } from '../../../../hooks/useToday';
 
 const OPEN: WorkStatus[] = ['todo', 'doing'];
 const TASK_COLOR = '#f97316';
@@ -23,8 +24,11 @@ export function useTaskEvents(): EventInput[] {
     enabled,
   });
 
+  // 자정을 넘기면 지각 여부가 달라진다. new Date() 를 useMemo 안에서 읽으면 자료가 다시
+  // 올 때까지 어제 기준으로 칠해져, 밤새 켜 둔 달력이 지난 마감을 아직 멀쩡한 색으로 뒀다.
+  const today = useToday();
+
   return useMemo(() => {
-    const today = new Date();
     return data
       .filter(t => t.startDate || t.dueDate)
       .map(t => {
@@ -46,5 +50,5 @@ export function useTaskEvents(): EventInput[] {
           extendedProps: { taskLink: `/dashboard/posts/${t.boardType}/${t.id}` },
         };
       });
-  }, [data]);
+  }, [data, today]);
 }

@@ -5,7 +5,8 @@ import { dueInfo, type DueTone } from './taskViews';
 
 const TONE: Record<DueTone, string> = {
   overdue: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
-  today: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+  // 밝은 테마에서 orange-700 은 4.28:1 로 AA(작은 글자 4.5:1)에 못 미쳤다. 한 단계 진하게 — 6.05:1.
+  today: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
   soon: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
   later: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
 };
