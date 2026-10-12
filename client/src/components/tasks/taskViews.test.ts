@@ -21,6 +21,7 @@ const task = (over: Partial<MyTask>): MyTask => ({
   boardType: 'qc',
   boardName: 'QC',
   workStatus: 'todo',
+  priority: 'none',
   assignee: null,
   canEdit: true,
   startDate: null,
@@ -173,5 +174,26 @@ describe('fromGanttRange', () => {
     const start = new Date(2026, 9, 7, 0, 0); // UTC 로는 10월 6일 15시
     const end = new Date(2026, 9, 9, 0, 0);
     expect(fromGanttRange(start, end)).toEqual({ startDate: '2026-10-07', dueDate: '2026-10-08' });
+  });
+});
+
+describe('우선순위 순 정렬', () => {
+  // 마감일만으로는 '마감은 멀지만 급한 일' 을 위로 올릴 수 없다. 두 축을 함께 쓴다.
+  it('급한 것부터, 같으면 마감 빠른 순', () => {
+    const tasks = [
+      task({ id: 'a', priority: 'normal', dueDate: '2099-01-01' }),
+      task({ id: 'b', priority: 'urgent', dueDate: '2099-12-31' }),
+      task({ id: 'c', priority: 'urgent', dueDate: '2099-06-01' }),
+      task({ id: 'd', priority: 'none', dueDate: null }),
+    ];
+    expect(sortTasks(tasks, 'priority').map(t => t.id)).toEqual(['c', 'b', 'a', 'd']);
+  });
+
+  it('마감 빠른 순은 우선순위를 보지 않는다 — 두 축을 섞지 않게', () => {
+    const tasks = [
+      task({ id: 'late', priority: 'urgent', dueDate: '2099-12-31' }),
+      task({ id: 'soon', priority: 'low', dueDate: '2099-01-01' }),
+    ];
+    expect(sortTasks(tasks, 'due').map(t => t.id)).toEqual(['soon', 'late']);
   });
 });

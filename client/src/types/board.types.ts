@@ -1,5 +1,6 @@
 // 게시판 관련 타입 정의
 
+import type { TaskPriority } from '../components/tasks/taskPriority';
 import type { WorkStatus } from '../api/tasks';
 
 export type Post = {
@@ -29,6 +30,7 @@ export type Post = {
   tags?: Tag[];
   /** 업무 상태 — 업무로 추적하지 않는 글은 'none' */
   workStatus?: WorkStatus;
+  priority?: TaskPriority;
   /** 담당자. 목록·상세 모두 같은 모양으로 내려온다 */
   assignee?: { id: string; name: string; avatar?: string | null } | null;
 };

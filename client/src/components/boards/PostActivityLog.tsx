@@ -10,11 +10,13 @@ import {
   Paperclip,
   PenLine,
   UserRound,
+  Flag,
 } from 'lucide-react';
 import { fetchActivity, fetchWorkStatuses, type ActivityEntry } from '../../api/tasks';
 import { taskKeys } from '../../api/queryKeys';
 import { formatFullDateTime, formatRelativeDate, toISOString } from '../../utils/date';
 import { ListError } from '../common/ListState';
+import { PRIORITY_LABEL, isTaskPriority } from '../tasks/taskPriority';
 import { formatSchedule } from '../tasks/taskViews';
 
 /** 접었을 때 보여 줄 줄 수 */
@@ -27,6 +29,7 @@ const ICONS: Record<ActivityEntry['kind'], typeof History> = {
   status: History,
   assignee: UserRound,
   schedule: CalendarRange,
+  priority: Flag,
 };
 
 interface Props {
@@ -151,12 +154,20 @@ function describe(entry: ActivityEntry, statusLabel: (key?: string | null) => st
       return entry.from?.value
         ? `담당자를 ${entry.from.label} 에서 ${entry.to.label} 로 바꿨습니다.`
         : `${entry.to.label} 를 담당자로 지정했습니다.`;
+    case 'priority':
+      return `우선순위를 ${priorityLabel(entry.from?.value)} → ${priorityLabel(entry.to?.value)} 로 바꿨습니다.`;
     case 'schedule':
       if (!entry.to?.value) return '일정을 지웠습니다.';
       return entry.from?.value
         ? `일정을 ${scheduleText(entry.from.value)} → ${scheduleText(entry.to.value)} 로 바꿨습니다.`
         : `일정을 ${scheduleText(entry.to.value)} 로 정했습니다.`;
   }
+}
+
+/** 저장된 우선순위 키를 이름으로. 모르는 값은 키 그대로 보여 준다. */
+function priorityLabel(value?: string | null): string {
+  if (!value) return '없음';
+  return isTaskPriority(value) ? PRIORITY_LABEL[value] : value;
 }
 
 /** 서버가 적은 '시작~마감' 한 줄을 읽는 글로 */

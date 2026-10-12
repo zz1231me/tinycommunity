@@ -1,17 +1,10 @@
 {
   "testEnvironment": "node",
-  "roots": [
-    "<rootDir>/src"
-  ],
-  "testMatch": [
-    "**/__tests__/**/*.test.ts"
-  ],
-  "setupFiles": [
-    "<rootDir>/src/__tests__/env-setup.ts"
-  ],
-  "setupFilesAfterEnv": [
-    "<rootDir>/src/__tests__/setup.ts"
-  ],
+  "roots": ["<rootDir>/src"],
+  "testMatch": ["**/__tests__/**/*.test.ts"],
+  "setupFiles": ["<rootDir>/src/__tests__/env-setup.ts"],
+  "globalSetup": "<rootDir>/src/__tests__/global-setup.ts",
+  "setupFilesAfterEnv": ["<rootDir>/src/__tests__/setup.ts"],
   "collectCoverageFrom": [
     "src/**/*.ts",
     "!src/**/*.d.ts",
@@ -20,11 +13,7 @@
     "!src/__tests__/**"
   ],
   "coverageDirectory": "coverage",
-  "coverageReporters": [
-    "text",
-    "lcov",
-    "html"
-  ],
+  "coverageReporters": ["text", "lcov", "html"],
   "coverageThreshold": {
     "global": {
       "branches": 10,

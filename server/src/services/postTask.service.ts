@@ -9,6 +9,7 @@ import { BoardManager } from '../models/BoardManager';
 import { AppError } from '../middlewares/error.middleware';
 import { ROLES } from '../config/constants';
 import { isWorkStatus, type WorkStatus } from '../config/workStatus';
+import { isTaskPriority, type TaskPriority } from '../config/taskPriority';
 import { notificationService } from './notification.service';
 import { getAccessibleBoardTypes } from './accessibleBoards';
 import { checkSecretPostAccess } from '../utils/postAccess';
@@ -25,6 +26,8 @@ interface ChangeParams {
   /** 넘기지 않으면 그대로 둔다. null 은 담당자 없음. */
   assigneeId?: string | null;
   workStatus?: WorkStatus;
+  /** 넘기지 않으면 그대로 둔다. 'none' 은 정하지 않음. */
+  priority?: TaskPriority;
   /** YYYY-MM-DD. 넘기지 않으면 그대로 두고 null 은 일정 없음. */
   startDate?: string | null;
   dueDate?: string | null;
@@ -94,6 +97,9 @@ export const postTaskService = {
     if (params.workStatus !== undefined && !isWorkStatus(params.workStatus)) {
       throw new AppError(400, '업무 상태 값이 올바르지 않습니다.');
     }
+    if (params.priority !== undefined && !isTaskPriority(params.priority)) {
+      throw new AppError(400, '우선순위 값이 올바르지 않습니다.');
+    }
     if (params.ifWorkStatus !== undefined && post.workStatus !== params.ifWorkStatus) {
       throw new AppError(409, '그사이 다른 곳에서 상태가 바뀌어 되돌리지 않았습니다.');
     }
@@ -101,6 +107,7 @@ export const postTaskService = {
     const previousAssignee = post.assigneeId ?? null;
     const previousStatus = post.workStatus;
     const previousSchedule = scheduleValue(post.startDate, post.dueDate);
+    const previousPriority = post.priority;
 
     if (params.assigneeId !== undefined) {
       if (params.assigneeId === null) {
@@ -119,6 +126,7 @@ export const postTaskService = {
       }
     }
 
+    if (params.priority !== undefined) post.priority = params.priority;
     if (params.startDate !== undefined) post.startDate = params.startDate;
     if (params.dueDate !== undefined) post.dueDate = params.dueDate;
     // 한쪽만 바꿔도 저장된 다른 쪽과 어긋날 수 있어 합친 뒤에 본다
@@ -130,6 +138,7 @@ export const postTaskService = {
     const nextStatus = post.workStatus;
     const nextAssigneeId = post.assigneeId ?? null;
     const nextSchedule = scheduleValue(post.startDate, post.dueDate);
+    const nextPriority = post.priority;
     await sequelize.transaction(async t => {
       await post.save({ transaction: t });
       await recordChanges(t, {
@@ -138,6 +147,7 @@ export const postTaskService = {
         status: previousStatus !== nextStatus ? [previousStatus, nextStatus] : null,
         assignee: previousAssignee !== nextAssigneeId ? [previousAssignee, nextAssigneeId] : null,
         schedule: previousSchedule !== nextSchedule ? [previousSchedule, nextSchedule] : null,
+        priority: previousPriority !== nextPriority ? [previousPriority, nextPriority] : null,
       });
     });
 
@@ -158,6 +168,7 @@ export const postTaskService = {
     return {
       workStatus: post.workStatus,
       assignee: nextAssignee ? await loadAssignee(nextAssignee) : null,
+      priority: post.priority,
       startDate: post.startDate ?? null,
       dueDate: post.dueDate ?? null,
     };
@@ -244,6 +255,7 @@ async function findTasks(
             'title',
             'boardType',
             'workStatus',
+            'priority',
             'assigneeId',
             'startDate',
             'dueDate',
@@ -286,6 +298,7 @@ async function findTasks(
       title: string;
       boardType: string;
       workStatus: WorkStatus;
+      priority: TaskPriority;
       assigneeId: string | null;
       startDate: string | null;
       dueDate: string | null;
@@ -301,6 +314,7 @@ async function findTasks(
       boardType: plain.boardType,
       boardName: plain.board?.name ?? plain.boardType,
       workStatus: plain.workStatus,
+      priority: plain.priority ?? 'none',
       assignee: plain.assignee
         ? {
             id: plain.assignee.id,
@@ -331,6 +345,7 @@ async function recordChanges(
     status: [string, string] | null;
     assignee: [string | null, string | null] | null;
     schedule: [string | null, string | null] | null;
+    priority: [string, string] | null;
   }
 ) {
   const rows: Array<{
@@ -357,6 +372,15 @@ async function recordChanges(
       kind: 'assignee',
       fromValue: change.assignee[0],
       toValue: change.assignee[1],
+    });
+  }
+  if (change.priority) {
+    rows.push({
+      postId: change.postId,
+      actorId: change.actorId,
+      kind: 'priority',
+      fromValue: change.priority[0],
+      toValue: change.priority[1],
     });
   }
   if (change.schedule) {

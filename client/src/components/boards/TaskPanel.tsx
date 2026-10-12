@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarRange, CircleDot, UserRound, X } from 'lucide-react';
+import { CalendarRange, CircleDot, UserRound, X, Flag } from 'lucide-react';
 import { Avatar } from '../Avatar';
 import { UserPicker } from '../common/UserPicker';
+import { PriorityBadge } from '../tasks/PriorityBadge';
+import { PRIORITY_LABEL, TASK_PRIORITIES, type TaskPriority } from '../tasks/taskPriority';
 import { WorkStatusBadge } from './WorkStatusBadge';
 import { changeTask, fetchWorkStatuses, type TaskState, type WorkStatus } from '../../api/tasks';
 import { taskKeys } from '../../api/queryKeys';
@@ -51,6 +53,7 @@ export function TaskPanel({ boardType, postId, state, editable, onChange }: Prop
     mutationFn: (change: {
       assigneeId?: string | null;
       workStatus?: WorkStatus;
+      priority?: TaskPriority;
       startDate?: string | null;
       dueDate?: string | null;
     }) => changeTask(boardType, postId, change),
@@ -121,6 +124,41 @@ export function TaskPanel({ boardType, postId, state, editable, onChange }: Prop
           <span className="text-xs text-slate-400">없음</span>
         ) : (
           <WorkStatusBadge status={state.workStatus} />
+        )}
+      </div>
+
+      {/* 우선순위 — 마감과 다른 축이다. 마감이 멀어도 급한 일을 나타낸다. */}
+      <div className="flex items-center gap-2">
+        <Flag className="h-4 w-4 flex-shrink-0 text-slate-400" aria-hidden="true" />
+        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">우선순위</span>
+
+        {editable ? (
+          <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="우선순위 선택">
+            {TASK_PRIORITIES.map(key => {
+              const active = state.priority === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  disabled={mutate.isPending}
+                  onClick={() => mutate.mutate({ priority: key })}
+                  className={`rounded-md px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+                    active
+                      ? 'bg-primary-600 text-white'
+                      : 'text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {PRIORITY_LABEL[key]}
+                </button>
+              );
+            })}
+          </div>
+        ) : state.priority === 'none' ? (
+          <span className="text-xs text-slate-400">없음</span>
+        ) : (
+          <PriorityBadge priority={state.priority} />
         )}
       </div>
 

@@ -14,6 +14,7 @@ vi.mock('../../api/tasks', async () => {
 
 const state = (over: Partial<TaskState> = {}): TaskState => ({
   workStatus: 'todo',
+  priority: 'none',
   assignee: null,
   startDate: '2026-10-10',
   dueDate: '2026-10-12',
@@ -84,5 +85,27 @@ describe('TaskPanel 일정', () => {
   it('상태·담당 없이 일정만 있어도 읽기 전용으로 보여 준다', () => {
     setup(state({ workStatus: 'none' }), false);
     expect(screen.getByText('2026-10-10 ~ 2026-10-12')).toBeInTheDocument();
+  });
+});
+
+describe('우선순위', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    api.fetchWorkStatuses.mockResolvedValue([]);
+    api.changeTask.mockImplementation(async (_b, _p, change) => ({ ...state(), ...change }));
+  });
+
+  it('고르면 그 값만 저장 요청에 실린다 — 상태가 함께 덮이지 않게', async () => {
+    setup(state());
+    await act(async () => fireEvent.click(screen.getByRole('radio', { name: '긴급' })));
+
+    expect(api.changeTask).toHaveBeenCalledWith('qc', 'P1', { priority: 'urgent' });
+  });
+
+  it('바꿀 수 없는 사람에게는 고르개 대신 지금 값만 보여 준다', async () => {
+    setup(state({ priority: 'high' }), false);
+
+    expect(screen.getByTitle('우선순위 높음')).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: '긴급' })).not.toBeInTheDocument();
   });
 });

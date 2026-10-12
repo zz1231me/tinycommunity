@@ -20,6 +20,7 @@ const task = (id: string, over: Partial<MyTask>): MyTask => ({
   boardType: 'qc',
   boardName: 'QC',
   workStatus: 'todo',
+  priority: 'none',
   assignee: null,
   canEdit: true,
   startDate: null,

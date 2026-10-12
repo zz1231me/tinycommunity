@@ -25,6 +25,7 @@ const task = (
   boardType: 'qc',
   boardName: 'QC',
   workStatus,
+  priority: 'none',
   assignee: null,
   canEdit: true,
   startDate: null,

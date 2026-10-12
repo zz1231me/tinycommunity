@@ -5,6 +5,7 @@ import type { MyTask } from '../../api/tasks';
 import { formatRelativeDate } from '../../utils/date';
 import { WorkStatusBadge } from '../boards/WorkStatusBadge';
 import { DueBadge } from './DueBadge';
+import { PriorityBadge } from './PriorityBadge';
 import { formatSchedule } from './taskViews';
 import { useStatusLabel } from './useStatusLabel';
 
@@ -29,6 +30,7 @@ export function TaskList({ tasks, today, showAssignee }: Props) {
             <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 dark:text-slate-100">
               {task.title}
             </span>
+            <PriorityBadge priority={task.priority} />
             <DueBadge task={task} today={today} />
             {(task.startDate || task.dueDate) && (
               <span className="hidden flex-shrink-0 text-xs tabular-nums text-slate-400 md:inline">

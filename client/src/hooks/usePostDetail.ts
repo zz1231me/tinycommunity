@@ -8,6 +8,7 @@ import { getApiErrorMessage } from '../api/utils';
 import { getBoardTitle } from '../constants/boardTitles';
 import { decryptContent } from '../utils/crypto';
 import type { Assignee, WorkStatus } from '../api/tasks';
+import type { TaskPriority } from '../components/tasks/taskPriority';
 import type { Tag } from '../types/board.types';
 
 /** 상세 응답에 함께 오는 "보는 사람의 상태" */
@@ -39,6 +40,8 @@ export type Post = {
   pinnedUntil?: string | null;
   /** 업무 상태. 추적하지 않는 글은 'none'. */
   workStatus?: WorkStatus;
+  /** 업무 우선순위. 정하지 않았으면 'none'. */
+  priority?: TaskPriority;
   assignee?: Assignee | null;
   /** 업무 일정 YYYY-MM-DD. 정하지 않았으면 null */
   startDate?: string | null;
@@ -144,6 +147,7 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
         isPinned: data.isPinned,
         pinnedUntil: data.pinnedUntil ?? null,
         workStatus: data.workStatus ?? 'none',
+        priority: data.priority ?? 'none',
         assignee: data.assignee ?? null,
         startDate: data.startDate ?? null,
         dueDate: data.dueDate ?? null,

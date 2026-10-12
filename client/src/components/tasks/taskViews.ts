@@ -2,6 +2,7 @@
 
 import { addDays, differenceInCalendarDays, format, parseISO, startOfDay } from 'date-fns';
 import type { MyTask, WorkStatus } from '../../api/tasks';
+import { PRIORITY_RANK } from './taskPriority';
 
 /** 칸반에 그리는 상태. 'none' 은 업무로 추적하지 않는 글이라 열을 두지 않는다. */
 export type KanbanStatus = Exclude<WorkStatus, 'none'>;
@@ -106,22 +107,36 @@ export function filterTasks(tasks: MyTask[], filter: TaskFilter, today: Date): M
   );
 }
 
-export type TaskSort = 'stale' | 'due';
+export type TaskSort = 'stale' | 'due' | 'priority';
 
 export const TASK_SORTS: { key: TaskSort; label: string }[] = [
   { key: 'stale', label: '오래 방치된 순' },
   { key: 'due', label: '마감 빠른 순' },
+  { key: 'priority', label: '우선순위 순' },
 ];
 
-/** 'stale' 은 서버 순서(오래 손대지 않은 것부터) 그대로. 'due' 는 마감 없는 일을 맨 뒤로. */
+/**
+ * 'stale' 은 서버 순서(오래 손대지 않은 것부터) 그대로.
+ * 'due' 는 마감 없는 일을 맨 뒤로, 'priority' 는 급한 것부터(같으면 마감 빠른 순).
+ */
 export function sortTasks(tasks: MyTask[], sort: TaskSort): MyTask[] {
   if (sort === 'stale') return tasks;
-  return [...tasks].sort((a, b) => {
-    if (a.dueDate === b.dueDate) return 0;
-    if (!a.dueDate) return 1;
-    if (!b.dueDate) return -1;
-    return a.dueDate < b.dueDate ? -1 : 1;
-  });
+  if (sort === 'priority') {
+    return [...tasks].sort((a, b) => {
+      const byRank = PRIORITY_RANK[b.priority] - PRIORITY_RANK[a.priority];
+      if (byRank !== 0) return byRank;
+      return compareDue(a, b);
+    });
+  }
+  return [...tasks].sort(compareDue);
+}
+
+/** 마감 빠른 순. 마감이 없는 일은 맨 뒤로 보낸다. */
+function compareDue(a: MyTask, b: MyTask): number {
+  if (a.dueDate === b.dueDate) return 0;
+  if (!a.dueDate) return 1;
+  if (!b.dueDate) return -1;
+  return a.dueDate < b.dueDate ? -1 : 1;
 }
 
 // ── 간트 ────────────────────────────────────────────────────────────────

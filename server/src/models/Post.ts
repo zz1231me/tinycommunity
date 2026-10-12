@@ -11,6 +11,7 @@ import { sequelize } from '../config/sequelize';
 import { generateRandomId } from '../utils/generateId';
 import { logError } from '../utils/logger';
 import { extractSearchText } from '../utils/contentRenderer';
+import type { TaskPriority } from '../config/taskPriority';
 import type { WorkStatus } from '../config/workStatus';
 
 import type { UserInstance } from './User';
@@ -40,6 +41,7 @@ export interface PostInstance extends Model<
   pinnedUntil: CreationOptional<Date | null>;
   // 업무 추적
   workStatus: CreationOptional<WorkStatus>;
+  priority: CreationOptional<TaskPriority>;
   assigneeId: CreationOptional<string | null>;
   startDate: CreationOptional<string | null>;
   dueDate: CreationOptional<string | null>;
@@ -77,6 +79,7 @@ class PostModel
   declare public isPinned: CreationOptional<boolean>;
   declare public pinnedUntil: CreationOptional<Date | null>;
   declare public workStatus: CreationOptional<WorkStatus>;
+  declare public priority: CreationOptional<TaskPriority>;
   declare public assigneeId: CreationOptional<string | null>;
   declare public startDate: CreationOptional<string | null>;
   declare public dueDate: CreationOptional<string | null>;
@@ -200,6 +203,12 @@ PostModel.init(
       allowNull: false,
       defaultValue: 'none',
       comment: '업무 상태 (none/todo/doing/done)',
+    },
+    priority: {
+      type: DataTypes.STRING(10),
+      allowNull: false,
+      defaultValue: 'none',
+      comment: '업무 우선순위 (none/low/normal/high/urgent)',
     },
     assigneeId: {
       type: DataTypes.STRING(50),

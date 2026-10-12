@@ -45,6 +45,7 @@ import {
   getTaskBoards,
   getReaders,
   getActivity,
+  getTaskPriorities,
   getWorkStatuses,
 } from '../controllers/postTask.controller';
 
@@ -167,6 +168,23 @@ router.get(
   authenticate as RequestHandler,
   requireFeature('post.tasks'),
   asyncHandler((req, res) => getWorkStatuses(req as AuthRequest, res))
+);
+
+/**
+ * @swagger
+ * /api/posts/tasks/priorities:
+ *   get:
+ *     summary: 업무 우선순위 목록
+ *     tags: [Posts]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: '[{ key, label, description }]' }
+ */
+router.get(
+  '/tasks/priorities',
+  authenticate as RequestHandler,
+  requireFeature('post.tasks'),
+  asyncHandler((req, res) => getTaskPriorities(req as AuthRequest, res))
 );
 
 /**

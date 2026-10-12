@@ -144,6 +144,7 @@ const PostDetail = () => {
   // 업무 상태는 이 화면에서 바꾸므로 로컬로 들고 있는다
   const [task, setTask] = useState<TaskState>({
     workStatus: 'none',
+    priority: 'none',
     assignee: null,
     startDate: null,
     dueDate: null,
@@ -166,6 +167,7 @@ const PostDetail = () => {
     setPinnedUntil(post.pinnedUntil ?? null);
     setTask({
       workStatus: post.workStatus ?? 'none',
+      priority: post.priority ?? 'none',
       assignee: post.assignee ?? null,
       startDate: post.startDate ?? null,
       dueDate: post.dueDate ?? null,

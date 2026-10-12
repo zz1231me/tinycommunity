@@ -2,6 +2,7 @@
 // 담당자·업무 상태·일정, 팀 보기, 읽음 확인, 첨부 이전 버전.
 
 import api from './axios';
+import type { TaskPriority } from '../components/tasks/taskPriority';
 import { unwrap } from './utils';
 
 export type WorkStatus = 'none' | 'todo' | 'doing' | 'done';
@@ -20,6 +21,7 @@ export interface Assignee {
 
 export interface TaskState {
   workStatus: WorkStatus;
+  priority: TaskPriority;
   assignee: Assignee | null;
   /** YYYY-MM-DD. 정하지 않았으면 null */
   startDate: string | null;
@@ -32,6 +34,7 @@ export interface MyTask {
   boardType: string;
   boardName: string;
   workStatus: WorkStatus;
+  priority: TaskPriority;
   assignee: Assignee | null;
   /** 지금 사용자가 상태·일정을 바꿀 수 있는지. 서버의 권한 규칙과 같다. */
   canEdit: boolean;
@@ -74,6 +77,7 @@ export async function changeTask(
   change: {
     assigneeId?: string | null;
     workStatus?: WorkStatus;
+    priority?: TaskPriority;
     startDate?: string | null;
     dueDate?: string | null;
     /** 이 상태일 때만 바꾼다. 다르면 서버가 409 로 거절한다(되돌리기용). */
@@ -133,7 +137,7 @@ export async function fetchAttachmentVersions(
 /** 글에 일어난 일 한 줄 */
 export interface ActivityEntry {
   id: string;
-  kind: 'created' | 'edited' | 'attachment' | 'status' | 'assignee' | 'schedule';
+  kind: 'created' | 'edited' | 'attachment' | 'status' | 'assignee' | 'schedule' | 'priority';
   at: string;
   actor: { id: string; name: string } | null;
   /** 수정 줄에서 diff 를 열 때 쓴다 */

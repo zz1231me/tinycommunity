@@ -22,6 +22,7 @@ import { Lock, UserRound } from 'lucide-react';
 import type { MyTask } from '../../api/tasks';
 import { Tooltip } from '../common/Tooltip';
 import { DueBadge } from './DueBadge';
+import { PriorityBadge } from './PriorityBadge';
 import { TaskCardMenu } from './TaskCardMenu';
 import { TaskTooltipContent } from './TaskTooltipContent';
 import {
@@ -280,6 +281,7 @@ function CardBody({
         {menu}
       </div>
       <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-400">
+        <PriorityBadge priority={task.priority} />
         <DueBadge task={task} today={today} />
         <span className="min-w-0 flex-1 truncate">{task.boardName}</span>
         {showAssignee &&

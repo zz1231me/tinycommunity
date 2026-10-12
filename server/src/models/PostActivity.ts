@@ -12,7 +12,7 @@ import {
 import { sequelize } from '../config/sequelize';
 
 /** 사건 종류. 값이 늘 수 있어 ENUM 이 아닌 문자열이다. */
-export type PostActivityKind = 'status' | 'assignee' | 'schedule';
+export type PostActivityKind = 'status' | 'assignee' | 'schedule' | 'priority';
 
 class PostActivityModel extends Model<
   InferAttributes<PostActivityModel>,

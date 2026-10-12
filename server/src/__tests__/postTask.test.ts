@@ -923,3 +923,68 @@ describe('비밀글 담당자 — 명단에 없는 사람에게 제목이 새지
     expect(JSON.stringify(after.body.data)).not.toContain('비밀 제목입니다');
   });
 });
+
+describe('우선순위', () => {
+  it('목록 API 가 키·이름을 돌려준다', async () => {
+    const res = await request(app).get('/api/posts/tasks/priorities').set('Cookie', userCookie);
+    expect(res.status).toBe(200);
+    expect(res.body.data.map((p: { key: string }) => p.key)).toEqual([
+      'none',
+      'low',
+      'normal',
+      'high',
+      'urgent',
+    ]);
+  });
+
+  it('바꾸면 저장되고 목록에도 실린다', async () => {
+    const id = await createPost(adminCookie, `우선순위 ${Date.now()}`);
+    await setTask(adminCookie, id, { assigneeId: 'testuser', workStatus: 'todo' });
+
+    const res = await request(app)
+      .patch(`/api/posts/notice/${id}/task`)
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({ priority: 'urgent' });
+    expect(res.status).toBe(200);
+    expect(res.body.data.priority).toBe('urgent');
+
+    const mine = await request(app)
+      .get('/api/posts/tasks/mine?status=todo,doing')
+      .set('Cookie', userCookie);
+    expect(mine.body.data.find((t: { id: string }) => t.id === id)?.priority).toBe('urgent');
+  });
+
+  it('아는 값만 받는다', async () => {
+    const id = await createPost(adminCookie, `우선순위2 ${Date.now()}`);
+    await request(app)
+      .patch(`/api/posts/notice/${id}/task`)
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({ priority: 'blocker' })
+      .expect(400);
+  });
+
+  it('바뀐 것만 활동 기록에 남는다', async () => {
+    const id = await createPost(adminCookie, `우선순위3 ${Date.now()}`);
+    await setTask(adminCookie, id, { priority: 'high' });
+    await setTask(adminCookie, id, { priority: 'high' }); // 같은 값은 기록하지 않는다
+
+    const log = await request(app)
+      .get(`/api/posts/notice/${id}/activity`)
+      .set('Cookie', adminCookie);
+    const rows = log.body.data.filter((e: { kind: string }) => e.kind === 'priority');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ to: { value: 'high' } });
+  });
+
+  it('업무용이 아닌 게시판에서는 우선순위도 붙지 않는다', async () => {
+    const id = await createPost(adminCookie, `일반글 ${Date.now()}`, 'plainboard');
+    await request(app)
+      .patch(`/api/posts/plainboard/${id}/task`)
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({ priority: 'high' })
+      .expect(400);
+  });
+});
