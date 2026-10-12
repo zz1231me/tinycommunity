@@ -830,6 +830,45 @@ export const SiteSettingsManagement = () => {
         </div>
       </AdminSection>
 
+      {/* 업무 */}
+      <AdminSection id="tasks" title="업무">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            글에 담당자·일정을 붙이는 업무 기능의 설정입니다. 마감 알림은 담당자에게만 가고 같은
+            글은 하루 한 번만 보냅니다.
+          </p>
+          <SettingList>
+            <NumberInput
+              label="마감 알림 — 며칠 전부터"
+              description="0 이면 마감 당일에만 알립니다. 3 이면 사흘 전부터 매일 한 번"
+              min={0}
+              max={14}
+              value={settings.taskReminderDaysBefore}
+              onChange={v => set('taskReminderDaysBefore', v)}
+              unit="일"
+            />
+            <NumberInput
+              label="마감 알림 보내는 시각"
+              description="이 시각부터 보냅니다. 정해 두지 않으면 자정 직후에 울립니다"
+              min={0}
+              max={23}
+              value={settings.taskReminderHour}
+              onChange={v => set('taskReminderHour', v)}
+              unit="시"
+            />
+            <NumberInput
+              label="'곧 마감' 으로 칠할 기준"
+              description="마감이 이 날 수 안이면 업무 목록·칸반에서 눈에 띄게 칠합니다"
+              min={1}
+              max={30}
+              value={settings.taskSoonDays}
+              onChange={v => set('taskSoonDays', v)}
+              unit="일"
+            />
+          </SettingList>
+        </div>
+      </AdminSection>
+
       {/* 점검 모드 */}
       <AdminSection title="점검 모드">
         <div className="space-y-4">

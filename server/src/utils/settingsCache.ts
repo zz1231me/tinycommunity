@@ -1,6 +1,7 @@
 import { SiteSettings } from '../models/SiteSettings';
 import { logInfo, logError } from './logger';
 import { LOTTERY_DEFAULTS, type LotteryPrize } from '../config/lottery';
+import { TASK_DEFAULTS } from '../config/task';
 import { DUEL_DEFAULTS } from '../config/duel';
 import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
 import { POINT_ATTACK_DEFAULTS } from '../config/pointAttack';
@@ -136,6 +137,9 @@ export const SETTINGS_DEFAULTS = {
   duelMinStake: DUEL_DEFAULTS.minStake,
   duelMaxStake: DUEL_DEFAULTS.maxStake,
   duelExpireMinutes: DUEL_DEFAULTS.expireMinutes,
+  taskReminderDaysBefore: TASK_DEFAULTS.reminderDaysBefore,
+  taskReminderHour: TASK_DEFAULTS.reminderHour,
+  taskSoonDays: TASK_DEFAULTS.soonDays,
   duelMaxOpenPerUser: DUEL_DEFAULTS.maxOpenPerUser,
   attackCost: ATTACK_DEFAULTS.cost,
   attackHideCost: ATTACK_DEFAULTS.hideCost,
@@ -207,6 +211,9 @@ export async function loadSettingsCache(): Promise<void> {
         duelMinStake: settings.duelMinStake ?? DEFAULTS.duelMinStake,
         duelMaxStake: settings.duelMaxStake ?? DEFAULTS.duelMaxStake,
         duelExpireMinutes: settings.duelExpireMinutes ?? DEFAULTS.duelExpireMinutes,
+        taskReminderDaysBefore: settings.taskReminderDaysBefore ?? DEFAULTS.taskReminderDaysBefore,
+        taskReminderHour: settings.taskReminderHour ?? DEFAULTS.taskReminderHour,
+        taskSoonDays: settings.taskSoonDays ?? DEFAULTS.taskSoonDays,
         duelMaxOpenPerUser: settings.duelMaxOpenPerUser ?? DEFAULTS.duelMaxOpenPerUser,
         attackCost: settings.attackCost ?? DEFAULTS.attackCost,
         attackHideCost: settings.attackHideCost ?? DEFAULTS.attackHideCost,
@@ -335,6 +342,18 @@ export function getDuelSettings() {
     maxStake: cachedSettings?.duelMaxStake ?? DEFAULTS.duelMaxStake,
     expireMinutes: cachedSettings?.duelExpireMinutes ?? DEFAULTS.duelExpireMinutes,
     maxOpenPerUser: cachedSettings?.duelMaxOpenPerUser ?? DEFAULTS.duelMaxOpenPerUser,
+  };
+}
+
+/**
+ * 업무 설정. 마감 알림 범위·시각과 '곧' 기준.
+ * 호출할 때마다 읽어야 관리자 변경이 즉시 반영된다.
+ */
+export function getTaskSettings() {
+  return {
+    reminderDaysBefore: cachedSettings?.taskReminderDaysBefore ?? DEFAULTS.taskReminderDaysBefore,
+    reminderHour: cachedSettings?.taskReminderHour ?? DEFAULTS.taskReminderHour,
+    soonDays: cachedSettings?.taskSoonDays ?? DEFAULTS.taskSoonDays,
   };
 }
 

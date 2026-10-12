@@ -10,6 +10,7 @@ export interface FeatureSettingsLink {
 }
 
 export const FEATURE_SETTINGS: Record<string, FeatureSettingsLink> = {
+  'post.tasks': { path: '/admin/site-settings', section: 'tasks', label: '마감 알림·기준 설정' },
   'tools.lottery': { path: '/admin/site-settings', section: 'lottery', label: '확률·포인트 설정' },
   'post.attachments': {
     path: '/admin/site-settings',

@@ -637,6 +637,15 @@ describe('팀 보기', () => {
 describe('마감 알림', () => {
   const now = new Date(2026, 9, 11, 10, 0);
 
+  /** 관리자 설정만 바꾼다. 되돌리는 것은 각 검사가 맡는다. */
+  const setTaskRules = async (patch: Record<string, number>) => {
+    const [row] = await SiteSettings.findOrCreate({ where: {} });
+    await row.update(patch);
+    await refreshSettingsCache();
+  };
+  const resetTaskRules = () =>
+    setTaskRules({ taskReminderDaysBefore: 1, taskReminderHour: 9, taskSoonDays: 3 });
+
   it('마감이 오늘·내일인 담당자에게 하루 한 번만 알린다', async () => {
     const today = await createPost(adminCookie, `오늘마감 ${Date.now()}`);
     const tomorrow = await createPost(adminCookie, `내일마감 ${Date.now()}`);
@@ -731,6 +740,66 @@ describe('마감 알림', () => {
     });
     await sendDueReminders(now);
     expect(await Notification.count({ where: { type: 'TASK_DUE', relatedId: id } })).toBe(0);
+  });
+
+  it('정해 둔 시각 전에는 보내지 않는다 — 자정 직후에 울리지 않게', async () => {
+    const id = await createPost(adminCookie, `새벽 ${Date.now()}`);
+    await setTask(adminCookie, id, {
+      assigneeId: 'testuser',
+      workStatus: 'todo',
+      dueDate: '2026-10-11',
+    });
+    await Notification.destroy({ where: {} });
+    await setTaskRules({ taskReminderHour: 9 });
+    const mine = () => Notification.count({ where: { type: 'TASK_DUE', relatedId: id } });
+
+    // 주기는 1시간이라 자정 직후에도 한 번 돈다. 그때는 아무것도 보내지 않아야 한다.
+    expect(await sendDueReminders(new Date(2026, 9, 11, 0, 5))).toBe(0);
+    expect(await mine()).toBe(0);
+
+    // 그 시각이 되면 보낸다
+    await sendDueReminders(new Date(2026, 9, 11, 9, 0));
+    expect(await mine()).toBe(1);
+    await resetTaskRules();
+  });
+
+  it('며칠 전부터 알릴지는 관리자가 정한다 — 0 이면 마감 당일만', async () => {
+    const today = await createPost(adminCookie, `당일 ${Date.now()}`);
+    const tomorrow = await createPost(adminCookie, `다음날 ${Date.now()}`);
+    for (const [id, due] of [
+      [today, '2026-10-11'],
+      [tomorrow, '2026-10-12'],
+    ] as const) {
+      await setTask(adminCookie, id, { assigneeId: 'testuser', workStatus: 'todo', dueDate: due });
+    }
+    await Notification.destroy({ where: {} });
+    await setTaskRules({ taskReminderDaysBefore: 0 });
+
+    await sendDueReminders(now);
+    // 앞 검사가 만든 글도 함께 걸리므로 이 검사가 만든 둘만 본다
+    const count = (id: string) =>
+      Notification.count({ where: { type: 'TASK_DUE', relatedId: id } });
+    expect(await count(today)).toBe(1);
+    expect(await count(tomorrow)).toBe(0);
+    await resetTaskRules();
+  });
+
+  it('사흘 전부터로 넓히면 그만큼 알리고 문구도 날 수에 맞춘다', async () => {
+    const third = await createPost(adminCookie, `사흘뒤 ${Date.now()}`);
+    await setTask(adminCookie, third, {
+      assigneeId: 'testuser',
+      workStatus: 'todo',
+      dueDate: '2026-10-14',
+    });
+    await Notification.destroy({ where: {} });
+    await setTaskRules({ taskReminderDaysBefore: 3 });
+
+    await sendDueReminders(now);
+    const sent = await Notification.findOne({
+      where: { type: 'TASK_DUE', relatedId: third },
+    });
+    expect(sent?.message).toContain('3일 뒤');
+    await resetTaskRules();
   });
 });
 

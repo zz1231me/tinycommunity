@@ -8,6 +8,7 @@ import {
 import { sequelize } from '../config/sequelize';
 import { LOTTERY_DEFAULTS } from '../config/lottery';
 import { POINT_ATTACK_DEFAULTS } from '../config/pointAttack';
+import { TASK_DEFAULTS } from '../config/task';
 import { DUEL_DEFAULTS } from '../config/duel';
 import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
 
@@ -72,6 +73,9 @@ export interface SiteSettingsInstance extends Model<
   duelMinStake: CreationOptional<number>;
   duelMaxStake: CreationOptional<number>;
   duelExpireMinutes: CreationOptional<number>;
+  taskReminderDaysBefore: CreationOptional<number>;
+  taskReminderHour: CreationOptional<number>;
+  taskSoonDays: CreationOptional<number>;
   duelMaxOpenPerUser: CreationOptional<number>;
   attackCost: CreationOptional<number>;
   attackHideCost: CreationOptional<number>;
@@ -160,6 +164,9 @@ export class SiteSettings
   declare public duelMinStake: CreationOptional<number>;
   declare public duelMaxStake: CreationOptional<number>;
   declare public duelExpireMinutes: CreationOptional<number>;
+  declare public taskReminderDaysBefore: CreationOptional<number>;
+  declare public taskReminderHour: CreationOptional<number>;
+  declare public taskSoonDays: CreationOptional<number>;
   declare public duelMaxOpenPerUser: CreationOptional<number>;
   declare public attackCost: CreationOptional<number>;
   declare public attackHideCost: CreationOptional<number>;
@@ -539,6 +546,24 @@ SiteSettings.init(
       allowNull: false,
       defaultValue: DUEL_DEFAULTS.expireMinutes,
       field: 'duel_expire_minutes',
+    },
+    taskReminderDaysBefore: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: TASK_DEFAULTS.reminderDaysBefore,
+      field: 'task_reminder_days_before',
+    },
+    taskReminderHour: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: TASK_DEFAULTS.reminderHour,
+      field: 'task_reminder_hour',
+    },
+    taskSoonDays: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: TASK_DEFAULTS.soonDays,
+      field: 'task_soon_days',
     },
     duelMaxOpenPerUser: {
       type: DataTypes.INTEGER,

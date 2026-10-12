@@ -1,6 +1,7 @@
 // 마감까지 남은 날. 지난 것은 붉게, 오늘·곧은 주황으로 칠해 눈에 먼저 들어오게 한다.
 
 import type { MyTask } from '../../api/tasks';
+import { useSiteSettings } from '../../store/siteSettings';
 import { dueInfo, type DueTone } from './taskViews';
 
 const TONE: Record<DueTone, string> = {
@@ -18,7 +19,9 @@ export function DueBadge({
   task: Pick<MyTask, 'dueDate' | 'workStatus'>;
   today: Date;
 }) {
-  const info = dueInfo(task, today);
+  // '곧' 으로 칠할 기준은 관리자가 정한다(사이트 설정 › 업무).
+  const soonDays = useSiteSettings(s => s.settings.taskSoonDays);
+  const info = dueInfo(task, today, soonDays);
   if (!info) return null;
   return (
     <span

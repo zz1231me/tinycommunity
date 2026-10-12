@@ -13,6 +13,7 @@ import { notificationService } from './notification.service';
 import { featureFlagService } from './featureFlag.service';
 import { getAccessibleBoardTypes } from './accessibleBoards';
 import { checkSecretPostAccess } from '../utils/postAccess';
+import { getTaskSettings } from '../utils/settingsCache';
 
 /** 현지 달력 날짜 'YYYY-MM-DD'. toISOString 은 UTC 라 한국 시간 오전 9시 전에는 하루 전이 된다. */
 export function localDate(d: Date): string {
@@ -20,15 +21,31 @@ export function localDate(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** 마감일까지 남은 날로 문구를 고른다. 0=오늘, 1=내일, 그 뒤는 'N일 뒤'. */
+function whenLabel(daysLeft: number): string {
+  if (daysLeft <= 0) return '오늘';
+  if (daysLeft === 1) return '내일';
+  return `${daysLeft}일 뒤`;
+}
+
 /** 보낸 알림 수를 돌려준다 */
 export async function sendDueReminders(now = new Date()): Promise<number> {
-  const today = localDate(now);
-  const tomorrow = localDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+  const { reminderDaysBefore, reminderHour } = getTaskSettings();
+
+  // 정해 둔 시각 전에는 보내지 않는다. 주기는 1시간이라, 이 가드가 없으면 자정 직후
+  // 첫 차례에 '마감이 오늘입니다' 가 나가 한밤중에 울린다.
+  if (now.getHours() < reminderHour) return 0;
+
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // 오늘부터 reminderDaysBefore 일 뒤까지. 0 이면 마감 당일만 알린다.
+  const window: string[] = [];
+  for (let i = 0; i <= Math.max(0, reminderDaysBefore); i += 1) {
+    window.push(localDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + i)));
+  }
 
   const posts = await Post.findAll({
     where: {
-      dueDate: { [Op.in]: [today, tomorrow] },
+      dueDate: { [Op.in]: window },
       workStatus: { [Op.in]: ['todo', 'doing'] },
       assigneeId: { [Op.ne]: null },
       status: 'published',
@@ -84,7 +101,7 @@ export async function sendDueReminders(now = new Date()): Promise<number> {
   for (const post of posts) {
     const userId = post.assigneeId as string;
     if (already.has(`${userId}:${post.id}`) || !canSee(post)) continue;
-    const when = post.dueDate === today ? '오늘' : '내일';
+    const when = whenLabel(window.indexOf(post.dueDate as string));
     const created = await notificationService.create({
       userId,
       type: 'TASK_DUE',

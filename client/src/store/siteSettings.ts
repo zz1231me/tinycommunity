@@ -55,6 +55,12 @@ export interface SiteSettings {
   duelMaxStake: number;
   /** 상대가 답하지 않으면 무효가 되기까지의 시간(분) */
   duelExpireMinutes: number;
+  /** 업무 마감 며칠 전부터 알리는지. 0 이면 마감 당일에만 */
+  taskReminderDaysBefore: number;
+  /** 마감 알림을 보내기 시작하는 시각(0~23) */
+  taskReminderHour: number;
+  /** 마감이 이 날 수 안이면 '곧' 으로 칠한다 */
+  taskSoonDays: number;
   /** 한 사람이 동시에 걸어 둘 수 있는 판 수 */
   duelMaxOpenPerUser: number;
   /** 퇴근 방해 한 장 값 */
@@ -176,6 +182,10 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   duelMinStake: 10,
   duelMaxStake: 10000,
   duelExpireMinutes: 10,
+  // 서버 config/task.ts 의 기본값과 같다. 응답이 오면 덮어쓴다.
+  taskReminderDaysBefore: 1,
+  taskReminderHour: 9,
+  taskSoonDays: 3,
   duelMaxOpenPerUser: 3,
   attackCost: 300,
   attackHideCost: 300,

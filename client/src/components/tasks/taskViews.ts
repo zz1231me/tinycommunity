@@ -45,16 +45,20 @@ export interface DueInfo {
   days: number;
 }
 
-/** 이 날 수 안이면 '곧' 으로 칠한다 */
+/** '곧' 기준의 기본값. 관리자 설정(taskSoonDays)이 있으면 그 값을 넘겨 쓴다. */
 const SOON_DAYS = 3;
 
 /** 마감 표시. 마감이 없거나 이미 끝낸 일은 null — 끝낸 일에 '지남' 을 붙이면 경고가 묻힌다. */
-export function dueInfo(task: Pick<MyTask, 'dueDate' | 'workStatus'>, today: Date): DueInfo | null {
+export function dueInfo(
+  task: Pick<MyTask, 'dueDate' | 'workStatus'>,
+  today: Date,
+  soonDays: number = SOON_DAYS
+): DueInfo | null {
   if (!task.dueDate || task.workStatus === 'done') return null;
   const days = differenceInCalendarDays(parseISO(task.dueDate), today);
   if (days < 0) return { tone: 'overdue', label: `${-days}일 지남`, days };
   if (days === 0) return { tone: 'today', label: 'D-day', days };
-  return { tone: days <= SOON_DAYS ? 'soon' : 'later', label: `D-${days}`, days };
+  return { tone: days <= soonDays ? 'soon' : 'later', label: `D-${days}`, days };
 }
 
 export type DueFilter = 'overdue' | 'today' | 'week';
