@@ -5,7 +5,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { addDays, format, isToday, isWeekend, max, min } from 'date-fns';
 import { Gantt, Willow, WillowDark, type IApi, type ITask } from '@svar-ui/react-gantt';
-import '@svar-ui/react-gantt/all.css';
+// all.css 가 아니라 style.css 를 쓴다. all.css(dist-full)에는 "Open Sans"·Roboto 를
+// cdn.svar.dev 에서 받아오는 @font-face 가 들어 있어, 간트를 열 때마다 외부 요청이 나가고
+// CSP(font-src)가 막아 콘솔에 위반이 쌓였다. style.css 에는 테마가 그대로 있고 글꼴 선언만
+// 없다(151KB → 33KB).
+import '@svar-ui/react-gantt/style.css';
 import './TaskGantt.css';
 import type { MyTask } from '../../api/tasks';
 import { useTheme } from '../../contexts/ThemeContext';
