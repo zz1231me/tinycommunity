@@ -13,6 +13,7 @@ import { PostLink } from '../models/PostLink';
 import { getAccessibleBoardTypes } from './accessibleBoards';
 import { checkSecretPostAccess } from '../utils/postAccess';
 import { logError } from '../utils/logger';
+import { AppError } from '../middlewares/error.middleware';
 
 /** 한 글에 담아 둘 링크 수 상한. 본문에 주소를 수백 개 넣어도 줄이 폭증하지 않게 한다. */
 const MAX_LINKS = 50;
@@ -63,12 +64,31 @@ export interface Backlink {
   createdAt: Date;
 }
 
-/** 이 글을 가리키는 글들. 보는 사람이 지금 읽을 수 있는 것만. */
+/**
+ * 이 글을 가리키는 글들. 보는 사람이 지금 읽을 수 있는 것만.
+ *
+ * 라우터는 주소에 적힌 게시판의 읽기 권한만 확인한다. 그래서 다른 게시판 글의 id 를
+ * 읽을 수 있는 게시판 주소에 끼워 넣으면 '그 글이 있고 누가 가리킨다' 는 사실이 새 나간다.
+ * 대상 글이 정말 그 게시판의 것이고 지금 읽을 수 있는지 여기서 다시 본다(없는 글처럼 답한다).
+ */
 export async function listBacklinks(
+  boardType: string,
   toPostId: string,
   userId: string,
   userRole: string
 ): Promise<Backlink[]> {
+  const target = await Post.findByPk(toPostId, {
+    attributes: ['id', 'boardType', 'status', 'isSecret', 'secretType', 'secretUserIds', 'UserId'],
+  });
+  if (
+    !target ||
+    target.boardType !== boardType ||
+    target.status !== 'published' ||
+    !checkSecretPostAccess(target, userId, userRole).ok
+  ) {
+    throw new AppError(404, '게시글을 찾을 수 없습니다.');
+  }
+
   const links = await PostLink.findAll({ where: { toPostId }, attributes: ['fromPostId'] });
   if (links.length === 0) return [];
 

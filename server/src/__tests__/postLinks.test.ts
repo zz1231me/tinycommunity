@@ -160,4 +160,41 @@ describe('역링크', () => {
     const target = await createPost(adminCookie, `대상5 ${Date.now()}`, '<p>원본</p>');
     await request(app).get(`/api/posts/notice/${target}/backlinks`).expect(401);
   });
+
+  it('다른 게시판 주소에 글 id 를 끼워 넣으면 없는 글로 답한다', async () => {
+    // 라우터는 주소에 적힌 게시판의 읽기 권한만 본다. 그 틈으로 '그 글이 있고 누가 가리킨다'
+    // 는 사실이 새 나가지 않아야 한다.
+    const hiddenTarget = await createPost(
+      adminCookie,
+      `비공개 대상 ${Date.now()}`,
+      '<p>원본</p>',
+      'secretboard'
+    );
+    await createPost(adminCookie, `가리킴 ${Date.now()}`, link('secretboard', hiddenTarget));
+
+    // 읽을 수 있는 게시판(notice) 주소에 비공개 글 id 를 끼워 넣는다
+    await backlinks(userCookie, 'notice', hiddenTarget).expect(404);
+    // 제 게시판으로 물어도 그 게시판을 못 읽으므로 막힌다
+    await backlinks(userCookie, 'secretboard', hiddenTarget).expect(403);
+  });
+
+  it('명단에 없는 비밀글의 역링크는 묻는 것부터 막는다', async () => {
+    const secretTarget = await request(app)
+      .post('/api/posts/notice')
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({
+        title: `비밀 대상 ${Date.now()}`,
+        content: '<p>원본</p>',
+        isSecret: true,
+        secretType: 'users',
+        secretUserIds: ['admin'],
+      });
+    expect(secretTarget.status).toBe(201);
+    const id = secretTarget.body.data.id as string;
+    await createPost(adminCookie, `가리킴2 ${Date.now()}`, link('notice', id));
+
+    await backlinks(userCookie, 'notice', id).expect(404);
+    await backlinks(adminCookie, 'notice', id).expect(200);
+  });
 });

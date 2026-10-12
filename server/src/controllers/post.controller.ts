@@ -520,8 +520,10 @@ export const createPost = async (req: AuthRequest, res: Response): Promise<void>
 export const getBacklinks = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id: userId, role: userRole } = req.user;
   try {
-    sendSuccess(res, await listBacklinks(req.params.id, userId, userRole));
+    sendSuccess(res, await listBacklinks(req.params.boardType, req.params.id, userId, userRole));
   } catch (err) {
+    const appErr = toAppError(err);
+    if (appErr?.statusCode === 404) return sendNotFound(res, '게시글');
     logError('역링크 조회 실패', err, { userId, postId: req.params.id });
     sendError(res, 500, '이 글을 가리키는 글을 불러오지 못했습니다.');
   }
