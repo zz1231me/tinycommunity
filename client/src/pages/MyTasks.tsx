@@ -33,8 +33,8 @@ import {
 } from '../api/tasks';
 import { taskKeys } from '../api/queryKeys';
 import { getApiErrorMessage } from '../api/utils';
+import { useUiPrefs } from '../hooks/useUiPrefs';
 import { useConfirm } from '../hooks/useConfirm';
-import { safeStorage } from '../utils/safeStorage';
 import { toast } from '../utils/toast';
 import { useToday } from '../hooks/useToday';
 
@@ -51,10 +51,6 @@ type View = (typeof VIEWS)[number]['key'];
 const OPEN_LIMIT = 100;
 const DONE_LIMIT = 50;
 
-const VIEW_KEY = 'myhome-tasks-view';
-const SHOW_DONE_KEY = 'myhome-tasks-show-done';
-const SORT_KEY = 'myhome-tasks-sort';
-
 const EMPTY_FILTER: TaskFilter = { query: '', boardType: '', due: null };
 
 function isView(value: string | null): value is View {
@@ -65,14 +61,17 @@ export default function MyTasks() {
   const [params, setParams] = useSearchParams();
   // 주소가 먼저다(공유한 링크는 그대로 열려야 한다). 없으면 지난번에 고른 보기.
   const urlView = params.get('view');
-  const storedView = safeStorage.get(VIEW_KEY);
-  const view: View = isView(urlView) ? urlView : isView(storedView) ? storedView : 'list';
+  // 보기·정렬·완료 표시는 계정에 저장한다(기기를 바꿔도 따라온다).
+  const { prefs, setPref } = useUiPrefs();
+  const view: View = isView(urlView)
+    ? urlView
+    : isView(prefs.taskView ?? null)
+      ? (prefs.taskView as View)
+      : 'list';
   const scope = params.get('board') ?? '';
 
-  const [showDone, setShowDoneState] = useState(() => safeStorage.get(SHOW_DONE_KEY) === '1');
-  const [sort, setSortState] = useState<TaskSort>(() =>
-    safeStorage.get(SORT_KEY) === 'due' ? 'due' : 'stale'
-  );
+  const showDone = prefs.taskShowDone === true;
+  const sort: TaskSort = prefs.taskSort ?? 'stale';
   const [filter, setFilter] = useState<TaskFilter>(EMPTY_FILTER);
 
   const statuses = showDone ? [...OPEN, 'done' as WorkStatus] : OPEN;
@@ -97,17 +96,11 @@ export default function MyTasks() {
     );
 
   const setView = (next: View) => {
-    safeStorage.set(VIEW_KEY, next);
+    setPref('taskView', next);
     setParam('view', next === 'list' ? null : next);
   };
-  const setShowDone = (next: boolean) => {
-    safeStorage.set(SHOW_DONE_KEY, next ? '1' : '0');
-    setShowDoneState(next);
-  };
-  const setSort = (next: TaskSort) => {
-    safeStorage.set(SORT_KEY, next);
-    setSortState(next);
-  };
+  const setShowDone = (next: boolean) => setPref('taskShowDone', next);
+  const setSort = (next: TaskSort) => setPref('taskSort', next);
   const setScope = (next: string) => {
     // 게시판 필터는 내 업무에서만 쓴다. 범위를 바꾸면 이전 조건이 남아 빈 화면이 되지 않게 비운다.
     setFilter(EMPTY_FILTER);

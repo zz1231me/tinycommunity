@@ -10,6 +10,8 @@ import {
   getMySecurityLogs,
   getMyActivity,
   searchUsers,
+  getUiPrefs,
+  updateUiPrefs,
 } from '../controllers/userProfile.controller';
 
 const router = Router();
@@ -51,6 +53,29 @@ router.get(
 router.get(
   '/me/activity',
   asyncHandler((req, res) => getMyActivity(req as AuthRequest, res))
+);
+
+/**
+ * @swagger
+ * /api/users/me/ui-prefs:
+ *   get:
+ *     summary: 본인의 보기 설정 (업무 보기·정렬 등)
+ *     description: 권한이 아니라 취향이다. 기기를 바꿔도 따라오도록 계정에 저장한다.
+ *     tags: [Users]
+ *     security: [{ cookieAuth: [] }]
+ *   patch:
+ *     summary: 보낸 키만 덮어쓴다
+ *     description: 모르는 키·값은 조용히 버린다. 보기 설정 때문에 조작이 막히지 않게 한다.
+ *     tags: [Users]
+ *     security: [{ cookieAuth: [] }]
+ */
+router.get(
+  '/me/ui-prefs',
+  asyncHandler((req, res) => getUiPrefs(req as AuthRequest, res))
+);
+router.patch(
+  '/me/ui-prefs',
+  asyncHandler((req, res) => updateUiPrefs(req as AuthRequest, res))
 );
 /**
  * @swagger

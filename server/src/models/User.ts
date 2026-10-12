@@ -31,6 +31,7 @@ export interface UserInstance extends Model<
   roleId: string;
   theme: CreationOptional<string>;
   hiddenMenus: CreationOptional<string | null>;
+  uiPrefs: CreationOptional<string | null>;
 
   // isDeleted 는 익명화 여부(앱 레벨), deletedAt 은 paranoid 소프트 삭제다.
   isDeleted: CreationOptional<boolean>;
@@ -74,6 +75,7 @@ class UserModel
   declare public theme: CreationOptional<string>;
   /** 본인이 사이드바에서 숨긴 메뉴(기능 키) JSON 배열. 권한이 아니라 보기 설정이다. */
   declare public hiddenMenus: CreationOptional<string | null>;
+  declare public uiPrefs: CreationOptional<string | null>;
 
   declare public isDeleted: CreationOptional<boolean>;
   declare public anonymizedName: CreationOptional<string | null>;
@@ -264,6 +266,11 @@ UserModel.init(
       type: DataTypes.TEXT,
       allowNull: true,
       comment: '본인이 숨긴 메뉴의 기능 키 JSON 배열',
+    },
+    uiPrefs: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: '본인의 화면 보기 설정 JSON (업무 보기·정렬 등). 허용 키·값은 서버가 검사한다',
     },
     isDeleted: {
       type: DataTypes.BOOLEAN,

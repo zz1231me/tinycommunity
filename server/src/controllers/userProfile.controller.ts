@@ -1,6 +1,8 @@
 import { Response } from 'express';
+import { parseUiPrefs, sanitizeUiPrefs } from '../config/uiPrefs';
 import { AuthRequest } from '../types/auth-request';
 import { sendSuccess, sendError } from '../utils/response';
+import { logError } from '../utils/logger';
 import { parsePagination } from '../utils/pagination';
 import { Post } from '../models/Post';
 import { Comment } from '../models/Comment';
@@ -249,5 +251,34 @@ export const searchUsers = async (req: AuthRequest, res: Response): Promise<void
     );
   } catch (_err) {
     sendError(res, 500, '사용자 검색 실패');
+  }
+};
+
+/** GET /api/users/me/ui-prefs — 본인의 보기 설정(업무 보기·정렬 등) */
+export const getUiPrefs = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const row = await User.findByPk(req.user.id, { attributes: ['id', 'uiPrefs'] });
+    sendSuccess(res, parseUiPrefs(row?.uiPrefs));
+  } catch (err) {
+    logError('보기 설정 조회 실패', err, { userId: req.user.id });
+    sendError(res, 500, '보기 설정을 불러오지 못했습니다.');
+  }
+};
+
+/**
+ * PATCH /api/users/me/ui-prefs — 보낸 키만 덮어쓴다(부분 저장).
+ * 권한이 아니라 취향이라 모르는 키·값은 조용히 버린다 — 여기서 400 을 내면 화면 조작이 막힌다.
+ */
+export const updateUiPrefs = async (req: AuthRequest, res: Response): Promise<void> => {
+  const patch = sanitizeUiPrefs(req.body);
+  try {
+    const row = await User.findByPk(req.user.id, { attributes: ['id', 'uiPrefs'] });
+    if (!row) return sendError(res, 404, '사용자를 찾을 수 없습니다.');
+    const next = { ...parseUiPrefs(row.uiPrefs), ...patch };
+    await User.update({ uiPrefs: JSON.stringify(next) }, { where: { id: req.user.id } });
+    sendSuccess(res, next);
+  } catch (err) {
+    logError('보기 설정 저장 실패', err, { userId: req.user.id });
+    sendError(res, 500, '보기 설정을 저장하지 못했습니다.');
   }
 };

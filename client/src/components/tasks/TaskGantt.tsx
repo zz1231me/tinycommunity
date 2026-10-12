@@ -18,6 +18,7 @@ import { Tooltip } from '../common/Tooltip';
 import { TaskTooltipContent } from './TaskTooltipContent';
 import { dueInfo, fromGanttRange, toGanttRange } from './taskViews';
 import { useToday } from '../../hooks/useToday';
+import { useUiPrefs } from '../../hooks/useUiPrefs';
 
 type Zoom = 'day' | 'week' | 'month';
 
@@ -61,10 +62,20 @@ interface Props {
 export function TaskGantt({ tasks, onReschedule }: Props) {
   const { effectiveTheme } = useTheme();
   const Theme = effectiveTheme === 'dark' ? WillowDark : Willow;
+  // 확대 단위도 계정에 저장한다. 기기마다 다르게 열리지 않게.
+  const { prefs, setPref } = useUiPrefs();
   const [zoom, setZoom] = useState<Zoom>(() => {
     const saved = safeStorage.get(ZOOM_KEY);
     return ZOOMS.some(z => z.key === saved) ? (saved as Zoom) : 'day';
   });
+  // 서버에 저장된 값이 오면 그것으로 맞춘다. 로컬 값은 첫 그림이 튀지 않게 쓰는 것이다.
+  useEffect(() => {
+    const saved = prefs.taskGanttZoom;
+    if (saved && saved !== zoom && ZOOMS.some(z => z.key === saved)) setZoom(saved);
+    // 처음 한 번만 따라간다 — 사용자가 바꾼 뒤에 서버 응답이 늦게 와서 되돌리면 안 된다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefs.taskGanttZoom]);
+
   const zoomConfig = ZOOMS.find(z => z.key === zoom) ?? ZOOMS[0];
   // 저장에 실패하면 간트를 새로 그려 끌기 전 자리로 돌린다. 데이터가 같아 tasks 만으로는 다시 그려지지 않는다.
   const [resetKey, setResetKey] = useState(0);
@@ -134,6 +145,7 @@ export function TaskGantt({ tasks, onReschedule }: Props) {
   const changeZoom = (next: Zoom) => {
     setZoom(next);
     safeStorage.set(ZOOM_KEY, next);
+    setPref('taskGanttZoom', next);
   };
 
   return (
