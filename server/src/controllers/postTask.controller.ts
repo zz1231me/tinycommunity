@@ -8,14 +8,18 @@ import { postReadService } from '../services/postRead.service';
 import { Post } from '../models/Post';
 import { BoardManager } from '../models/BoardManager';
 import { ROLES } from '../config/constants';
-import { isTaskPriority, TASK_PRIORITIES, TASK_PRIORITY_KEYS } from '../config/taskPriority';
+import {
+  isTaskPriority,
+  TASK_PRIORITIES,
+  TASK_PRIORITY_KEYS,
+  type TaskPriority,
+} from '../config/taskPriority';
 import {
   isWorkStatus,
   WORK_STATUSES,
   WORK_STATUS_KEYS,
   type WorkStatus,
 } from '../config/workStatus';
-import type { TaskPriority } from '../config/taskPriority';
 import { postActivityService } from '../services/postActivity.service';
 import { getWorkStatusLabels } from '../utils/settingsCache';
 

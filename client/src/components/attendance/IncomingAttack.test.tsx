@@ -326,7 +326,10 @@ describe('쌓인 공격 — 포인트 탭', () => {
     // 원래는 55초 뒤에 시작할 공격이 지금 시작한다 — 길이(60초)는 그대로
     const start = new Date(cached.incoming.startsAt).getTime();
     expect(Math.abs(start - Date.now())).toBeLessThan(2000);
-    expect(new Date(cached.incoming.expiresAt).getTime() - start).toBe(60_000);
+    // 다음 공격은 꼬박 60초를 받는다. 시작·만료를 각각 Date.now() 로 재므로 그 사이에
+    // 1ms 가 지나면 60001 이 된다 — CI 에서 실제로 그렇게 깨졌다. 폭을 두고 본다.
+    const span = new Date(cached.incoming.expiresAt).getTime() - start;
+    expect(Math.abs(span - 60_000)).toBeLessThan(100);
     // 다음 공격의 경고 띠가 바로 뜬다
     expect(await screen.findByText(/이영희/)).toBeInTheDocument();
   });
