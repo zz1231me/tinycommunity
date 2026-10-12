@@ -17,6 +17,7 @@ import { renderContentToHTML } from '../utils/contentRenderer';
 import { parsePagination } from '../utils/pagination';
 import { AppError } from '../middlewares/error.middleware';
 import { notifyMentions } from '../services/mention.service';
+import { syncPostLinks, listBacklinks } from '../services/postLink.service';
 import { subscriptionService } from '../services/subscription.service';
 import { globalSearch as globalSearchPosts } from '../services/postSearch.service';
 import { isWorkStatus } from '../config/workStatus';
@@ -455,6 +456,9 @@ export const createPost = async (req: AuthRequest, res: Response): Promise<void>
 
     logSuccess('게시글 생성 완료', { userId, postId: post.id, boardType });
 
+    // 본문이 가리키는 다른 글을 적어 둔다(역링크용). 실패해도 글 저장은 그대로다.
+    void syncPostLinks(post.id, content);
+
     // 본문에서 @멘션된 사용자에게 알림 (fire-and-forget — 실패해도 게시글 생성은 성공)
     void notifyMentions({
       content,
@@ -509,6 +513,20 @@ export const createPost = async (req: AuthRequest, res: Response): Promise<void>
 };
 
 // 주의: boardAccess 미들웨어(checkWriteAccess)가 이미 게시판 쓰기 권한을 확인함
+/**
+ * GET /api/posts/:boardType/:id/backlinks — 이 글을 가리키는 글들.
+ * 읽기 권한은 라우터가 확인하고, 목록은 보는 사람 기준으로 서비스가 다시 거른다.
+ */
+export const getBacklinks = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id: userId, role: userRole } = req.user;
+  try {
+    sendSuccess(res, await listBacklinks(req.params.id, userId, userRole));
+  } catch (err) {
+    logError('역링크 조회 실패', err, { userId, postId: req.params.id });
+    sendError(res, 500, '이 글을 가리키는 글을 불러오지 못했습니다.');
+  }
+};
+
 export const updatePost = async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body;
   const files = req.files as Express.Multer.File[];
@@ -552,6 +570,8 @@ export const updatePost = async (req: AuthRequest, res: Response): Promise<void>
     });
 
     logSuccess('게시글 수정 완료', { userId, postId: id });
+    // 본문에서 링크를 지웠으면 줄도 지워야 하므로 수정 때도 다시 쓴다.
+    void syncPostLinks(id, body.content);
     // 응답에서 secretUserIds/secretPassword/secretSalt 등 민감 필드 제외
     sendSuccess(
       res,

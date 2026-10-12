@@ -74,6 +74,8 @@ export const discoveryKeys = {
   related: (boardType: string, postId: string) =>
     ['discovery', 'related', boardType, postId] as const,
   tagCloud: ['discovery', 'tag-cloud'] as const,
+  backlinks: (boardType: string, postId: string) =>
+    ['discovery', 'backlinks', boardType, postId] as const,
   postsByTag: (tagId: number, page: number) => ['discovery', 'tag-posts', tagId, page] as const,
   scraps: {
     all: ['discovery', 'scraps'] as const,

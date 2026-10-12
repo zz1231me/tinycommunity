@@ -30,6 +30,7 @@ import { ReadReceipts } from '../../components/boards/ReadReceipts';
 import { PostActivityLog } from '../../components/boards/PostActivityLog';
 import { ScrapButton } from '../../components/discovery/ScrapButton';
 import { RelatedPosts } from '../../components/discovery/RelatedPosts';
+import { Backlinks } from '../../components/discovery/Backlinks';
 import { usePostDetail } from '../../hooks/usePostDetail';
 import { useContentImageHandler } from '../../hooks/useContentImageHandler';
 import { useAttachmentRefs, type AttachmentRefTarget } from '../../hooks/useAttachmentRefs';
@@ -130,6 +131,7 @@ const PostDetail = () => {
   const scrapEnabled = useFeature('post.scrap');
   const reportEnabled = useFeature('post.report');
   const relatedEnabled = useFeature('discovery.related');
+  const backlinksEnabled = useFeature('post.backlinks');
   const revisionsEnabled = useFeature('post.revisions');
   const profilesEnabled = useFeature('social.profiles');
   const tasksEnabled = useFeature('post.tasks');
@@ -487,6 +489,11 @@ const PostDetail = () => {
       {/* 읽음 확인. 서버도 같은 사람만 허용한다(403). */}
       {readReceiptsEnabled && canEditOrDelete && boardType && id && (
         <ReadReceipts boardType={boardType} postId={id} />
+      )}
+
+      {/* 이 글을 가리키는 글 */}
+      {backlinksEnabled && boardType && post?.id && (
+        <Backlinks boardType={boardType} postId={String(post.id)} />
       )}
 
       {/* 관련 글 */}

@@ -1,6 +1,7 @@
 import { Router, RequestHandler } from 'express';
 import asyncHandler from 'express-async-handler';
 import {
+  getBacklinks,
   createPost,
   getPosts,
   getPostById,
@@ -445,6 +446,26 @@ router.patch(
   requireFeature('post.tasks'),
   checkReadAccess as RequestHandler,
   asyncHandler((req, res) => changeTask(req as AuthRequest, res))
+);
+
+/**
+ * @swagger
+ * /api/posts/{boardType}/{id}/backlinks:
+ *   get:
+ *     summary: 이 글을 가리키는 글들 (역링크)
+ *     description: 본문에 이 글의 주소를 담은 글 목록. 보는 사람이 읽을 수 있는 것만 온다.
+ *     tags: [Posts]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: '[{ id, title, boardType, boardName, author, createdAt }]' }
+ *       403: { $ref: '#/components/responses/Forbidden' }
+ */
+router.get(
+  '/:boardType/:id/backlinks',
+  authenticate as RequestHandler,
+  requireFeature('post.backlinks'),
+  checkReadAccess as RequestHandler,
+  asyncHandler((req, res) => getBacklinks(req as AuthRequest, res))
 );
 
 /**

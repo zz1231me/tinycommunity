@@ -101,6 +101,12 @@ export const FEATURES = {
     group: 'discovery',
     defaultEnabled: true,
   },
+  'post.backlinks': {
+    label: '역링크',
+    description: '글 아래에 이 글을 가리키는 다른 글을 모아 보여 줍니다.',
+    group: 'discovery',
+    defaultEnabled: true,
+  },
   'discovery.related': {
     label: '관련 글 추천',
     description: '글 아래에 태그가 겹치는 다른 글을 보여 줍니다.',

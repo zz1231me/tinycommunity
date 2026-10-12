@@ -20,6 +20,7 @@ import { PostScrap } from './PostScrap';
 import { PostDraft } from './PostDraft';
 import { PostAttachmentVersion } from './PostAttachmentVersion';
 import { PostActivity } from './PostActivity';
+import { PostLink } from './PostLink';
 import { FeatureFlag } from './FeatureFlag';
 import { FeatureRule } from './FeatureRule';
 import { Subscription } from './Subscription';
@@ -489,6 +490,23 @@ Post.hasMany(PostActivity, {
 PostActivity.belongsTo(Post, { foreignKey: 'postId', as: 'post', constraints: false });
 PostActivity.belongsTo(User, { foreignKey: 'actorId', as: 'actor', constraints: false });
 
+// PostLink — 글에서 글로 가는 링크. 어느 쪽 글이 지워져도 줄이 남지 않게 양쪽에 건다.
+Post.hasMany(PostLink, {
+  foreignKey: 'fromPostId',
+  as: 'outgoingLinks',
+  onDelete: 'CASCADE',
+  hooks: true,
+  constraints: false,
+});
+Post.hasMany(PostLink, {
+  foreignKey: 'toPostId',
+  as: 'backlinks',
+  onDelete: 'CASCADE',
+  hooks: true,
+  constraints: false,
+});
+PostLink.belongsTo(Post, { foreignKey: 'fromPostId', as: 'fromPost', constraints: false });
+
 // PasswordResetRequest — 비밀번호 초기화 요청 (사용자 요청 → 관리자 승인)
 User.hasMany(PasswordResetRequest, {
   foreignKey: 'userId',
@@ -522,6 +540,7 @@ export {
   PostDraft,
   PostAttachmentVersion,
   PostActivity,
+  PostLink,
   FeatureFlag,
   FeatureRule,
   Subscription,

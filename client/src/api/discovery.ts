@@ -51,6 +51,25 @@ export async function fetchRelatedPosts(
   return unwrap(res);
 }
 
+/** 이 글을 가리키는 글들(역링크). 본문에 이 글의 주소를 담은 글만 온다. */
+export interface Backlink {
+  id: string;
+  title: string;
+  boardType: string;
+  boardName: string;
+  author: string;
+  createdAt: string;
+}
+
+export async function fetchBacklinks(
+  boardType: string,
+  postId: string,
+  signal?: AbortSignal
+): Promise<Backlink[]> {
+  const res = await api.get(`/posts/${boardType}/${postId}/backlinks`, { signal });
+  return unwrap(res);
+}
+
 export async function fetchTagCloud(signal?: AbortSignal): Promise<CloudTag[]> {
   const res = await api.get('/tags/cloud', { signal });
   return unwrap(res);
