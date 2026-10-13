@@ -10,6 +10,11 @@ export interface FeatureSettingsLink {
 }
 
 export const FEATURE_SETTINGS: Record<string, FeatureSettingsLink> = {
+  'post.templates': {
+    path: '/admin/post-templates',
+    section: 'post-templates',
+    label: '템플릿 관리',
+  },
   'post.tasks': { path: '/admin/site-settings', section: 'tasks', label: '마감 알림·기준 설정' },
   'tools.lottery': { path: '/admin/site-settings', section: 'lottery', label: '확률·포인트 설정' },
   'post.attachments': {

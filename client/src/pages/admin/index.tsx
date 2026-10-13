@@ -40,6 +40,9 @@ const BoardManagerManagement = lazy(
   () => import('../../components/admin/tabs/BoardManagerManagement')
 );
 const CustomPageManagement = lazy(() => import('../../components/admin/tabs/CustomPageManagement'));
+const PostTemplateManagement = lazy(
+  () => import('../../components/admin/tabs/PostTemplateManagement')
+);
 const AnnouncementManagement = lazy(
   () => import('../../components/admin/tabs/AnnouncementManagement')
 );
@@ -144,6 +147,7 @@ const AdminUserPage = () => {
                   <Route path="ip-management" element={<IpManagement />} />
                   <Route path="board-managers" element={<BoardManagerManagement />} />
                   <Route path="custom-pages" element={<CustomPageManagement />} />
+                  <Route path="post-templates" element={<PostTemplateManagement />} />
                   <Route path="announcements" element={<AnnouncementManagement />} />
                   <Route path="attendance" element={<AttendanceManagement />} />
                   <Route path="point-attacks" element={<PointAttackManagement />} />

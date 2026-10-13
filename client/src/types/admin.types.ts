@@ -212,6 +212,7 @@ export type TabType =
   | 'ip-management'
   | 'board-managers'
   | 'custom-pages'
+  | 'post-templates'
   | 'announcements'
   | 'attendance'
   | 'point-attacks';

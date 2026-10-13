@@ -21,6 +21,7 @@ import { PostDraft } from './PostDraft';
 import { PostAttachmentVersion } from './PostAttachmentVersion';
 import { PostActivity } from './PostActivity';
 import { PostLink } from './PostLink';
+import { PostTemplate } from './PostTemplate';
 import { FeatureFlag } from './FeatureFlag';
 import { FeatureRule } from './FeatureRule';
 import { Subscription } from './Subscription';
@@ -541,6 +542,7 @@ export {
   PostAttachmentVersion,
   PostActivity,
   PostLink,
+  PostTemplate,
   FeatureFlag,
   FeatureRule,
   Subscription,

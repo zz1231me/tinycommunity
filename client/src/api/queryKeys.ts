@@ -10,6 +10,12 @@ export const messageKeys = {
 } as const;
 
 /** 담당자·업무 상태, 읽음 확인, 첨부 버전 */
+export const templateKeys = {
+  all: ['post-templates'] as const,
+  list: (boardType: string) => ['post-templates', 'list', boardType] as const,
+  admin: ['post-templates', 'admin'] as const,
+};
+
 export const taskKeys = {
   all: ['tasks'] as const,
   statuses: ['tasks', 'statuses'] as const,

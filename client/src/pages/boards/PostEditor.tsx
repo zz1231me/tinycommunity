@@ -32,6 +32,7 @@ import { useDraftAutoSave } from '../../hooks/useDraftAutoSave';
 import { deleteDraft, fetchDraft } from '../../api/drafts';
 import { formatRelativeDate } from '../../utils/date';
 import '../../styles/CKContentView.css';
+import { TemplatePicker } from '../../components/boards/TemplatePicker';
 
 interface AttachmentInfo {
   url: string;
@@ -403,12 +404,25 @@ const PostEditor = ({ mode }: Props) => {
 
   // 참조는 원본 파일명으로 하므로 아직 업로드되지 않은 파일도 꽂을 수 있다.
   const attachmentsEnabled = useFeature('post.attachments');
+  const templatesEnabled = useFeature('post.templates');
   const attachmentNames = [
     ...new Set([...existingAttachments.map(a => a.originalName), ...files.map(f => f.name)]),
   ];
 
   const isEditMode = mode === 'edit';
   const submitButtonText = isEditMode ? '수정하기' : '작성하기';
+
+  // 템플릿 고르기 — 새 글에서만. 제목은 비어 있을 때만 채우고(쓴 제목을 지우지 않게)
+  // 본문은 에디터를 새로 그려 넣는다(CKEditor 는 uncontrolled 라 key 를 올려야 바뀐다).
+  const applyTemplate = (template: { title: string | null; content: string }) => {
+    if (template.title && !title.trim()) setTitle(template.title);
+    setInitialContent(template.content);
+    setEditorKey(prev => prev + 1);
+    if (splitView) setPreviewHtml(sanitizeHTML(template.content));
+  };
+
+  const currentHtml = () =>
+    editorRef.current?.getInstance()?.getContent?.() ?? initialContent ?? '';
 
   const splitViewToggle = (
     <button
@@ -432,6 +446,23 @@ const PostEditor = ({ mode }: Props) => {
       <Columns2 className="h-3.5 w-3.5" aria-hidden="true" />
       {splitView ? '편집 전용' : '분할 보기'}
     </button>
+  );
+
+  const editorActions = (
+    <div className="flex items-center gap-2">
+      {!isEditMode && templatesEnabled && targetBoard && (
+        <TemplatePicker
+          boardType={targetBoard}
+          hasContent={
+            currentHtml()
+              .replace(/<[^>]*>/g, '')
+              .trim().length > 0
+          }
+          onPick={applyTemplate}
+        />
+      )}
+      {splitViewToggle}
+    </div>
   );
 
   return (
@@ -585,7 +616,7 @@ const PostEditor = ({ mode }: Props) => {
                       if (splitView) setPreviewHtml(sanitizeHTML(html));
                     }}
                     attachmentNames={attachmentNames}
-                    headerAction={splitViewToggle}
+                    headerAction={editorActions}
                   />
                 </EditorErrorBoundary>
               </Panel>
@@ -623,7 +654,7 @@ const PostEditor = ({ mode }: Props) => {
                 }
                 onChange={() => {}}
                 attachmentNames={attachmentNames}
-                headerAction={splitViewToggle}
+                headerAction={editorActions}
               />
             </EditorErrorBoundary>
           )}

@@ -51,6 +51,12 @@ import {
   getUserFeatureRules,
   updateUserFeatureRules,
 } from '../controllers/featureFlag.controller';
+import {
+  listTemplatesForAdmin,
+  createTemplate,
+  updateTemplate,
+  deleteTemplate,
+} from '../controllers/postTemplate.controller';
 import tagRoutes from './tag.routes';
 import {
   getAttendanceRecords,
@@ -96,6 +102,12 @@ router.put('/features', updateFeatures as RequestHandler);
 router.put('/features/roles/:roleId', updateRoleFeatureRules as RequestHandler);
 router.get('/features/users/:userId', getUserFeatureRules as RequestHandler);
 router.put('/features/users/:userId', updateUserFeatureRules as RequestHandler);
+// 글 템플릿
+router.get('/post-templates', listTemplatesForAdmin as RequestHandler);
+router.post('/post-templates', createTemplate as RequestHandler);
+router.put('/post-templates/:id', updateTemplate as RequestHandler);
+router.delete('/post-templates/:id', deleteTemplate as RequestHandler);
+
 router.get('/users', getAllUsers as RequestHandler);
 router.get('/users/deleted', getDeletedUsers as RequestHandler);
 router.post('/users', createUser as RequestHandler);

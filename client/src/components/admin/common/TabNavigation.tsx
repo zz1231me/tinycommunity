@@ -26,6 +26,7 @@ import {
   Megaphone,
   Clock,
   Bomb,
+  FileText,
   type LucideIcon,
 } from 'lucide-react';
 import { TabType } from '../../../types/admin.types';
@@ -67,6 +68,7 @@ export const TabNavigation = React.memo(() => {
           { id: 'tags', label: '태그', icon: Tag },
           { id: 'files', label: '파일', icon: Files },
           { id: 'custom-pages', label: '커스텀 페이지', icon: Code },
+          { id: 'post-templates', label: '글 템플릿', icon: FileText },
         ],
       },
       {

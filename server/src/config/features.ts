@@ -101,6 +101,12 @@ export const FEATURES = {
     group: 'discovery',
     defaultEnabled: true,
   },
+  'post.templates': {
+    label: '글 템플릿',
+    description: '회의록·보고서처럼 틀이 정해진 글을 고르면 제목·본문을 미리 채웁니다.',
+    group: 'writing',
+    defaultEnabled: true,
+  },
   'post.backlinks': {
     label: '역링크',
     description: '글 아래에 이 글을 가리키는 다른 글을 모아 보여 줍니다.',
