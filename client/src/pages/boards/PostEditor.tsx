@@ -467,7 +467,7 @@ const PostEditor = ({ mode }: Props) => {
 
   return (
     <PageContainer>
-      <div className="mb-4 flex items-center gap-2 border-b border-slate-200 pb-3 dark:border-slate-700/60">
+      <div className="mb-3 flex items-center gap-2 border-b border-slate-200 pb-2 dark:border-slate-700/60">
         <button
           onClick={() => navigate(-1)}
           className="-ml-1 flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-100"
@@ -495,37 +495,38 @@ const PostEditor = ({ mode }: Props) => {
             {isEditMode ? '게시글 수정' : '새 게시글'}
           </span>
         </h1>
+
+        {/* 자동저장 상태. 늘 있는 이 줄에 실어 두면 자리를 미리 비워 둘 필요가 없다 —
+            예전에는 제목 위에 36px 를 빈 채로 잡아 두어 글 쓰는 자리가 그만큼 밀렸다. */}
+        {mode === 'create' && (
+          <span aria-live="polite" className="ml-auto flex items-center gap-2 text-xs">
+            {(draft.savedAt || draft.failed) && (
+              <>
+                <span
+                  className={
+                    draft.failed
+                      ? 'text-amber-700 dark:text-amber-300'
+                      : 'text-slate-500 dark:text-slate-400'
+                  }
+                >
+                  {draft.failed
+                    ? '임시저장 실패 — 연결을 확인해주세요'
+                    : `임시저장됨 · ${formatRelativeDate(draft.savedAt!.toISOString())}`}
+                </span>
+                <Link
+                  to="/dashboard/drafts"
+                  className="flex-shrink-0 whitespace-nowrap text-slate-400 underline underline-offset-2 hover:text-slate-600 hover:no-underline dark:hover:text-slate-200"
+                >
+                  목록
+                </Link>
+              </>
+            )}
+          </span>
+        )}
       </div>
 
       <div className="card">
-        <form onSubmit={handleSubmit} className="space-y-5 p-5">
-          {/* 자동저장 줄이 나중에 생기며 아래를 밀지 않도록 자리를 미리 비워 둔다. */}
-          {mode === 'create' && (
-            <div aria-live="polite" className="min-h-9">
-              {(draft.savedAt || draft.failed) && (
-                <div
-                  className={`flex items-center justify-between gap-3 rounded-lg border px-4 py-2 text-xs ${
-                    draft.failed
-                      ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200'
-                      : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400'
-                  }`}
-                >
-                  <span>
-                    {draft.failed
-                      ? '임시저장에 실패했습니다. 연결을 확인해주세요.'
-                      : `임시저장됨 · ${formatRelativeDate(draft.savedAt!.toISOString())}`}
-                  </span>
-                  <Link
-                    to="/dashboard/drafts"
-                    className="flex-shrink-0 underline underline-offset-2 hover:no-underline"
-                  >
-                    임시저장 목록
-                  </Link>
-                </div>
-              )}
-            </div>
-          )}
-
+        <form onSubmit={handleSubmit} className="space-y-4 p-4">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
               {error}
