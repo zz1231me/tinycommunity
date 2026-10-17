@@ -568,7 +568,9 @@ export function buildEditorConfig(
     licenseKey: 'GPL',
     translations: [koTranslations],
     plugins: parts.plugins,
-    toolbar: { items: parts.toolbar, shouldNotGroupWhenFull: true },
+    // 폭이 모자라면 꼬리를 '⋯' 로 접는다(CKEditor 기본). 펼쳐 두면 글쓰기 화면에서
+    // 툴바가 두 줄(76px)이 되어 본문 입력 자리를 그만큼 밀어낸다 — 분할 보기에서는 세 줄까지 간다.
+    toolbar: { items: parts.toolbar, shouldNotGroupWhenFull: false },
     link: LINK_CONFIG,
   };
 

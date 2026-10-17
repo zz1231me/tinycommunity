@@ -40,7 +40,7 @@ export function Backlinks({ boardType, postId }: Props) {
               to={`/dashboard/posts/${post.boardType}/${post.id}`}
               className="flex items-baseline gap-2 px-3 py-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 sm:px-4"
             >
-              <span className="min-w-0 flex-1 truncate text-sm text-slate-800 dark:text-slate-200">
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 dark:text-slate-100">
                 {post.title}
               </span>
               <span className="flex-shrink-0 text-xs text-slate-400">{post.boardName}</span>

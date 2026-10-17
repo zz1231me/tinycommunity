@@ -263,7 +263,7 @@ const UppyFileUpload: React.FC<UppyFileUploadProps> = ({
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
-          className={`relative border-2 border-dashed rounded-lg px-6 py-8 text-center transition-colors ${
+          className={`relative border-2 border-dashed rounded-lg px-6 py-4 text-center transition-colors ${
             isDragOver
               ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
               : 'border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500 bg-slate-50 dark:bg-slate-800/50 hover:bg-primary-50 dark:hover:bg-primary-900/10'
@@ -277,11 +277,11 @@ const UppyFileUpload: React.FC<UppyFileUploadProps> = ({
             onChange={handleInputChange}
             aria-hidden="true"
           />
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center">
+          <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700">
               <svg
                 aria-hidden="true"
-                className="w-6 h-6 text-slate-600 dark:text-slate-400"
+                className="w-5 h-5 text-slate-600 dark:text-slate-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -294,11 +294,11 @@ const UppyFileUpload: React.FC<UppyFileUploadProps> = ({
                 />
               </svg>
             </div>
-            <div>
+            <div className="sm:text-left">
               <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 {isDragOver ? '파일을 여기에 놓으세요' : '여기로 끌어다 놓거나, 아래에서 고르세요'}
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 현재: {totalFiles}/{maxFiles}개
               </p>
             </div>

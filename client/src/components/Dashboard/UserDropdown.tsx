@@ -146,15 +146,15 @@ export function UserDropdown() {
                         overflow-hidden z-50"
           >
             {/* 사용자 정보 헤더 */}
-            <div className="px-4 py-3.5 border-b border-slate-100 dark:border-slate-800">
+            <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-3">
-                <Avatar user={user} size="md" />
+                <Avatar user={user} size="sm" />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
                     {userName}
                   </p>
                   <span
-                    className={`inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-semibold ${getRoleBadgeClass(userRole)}`}
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-semibold ${getRoleBadgeClass(userRole)}`}
                   >
                     {getRoleName(userRole)}
                   </span>
@@ -166,7 +166,7 @@ export function UserDropdown() {
             <div className="p-1.5">
               <button
                 onClick={handleProfileClick}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg
+                className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg
                          text-sm text-slate-600 dark:text-slate-400
                          hover:bg-slate-50 dark:hover:bg-slate-800
                          hover:text-slate-900 dark:hover:text-slate-200
@@ -182,7 +182,7 @@ export function UserDropdown() {
                     navigate(`/dashboard/posts/${personalBoards[0].id}`);
                     setIsOpen(false);
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg
+                  className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg
                            text-sm text-slate-600 dark:text-slate-400
                            hover:bg-slate-50 dark:hover:bg-slate-800
                            hover:text-slate-900 dark:hover:text-slate-200
@@ -198,7 +198,7 @@ export function UserDropdown() {
                   setShareOpen(true);
                   setIsOpen(false);
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg
+                className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg
                          text-sm text-slate-600 dark:text-slate-400
                          hover:bg-slate-50 dark:hover:bg-slate-800
                          hover:text-slate-900 dark:hover:text-slate-200
@@ -214,7 +214,7 @@ export function UserDropdown() {
                     navigate('/dashboard/memos');
                     setIsOpen(false);
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg
+                  className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg
                            text-sm text-slate-600 dark:text-slate-400
                            hover:bg-slate-50 dark:hover:bg-slate-800
                            hover:text-slate-900 dark:hover:text-slate-200
@@ -231,7 +231,7 @@ export function UserDropdown() {
                     navigate('/dashboard/attendance');
                     setIsOpen(false);
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg
+                  className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg
                            text-sm text-slate-600 dark:text-slate-400
                            hover:bg-slate-50 dark:hover:bg-slate-800
                            hover:text-slate-900 dark:hover:text-slate-200
@@ -248,7 +248,7 @@ export function UserDropdown() {
                     navigate('/profile?tab=points');
                     setIsOpen(false);
                   }}
-                  className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg
+                  className="w-full flex items-center justify-between gap-3 px-3 py-1.5 rounded-lg
                            text-sm text-slate-600 dark:text-slate-400
                            hover:bg-slate-50 dark:hover:bg-slate-800
                            hover:text-slate-900 dark:hover:text-slate-200
@@ -272,7 +272,7 @@ export function UserDropdown() {
                     navigate('/admin');
                     setIsOpen(false);
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg
+                  className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg
                            text-sm text-slate-600 dark:text-slate-400
                            hover:bg-slate-50 dark:hover:bg-slate-800
                            hover:text-slate-900 dark:hover:text-slate-200
@@ -284,9 +284,8 @@ export function UserDropdown() {
               )}
             </div>
 
-            {/* 테마 전환 */}
+            {/* 테마 전환 — 제목 줄은 두지 않는다. 해·달 아이콘이 이미 무엇인지 말한다. */}
             <div className="px-3 py-2 border-t border-slate-100 dark:border-slate-800">
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">테마</p>
               <ThemeToggle />
             </div>
 
@@ -297,10 +296,10 @@ export function UserDropdown() {
                   handleLogout();
                   setIsOpen(false);
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg
+                className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg
                          text-sm text-red-600 dark:text-red-400
                          hover:bg-red-50 dark:hover:bg-red-900/20
-                         transition-colors duration-150 mt-1"
+                         transition-colors duration-150"
               >
                 <LogOut className="w-4 h-4 flex-shrink-0" />
                 <span>로그아웃</span>

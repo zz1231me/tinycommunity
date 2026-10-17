@@ -8,11 +8,25 @@ interface TagSelectorProps {
   selectedTags: Tag[];
   onChange: (tags: Tag[]) => void;
   boardId?: string;
+  /** 있으면 이 컴포넌트가 제목까지 그린다. 숨을 때 제목만 남지 않게 한 묶음으로 둔다. */
+  label?: string;
+  /**
+   * 고를 태그가 하나도 없으면 아무것도 그리지 않는다. 글쓰기 화면처럼 세로가 아쉬운 곳에서
+   * '등록된 태그가 없습니다' 한 줄 때문에 제목 아래가 60px 밀렸다.
+   * 관리 화면처럼 '없다' 는 사실 자체를 보여 줘야 하는 곳은 그대로 둔다(기본값).
+   */
+  hideWhenEmpty?: boolean;
 }
 
 const dotColor = (c?: string) => (/^#[0-9a-fA-F]{3,8}$/.test(c || '') ? c! : DEFAULT_TAG_COLOR);
 
-export const TagSelector: React.FC<TagSelectorProps> = ({ selectedTags, onChange, boardId }) => {
+export const TagSelector: React.FC<TagSelectorProps> = ({
+  selectedTags,
+  onChange,
+  boardId,
+  label,
+  hideWhenEmpty = false,
+}) => {
   // 관리자가 이 기능을 껐으면 화면에서도 사라져야 한다.
   // 호출부마다 조건을 달면 새 호출부가 생길 때 빠뜨린다 — 여기서 스스로 숨는다.
   const featureEnabled = useFeature('post.tags');
@@ -47,10 +61,10 @@ export const TagSelector: React.FC<TagSelectorProps> = ({ selectedTags, onChange
     ? allTags.filter(t => t.name.toLowerCase().includes(search.toLowerCase()))
     : allTags;
 
-  if (loadError) {
-    // 훅 선언이 모두 끝난 뒤에 막는다 — 조건부 훅 호출은 렌더마다 순서를 어긋나게 한다
-    if (!featureEnabled) return null;
+  // 훅 선언이 모두 끝난 뒤에 막는다 — 조건부 훅 호출은 렌더마다 순서를 어긋나게 한다
+  if (!featureEnabled) return null;
 
+  if (loadError) {
     return (
       <div className="px-3 py-2 text-xs text-red-500 dark:text-red-400 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700">
         태그를 불러오지 못했습니다.
@@ -58,8 +72,17 @@ export const TagSelector: React.FC<TagSelectorProps> = ({ selectedTags, onChange
     );
   }
 
+  if (hideWhenEmpty && allTags.length === 0) return null;
+
+  const labelId = label ? 'tag-selector-label' : undefined;
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" role={label ? 'group' : undefined} aria-labelledby={labelId}>
+      {label && (
+        <span id={labelId} className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+          {label}
+        </span>
+      )}
       {/* 태그가 많을 때만 검색 */}
       {allTags.length > 12 && (
         <input
@@ -72,7 +95,9 @@ export const TagSelector: React.FC<TagSelectorProps> = ({ selectedTags, onChange
       )}
 
       {allTags.length === 0 ? (
-        <p className="text-xs text-slate-400 py-1">등록된 태그가 없습니다.</p>
+        hideWhenEmpty ? null : (
+          <p className="text-xs text-slate-400 py-1">등록된 태그가 없습니다.</p>
+        )
       ) : shown.length === 0 ? (
         <p className="text-xs text-slate-400 py-1">검색 결과가 없습니다.</p>
       ) : (

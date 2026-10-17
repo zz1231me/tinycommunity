@@ -604,3 +604,14 @@
   border-color: rgb(51 65 85);
   background: rgb(30 41 59);
 }
+
+/* ── 쓸 때의 글줄 폭 ───────────────────────────────────────────────────────
+ * 읽기 화면(.ck-content-view)은 --reading-measure 로 글줄을 묶는데 에디터는 묶여 있지
+ * 않았다. 1440px 화면에서 64자로 쓴 문단이 올리고 나면 47자로 다시 접혀, 쓸 때 본 모양과
+ * 읽을 때 모양이 달랐다. 읽기와 같은 규칙을 쓴다 — 글줄만 묶고 표·그림·코드는 폭을 다 쓴다. */
+.ck-editor__editable > * {
+  max-width: var(--reading-measure);
+}
+.ck-editor__editable > :is(figure, table, pre, hr, .table) {
+  max-width: none;
+}

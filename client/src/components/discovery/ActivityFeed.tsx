@@ -120,7 +120,7 @@ export function ActivityFeed() {
                   aria-hidden="true"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm text-slate-800 dark:text-slate-200">
+                  <span className="block truncate text-sm font-medium text-slate-900 dark:text-slate-100">
                     {item.postTitle}
                   </span>
                   <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">

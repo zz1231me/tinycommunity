@@ -567,20 +567,14 @@ const PostEditor = ({ mode }: Props) => {
             </div>
           )}
 
-          <div role="group" aria-labelledby="post-tags-label">
-            {/* 입력칸이 아니라 고르는 영역이라 label 로 이을 수 없다 */}
-            <span
-              id="post-tags-label"
-              className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
-            >
-              태그
-            </span>
-            <TagSelector
-              selectedTags={selectedTags}
-              onChange={setSelectedTags}
-              boardId={boardType}
-            />
-          </div>
+          {/* 고를 태그가 없는 게시판에서는 제목째 사라진다 — 세로가 아쉬운 화면이다 */}
+          <TagSelector
+            label="태그"
+            hideWhenEmpty
+            selectedTags={selectedTags}
+            onChange={setSelectedTags}
+            boardId={boardType}
+          />
 
           {splitView ? (
             <PanelGroup
