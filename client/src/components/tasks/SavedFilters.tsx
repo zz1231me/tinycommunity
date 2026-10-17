@@ -40,6 +40,7 @@ interface Props {
 export function SavedFilters({ current, onApply }: Props) {
   const [open, setOpen] = useState(false);
   const [naming, setNaming] = useState(false);
+  const [lastSavedId, setLastSavedId] = useState<number | null>(null);
   const [name, setName] = useState('');
   const rootRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
@@ -50,7 +51,10 @@ export function SavedFilters({ current, onApply }: Props) {
     staleTime: 5 * 60_000,
   });
 
-  const active = filters.find(f => sameConditions(f, current));
+  // 조건이 같은 것이 여럿일 수 있다. 방금 저장한 것이 있으면 그것을 보여 준다 —
+  // 이름을 적어 저장한 직후에 남의 이름이 서 있으면 저장이 안 된 것처럼 보인다.
+  const matching = filters.filter(f => sameConditions(f, current));
+  const active = matching.find(f => f.id === lastSavedId) ?? matching[0];
 
   const close = () => {
     setOpen(false);
@@ -81,6 +85,7 @@ export function SavedFilters({ current, onApply }: Props) {
   const save = useMutation({
     mutationFn: (input: SavedTaskFilterInput) => saveTaskFilter(input),
     onSuccess: saved => {
+      setLastSavedId(saved.id);
       void refresh();
       close();
       toast.success(`'${saved.name}' 으로 저장했습니다.`);

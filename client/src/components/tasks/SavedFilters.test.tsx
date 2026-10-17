@@ -121,6 +121,28 @@ describe('저장된 필터', () => {
     expect(screen.queryByRole('button', { name: /거의 같은 것/ })).not.toBeInTheDocument();
   });
 
+  it('조건이 같은 것이 여럿이면 방금 저장한 것의 이름이 선다', async () => {
+    // 이미 같은 조건의 필터가 있는 상태에서 새 이름으로 저장한다
+    api.fetchTaskFilters.mockResolvedValue([{ ...urgent, ...CURRENT, name: '먼저 있던 것' }]);
+    api.saveTaskFilter.mockImplementation(async (input: SavedTaskFilterInput) => ({
+      ...input,
+      id: 77,
+    }));
+    show();
+    expect(await screen.findByRole('button', { name: /먼저 있던 것/ })).toBeInTheDocument();
+
+    api.fetchTaskFilters.mockResolvedValue([
+      { ...urgent, ...CURRENT, name: '먼저 있던 것' },
+      { ...urgent, ...CURRENT, id: 77, name: '방금 저장한 것' },
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: /먼저 있던 것/ }));
+    fireEvent.click(screen.getByRole('button', { name: '지금 조건을 저장' }));
+    fireEvent.change(screen.getByLabelText('필터 이름'), { target: { value: '방금 저장한 것' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByRole('button', { name: /방금 저장한 것/ })).toBeInTheDocument();
+  });
+
   it('ESC 로 닫힌다', async () => {
     api.fetchTaskFilters.mockResolvedValue([urgent]);
     show();
