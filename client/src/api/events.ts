@@ -16,11 +16,22 @@ export interface CreateEventParams {
   backgroundColor?: string;
   borderColor?: string;
   description?: string;
+  // ── 반복 ──────────────────────────────────────────────────────────────
+  /** 'none' 이거나 넘기지 않으면 한 번짜리 일정 */
+  recurrenceType?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+  /** 반복을 켰으면 서버가 필수로 본다 */
+  recurrenceEndDate?: string;
+  /** 주간 반복의 요일(0=일 ~ 6=토). 서버가 주간에서 필수로 본다 */
+  recurrenceDays?: number[];
 }
 
 export const createEvent = (event: CreateEventParams) => {
   return api.post('/events', event);
 };
+
+/** 반복 중 그 날 하루만 건너뛴다. 규칙은 그대로 두고 그 날짜만 빠진다. */
+export const skipOccurrence = (id: number, date: string) =>
+  api.delete(`/events/${id}/occurrences/${date}`).then(unwrap);
 
 export const getEvents = (start: Date, end: Date) => {
   return api

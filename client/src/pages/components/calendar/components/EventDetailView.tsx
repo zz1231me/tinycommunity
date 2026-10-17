@@ -18,6 +18,8 @@ interface EventDetailViewProps {
   deleting?: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  /** 반복 중 이 날만 건너뛴다. 반복에서 펼쳐진 번째일 때만 넘어온다. */
+  onSkipOccurrence?: () => void;
   onClose: () => void;
 }
 
@@ -39,6 +41,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
   deleting = false,
   onEdit,
   onDelete,
+  onSkipOccurrence,
   onClose: _onClose, // 닫기는 헤더 X·배경 클릭으로 처리 — 하단 중복 버튼 제거
 }) => {
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -162,6 +165,12 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
         </div>
       )}
 
+      {event.isRecurringOccurrence && (
+        <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+          반복 일정입니다. 고치면 이후 모든 날에 함께 적용됩니다.
+        </p>
+      )}
+
       {(canEdit || canDelete) && (
         <div className="flex items-center gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
           {canEdit && (
@@ -181,6 +190,14 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
                 />
               </svg>
               수정
+            </button>
+          )}
+
+          {/* 반복에서 펼쳐진 번째는 '이 날만' 과 '반복 전체' 를 나눠 준다 —
+              한 번 쉬려고 반복을 통째로 지우지 않게. */}
+          {canDelete && onSkipOccurrence && (
+            <button onClick={onSkipOccurrence} disabled={deleting} className="btn-secondary">
+              이 날만 건너뛰기
             </button>
           )}
 

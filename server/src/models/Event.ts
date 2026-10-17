@@ -39,6 +39,7 @@ export interface EventInstance extends Model<
   recurrenceInterval?: number;
   recurrenceDays?: number[] | null;
   recurrenceEndDate?: Date | null;
+  recurrenceExcept?: string[] | null;
   parentEventId?: number | null;
   createdAt: CreationOptional<Date>;
   updatedAt: CreationOptional<Date>;
@@ -73,6 +74,8 @@ export class Event
   declare public recurrenceInterval?: number;
   declare public recurrenceDays?: number[] | null;
   declare public recurrenceEndDate?: Date | null;
+  /** 이 날짜(YYYY-MM-DD)의 반복은 건너뛴다. 한 번만 쉬는 일정에 쓴다. */
+  declare public recurrenceExcept?: string[] | null;
   declare public parentEventId?: number | null;
   declare public readonly createdAt: Date;
   declare public readonly updatedAt: Date;
@@ -185,6 +188,8 @@ Event.init(
     },
     recurrenceDays: { type: DataTypes.JSON, allowNull: true },
     recurrenceEndDate: { type: DataTypes.DATE, allowNull: true },
+    // 건너뛸 날짜들(YYYY-MM-DD). 반복 중 하루만 쉬는 경우에 쓴다.
+    recurrenceExcept: { type: DataTypes.JSON, allowNull: true },
     parentEventId: { type: DataTypes.INTEGER, allowNull: true },
     createdAt: {
       type: DataTypes.DATE,

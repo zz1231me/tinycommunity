@@ -139,3 +139,58 @@ describe('먼 달을 보는 중이면', () => {
     expect(result.current.events).toHaveLength(1);
   });
 });
+
+// 반복 일정은 서버가 규칙을 펼쳐서 '번째' 들을 준다. 한 id 에서 여러 건이 오므로
+// 겹친 범위를 걷을 때 id 만 보면 한 달치가 한 건으로 줄어든다.
+describe('반복 일정의 번째들', () => {
+  const occurrence = (id: number, date: string) => ({
+    ...event(id, `${date}T01:00:00.000Z`, `${date}T02:00:00.000Z`),
+    occurrenceDate: date,
+    isRecurringOccurrence: true,
+    UserId: 'me',
+  });
+
+  it('같은 id 라도 날짜가 다르면 따로 센다', async () => {
+    mockGetEvents.mockResolvedValue([
+      occurrence(7, '2026-11-02'),
+      occurrence(7, '2026-11-09'),
+      occurrence(7, '2026-11-16'),
+    ]);
+    const { result } = show(day(300), day(330));
+    await act(async () => {
+      await result.current.loadEvents();
+    });
+
+    await waitFor(() => expect(result.current.events).toHaveLength(3));
+    expect(result.current.events.map(e => e.id)).toEqual([
+      '7:2026-11-02',
+      '7:2026-11-09',
+      '7:2026-11-16',
+    ]);
+  });
+
+  it('번째는 끌어 옮기지 못한다 — 한 번째만 옮기는 규칙이 없다', async () => {
+    mockGetEvents.mockResolvedValue([occurrence(7, '2026-11-02')]);
+    const { result } = show(day(1), day(20));
+    await act(async () => {
+      await result.current.loadEvents();
+    });
+
+    await waitFor(() => expect(result.current.events).toHaveLength(1));
+    expect(result.current.events[0].editable).toBe(false);
+  });
+
+  it('반복이 아닌 일정은 그대로 끌 수 있다 — 대조', async () => {
+    mockGetEvents.mockResolvedValue([
+      { ...event(8, day(1).toISOString(), day(2).toISOString()), UserId: 'me' },
+    ]);
+    const { result } = show(day(1), day(20));
+    await act(async () => {
+      await result.current.loadEvents();
+    });
+
+    await waitFor(() => expect(result.current.events).toHaveLength(1));
+    expect(result.current.events[0].editable).toBe(true);
+    expect(result.current.events[0].id).toBe('8');
+  });
+});

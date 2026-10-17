@@ -7,6 +7,7 @@ import EventPermission from '../models/EventPermission';
 import { AuthRequest } from '../types/auth-request';
 import { sanitizeHtmlContent } from '../utils/contentRenderer';
 import { getSettings } from '../utils/settingsCache';
+import { expandOccurrences } from '../services/eventRecurrence';
 import {
   sendSuccess,
   sendError,
@@ -214,16 +215,65 @@ export const getEvents = async (
   }
 
   try {
-    const whereClause = start && end ? { start: { [Op.lte]: end }, end: { [Op.gte]: start } } : {};
+    // 반복이 아닌 일정: 보는 범위에 걸치는 것만.
+    const plainWhere = {
+      recurrenceType: 'none',
+      ...(start && end ? { start: { [Op.lte]: end }, end: { [Op.gte]: start } } : {}),
+    };
+    // 반복 일정: 처음 일정이 범위보다 앞서 있어도 이 범위에 번째가 설 수 있다.
+    // 범위 조건을 그대로 쓰면 작년에 시작한 '매주 회의' 가 통째로 빠진다.
+    const recurringWhere = {
+      recurrenceType: { [Op.ne]: 'none' },
+      ...(start && end
+        ? {
+            start: { [Op.lte]: end },
+            [Op.or]: [{ recurrenceEndDate: null }, { recurrenceEndDate: { [Op.gte]: start } }],
+          }
+        : {}),
+    };
 
-    const events = await Event.findAll({
-      where: whereClause,
-      include: [{ model: User, as: 'user', attributes: ['id', 'name'] }],
-      order: [['start', 'ASC']],
-      limit: 2000, // ✅ 무제한 조회 방지
+    const include = [{ model: User, as: 'user', attributes: ['id', 'name'] }];
+    const [plain, recurring] = await Promise.all([
+      Event.findAll({ where: plainWhere, include, order: [['start', 'ASC']], limit: 2000 }),
+      Event.findAll({ where: recurringWhere, include, order: [['start', 'ASC']], limit: 200 }),
+    ]);
+
+    // 반복은 규칙 한 줄로 저장하고 여기서 펼친다(services/eventRecurrence).
+    const rangeStart = start ? new Date(start) : new Date(0);
+    const rangeEnd = end ? new Date(end) : new Date('2100-01-01');
+    const expanded = recurring.flatMap(event => {
+      const json = event.toJSON() as Record<string, unknown>;
+      return expandOccurrences(
+        {
+          start: new Date(event.start),
+          end: new Date(event.end),
+          recurrenceType: event.recurrenceType,
+          recurrenceInterval: event.recurrenceInterval,
+          recurrenceDays: event.recurrenceDays ?? null,
+          recurrenceEndDate: event.recurrenceEndDate ?? null,
+          recurrenceExcept: event.recurrenceExcept ?? null,
+        },
+        rangeStart,
+        rangeEnd
+      ).map(occ => ({
+        ...json,
+        start: occ.start,
+        end: occ.end,
+        /** 이 번째의 날짜. 하루만 쉬게 할 때 이 값으로 집는다. */
+        occurrenceDate: occ.date,
+        isRecurringOccurrence: true,
+      }));
     });
 
-    sendSuccess(res, events);
+    const all: Array<Record<string, unknown>> = [
+      ...plain.map(e => e.toJSON() as Record<string, unknown>),
+      ...expanded,
+    ].sort(
+      (a, b) =>
+        new Date(a.start as string | Date).getTime() - new Date(b.start as string | Date).getTime()
+    );
+
+    sendSuccess(res, all.slice(0, 2000));
   } catch (err) {
     next(err);
   }
@@ -501,6 +551,65 @@ export const deleteEvent = async (
     }
 
     sendSuccess(res, { deletedId: id }, '이벤트가 삭제되었습니다.');
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * DELETE /api/events/:id/occurrences/:date — 반복 중 그 날 하루만 건너뛴다.
+ *
+ * 규칙 자체는 그대로 두고 건너뛸 날짜만 더한다. 반복 전체를 지우는 것과 다르므로
+ * 지우는 권한(deleteEvent)과 같은 규칙으로 본다.
+ */
+export const skipOccurrence = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const { id, date } = req.params;
+  const userId = req.user?.id;
+  const userRole = req.user?.role;
+
+  if (!userId) {
+    sendUnauthorized(res, '로그인이 필요합니다.');
+    return;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    sendError(res, 400, '날짜는 YYYY-MM-DD 형식이어야 합니다.');
+    return;
+  }
+
+  try {
+    const event = await Event.findByPk(id);
+    if (!event) {
+      sendNotFound(res, '이벤트');
+      return;
+    }
+    if (!event.recurrenceType || event.recurrenceType === 'none') {
+      sendError(res, 400, '반복 일정이 아닙니다.');
+      return;
+    }
+
+    const isOwner = event.UserId === userId;
+    if (!isOwner && userRole !== ROLES.ADMIN) {
+      const eventPermission = await EventPermission.findOne({ where: { roleId: userRole } });
+      if (!eventPermission?.canDelete) {
+        sendForbidden(res, '다른 사용자의 일정을 바꿀 권한이 없습니다.');
+        return;
+      }
+    }
+
+    const except = new Set(event.recurrenceExcept ?? []);
+    except.add(date);
+    event.recurrenceExcept = [...except].sort();
+    await event.save();
+
+    sendSuccess(
+      res,
+      { id: event.id, recurrenceExcept: event.recurrenceExcept },
+      '이 날은 건너뜁니다.'
+    );
   } catch (err) {
     next(err);
   }

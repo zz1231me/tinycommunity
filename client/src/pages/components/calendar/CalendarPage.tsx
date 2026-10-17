@@ -8,7 +8,7 @@ import listPlugin from '@fullcalendar/list';
 import koLocale from '@fullcalendar/core/locales/ko';
 import { EventClickArg, DateSelectArg, EventDropArg } from '@fullcalendar/core';
 import { useAuth } from '../../../store/auth';
-import { updateEvent } from '../../../api/events';
+import { skipOccurrence, updateEvent } from '../../../api/events';
 import { toast } from '../../../utils/toast';
 
 import { CalendarEvent, EventFormData, ModalMode } from './types';
@@ -303,6 +303,22 @@ const CalendarPage: React.FC = () => {
     }
   };
 
+  /** 반복 중 이 날 하루만 건너뛴다. 규칙은 그대로 두므로 지우기와 따로 둔다. */
+  const handleSkipOccurrence = async () => {
+    if (!selectedEvent?.occurrenceDate || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await skipOccurrence(selectedEvent.id, selectedEvent.occurrenceDate);
+      setIsModalOpen(false);
+      await loadEvents();
+      toast.success('이 날은 건너뜁니다.');
+    } catch {
+      toast.error('건너뛰지 못했습니다.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleDatesSet = useCallback(
     (dateInfo: { view: { title: string } }) => {
       setCalendarTitle(dateInfo.view.title);
@@ -406,6 +422,7 @@ const CalendarPage: React.FC = () => {
           setModalMode('edit');
         }}
         onDelete={handleDelete}
+        onSkipOccurrence={() => void handleSkipOccurrence()}
         onSubmit={handleSubmit}
         onFormChange={data => setFormData(prev => ({ ...prev, ...data }))}
         onCancelEdit={() => {

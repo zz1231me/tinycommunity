@@ -59,6 +59,21 @@ interface EventFormProps {
 // 공통 input 클래스. 디자인 시스템 프리미티브(.input)에 위임한다.
 const inputCls = 'input';
 
+const REPEAT_OPTIONS: { value: NonNullable<EventFormData['recurrenceType']>; label: string }[] = [
+  { value: 'none', label: '반복 안 함' },
+  { value: 'daily', label: '매일' },
+  { value: 'weekly', label: '매주' },
+  { value: 'monthly', label: '매월' },
+  { value: 'yearly', label: '매년' },
+];
+
+/** 반복을 켤 때 채워 둘 기본 종료일. 끝이 없는 반복은 서버가 받지 않는다. */
+function monthLater(startDate: string): string {
+  const d = startDate ? new Date(`${startDate}T00:00:00`) : new Date();
+  d.setMonth(d.getMonth() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 function FieldLabel({
   children,
   required,
@@ -255,6 +270,48 @@ export const EventForm: React.FC<EventFormProps> = ({
             required
           />
         </div>
+        {/* 반복 — 규칙 한 줄만 받는다. 날짜들은 서버가 보여 줄 때 펼친다. */}
+        <div>
+          <FieldLabel htmlFor={`${fieldId}-repeat`}>반복</FieldLabel>
+          <select
+            id={`${fieldId}-repeat`}
+            value={formData.recurrenceType ?? 'none'}
+            onChange={e => {
+              const next = e.target.value as NonNullable<EventFormData['recurrenceType']>;
+              onChange({
+                recurrenceType: next,
+                // 켤 때 종료일이 비어 있으면 서버가 거절한다. 한 달 뒤를 기본으로 채워 둔다.
+                ...(next !== 'none' && !formData.recurrenceEndDate
+                  ? { recurrenceEndDate: monthLater(formData.start) }
+                  : {}),
+              });
+            }}
+            className={inputCls}
+          >
+            {REPEAT_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {formData.recurrenceType && formData.recurrenceType !== 'none' && (
+          <div>
+            <FieldLabel required htmlFor={`${fieldId}-repeat-end`}>
+              반복 종료일
+            </FieldLabel>
+            <input
+              id={`${fieldId}-repeat-end`}
+              type="date"
+              value={formData.recurrenceEndDate ?? ''}
+              min={formData.start}
+              onChange={e => onChange({ recurrenceEndDate: e.target.value })}
+              onClick={e => e.currentTarget.showPicker?.()}
+              className={`${inputCls} cursor-pointer`}
+              required
+            />
+          </div>
+        )}
         <div>
           <FieldLabel htmlFor={`${fieldId}-location`}>장소</FieldLabel>
           <div className="relative">

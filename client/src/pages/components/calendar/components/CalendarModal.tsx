@@ -18,6 +18,8 @@ interface CalendarModalProps {
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  /** 반복 중 이 날만 건너뛰기. 반복에서 펼쳐진 번째에서만 쓴다. */
+  onSkipOccurrence?: () => void;
   onSubmit: (e: React.FormEvent) => void;
   onFormChange: (data: Partial<EventFormData>) => void;
   onCancelEdit: () => void;
@@ -90,6 +92,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
   onClose,
   onEdit,
   onDelete,
+  onSkipOccurrence,
   onSubmit,
   onFormChange,
   onCancelEdit,
@@ -170,6 +173,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
               deleting={isDeleting}
               onEdit={onEdit}
               onDelete={onDelete}
+              onSkipOccurrence={selectedEvent.isRecurringOccurrence ? onSkipOccurrence : undefined}
               onClose={onClose}
             />
           )}

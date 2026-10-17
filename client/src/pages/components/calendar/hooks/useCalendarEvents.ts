@@ -26,11 +26,20 @@ export function railWindow(now: Date = new Date()): { start: Date; end: Date } {
   return { start, end };
 }
 
-/** 두 범위를 겹쳐 받았을 때 같은 일정이 두 번 들어오는 것을 걷는다. */
+/**
+ * 두 범위를 겹쳐 받았을 때 같은 일정이 두 번 들어오는 것을 걷는다.
+ * 반복 일정은 한 id 에서 여러 번째가 나오므로 날짜까지 열쇠에 넣는다 — id 만 쓰면
+ * 한 달치 반복이 한 건으로 줄어든다.
+ */
 function byId(lists: CalendarEvent[][]): CalendarEvent[] {
-  const seen = new Map<number, CalendarEvent>();
-  for (const list of lists) for (const ev of list) seen.set(ev.id, ev);
+  const seen = new Map<string, CalendarEvent>();
+  for (const list of lists) for (const ev of list) seen.set(occurrenceKey(ev), ev);
   return [...seen.values()];
+}
+
+/** 달력 한 칸을 가리키는 열쇠. 반복은 '원본 id + 그 번째 날짜' 다. */
+export function occurrenceKey(event: CalendarEvent): string {
+  return event.occurrenceDate ? `${event.id}:${event.occurrenceDate}` : String(event.id);
 }
 
 interface UseCalendarEventsProps {
@@ -91,7 +100,7 @@ export const useCalendarEvents = ({
       if (requestId !== loadRequestIdRef.current) return;
 
       const formattedEvents: EventInput[] = eventData.map((event: CalendarEvent) => ({
-        id: event.id.toString(),
+        id: occurrenceKey(event),
         title: event.title,
         start: event.start,
         end: event.end,
@@ -105,9 +114,11 @@ export const useCalendarEvents = ({
           categoryColors[event.category as keyof typeof categoryColors]?.border ||
           DEFAULT_EVENT_COLOR,
         // textColor 는 주입하지 않는다. 인라인 style 이 calendar.css 의 color-mix 글자색을 덮는다.
-        editable: canEditEvent(event),
-        startEditable: canEditEvent(event),
-        durationEditable: canEditEvent(event),
+        // 반복에서 펼쳐진 번째는 끌어 옮기지 않는다 — 한 번째만 옮기는 규칙이 없다.
+        // 일정을 바꾸려면 원본을 열어 반복 규칙째 고친다.
+        editable: canEditEvent(event) && !event.isRecurringOccurrence,
+        startEditable: canEditEvent(event) && !event.isRecurringOccurrence,
+        durationEditable: canEditEvent(event) && !event.isRecurringOccurrence,
         extendedProps: {
           body: event.body,
           category: event.category,
@@ -153,6 +164,23 @@ export const useCalendarEvents = ({
           color: formData.color,
           backgroundColor: formData.backgroundColor,
           borderColor: formData.color,
+          // 반복은 규칙 한 줄로 보낸다. 서버가 보여 줄 때 펼친다.
+          ...(formData.recurrenceType && formData.recurrenceType !== 'none'
+            ? {
+                recurrenceType: formData.recurrenceType,
+                recurrenceEndDate: formData.recurrenceEndDate
+                  ? new Date(formData.recurrenceEndDate + 'T00:00:00Z').toISOString()
+                  : undefined,
+                ...(formData.recurrenceType === 'weekly'
+                  ? {
+                      // 요일을 고르지 않았으면 시작일의 요일로 둔다(서버가 요일 배열을 요구한다)
+                      recurrenceDays: formData.recurrenceDays?.length
+                        ? formData.recurrenceDays
+                        : [startDate.getUTCDay()],
+                    }
+                  : {}),
+              }
+            : {}),
         };
 
         await createEvent(eventData);

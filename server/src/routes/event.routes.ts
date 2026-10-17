@@ -1,5 +1,11 @@
 import express, { RequestHandler } from 'express';
-import { createEvent, getEvents, updateEvent, deleteEvent } from '../controllers/event.controller';
+import {
+  createEvent,
+  getEvents,
+  updateEvent,
+  deleteEvent,
+  skipOccurrence,
+} from '../controllers/event.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { checkEventPermission } from '../middlewares/eventPermission.middleware';
 
@@ -25,5 +31,19 @@ router.get(
 router.put('/:id', authenticate as RequestHandler, updateEvent as RequestHandler);
 
 router.delete('/:id', authenticate as RequestHandler, deleteEvent as RequestHandler);
+
+/**
+ * @openapi
+ * /api/events/{id}/occurrences/{date}:
+ *   delete:
+ *     tags: [Events]
+ *     summary: 반복 중 그 날 하루만 건너뛴다 (규칙은 그대로)
+ *     security: [{ cookieAuth: [] }]
+ */
+router.delete(
+  '/:id/occurrences/:date',
+  authenticate as RequestHandler,
+  skipOccurrence as RequestHandler
+);
 
 export default router;

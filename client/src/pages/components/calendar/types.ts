@@ -26,6 +26,15 @@ export interface CalendarEvent {
   };
   createdAt: string;
   updatedAt: string;
+  // ── 반복 ──────────────────────────────────────────────────────────────
+  recurrenceType?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+  recurrenceInterval?: number;
+  recurrenceDays?: number[] | null;
+  recurrenceEndDate?: string | null;
+  /** 서버가 펼쳐서 준 '이 번째' 의 날짜(YYYY-MM-DD). 하루만 건너뛸 때 집는 열쇠다. */
+  occurrenceDate?: string;
+  /** 규칙에서 펼쳐진 것인지. 원본 한 줄과 구분한다. */
+  isRecurringOccurrence?: boolean;
 }
 
 export interface EventFormData {
@@ -38,6 +47,12 @@ export interface EventFormData {
   location?: string;
   color: string;
   backgroundColor: string;
+  /** 'none' 이면 한 번짜리 일정 */
+  recurrenceType?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+  /** 반복을 켰을 때만 쓴다(YYYY-MM-DD). 서버가 필수로 본다. */
+  recurrenceEndDate?: string;
+  /** 주간 반복의 요일(0=일 ~ 6=토) */
+  recurrenceDays?: number[];
 }
 
 export type ModalMode = 'view' | 'create' | 'edit';
