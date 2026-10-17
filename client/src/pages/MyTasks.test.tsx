@@ -163,7 +163,7 @@ describe('보기 전환과 기억', () => {
   });
 
   it('주소의 보기가 기억한 보기보다 먼저다 — 공유한 링크는 그대로 열려야 한다', async () => {
-    stored.set('myhome-tasks-view', 'kanban');
+    stored.set('myhome-ui-prefs', JSON.stringify({ taskView: 'kanban' }));
     fetchMyTasks.mockResolvedValue([task('정리')]);
     view(makeClient(), '/?view=list');
     expect(await screen.findByText('정리')).toBeInTheDocument();

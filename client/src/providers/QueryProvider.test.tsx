@@ -6,7 +6,7 @@
 // 5분은 '신선한' 것으로 쳐서 다시 묻지도 않으므로, 버리지 않으면 같은 브라우저에서 바로
 // 로그인한 다음 사람에게 앞 사람의 출퇴근 상태·쪽지 수·스크랩이 그대로 보인다.
 
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { act, render } from '@testing-library/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { QueryProvider } from './QueryProvider';
@@ -173,5 +173,56 @@ describe('로그아웃한 탭에 다른 사람이 로그인하면', () => {
     });
 
     expect(client.getQueryData(attendanceKeys.me)).toEqual({ who: '방금 받은 것' });
+  });
+});
+
+// 보기 설정은 첫 그림이 튀지 않게 localStorage 에도 남긴다. 그 값에는 누구 것인지가 없어
+// 캐시와 같은 사정이다 — 사람이 바뀌면 함께 버려야 한다.
+describe('보기 설정의 첫 그림 값도 함께 버린다', () => {
+  // setup 의 localStorage 는 값을 담지 않는 빈 mock 이다. 담기게 해 둬야 지웠는지 알 수 있다.
+  const stored = new Map<string, string>();
+  const read = () => stored.get('myhome-ui-prefs') ?? null;
+
+  beforeEach(() => {
+    stored.clear();
+    vi.mocked(localStorage.getItem).mockImplementation(key => stored.get(key) ?? null);
+    vi.mocked(localStorage.setItem).mockImplementation((key, value) => {
+      stored.set(key, String(value));
+    });
+    vi.mocked(localStorage.removeItem).mockImplementation(key => {
+      stored.delete(key);
+    });
+  });
+
+  it('다른 사람으로 바뀌면 앞 사람의 보기로 열리지 않는다', () => {
+    useAuth.setState({ user: asUser('alice'), isAuthenticated: true });
+    render(
+      <QueryProvider>
+        <Probe />
+      </QueryProvider>
+    );
+    localStorage.setItem('myhome-ui-prefs', JSON.stringify({ taskView: 'kanban' }));
+
+    act(() => {
+      useAuth.setState({ user: asUser('bob'), isAuthenticated: true });
+    });
+
+    expect(read()).toBeNull();
+  });
+
+  it('같은 사람이면 남겨 둔다 — 토큰만 새로 받았을 때 화면이 튀지 않게', () => {
+    useAuth.setState({ user: asUser('alice'), isAuthenticated: true });
+    render(
+      <QueryProvider>
+        <Probe />
+      </QueryProvider>
+    );
+    localStorage.setItem('myhome-ui-prefs', JSON.stringify({ taskView: 'kanban' }));
+
+    act(() => {
+      useAuth.setState({ user: asUser('alice'), isAuthenticated: true });
+    });
+
+    expect(read()).toBe(JSON.stringify({ taskView: 'kanban' }));
   });
 });

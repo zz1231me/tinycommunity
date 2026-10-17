@@ -13,6 +13,7 @@ import User from '../models/User';
 import { getBoardAudienceWhere } from '../services/boardAudience';
 import { Op, fn, col, literal, type Order, type OrderItem } from 'sequelize';
 import { sequelize } from '../config/sequelize';
+import { AppError } from '../middlewares/error.middleware';
 
 // GET /api/users/me/posts  → 내 게시글
 export const getMyPosts = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -272,12 +273,25 @@ export const getUiPrefs = async (req: AuthRequest, res: Response): Promise<void>
 export const updateUiPrefs = async (req: AuthRequest, res: Response): Promise<void> => {
   const patch = sanitizeUiPrefs(req.body);
   try {
-    const row = await User.findByPk(req.user.id, { attributes: ['id', 'uiPrefs'] });
-    if (!row) return sendError(res, 404, '사용자를 찾을 수 없습니다.');
-    const next = { ...parseUiPrefs(row.uiPrefs), ...patch };
-    await User.update({ uiPrefs: JSON.stringify(next) }, { where: { id: req.user.id } });
+    // 화면에서 설정 두 개를 연달아 바꾸면 요청이 겹친다. 읽고-고쳐-쓰기를 잠그지 않으면
+    // 나중에 끝난 쪽이 상대가 저장한 키를 지운 옛 값으로 덮어써, 바꾼 설정이 조용히 사라진다.
+    const next = await sequelize.transaction(async t => {
+      const row = await User.findByPk(req.user.id, {
+        attributes: ['id', 'uiPrefs'],
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (!row) throw new AppError(404, '사용자를 찾을 수 없습니다.');
+      const merged = { ...parseUiPrefs(row.uiPrefs), ...patch };
+      await User.update(
+        { uiPrefs: JSON.stringify(merged) },
+        { where: { id: req.user.id }, transaction: t }
+      );
+      return merged;
+    });
     sendSuccess(res, next);
   } catch (err) {
+    if (err instanceof AppError) return sendError(res, err.statusCode, err.message);
     logError('보기 설정 저장 실패', err, { userId: req.user.id });
     sendError(res, 500, '보기 설정을 저장하지 못했습니다.');
   }

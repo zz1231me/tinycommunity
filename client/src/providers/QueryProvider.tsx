@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { shouldRetryQuery } from '../api/retryPolicy';
 import { useAuth } from '../store/auth';
+import { clearUiPrefsCache } from '../hooks/useUiPrefs';
 
 interface QueryProviderProps {
   children: ReactNode;
@@ -45,6 +46,9 @@ export const QueryProvider = ({ children }: QueryProviderProps) => {
     // 응답이 캐시에 앉을 수 있다. 캐시 열쇠에 누구의 것인지가 없으므로 그때는 비워야 한다.
     if (opening && before === null) return;
     queryClient.clear();
+    // 보기 설정은 첫 그림이 튀지 않게 localStorage 에도 남겨 둔다. 거기에는 누구 것인지가
+    // 없으므로 함께 버린다 — 아니면 다음 사람이 앞사람의 보기·정렬로 열린다.
+    clearUiPrefsCache();
   }, [userId, queryClient]);
 
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;

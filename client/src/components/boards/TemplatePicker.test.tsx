@@ -82,6 +82,32 @@ describe('템플릿 고르기', () => {
     await waitFor(() => expect(onPick).not.toHaveBeenCalled());
   });
 
+  it('ESC 로 닫힌다 — 다른 메뉴들과 같게', async () => {
+    mockFetch.mockResolvedValue([template()]);
+    show();
+
+    fireEvent.click(await screen.findByRole('button', { name: '템플릿' }));
+    expect(screen.getByRole('button', { name: /주간 회의록/ })).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /주간 회의록/ })).not.toBeInTheDocument()
+    );
+  });
+
+  it('바깥을 누르면 닫힌다 — 고르다 만 메뉴가 글 위에 남지 않게', async () => {
+    mockFetch.mockResolvedValue([template()]);
+    show();
+
+    fireEvent.click(await screen.findByRole('button', { name: '템플릿' }));
+    fireEvent.mouseDown(document.body);
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /주간 회의록/ })).not.toBeInTheDocument()
+    );
+  });
+
   it('빈 글에서는 묻지 않고 바로 채운다', async () => {
     mockFetch.mockResolvedValue([template()]);
     const onPick = show(false);

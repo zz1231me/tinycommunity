@@ -124,3 +124,28 @@ describe('보기 설정 API', () => {
     expect((await get(userCookie)).body.data).toEqual({});
   });
 });
+
+describe('동시에 들어온 저장', () => {
+  it('서로 다른 키를 동시에 보내면 네 개가 모두 남는다 — 늦게 끝난 쪽이 남을 지우지 않게', async () => {
+    await patch(userCookie, {
+      taskView: 'list',
+      taskSort: 'stale',
+      taskShowDone: false,
+      taskGanttZoom: 'day',
+    }).expect(200);
+
+    await Promise.all([
+      patch(userCookie, { taskView: 'kanban' }),
+      patch(userCookie, { taskSort: 'priority' }),
+      patch(userCookie, { taskShowDone: true }),
+      patch(userCookie, { taskGanttZoom: 'week' }),
+    ]);
+
+    expect((await get(userCookie)).body.data).toEqual({
+      taskView: 'kanban',
+      taskSort: 'priority',
+      taskShowDone: true,
+      taskGanttZoom: 'week',
+    });
+  });
+});

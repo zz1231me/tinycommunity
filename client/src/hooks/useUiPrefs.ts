@@ -14,6 +14,14 @@ import { useAuth } from '../store/auth';
 
 const CACHE_KEY = 'myhome-ui-prefs';
 
+/**
+ * 첫 그림용으로 남겨 둔 값을 버린다. 로그인한 사람이 바뀔 때 부른다 —
+ * 이 값에는 누구 것인지가 없어서, 그대로 두면 다음 사람이 앞사람의 보기로 열린다.
+ */
+export function clearUiPrefsCache(): void {
+  safeStorage.remove(CACHE_KEY);
+}
+
 function readCache(): UiPrefs {
   try {
     const raw = safeStorage.get(CACHE_KEY);

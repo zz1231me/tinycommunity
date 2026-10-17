@@ -33,6 +33,7 @@ import { deleteDraft, fetchDraft } from '../../api/drafts';
 import { formatRelativeDate } from '../../utils/date';
 import '../../styles/CKContentView.css';
 import { TemplatePicker } from '../../components/boards/TemplatePicker';
+import { hasEditorContent } from '../../utils/editorContent';
 
 interface AttachmentInfo {
   url: string;
@@ -219,12 +220,7 @@ const PostEditor = ({ mode }: Props) => {
 
     // CKEditor returns HTML; check for text or embedded media
     const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
-    const textContent = contentStr
-      .replace(/<[^>]+>/g, '')
-      .replace(/&nbsp;/g, ' ')
-      .trim();
-    const hasMedia = /<img|<video|<audio|<iframe/i.test(contentStr);
-    if (!textContent && !hasMedia) {
+    if (!hasEditorContent(contentStr)) {
       setError('내용을 입력해주세요.');
       return;
     }
@@ -453,11 +449,7 @@ const PostEditor = ({ mode }: Props) => {
       {!isEditMode && templatesEnabled && targetBoard && (
         <TemplatePicker
           boardType={targetBoard}
-          hasContent={
-            currentHtml()
-              .replace(/<[^>]*>/g, '')
-              .trim().length > 0
-          }
+          hasContent={hasEditorContent(currentHtml())}
           onPick={applyTemplate}
         />
       )}

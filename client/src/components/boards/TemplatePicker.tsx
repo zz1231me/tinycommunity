@@ -3,12 +3,13 @@
 // 이미 쓴 본문을 말없이 덮지 않는다 — 한 글자라도 적어 두었으면 한 번 묻는다.
 // 새 글에서만 쓴다(수정 중에 틀을 덮어쓰면 원래 글이 사라진다).
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileText } from 'lucide-react';
 import { fetchPostTemplates, type PostTemplate } from '../../api/postTemplates';
 import { templateKeys } from '../../api/queryKeys';
 import { useConfirm } from '../../hooks/useConfirm';
+import { hasOpenDialog } from '../../hooks/useFocusTrap';
 
 interface Props {
   boardType: string;
@@ -19,6 +20,7 @@ interface Props {
 
 export function TemplatePicker({ boardType, hasContent, onPick }: Props) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   // window.confirm 대신 이 앱의 대화상자를 쓴다 — 포커스 가둠·ESC·화면 색이 함께 온다.
   const { confirm, dialog } = useConfirm();
   const { data = [] } = useQuery({
@@ -26,6 +28,26 @@ export function TemplatePicker({ boardType, hasContent, onPick }: Props) {
     queryFn: ({ signal }) => fetchPostTemplates(boardType, signal),
     staleTime: 5 * 60_000,
   });
+
+  // 다른 메뉴들과 같게 닫힌다. ESC 와 바깥 클릭으로 닫히지 않으면 고르다 만 메뉴가 글 위에 남는다.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      // 위에 대화상자가 떠 있으면 ESC 는 그쪽 몫이다
+      if (e.key !== 'Escape' || hasOpenDialog()) return;
+      setOpen(false);
+    };
+    // 열려 있을 때만 듣는다 — 닫힌 채로 걸어 두면 앱 안의 모든 클릭이 이 검사를 거친다
+    const onDown = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onDown);
+    };
+  }, [open]);
 
   if (data.length === 0) return null;
 
@@ -44,7 +66,7 @@ export function TemplatePicker({ boardType, hasContent, onPick }: Props) {
   };
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
