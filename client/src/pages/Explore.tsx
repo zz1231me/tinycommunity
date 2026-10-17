@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Compass, Flame, Tag as TagIcon } from 'lucide-react';
+import { Activity, Compass, Flame, Tag as TagIcon } from 'lucide-react';
 import { PageContainer } from '../components/common/PageContainer';
 import { PageHeader } from '../components/common/PageHeader';
 import { DiscoveryPostRow } from '../components/discovery/DiscoveryPostRow';
 import { TagCloud } from '../components/discovery/TagCloud';
+import { ActivityFeed } from '../components/discovery/ActivityFeed';
 import { Pagination } from '../components/boards/Pagination';
 import { discoveryKeys } from '../api/queryKeys';
+import { useFeature } from '../store/features';
 import {
   fetchPopularPosts,
   fetchPostsByTag,
@@ -54,6 +56,7 @@ function Empty({ children }: { children: React.ReactNode }) {
 }
 
 export default function Explore() {
+  const activityEnabled = useFeature('discovery.activity');
   const [period, setPeriod] = useState<PopularPeriod>('week');
   const [tagId, setTagId] = useState<number | null>(null);
   const [tagPage, setTagPage] = useState(1);
@@ -83,11 +86,17 @@ export default function Explore() {
     <PageContainer>
       <PageHeader
         title="탐색"
-        description="게시판을 가로질러 지금 읽을 만한 글을 찾습니다."
+        description="게시판을 가로질러 무슨 일이 있었는지, 지금 읽을 만한 글이 무엇인지 봅니다."
         icon={<Compass className="h-6 w-6 text-primary-600 dark:text-primary-400" />}
       />
 
       <div className="space-y-4">
+        {activityEnabled && (
+          <Panel title="최근 활동" icon={<Activity className="h-5 w-5" />}>
+            <ActivityFeed />
+          </Panel>
+        )}
+
         <Panel title="태그" icon={<TagIcon className="h-5 w-5" />}>
           {tags.isLoading ? (
             <Empty>태그를 불러오는 중…</Empty>

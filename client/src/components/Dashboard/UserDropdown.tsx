@@ -1,7 +1,18 @@
 // client/src/components/Dashboard/UserDropdown.tsx
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, User, Settings, LogOut, Share2, Folder, Clock, Pencil } from 'lucide-react';
+import {
+  ChevronDown,
+  User,
+  Settings,
+  LogOut,
+  Share2,
+  Folder,
+  Clock,
+  Pencil,
+  Coins,
+} from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { TempShareModal } from './TempShareModal';
 import { useAccessibleBoards } from '../../hooks/useAccessibleBoards';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -14,6 +25,8 @@ import { ThemeToggle } from '../ThemeToggle';
 import { useUIOverlays } from '../../store/uiOverlays';
 import { hasOpenDialog } from '../../hooks/useFocusTrap';
 import { useMenuVisible } from '../../store/features';
+import { fetchPointStatus } from '../../api/points';
+import { pointKeys } from '../../api/queryKeys';
 
 export function UserDropdown() {
   const { getUserName, getUserRole, getUser, clearUser, isAdmin } = useAuth();
@@ -23,6 +36,7 @@ export function UserDropdown() {
   const { personalBoards } = useAccessibleBoards();
   const showAttendance = useMenuVisible('tools.attendance');
   const showMemo = useMenuVisible('tools.memo');
+  const showPoints = useMenuVisible('tools.lottery');
 
   // 통합 overlay store — NotificationBell/GlobalSearch와 자동 배타.
   // setIsOpen은 안정 ref 유지 (getState로 호출 시점 최신값 사용)
@@ -34,6 +48,14 @@ export function UserDropdown() {
   }, []);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // 잔액은 메뉴를 열 때만 묻는다. 모든 화면에서 미리 받아 두면 쓰지도 않을 요청이 늘 하나씩 는다.
+  const { data: points } = useQuery({
+    queryKey: pointKeys.status,
+    queryFn: () => fetchPointStatus(),
+    enabled: isOpen && showPoints,
+    staleTime: 60_000,
+  });
 
   const userName = getUserName();
   const userRole = getUserRole();
@@ -217,6 +239,30 @@ export function UserDropdown() {
                 >
                   <Clock className="w-4 h-4 flex-shrink-0 text-slate-400" />
                   <span>출근 확인</span>
+                </button>
+              )}
+
+              {showPoints && (
+                <button
+                  onClick={() => {
+                    navigate('/profile?tab=points');
+                    setIsOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg
+                           text-sm text-slate-600 dark:text-slate-400
+                           hover:bg-slate-50 dark:hover:bg-slate-800
+                           hover:text-slate-900 dark:hover:text-slate-200
+                           transition-colors duration-150"
+                >
+                  <span className="flex items-center gap-3">
+                    <Coins className="w-4 h-4 flex-shrink-0 text-amber-500" />
+                    <span>포인트</span>
+                  </span>
+                  {points && (
+                    <span className="tabular-nums text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      {points.balance.toLocaleString()}P
+                    </span>
+                  )}
                 </button>
               )}
 

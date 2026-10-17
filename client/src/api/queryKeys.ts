@@ -80,6 +80,7 @@ export const draftKeys = {
 
 /** 탐색·참여(인기글·태그·스크랩) */
 export const discoveryKeys = {
+  activity: ['discovery', 'activity'] as const,
   all: ['discovery'] as const,
   popular: (period: string) => ['discovery', 'popular', period] as const,
   related: (boardType: string, postId: string) =>
@@ -108,6 +109,8 @@ export const attendanceKeys = {
 export const pointKeys = {
   /** 포인트 절반 날리기의 값·확률·남은 횟수 */
   attack: ['points', 'attack'] as const,
+  /** 내 잔액·오늘 남은 뽑기 */
+  status: ['points', 'status'] as const,
 } as const;
 
 export const adminKeys = {

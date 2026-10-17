@@ -113,6 +113,13 @@ export const FEATURES = {
     group: 'discovery',
     defaultEnabled: true,
   },
+  'discovery.activity': {
+    label: '활동 피드',
+    description:
+      '읽을 수 있는 게시판의 새 글·새 댓글·업무 변경을 한곳에 시간순으로 모아 보여 줍니다.',
+    group: 'discovery',
+    defaultEnabled: true,
+  },
   'discovery.related': {
     label: '관련 글 추천',
     description: '글 아래에 태그가 겹치는 다른 글을 보여 줍니다.',
