@@ -38,6 +38,10 @@ jobs:
       - name: Run tests with coverage
         run: npm test -- --coverage
         env:
+          # 스위트 108개를 한 프로세스에서(--runInBand) 커버리지까지 켜고 돌린다.
+          # 기본 힙(약 4GB)에 닿아 OOM 으로 멈췄다 — 로컬에서 같은 조건으로 재니
+          # 4GB 바로 아래였다. 여유를 준다.
+          NODE_OPTIONS: --max-old-space-size=6144
           NODE_ENV: test
           DB_TYPE: sqlite
           DB_STORAGE: ':memory:'
