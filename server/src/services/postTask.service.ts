@@ -12,6 +12,7 @@ import { isWorkStatus, WORK_STATUS_KEYS, type WorkStatus } from '../config/workS
 import { isTaskPriority, type TaskPriority } from '../config/taskPriority';
 import { notificationService } from './notification.service';
 import { getAccessibleBoardTypes } from './accessibleBoards';
+import { checkUserBoardPermission } from '../controllers/board.controller';
 import { checkSecretPostAccess } from '../utils/postAccess';
 import { sequelize } from '../config/sequelize';
 import { logError } from '../utils/logger';
@@ -36,6 +37,29 @@ interface ChangeParams {
    * 그새 다른 사람이 바꾼 상태를 덮어쓰지 않게 한다.
    */
   ifWorkStatus?: WorkStatus;
+}
+
+/**
+ * 주소의 게시판에 정말 있는, 지금 읽을 수 있는 글인지. 아니면 없는 것처럼 답한다.
+ * 라우터의 읽기 확인은 주소의 게시판만 보므로 글 자체를 여기서 다시 본다.
+ */
+async function assertVisibleTask(
+  boardType: string,
+  postId: string,
+  userId: string,
+  userRole: string
+) {
+  const post = await Post.findByPk(postId, {
+    attributes: ['id', 'boardType', 'status', 'isSecret', 'secretType', 'secretUserIds', 'UserId'],
+  });
+  if (
+    !post ||
+    post.boardType !== boardType ||
+    post.status !== 'published' ||
+    !checkSecretPostAccess(post, userId, userRole).ok
+  ) {
+    throw new AppError(404, '게시글을 찾을 수 없습니다.');
+  }
 }
 
 /** 업무용으로 켜 둔 게시판에서만 담당자·상태를 쓴다 */
@@ -225,9 +249,22 @@ export const postTaskService = {
 
   /**
    * 한 업무에 딸린 하위 업무. 끝난 것까지 모두 준다 — '3/5 끝남' 을 세려면 끝난 것도 세야 한다.
+   *
+   * 라우터는 주소에 적힌 게시판의 읽기 권한만 본다. 읽을 수 있는 게시판 주소에 다른 게시판
+   * 글의 id 를 끼워 넣으면 그 글의 하위 목록이 새 나간다(역링크에서 막은 것과 같은 구멍).
+   * 상위 글이 정말 그 게시판의 것인지 다시 보고, 하위도 읽을 수 있는 게시판의 것만 준다
+   * — 하위는 나중에 다른 게시판으로 옮겨질 수 있다.
    */
-  async listSubtasks(parentId: string, userId: string, userRole: string) {
-    return findTasks({ parentTaskId: parentId }, [...WORK_STATUS_KEYS], userId, userRole);
+  async listSubtasks(boardType: string, parentId: string, userId: string, userRole: string) {
+    await assertVisibleTask(boardType, parentId, userId, userRole);
+    const accessible = await getAccessibleBoardTypes(userId, userRole);
+    if (accessible.length === 0) return [];
+    return findTasks(
+      { parentTaskId: parentId, boardType: { [Op.in]: accessible } },
+      [...WORK_STATUS_KEYS],
+      userId,
+      userRole
+    );
   },
 
   /**
@@ -238,6 +275,7 @@ export const postTaskService = {
    * 담당자를 함께 받으면 change() 로 지정해 알림·활동 기록이 평소 길과 같게 남는다.
    */
   async addSubtask(params: {
+    boardType: string;
     parentId: string;
     title: string;
     assigneeId?: string | null;
@@ -253,7 +291,8 @@ export const postTaskService = {
     }
 
     const parent = await Post.findByPk(params.parentId);
-    if (!parent || parent.status !== 'published') {
+    // 주소의 게시판과 글의 게시판이 다르면 없는 것으로 본다 — change() 와 같은 규칙.
+    if (!parent || parent.status !== 'published' || parent.boardType !== params.boardType) {
       throw new AppError(404, '상위 업무를 찾을 수 없습니다.');
     }
     if (parent.parentTaskId) {
@@ -261,6 +300,17 @@ export const postTaskService = {
     }
     await assertTaskBoard(parent.boardType);
     await assertCanManage(parent, params.actorId, params.actorRole);
+    // 하위 업무도 글 하나다. 읽기만 되는 게시판에 글이 생기지 않게 쓰기 권한까지 본다
+    // — 담당자라는 이유로 글쓰기 권한이 생기면 안 된다.
+    const writable = await checkUserBoardPermission(
+      params.actorId,
+      params.actorRole,
+      parent.boardType,
+      'canWrite'
+    );
+    if (!writable.hasAccess) {
+      throw new AppError(403, '이 게시판에 글을 쓸 권한이 없습니다.');
+    }
 
     const child = await Post.create({
       title,
@@ -296,9 +346,16 @@ export const postTaskService = {
   },
 
   /** 하위에서 떼어 낸다. 글은 지우지 않는다 — 혼자 선 업무로 남는다. */
-  async detachSubtask(parentId: string, childId: string, actorId: string, actorRole: string) {
+  async detachSubtask(
+    boardType: string,
+    parentId: string,
+    childId: string,
+    actorId: string,
+    actorRole: string
+  ) {
     const child = await Post.findByPk(childId);
-    if (!child || child.parentTaskId !== parentId) {
+    // 주소의 게시판·상위가 모두 맞아야 한다. 번호만 알고 떼어 내지 못하게.
+    if (!child || child.parentTaskId !== parentId || child.boardType !== boardType) {
       throw new AppError(404, '하위 업무를 찾을 수 없습니다.');
     }
     await assertCanManage(child, actorId, actorRole);

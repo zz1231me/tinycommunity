@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import Board from '../models/Board';
+import BoardAccess from '../models/BoardAccess';
 import { Post } from '../models/Post';
 
 // 하위 업무(지라의 subtask 자리).
@@ -55,6 +56,33 @@ beforeAll(async () => {
   adminCookie = await loginAs('admin', 'TestAdmin123!');
   userCookie = await loginAs('testuser', 'TestUser123!');
   await Board.update({ taskEnabled: true }, { where: { id: 'notice' } });
+
+  // 일반 사용자가 못 읽는 업무용 게시판 — 주소 바꿔치기 확인용
+  await Board.findOrCreate({
+    where: { id: 'subsecret' },
+    defaults: { id: 'subsecret', name: '비공개 업무', order: 96, taskEnabled: true },
+  });
+  await Board.update({ taskEnabled: true }, { where: { id: 'subsecret' } });
+  await BoardAccess.destroy({ where: { boardId: 'subsecret' } });
+  await BoardAccess.create({
+    boardId: 'subsecret',
+    roleId: 'admin',
+    canRead: true,
+    canWrite: true,
+    canDelete: true,
+  });
+
+  // 읽기만 되는 업무용 게시판 — 담당자라도 글을 만들지 못해야 한다
+  await Board.findOrCreate({
+    where: { id: 'subreadonly' },
+    defaults: { id: 'subreadonly', name: '읽기 전용 업무', order: 95, taskEnabled: true },
+  });
+  await Board.update({ taskEnabled: true }, { where: { id: 'subreadonly' } });
+  await BoardAccess.destroy({ where: { boardId: 'subreadonly' } });
+  await BoardAccess.bulkCreate([
+    { boardId: 'subreadonly', roleId: 'admin', canRead: true, canWrite: true, canDelete: true },
+    { boardId: 'subreadonly', roleId: 'user', canRead: true, canWrite: false, canDelete: false },
+  ]);
 });
 
 afterAll(async () => {
@@ -154,6 +182,46 @@ describe('떼어 내기', () => {
     const childId = (await add(adminCookie, a, { title: 'A 의 하위' })).body.data.id;
 
     await detach(adminCookie, b, childId).expect(404);
+  });
+});
+
+// 라우터는 주소에 적힌 게시판의 읽기 권한만 본다. 읽을 수 있는 게시판 주소에 다른 게시판
+// 글의 id 를 끼워 넣으면, 그 글의 하위 목록이 새 나가면 안 된다(역링크에서 막은 것과 같은 구멍).
+describe('주소를 바꿔치기해도 새지 않는다', () => {
+  it('못 읽는 게시판 글의 하위 목록을 읽을 수 있는 게시판 주소로 엿볼 수 없다', async () => {
+    const hidden = await create(adminCookie, `비공개 상위 ${Date.now()}`, 'subsecret');
+    await add(adminCookie, hidden, { title: '안쪽 하위' }, 'subsecret').expect(201);
+
+    // 'notice' 는 testuser 도 읽는다. 거기에 다른 게시판 글의 id 를 끼워 넣어 본다.
+    const res = await list(userCookie, hidden, 'notice');
+
+    expect(res.status).toBe(404);
+  });
+
+  it('주소의 게시판이 다르면 하위를 붙이지도 못한다', async () => {
+    const hidden = await create(adminCookie, `비공개 상위2 ${Date.now()}`, 'subsecret');
+
+    await add(adminCookie, hidden, { title: '끼워 넣기' }, 'notice').expect(404);
+  });
+
+  it('주소의 게시판이 다르면 떼어 내지도 못한다', async () => {
+    const hidden = await create(adminCookie, `비공개 상위3 ${Date.now()}`, 'subsecret');
+    const childId = (await add(adminCookie, hidden, { title: '안쪽 하위' }, 'subsecret')).body.data
+      .id;
+
+    await detach(adminCookie, hidden, childId, 'notice').expect(404);
+  });
+});
+
+describe('쓰기 권한', () => {
+  it('읽기만 되는 게시판에서는 담당자라도 하위를 만들지 못한다 — 하위도 글이다', async () => {
+    const parent = await create(adminCookie, `읽기전용 ${Date.now()}`, 'subreadonly');
+    await setTask(adminCookie, parent, { assigneeId: 'testuser' }, 'subreadonly').expect(200);
+
+    const res = await add(userCookie, parent, { title: '몰래 쓴 글' }, 'subreadonly');
+
+    expect(res.status).toBe(403);
+    expect(res.body.message).toMatch(/글을 쓸 권한/);
   });
 });
 

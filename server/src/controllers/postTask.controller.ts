@@ -226,7 +226,10 @@ export const getSubtasks = async (req: AuthRequest, res: Response): Promise<void
   const { id: userId, role: userRole } = req.user;
 
   try {
-    sendSuccess(res, await postTaskService.listSubtasks(req.params.id, userId, userRole));
+    sendSuccess(
+      res,
+      await postTaskService.listSubtasks(req.params.boardType, req.params.id, userId, userRole)
+    );
   } catch (err) {
     sendServiceError(res, err, '하위 업무를 불러오지 못했습니다.', {
       userId,
@@ -259,6 +262,7 @@ export const addSubtask = async (req: AuthRequest, res: Response): Promise<void>
 
   try {
     const created = await postTaskService.addSubtask({
+      boardType: req.params.boardType,
       parentId: req.params.id,
       title: body.title,
       assigneeId: (body.assigneeId as string | null | undefined) ?? null,
@@ -278,7 +282,13 @@ export const detachSubtask = async (req: AuthRequest, res: Response): Promise<vo
   const { id: actorId, role: actorRole } = req.user;
 
   try {
-    await postTaskService.detachSubtask(req.params.id, req.params.childId, actorId, actorRole);
+    await postTaskService.detachSubtask(
+      req.params.boardType,
+      req.params.id,
+      req.params.childId,
+      actorId,
+      actorRole
+    );
     sendSuccess(res, null, '하위 업무에서 떼어 냈습니다.');
   } catch (err) {
     sendServiceError(res, err, '하위 업무를 떼어 내지 못했습니다.', { userId: actorId });
