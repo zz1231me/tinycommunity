@@ -34,6 +34,7 @@ import { formatRelativeDate } from '../../utils/date';
 import '../../styles/CKContentView.css';
 import { TemplatePicker } from '../../components/boards/TemplatePicker';
 import { hasEditorContent } from '../../utils/editorContent';
+import { toast } from '../../utils/toast';
 
 interface AttachmentInfo {
   url: string;
@@ -202,32 +203,39 @@ const PostEditor = ({ mode }: Props) => {
     };
   }, [mode, resumeDraftId]);
 
+  /**
+   * 저장하다 막힌 것을 알린다. 팝업으로 띄운다 — 이 화면은 에디터·첨부·비밀글까지 길어서
+   * 단추는 맨 아래에 있고, 맨 위 안내는 화면 밖(실측 795px 위)이라 아무 일도 없는 것처럼 보인다.
+   * 맨 위 안내 상자는 불러오기 실패 전용으로 남는다(그때는 화면 맨 위에 있다).
+   */
+  const failSubmit = (message: string) => toast.error(message);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
 
     if (!boardType) {
-      setError('게시판 유형이 없습니다.');
+      failSubmit('게시판 유형이 없습니다.');
       return;
     }
 
     const content = editorRef.current?.getInstance()?.getContent() || '';
 
     if (!title?.trim()) {
-      setError('제목을 입력해주세요.');
+      failSubmit('제목을 입력해주세요.');
       return;
     }
 
     // CKEditor returns HTML; check for text or embedded media
     const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
     if (!hasEditorContent(contentStr)) {
-      setError('내용을 입력해주세요.');
+      failSubmit('내용을 입력해주세요.');
       return;
     }
 
     const oversizedFiles = files.filter(file => file.size > MAX_FILE_SIZE);
     if (oversizedFiles.length > 0) {
-      setError(
+      failSubmit(
         `파일 크기는 ${siteSettings.maxFileSizeMb}MB를 초과할 수 없습니다. 초과 파일: ${oversizedFiles.map(f => f.name).join(', ')}`
       );
       return;
@@ -235,7 +243,7 @@ const PostEditor = ({ mode }: Props) => {
 
     const totalFiles = existingAttachments.length + files.length;
     if (totalFiles > MAX_FILES) {
-      setError(`최대 ${MAX_FILES}개의 파일만 첨부할 수 있습니다. (현재: ${totalFiles}개)`);
+      failSubmit(`최대 ${MAX_FILES}개의 파일만 첨부할 수 있습니다. (현재: ${totalFiles}개)`);
       return;
     }
 
@@ -244,23 +252,23 @@ const PostEditor = ({ mode }: Props) => {
     if (isSecret && secretMode === 'users') {
       // 지정 방식은 사람을 한 명 이상 골라야 한다. 수정할 때도 같다.
       if (allowedUsers.length === 0) {
-        setError('열람을 허용할 사람을 한 명 이상 선택해주세요.');
+        failSubmit('열람을 허용할 사람을 한 명 이상 선택해주세요.');
         return;
       }
     } else if (isSecret) {
       const trimmedPw = secretPassword.trim();
       if (secretPassword && !trimmedPw) {
-        setError('비밀글 비밀번호에 공백만 입력할 수 없습니다.');
+        failSubmit('비밀글 비밀번호에 공백만 입력할 수 없습니다.');
         return;
       }
       // 비밀글 새로 설정(create 또는 기존에 비밀글 아닌 경우) 시 비밀번호 필수
       // 기존 비밀글(password/users 타입) 수정 시에는 비밀번호 미입력 허용 (서버가 기존 값 유지)
       if (!trimmedPw && originalSecretType === null) {
-        setError('비밀글 비밀번호를 입력해주세요.');
+        failSubmit('비밀글 비밀번호를 입력해주세요.');
         return;
       }
       if (trimmedPw && trimmedPw.length < SECRET_PW_MIN_LENGTH) {
-        setError(`비밀글 비밀번호는 최소 ${SECRET_PW_MIN_LENGTH}자 이상이어야 합니다.`);
+        failSubmit(`비밀글 비밀번호는 최소 ${SECRET_PW_MIN_LENGTH}자 이상이어야 합니다.`);
         return;
       }
     }
@@ -365,13 +373,13 @@ const PostEditor = ({ mode }: Props) => {
       const response = (err as { response?: { status?: number; data?: { message?: string } } })
         ?.response;
       if (response?.status === 409) {
-        setError(
+        failSubmit(
           response.data?.message ||
             '게시글 상태가 변경되었습니다. 페이지를 새로고침한 후 다시 시도해주세요.'
         );
       } else {
         const message = err instanceof Error ? err.message : '저장 중 오류가 발생했습니다.';
-        setError(message);
+        failSubmit(message);
       }
     } finally {
       setLoading(false);

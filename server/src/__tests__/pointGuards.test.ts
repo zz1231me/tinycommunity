@@ -7,6 +7,8 @@ import User from '../models/User';
 import { UserPoint } from '../models/UserPoint';
 import { PointDuel } from '../models/PointDuel';
 import { duelService } from '../services/duel.service';
+import { FeatureFlag } from '../models/FeatureFlag';
+import { featureFlagService } from '../services/featureFlag.service';
 import { refreshSettingsCache, getLotterySettings } from '../utils/settingsCache';
 import type { DuelHand } from '../config/duel';
 
@@ -39,6 +41,13 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await PointDuel.destroy({ where: {} });
+  // 대결 서비스는 '상대가 이 기능을 쓸 수 있는지' 를 본다(꺼진 사람에게 걸면 상대가 받지도
+  // 거절하지도 못한다). 이 스위트는 라우트를 거치지 않고 서비스를 직접 부르므로 여기서 켜 둔다.
+  for (const key of ['tools.lottery', 'tools.pointDuel']) {
+    await FeatureFlag.destroy({ where: { key } });
+    await FeatureFlag.create({ key, enabled: true });
+  }
+  featureFlagService.invalidate();
 });
 
 /** 이 스위트에서 건드린 설정을 원래대로 — 뒤 테스트가 엉뚱한 값으로 돌지 않게 */
@@ -52,6 +61,12 @@ beforeAll(async () => {
 afterEach(async () => {
   await SiteSettings.update({ lotteryPrizes: originalPrizes }, { where: {} });
   await refreshSettingsCache();
+});
+
+// 켜 둔 스위치를 되돌린다 — 뒤 스위트가 이 값으로 돌지 않게.
+afterAll(async () => {
+  await FeatureFlag.destroy({ where: { key: ['tools.lottery', 'tools.pointDuel'] } });
+  featureFlagService.invalidate();
 });
 
 describe('뽑기 상품 목록을 읽을 때도 금액을 본다', () => {

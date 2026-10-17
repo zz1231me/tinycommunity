@@ -6,6 +6,7 @@ import PointDuelModel, { PointDuel, type DuelHand } from '../models/PointDuel';
 import UserPointModel from '../models/UserPoint';
 import { User } from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
+import { featureFlagService } from './featureFlag.service';
 import {
   apply,
   ensureBalanceRow,
@@ -205,13 +206,23 @@ export const duelService = {
     }
 
     const opponent = await User.findByPk(input.opponentId, {
-      attributes: ['id', 'name', 'isActive', 'isDeleted'],
+      attributes: ['id', 'name', 'isActive', 'isDeleted', 'roleId'],
     });
     if (!opponent || !opponent.isActive || opponent.isDeleted) {
       throw new AppError(404, '상대를 찾을 수 없습니다.');
     }
     // DB 가 돌려준 아이디를 쓴다. 대소문자가 다른 입력값을 저장하면 상대가 받지도 거절하지도 못한다.
     const opponentId = opponent.id;
+    // 대결이 꺼진 사람에게는 걸지 않는다. 걸어 두면 상대는 받지도 거절하지도 못하고(403),
+    // 건 쪽의 포인트만 묶인다.
+    if (
+      !(await featureFlagService.isEnabledFor('tools.pointDuel', {
+        id: opponentId,
+        roleId: opponent.roleId,
+      }))
+    ) {
+      throw new AppError(409, '상대가 지금 대결에 응할 수 없는 상태입니다.');
+    }
     if (opponentId === challengerId) {
       throw new AppError(400, '자기 자신에게는 대결을 신청할 수 없습니다.');
     }

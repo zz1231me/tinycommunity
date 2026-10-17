@@ -104,6 +104,15 @@ describe('점검 안내 화면', () => {
     expect(screen.getByText(/점검 모드가 켜져 있습니다/)).toBeInTheDocument();
   });
 
+  it('매니저도 그대로 쓴다 — 서버가 통과시키는 역할과 같아야 한다', async () => {
+    role = 'manager';
+    show();
+    await tick();
+    expect(mockGetSiteSettings).not.toHaveBeenCalled();
+    expect(screen.getByText('평소 화면')).toBeInTheDocument();
+    expect(screen.getByText(/점검 모드가 켜져 있습니다/)).toBeInTheDocument();
+  });
+
   it('보고 있지 않은 탭에서는 묻지 않는다', async () => {
     const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
     show();

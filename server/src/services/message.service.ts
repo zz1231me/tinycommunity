@@ -6,6 +6,7 @@ import { Conversation, buildPairKey } from '../models/Conversation';
 import { Message } from '../models/Message';
 import User from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
+import { featureFlagService } from './featureFlag.service';
 import { notificationService } from './notification.service';
 import { logError } from '../utils/logger';
 
@@ -31,7 +32,7 @@ function otherIdOf(conversation: Conversation, userId: string): string {
 async function loadParticipant(userId: string) {
   const user = await User.findOne({
     where: { id: userId, isActive: true, isDeleted: false },
-    attributes: ['id', 'name', 'avatar'],
+    attributes: ['id', 'name', 'avatar', 'roleId'],
   });
   if (!user) throw new AppError(404, '사용자를 찾을 수 없습니다.');
   return user;
@@ -52,6 +53,16 @@ export const messageService = {
     }
 
     const recipient = await loadParticipant(recipientId);
+    // 쪽지가 꺼진 사람에게는 보내지지 않는다. 보내 두면 상대는 받은 것을 열지도 답하지도
+    // 못하고(403), 보낸 쪽은 답이 없는 이유를 알 길이 없다.
+    if (
+      !(await featureFlagService.isEnabledFor('social.dm', {
+        id: recipient.id,
+        roleId: recipient.roleId,
+      }))
+    ) {
+      throw new AppError(409, '상대가 지금 쪽지를 받을 수 없는 상태입니다.');
+    }
     const [userAId, userBId] = [senderId, recipientId].sort();
     const pairKey = buildPairKey(senderId, recipientId);
 

@@ -7,6 +7,7 @@ import { AttendanceRecord } from '../models/AttendanceRecord';
 import { UserPoint } from '../models/UserPoint';
 import { User } from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
+import { featureFlagService } from './featureFlag.service';
 import {
   apply,
   ensureBalanceRow,
@@ -145,7 +146,7 @@ export const attendanceAttackService = {
     }
 
     const target = await User.findByPk(input.targetId, {
-      attributes: ['id', 'name', 'isActive', 'isDeleted'],
+      attributes: ['id', 'name', 'isActive', 'isDeleted', 'roleId'],
     });
     if (!target || !target.isActive || target.isDeleted) {
       throw new AppError(404, '상대를 찾을 수 없습니다.');
@@ -154,6 +155,15 @@ export const attendanceAttackService = {
     const targetId = target.id;
     if (attackerId === targetId) {
       throw new AppError(400, '자기 자신에게는 쓸 수 없습니다.');
+    }
+    // 이 기능이 꺼진 사람은 상대가 되지 않는다. 맞기만 하고 막기는 403 이 되기 때문이다.
+    if (
+      !(await featureFlagService.isEnabledFor('tools.attendanceAttack', {
+        id: targetId,
+        roleId: target.roleId,
+      }))
+    ) {
+      throw new AppError(409, '상대가 지금 받을 수 없는 상태입니다.');
     }
     if (!(await isWorking(targetId))) {
       throw new AppError(400, '지금 근무 중인 사람에게만 쓸 수 있습니다.');

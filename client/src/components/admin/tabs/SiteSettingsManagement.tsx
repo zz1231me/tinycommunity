@@ -12,6 +12,7 @@ import {
 import { useSiteSettings, DEFAULT_SETTINGS as STORE_DEFAULTS } from '../../../store/siteSettings';
 import { cacheSiteIdentity } from '../../../utils/siteIdentityCache';
 import { AdminSection } from '../common/AdminSection';
+import { toast } from '../../../utils/toast';
 import { ToggleSwitch } from '../../common/ToggleSwitch';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { adminInputCls } from '../common/AdminFormField';
@@ -219,22 +220,14 @@ export const SiteSettingsManagement = () => {
 
   const [resetting, setResetting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  /**
+   * 저장 결과를 팝업으로 알린다. 이 화면은 설정이 많아 저장 단추가 맨 아래에 있는데,
+   * 안내를 맨 위에 그리면 눌러도 아무 일 없는 것처럼 보인다(관리자 쪽 다른 화면과도 같게).
+   */
   const showMessage = useCallback((type: 'success' | 'error', text: string) => {
-    if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
-    setMessage({ type, text });
-    messageTimerRef.current = setTimeout(() => setMessage(null), 5000);
+    if (type === 'success') toast.success(text);
+    else toast.error(text);
   }, []);
-
-  useEffect(
-    () => () => {
-      if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
-    },
-    []
-  );
 
   const set = <K extends keyof SiteSettings>(key: K, val: SiteSettings[K]) => {
     isDirty.current = true;
@@ -313,7 +306,6 @@ export const SiteSettingsManagement = () => {
     }
     try {
       setSaving(true);
-      setMessage(null);
       const updated = await updateSiteSettings(settings);
       setSettings(updated);
       updateStore(updated);
@@ -357,26 +349,6 @@ export const SiteSettingsManagement = () => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* 토스트 메시지 */}
-      {message && (
-        <div
-          className={`p-4 rounded-lg border-2 flex items-center justify-between gap-3 ${
-            message.type === 'success'
-              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300'
-              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
-          }`}
-        >
-          <span className="text-sm font-medium">{message.text}</span>
-          <button
-            type="button"
-            onClick={() => setMessage(null)}
-            className="text-lg leading-none opacity-70 hover:opacity-100"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
       {/* 기본 정보 */}
       <AdminSection title="기본 정보">
         <SettingList>

@@ -221,3 +221,86 @@ describe('본인 메뉴 숨기기', () => {
     expect((await request(app).get('/api/features/hidden-menus')).status).toBe(401);
   });
 });
+
+// 어떤 기능은 '상대' 가 있다. 그 상대에게 기능이 꺼져 있으면 건 쪽은 멈추고, 왜 안 되는지는
+// 건 쪽에 알린다.
+//
+// 꺼진 사람에게 걸어 두면 맞는 쪽은 당하기만 하고 방어·응답·열람이 403 이 된다. 반대로
+// 아무 말 없이 삼키면 건 쪽은 포인트만 잃고 이유를 모른다.
+describe('꺼진 사람을 상대로 거는 조작', () => {
+  const offFor = (userId: string, key: string) => setUserRules(userId, { [key]: false });
+
+  /** 이 기능들은 사이트 기본값이 꺼짐이다. 켜 두지 않으면 거는 쪽이 먼저 막힌다. */
+  async function siteOn(...keys: string[]) {
+    for (const key of keys) {
+      await FeatureFlag.destroy({ where: { key } });
+      await FeatureFlag.create({ key, enabled: true });
+    }
+    featureFlagService.invalidate();
+  }
+
+  it('쪽지가 꺼진 사람에게는 보내지지 않는다', async () => {
+    await offFor('testuser', 'social.dm');
+
+    const res = await request(app)
+      .post('/api/messages')
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({ recipientId: 'testuser', content: '안녕하세요' });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toMatch(/받을 수 없는/);
+  });
+
+  it('대결이 꺼진 사람에게는 신청되지 않는다 — 받지도 거절하지도 못하는 판이 생기지 않게', async () => {
+    await siteOn('tools.lottery', 'tools.pointDuel');
+    await offFor('testuser', 'tools.pointDuel');
+
+    const res = await request(app)
+      .post('/api/points/duels')
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({ opponentId: 'testuser', stake: 10, hand: 'rock' });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toMatch(/응할 수 없는/);
+  });
+
+  it('포인트 날리기가 꺼진 사람은 상대가 되지 않는다', async () => {
+    await siteOn('tools.lottery', 'tools.pointAttack');
+    await offFor('testuser', 'tools.pointAttack');
+
+    const res = await request(app)
+      .post('/api/points/attack/halve')
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({ targetId: 'testuser' });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toMatch(/받을 수 없는/);
+  });
+
+  it('퇴근 방해가 꺼진 사람은 상대가 되지 않는다 — 막기가 403 이 되는 자리다', async () => {
+    await siteOn('tools.lottery', 'tools.attendance', 'tools.attendanceAttack');
+    await offFor('testuser', 'tools.attendanceAttack');
+
+    const res = await request(app)
+      .post('/api/attendance/attack')
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({ targetId: 'testuser' });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toMatch(/받을 수 없는/);
+  });
+
+  it('켜져 있는 사람에게는 막히지 않는다 — 양성 대조', async () => {
+    const res = await request(app)
+      .post('/api/messages')
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({ recipientId: 'testuser', content: '안녕하세요' });
+
+    expect(res.status).toBeLessThan(400);
+  });
+});

@@ -8,6 +8,7 @@ import { PageContainer } from '../../components/common/PageContainer';
 import { LoadingSpinner } from '../../components/admin/common/LoadingSpinner';
 import { Plus } from 'lucide-react';
 import { ConfirmationModal } from '../../components/admin/common/ConfirmationModal';
+import { toast } from '../../utils/toast';
 
 // editorState: null = 에디터 닫힘, Memo = 기존 메모 편집, 'new' = 새 메모 작성
 type EditorState = Memo | 'new' | null;
@@ -17,6 +18,7 @@ const MemoBoard = () => {
   const [loading, setLoading] = useState(true);
   const [editorState, setEditorState] = useState<EditorState>(null);
   const [isSaving, setIsSaving] = useState(false);
+  /** 불러오기 실패만 자리에 둔다. 조작 실패는 팝업으로 알린다 — 메모가 쌓이면 맨 위 안내는 화면 밖이다. */
   const [error, setError] = useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [pinningId, setPinningId] = useState<number | null>(null);
@@ -42,7 +44,6 @@ const MemoBoard = () => {
 
   const handleSave = async (data: { title: string; content: string; color: MemoColor }) => {
     if (isSaving) return;
-    setError(null);
     setIsSaving(true);
     try {
       if (editorState && editorState !== 'new') {
@@ -54,7 +55,7 @@ const MemoBoard = () => {
       }
       setEditorState(null);
     } catch {
-      setError('메모 저장에 실패했습니다. 다시 시도해주세요.');
+      toast.error('메모 저장에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsSaving(false);
     }
@@ -72,7 +73,7 @@ const MemoBoard = () => {
       await deleteMemo(id);
       setMemos(prev => prev.filter(m => m.id !== id));
     } catch {
-      setError('메모 삭제에 실패했습니다. 다시 시도해주세요.');
+      toast.error('메모 삭제에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -90,7 +91,7 @@ const MemoBoard = () => {
         });
       });
     } catch {
-      setError('핀 설정에 실패했습니다. 다시 시도해주세요.');
+      toast.error('핀 설정에 실패했습니다. 다시 시도해주세요.');
     } finally {
       pinningRef.current = false;
       setPinningId(null);

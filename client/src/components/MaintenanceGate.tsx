@@ -1,4 +1,4 @@
-// 점검 모드 게이트. 관리자는 정상 사용에 안내 배너만 붙고, 그 외에는 점검 안내 페이지를 본다.
+// 점검 모드 게이트. 관리자·매니저는 정상 사용에 안내 배너만 붙고, 그 외에는 점검 안내 페이지를 본다.
 import React, { useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Wrench } from 'lucide-react';
@@ -98,28 +98,31 @@ export const MaintenanceGate: React.FC<{ children: React.ReactNode }> = ({ child
   const siteName = useSiteSettings(s => s.settings.siteName);
   const { isAuthenticated, getUserRole } = useAuth();
   const location = useLocation();
-  const isAdmin = isAuthenticated && getUserRole() === 'admin';
+  // 서버의 점검 미들웨어가 admin 과 manager 를 통과시킨다. 여기서 admin 만 빼면
+  // 매니저는 API 는 되는데 화면만 점검 안내에 갇힌다.
+  const role = getUserRole();
+  const canPass = isAuthenticated && (role === 'admin' || role === 'manager');
 
   // 훅은 조기 반환보다 위에 둔다.
   const barRef = useRef<HTMLDivElement>(null);
-  useMaintenanceBarSpace(barRef, maintenanceMode && isAdmin);
-  useMaintenanceRecheck(maintenanceMode && !isAdmin);
+  useMaintenanceBarSpace(barRef, maintenanceMode && canPass);
+  useMaintenanceRecheck(maintenanceMode && !canPass);
 
   if (!maintenanceMode) return <>{children}</>;
 
-  if (!isAdmin && !AUTH_PATHS.includes(location.pathname)) {
+  if (!canPass && !AUTH_PATHS.includes(location.pathname)) {
     return <MaintenancePage message={maintenanceMessage} siteName={siteName} />;
   }
 
   return (
     <>
-      {isAdmin && (
+      {canPass && (
         <div
           ref={barRef}
           className="maintenance-bar bg-amber-400 text-slate-900 text-xs sm:text-sm text-center py-1.5 px-4 font-medium shadow"
         >
-          🔧 점검 모드가 켜져 있습니다 — 일반 사용자에게는 점검 안내가 표시됩니다. (관리자만 이용
-          가능)
+          🔧 점검 모드가 켜져 있습니다 — 일반 사용자에게는 점검 안내가 표시됩니다. (관리자·매니저만
+          이용 가능)
         </div>
       )}
       {children}
