@@ -8,6 +8,13 @@
 
 /** 한 번에 펼칠 수 있는 최대 횟수. 규칙이 잘못돼도 응답이 폭주하지 않게 한다. */
 export const MAX_OCCURRENCES = 500;
+/**
+ * 돌 수 있는 최대 바퀴. 내놓는 개수만 묶으면 모자란다 — 1990년에 시작한 '매일' 반복을
+ * 2026년 창에서 보면, 한 건도 내놓지 않으면서 1만 3천 바퀴를 돈다.
+ * 아래에서 범위 앞은 건너뛰고 세지만, 계산이 어긋나도 여기서 멈춘다.
+ */
+export const MAX_STEPS = 5000;
+const DAY_MS = 86_400_000;
 
 export type RecurrenceType = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
 
@@ -98,7 +105,17 @@ export function expandOccurrences(
     const weekStart = new Date(rule.start);
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
 
-    for (let week = 0; out.length < MAX_OCCURRENCES; week += 1) {
+    // 범위보다 앞선 주는 한 주씩 세지 않고 건너뛴다
+    const weekMs = interval * 7 * DAY_MS;
+    const firstWeek = Math.max(
+      0,
+      Math.floor((rangeStart.getTime() - duration - weekStart.getTime()) / weekMs)
+    );
+    for (
+      let week = firstWeek, steps = 0;
+      out.length < MAX_OCCURRENCES && steps < MAX_STEPS;
+      week += 1, steps += 1
+    ) {
       const base = new Date(weekStart);
       base.setDate(base.getDate() + week * interval * 7);
       if (base.getTime() - duration > rangeEnd.getTime()) break;
@@ -118,7 +135,28 @@ export function expandOccurrences(
     return out;
   }
 
-  for (let i = 0; out.length < MAX_OCCURRENCES; i += 1) {
+  // 범위보다 앞선 번째는 하나씩 세지 않고 건너뛴다(해마다·달마다 도는 비용을 없앤다)
+  const ahead = rangeStart.getTime() - duration - rule.start.getTime();
+  let first = 0;
+  if (ahead > 0) {
+    if (type === 'daily') {
+      first = Math.floor(ahead / (interval * DAY_MS));
+    } else if (type === 'monthly') {
+      const months =
+        (rangeStart.getFullYear() - rule.start.getFullYear()) * 12 +
+        (rangeStart.getMonth() - rule.start.getMonth());
+      first = Math.max(0, Math.floor((months - 1) / interval));
+    } else {
+      const years = rangeStart.getFullYear() - rule.start.getFullYear();
+      first = Math.max(0, Math.floor((years - 1) / interval));
+    }
+  }
+
+  for (
+    let i = first, steps = 0;
+    out.length < MAX_OCCURRENCES && steps < MAX_STEPS;
+    i += 1, steps += 1
+  ) {
     let occStart: Date;
     if (type === 'daily') {
       occStart = new Date(rule.start);

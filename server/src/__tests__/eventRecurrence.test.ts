@@ -12,17 +12,20 @@ import { expandOccurrences, localDate, MAX_OCCURRENCES } from '../services/event
 //  4. 건너뛰기로 집은 날은 서지 않는다.
 //  5. 규칙이 잘못돼도 끝없이 펼치지 않는다.
 
-const d = (iso: string) => new Date(iso);
+// 날짜만 적으면 UTC 자정으로 읽혀, 계산이 지역 시간인 이 함수와 시간대마다 어긋난다
+// (CI 는 UTC, 개발 기계는 KST 였다). 테스트에서는 지역 시각을 분명히 적는다.
+const d = (iso: string) => new Date(iso.includes('T') ? iso : `${iso}T00:00:00`);
+const endOf = (date: string) => new Date(`${date}T23:59:59`);
 const dates = (list: { date: string }[]) => list.map(o => o.date);
 
 describe('반복 없음', () => {
   it('범위에 걸치면 하나, 아니면 없음', () => {
     const rule = { start: d('2026-10-15T10:00:00'), end: d('2026-10-15T11:00:00') };
 
-    expect(dates(expandOccurrences(rule, d('2026-10-01'), d('2026-10-31')))).toEqual([
+    expect(dates(expandOccurrences(rule, d('2026-10-01'), endOf('2026-10-31')))).toEqual([
       '2026-10-15',
     ]);
-    expect(expandOccurrences(rule, d('2026-11-01'), d('2026-11-30'))).toHaveLength(0);
+    expect(expandOccurrences(rule, d('2026-11-01'), endOf('2026-11-30'))).toHaveLength(0);
   });
 });
 
@@ -37,7 +40,7 @@ describe('매일', () => {
         recurrenceEndDate: d('2026-10-10'),
       },
       d('2026-10-01'),
-      d('2026-10-31')
+      endOf('2026-10-31')
     );
 
     expect(dates(out)).toEqual(['2026-10-01', '2026-10-04', '2026-10-07', '2026-10-10']);
@@ -52,7 +55,7 @@ describe('매일', () => {
         recurrenceEndDate: d('2026-10-02'),
       },
       d('2026-10-01'),
-      d('2026-10-31')
+      endOf('2026-10-31')
     );
 
     expect(first.end.getTime() - first.start.getTime()).toBe(2 * 60 * 60 * 1000);
@@ -71,7 +74,7 @@ describe('매주', () => {
         recurrenceEndDate: d('2026-10-15'),
       },
       d('2026-10-01'),
-      d('2026-10-31')
+      endOf('2026-10-31')
     );
 
     expect(dates(out)).toEqual(['2026-10-05', '2026-10-07', '2026-10-12', '2026-10-14']);
@@ -86,7 +89,7 @@ describe('매주', () => {
         recurrenceEndDate: d('2026-10-26'),
       },
       d('2026-10-01'),
-      d('2026-10-31')
+      endOf('2026-10-31')
     );
 
     expect(dates(out)).toEqual(['2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26']);
@@ -103,7 +106,7 @@ describe('매주', () => {
         recurrenceEndDate: d('2026-10-14'),
       },
       d('2026-10-01'),
-      d('2026-10-31')
+      endOf('2026-10-31')
     );
 
     expect(dates(out)).toEqual(['2026-10-07', '2026-10-12', '2026-10-14']);
@@ -120,7 +123,7 @@ describe('매월·매년 — 없는 날짜', () => {
         recurrenceEndDate: d('2026-05-31'),
       },
       d('2026-01-01'),
-      d('2026-12-31')
+      endOf('2026-12-31')
     );
 
     expect(dates(out)).toEqual(['2026-01-31', '2026-03-31', '2026-05-31']);
@@ -135,7 +138,7 @@ describe('매월·매년 — 없는 날짜', () => {
         recurrenceEndDate: d('2032-12-31'),
       },
       d('2024-01-01'),
-      d('2032-12-31')
+      endOf('2032-12-31')
     );
 
     expect(dates(out)).toEqual(['2024-02-29', '2028-02-29', '2032-02-29']);
@@ -152,7 +155,7 @@ describe('종료일과 범위', () => {
         recurrenceEndDate: d('2026-10-03T00:00:00'),
       },
       d('2026-10-01'),
-      d('2026-10-31')
+      endOf('2026-10-31')
     );
 
     expect(dates(out)).toContain('2026-10-03');
@@ -167,7 +170,7 @@ describe('종료일과 범위', () => {
         recurrenceEndDate: d('2026-12-31'),
       },
       d('2026-06-01'),
-      d('2026-06-03')
+      endOf('2026-06-03')
     );
 
     expect(dates(out)).toEqual(['2026-06-01', '2026-06-02', '2026-06-03']);
@@ -185,7 +188,7 @@ describe('하루만 쉬기', () => {
         recurrenceExcept: ['2026-10-12'],
       },
       d('2026-10-01'),
-      d('2026-10-31')
+      endOf('2026-10-31')
     );
 
     expect(dates(out)).toEqual(['2026-10-05', '2026-10-19', '2026-10-26']);
@@ -201,7 +204,7 @@ describe('끝없이 펼치지 않는다', () => {
         recurrenceType: 'daily',
       },
       d('2020-01-01'),
-      d('2099-12-31')
+      endOf('2099-12-31')
     );
 
     expect(out.length).toBeLessThanOrEqual(MAX_OCCURRENCES);
@@ -211,5 +214,75 @@ describe('끝없이 펼치지 않는다', () => {
 describe('날짜 표기', () => {
   it('지역 시간 기준 YYYY-MM-DD 로 집는다', () => {
     expect(localDate(d('2026-10-05T23:30:00'))).toBe('2026-10-05');
+  });
+});
+
+// 내놓는 개수만 묶으면 모자란다. 오래전에 시작한 반복을 먼 미래 창에서 보면, 한 건도
+// 내놓지 않으면서 수만 바퀴를 돌 수 있다(보안 검토가 짚은 자리).
+describe('범위보다 앞선 번째는 건너뛴다', () => {
+  const measure = (fn: () => void) => {
+    const began = Date.now();
+    fn();
+    return Date.now() - began;
+  };
+
+  it('1990년에 시작한 매일 반복도 오늘 창을 바로 집는다', () => {
+    let out: { date: string }[] = [];
+    const ms = measure(() => {
+      out = expandOccurrences(
+        {
+          start: d('1990-01-01T09:00:00'),
+          end: d('1990-01-01T10:00:00'),
+          recurrenceType: 'daily',
+        },
+        d('2026-06-01'),
+        endOf('2026-06-03')
+      );
+    });
+
+    expect(dates(out)).toEqual(['2026-06-01', '2026-06-02', '2026-06-03']);
+    expect(ms).toBeLessThan(100);
+  });
+
+  it('오래된 매주·매월·매년 반복도 제 날짜를 집는다', () => {
+    const weekly = expandOccurrences(
+      {
+        start: d('1995-01-02T09:00:00'), // 월요일
+        end: d('1995-01-02T10:00:00'),
+        recurrenceType: 'weekly',
+        recurrenceDays: [1],
+      },
+      d('2026-11-01'),
+      endOf('2026-11-30')
+    );
+    expect(dates(weekly)).toEqual([
+      '2026-11-02',
+      '2026-11-09',
+      '2026-11-16',
+      '2026-11-23',
+      '2026-11-30',
+    ]);
+
+    const monthly = expandOccurrences(
+      {
+        start: d('2000-03-15T09:00:00'),
+        end: d('2000-03-15T10:00:00'),
+        recurrenceType: 'monthly',
+      },
+      d('2026-06-01'),
+      endOf('2026-06-30')
+    );
+    expect(dates(monthly)).toEqual(['2026-06-15']);
+
+    const yearly = expandOccurrences(
+      {
+        start: d('1980-07-04T09:00:00'),
+        end: d('1980-07-04T10:00:00'),
+        recurrenceType: 'yearly',
+      },
+      d('2026-01-01'),
+      endOf('2026-12-31')
+    );
+    expect(dates(yearly)).toEqual(['2026-07-04']);
   });
 });
