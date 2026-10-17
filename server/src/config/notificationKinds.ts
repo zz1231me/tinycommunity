@@ -42,6 +42,12 @@ export const NOTIFICATION_KINDS = {
     defaultEnabled: true,
     configurable: true,
   },
+  TASK_SCHEDULE: {
+    label: '업무 일정 변경',
+    description: '내가 담당인 업무의 시작일·마감일이 바뀌면 알립니다.',
+    defaultEnabled: true,
+    configurable: true,
+  },
   TASK_DUE: {
     label: '업무 마감 임박',
     description: '내가 담당인 업무의 마감이 내일이거나 오늘이면 하루 한 번 알립니다.',

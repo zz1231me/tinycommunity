@@ -282,6 +282,45 @@ describe('담당자', () => {
     expect(notes[0].message).toContain('담당자');
   });
 
+  it('일정이 바뀌면 맡은 사람에게 알린다 — 마감이 당겨진 것을 모르면 안 된다', async () => {
+    const id = await createPost(adminCookie, `일정변경 ${Date.now()}`);
+    await setTask(adminCookie, id, { assigneeId: 'testuser' });
+    await Notification.destroy({ where: { userId: 'testuser' } });
+
+    await setTask(adminCookie, id, { startDate: '2026-11-02', dueDate: '2026-11-05' });
+    await new Promise(r => setTimeout(r, 250));
+
+    const notes = await Notification.findAll({
+      where: { userId: 'testuser', type: 'TASK_SCHEDULE' },
+    });
+    expect(notes).toHaveLength(1);
+    expect(notes[0].message).toContain('2026-11-02 ~ 2026-11-05');
+  });
+
+  it('자기 일정을 자기가 바꿀 때는 알리지 않는다', async () => {
+    const id = await createPost(adminCookie, `자가일정 ${Date.now()}`);
+    await setTask(adminCookie, id, { assigneeId: 'admin' });
+    await Notification.destroy({ where: { userId: 'admin' } });
+
+    await setTask(adminCookie, id, { dueDate: '2026-11-09' });
+    await new Promise(r => setTimeout(r, 250));
+
+    expect(
+      await Notification.findAll({ where: { userId: 'admin', type: 'TASK_SCHEDULE' } })
+    ).toHaveLength(0);
+  });
+
+  it('담당자를 새로 지정하며 일정도 함께 주면 지정 알림만 간다 — 같은 일로 두 번 울리지 않게', async () => {
+    const id = await createPost(adminCookie, `동시지정 ${Date.now()}`);
+    await Notification.destroy({ where: { userId: 'testuser' } });
+
+    await setTask(adminCookie, id, { assigneeId: 'testuser', dueDate: '2026-11-12' });
+    await new Promise(r => setTimeout(r, 250));
+
+    const types = (await Notification.findAll({ where: { userId: 'testuser' } })).map(n => n.type);
+    expect(types).toEqual(['ASSIGNMENT']);
+  });
+
   it('스스로 맡을 때는 자기에게 알림을 보내지 않는다', async () => {
     const id = await createPost(adminCookie, `자가담당 ${Date.now()}`);
     await setTask(adminCookie, id, { assigneeId: 'admin' });

@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { ClipboardList } from 'lucide-react';
+import { ClipboardList, Download } from 'lucide-react';
 import { PageContainer } from '../components/common/PageContainer';
 import { PageHeader } from '../components/common/PageHeader';
 import { ListLoading, ListError, ListState } from '../components/common/ListState';
@@ -14,6 +14,7 @@ import { TaskGantt } from '../components/tasks/TaskGantt';
 import { TaskList } from '../components/tasks/TaskList';
 import { TaskFilters } from '../components/tasks/TaskFilters';
 import { SavedFilters } from '../components/tasks/SavedFilters';
+import { downloadTaskCsv, toTaskCsv } from '../components/tasks/taskCsv';
 import type { SavedTaskFilter } from '../api/taskFilters';
 import {
   countDue,
@@ -38,6 +39,7 @@ import { getApiErrorMessage } from '../api/utils';
 import { useUiPrefs } from '../hooks/useUiPrefs';
 import { useConfirm } from '../hooks/useConfirm';
 import { toast } from '../utils/toast';
+import { format } from 'date-fns';
 import { useToday } from '../hooks/useToday';
 
 const OPEN: WorkStatus[] = ['todo', 'doing'];
@@ -116,6 +118,14 @@ export default function MyTasks() {
       priority: preset.priority,
     });
     setPref('taskSort', preset.sort);
+  };
+
+  /** 화면에 보이는 그대로(거르기·정렬 적용) 내려받는다 */
+  const exportCsv = () => {
+    downloadTaskCsv(
+      toTaskCsv(visible, statusLabel),
+      `${scope ? scopeName : '내-업무'}-${format(today, 'yyyy-MM-dd')}.csv`
+    );
   };
 
   const setScope = (next: string) => {
@@ -267,6 +277,16 @@ export default function MyTasks() {
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={exportCsv}
+          disabled={visible.length === 0}
+          title="화면에 보이는 업무를 CSV 로 내려받습니다"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          <Download className="h-3.5 w-3.5" aria-hidden="true" />
+          내보내기
+        </button>
         <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
           <input
             type="checkbox"

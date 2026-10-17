@@ -64,6 +64,13 @@ export const NOTIFICATION_KIND: Record<Notification['type'], NotificationKind> =
     accent: 'bg-cyan-500',
     title: '담당자로 지정됐어요',
   },
+  TASK_SCHEDULE: {
+    icon: <CalendarClock className="w-4 h-4" />,
+    bg: 'bg-violet-100 dark:bg-violet-900/30',
+    color: 'text-violet-600 dark:text-violet-400',
+    accent: 'bg-violet-500',
+    title: '업무 일정이 바뀌었어요',
+  },
   TASK_DUE: {
     icon: <CalendarClock className="w-4 h-4" />,
     bg: 'bg-orange-100 dark:bg-orange-900/30',

@@ -165,6 +165,26 @@ export const postTaskService = {
         .catch(err => logError('담당자 지정 알림 실패', err, { postId }));
     }
 
+    // 일정이 바뀌면 맡은 사람에게 알린다. 마감이 당겨진 것을 담당자가 모르면
+    // 마감 임박 알림이 오기 전까지 알 길이 없다. 방금 담당자가 된 사람은 위에서
+    // 이미 받았으므로 빼고, 자기가 바꾼 경우도 뺀다.
+    if (
+      nextSchedule !== previousSchedule &&
+      nextAssignee &&
+      nextAssignee === previousAssignee &&
+      nextAssignee !== actorId
+    ) {
+      void notificationService
+        .create({
+          userId: nextAssignee,
+          type: 'TASK_SCHEDULE',
+          message: `${actorName}님이 "${post.title}" 의 일정을 ${scheduleLabel(post.startDate, post.dueDate)}(으)로 바꿨습니다.`,
+          link: `/dashboard/posts/${post.boardType}/${post.id}`,
+          relatedId: post.id,
+        })
+        .catch(err => logError('업무 일정 변경 알림 실패', err, { postId }));
+    }
+
     return {
       workStatus: post.workStatus,
       assignee: nextAssignee ? await loadAssignee(nextAssignee) : null,
@@ -396,6 +416,13 @@ async function recordChanges(
 }
 
 /** 활동 기록용 일정 한 줄. '2026-10-01~2026-10-03', 한쪽이 없으면 비운다. 둘 다 없으면 null. */
+/** 알림에 적을 일정. '2026-10-20 ~ 10-24', 한쪽만 있으면 그것만, 둘 다 없으면 '일정 없음'. */
+function scheduleLabel(startDate: string | null | undefined, dueDate: string | null | undefined) {
+  if (!startDate && !dueDate) return '일정 없음';
+  if (startDate && dueDate) return startDate === dueDate ? dueDate : `${startDate} ~ ${dueDate}`;
+  return startDate ? `${startDate} 시작` : `${dueDate} 마감`;
+}
+
 function scheduleValue(startDate: string | null | undefined, dueDate: string | null | undefined) {
   if (!startDate && !dueDate) return null;
   return `${startDate ?? ''}~${dueDate ?? ''}`;

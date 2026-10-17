@@ -11,6 +11,7 @@ export interface Notification {
     | 'SUBSCRIPTION'
     | 'ASSIGNMENT'
     | 'TASK_DUE'
+    | 'TASK_SCHEDULE'
     | 'MESSAGE'
     | 'DUEL'
     | 'ATTACK'
