@@ -99,7 +99,7 @@ export default function Drafts() {
     <PageContainer>
       <PageHeader
         title="임시저장"
-        description="쓰다 만 글이 서버에 남아 있어 다른 기기에서도 이어 쓸 수 있습니다."
+        description="다른 기기에서도 이어 쓸 수 있습니다."
         icon={<FileEdit className="h-6 w-6 text-primary-600 dark:text-primary-400" />}
       />
 

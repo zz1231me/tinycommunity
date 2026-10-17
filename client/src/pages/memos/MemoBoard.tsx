@@ -103,11 +103,7 @@ const MemoBoard = () => {
 
   return (
     <PageContainer>
-      <PageHeader
-        title="메모"
-        description="포스트잇 스타일의 개인 메모 공간"
-        icon={<span className="text-3xl">📝</span>}
-      />
+      <PageHeader title="메모" icon={<span className="text-3xl">📝</span>} />
 
       {/* Error banner */}
       {error && (

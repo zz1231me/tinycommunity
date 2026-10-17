@@ -326,7 +326,6 @@ export default function Profile() {
         <PageHeader
           breadcrumbs={[{ label: '대시보드', to: '/dashboard' }, { label: '마이페이지' }]}
           title="마이페이지"
-          description={`${user.name}님의 개인 공간`}
           icon={<User className="h-6 w-6" />}
         />
 

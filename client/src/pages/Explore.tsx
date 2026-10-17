@@ -86,7 +86,6 @@ export default function Explore() {
     <PageContainer>
       <PageHeader
         title="탐색"
-        description="게시판을 가로질러 무슨 일이 있었는지, 지금 읽을 만한 글이 무엇인지 봅니다."
         icon={<Compass className="h-6 w-6 text-primary-600 dark:text-primary-400" />}
       />
 

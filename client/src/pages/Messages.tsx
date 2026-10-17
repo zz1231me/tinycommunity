@@ -334,7 +334,6 @@ export default function Messages() {
     <PageContainer>
       <PageHeader
         title="다이렉트 메시지"
-        description="회원끼리 1:1로 주고받습니다."
         icon={<MessagesSquare className="h-6 w-6 text-primary-600 dark:text-primary-400" />}
       />
 

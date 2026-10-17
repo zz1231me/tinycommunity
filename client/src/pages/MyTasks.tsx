@@ -249,11 +249,7 @@ export default function MyTasks() {
     <PageContainer>
       <PageHeader
         title={scope ? `${scopeName} 업무` : '내 업무'}
-        description={
-          scope
-            ? '이 게시판의 업무 전체입니다. 바꿀 권한이 있는 업무만 옮길 수 있습니다.'
-            : '담당자가 나인 글입니다. 오래 손대지 않은 것부터 보여 줍니다.'
-        }
+        description={scope ? '바꿀 권한이 있는 업무만 옮길 수 있습니다.' : undefined}
         icon={<ClipboardList className="h-6 w-6 text-primary-600 dark:text-primary-400" />}
       >
         <div

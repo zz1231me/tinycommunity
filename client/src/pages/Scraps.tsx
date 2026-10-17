@@ -23,7 +23,7 @@ export default function Scraps() {
     <PageContainer>
       <PageHeader
         title="스크랩"
-        description="나중에 다시 볼 글을 모아 둡니다. 나만 볼 수 있습니다."
+        description="나만 볼 수 있습니다."
         icon={<Bookmark className="h-6 w-6 text-primary-600 dark:text-primary-400" />}
       />
 
