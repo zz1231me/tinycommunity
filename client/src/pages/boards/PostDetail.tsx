@@ -26,6 +26,7 @@ import { EncryptedPostView } from '../../components/boards/EncryptedPostView';
 import { ReportButton } from '../../components/boards/ReportButton';
 import { PinButton } from '../../components/boards/PinButton';
 import { TaskPanel } from '../../components/boards/TaskPanel';
+import { SubtaskPanel } from '../../components/boards/SubtaskPanel';
 import { ReadReceipts } from '../../components/boards/ReadReceipts';
 import { PostActivityLog } from '../../components/boards/PostActivityLog';
 import { ScrapButton } from '../../components/discovery/ScrapButton';
@@ -402,13 +403,16 @@ const PostDetail = () => {
 
         {/* 상태 줄. 사이트 스위치와 게시판 용도가 모두 켜져야 한다(서버도 동일). */}
         {tasksEnabled && post.board?.taskEnabled && boardType && id && (
-          <TaskPanel
-            boardType={boardType}
-            postId={id}
-            state={task}
-            editable={canManageTask}
-            onChange={setTask}
-          />
+          <>
+            <TaskPanel
+              boardType={boardType}
+              postId={id}
+              state={task}
+              editable={canManageTask}
+              onChange={setTask}
+            />
+            <SubtaskPanel boardType={boardType} postId={id} editable={canManageTask} />
+          </>
         )}
 
         {showHistory && (

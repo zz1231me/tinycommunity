@@ -220,3 +220,67 @@ export const getActivity = async (req: AuthRequest, res: Response): Promise<void
     sendServiceError(res, err, '활동 기록을 불러오지 못했습니다.', { userId, postId: id });
   }
 };
+
+/** GET /api/posts/:boardType/:id/subtasks — 글을 볼 수 있으면 하위 업무도 본다. */
+export const getSubtasks = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id: userId, role: userRole } = req.user;
+
+  try {
+    sendSuccess(res, await postTaskService.listSubtasks(req.params.id, userId, userRole));
+  } catch (err) {
+    sendServiceError(res, err, '하위 업무를 불러오지 못했습니다.', {
+      userId,
+      postId: req.params.id,
+    });
+  }
+};
+
+/** POST /api/posts/:boardType/:id/subtasks — 상위 업무를 바꿀 수 있는 사람만. */
+export const addSubtask = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id: actorId, role: actorRole, name: actorName } = req.user;
+  const body = (req.body ?? {}) as { title?: unknown; assigneeId?: unknown; dueDate?: unknown };
+
+  if (typeof body.title !== 'string') {
+    sendError(res, 400, '하위 업무의 제목을 적어주세요.');
+    return;
+  }
+  if (
+    body.assigneeId !== undefined &&
+    body.assigneeId !== null &&
+    typeof body.assigneeId !== 'string'
+  ) {
+    sendError(res, 400, '담당자 id 가 올바르지 않습니다.');
+    return;
+  }
+  if (body.dueDate !== undefined && body.dueDate !== null && typeof body.dueDate !== 'string') {
+    sendError(res, 400, '마감일이 올바르지 않습니다.');
+    return;
+  }
+
+  try {
+    const created = await postTaskService.addSubtask({
+      parentId: req.params.id,
+      title: body.title,
+      assigneeId: (body.assigneeId as string | null | undefined) ?? null,
+      dueDate: (body.dueDate as string | null | undefined) ?? null,
+      actorId,
+      actorRole,
+      actorName,
+    });
+    sendSuccess(res, created, '하위 업무를 만들었습니다.', 201);
+  } catch (err) {
+    sendServiceError(res, err, '하위 업무를 만들지 못했습니다.', { userId: actorId });
+  }
+};
+
+/** DELETE /api/posts/:boardType/:id/subtasks/:childId — 떼어 내기만 한다(글은 남는다). */
+export const detachSubtask = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id: actorId, role: actorRole } = req.user;
+
+  try {
+    await postTaskService.detachSubtask(req.params.id, req.params.childId, actorId, actorRole);
+    sendSuccess(res, null, '하위 업무에서 떼어 냈습니다.');
+  } catch (err) {
+    sendServiceError(res, err, '하위 업무를 떼어 내지 못했습니다.', { userId: actorId });
+  }
+};

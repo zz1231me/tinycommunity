@@ -8,7 +8,7 @@ import Board from '../models/Board';
 import { BoardManager } from '../models/BoardManager';
 import { AppError } from '../middlewares/error.middleware';
 import { ROLES } from '../config/constants';
-import { isWorkStatus, type WorkStatus } from '../config/workStatus';
+import { isWorkStatus, WORK_STATUS_KEYS, type WorkStatus } from '../config/workStatus';
 import { isTaskPriority, type TaskPriority } from '../config/taskPriority';
 import { notificationService } from './notification.service';
 import { getAccessibleBoardTypes } from './accessibleBoards';
@@ -80,6 +80,9 @@ async function assertAssigneeCanSee(assigneeId: string, post: Post) {
     throw new AppError(400, '이 비밀글을 볼 수 없는 사용자는 담당자로 지정할 수 없습니다.');
   }
 }
+
+/** 하위 업무 제목 상한. 한 줄짜리 할 일이라 글 제목보다 짧게 둔다. */
+const SUBTASK_TITLE_MAX = 200;
 
 export const postTaskService = {
   async change(params: ChangeParams) {
@@ -218,6 +221,89 @@ export const postTaskService = {
     // (where 에 workStatus 조건을 걸면 findTasks 의 상태 조건에 덮여 사라진다)
     const tracked = statuses.filter(st => st !== 'none');
     return findTasks({ boardType }, tracked, userId, userRole);
+  },
+
+  /**
+   * 한 업무에 딸린 하위 업무. 끝난 것까지 모두 준다 — '3/5 끝남' 을 세려면 끝난 것도 세야 한다.
+   */
+  async listSubtasks(parentId: string, userId: string, userRole: string) {
+    return findTasks({ parentTaskId: parentId }, [...WORK_STATUS_KEYS], userId, userRole);
+  },
+
+  /**
+   * 하위 업무를 하나 만든다. 글 하나가 그대로 하위 업무가 되므로 담당자·마감·상태를
+   * 상위와 따로 가진다(지라의 subtask 자리).
+   *
+   * 한 단계만 둔다 — 하위의 하위를 허용하면 고리가 생기고 화면도 끝없이 펼쳐진다.
+   * 담당자를 함께 받으면 change() 로 지정해 알림·활동 기록이 평소 길과 같게 남는다.
+   */
+  async addSubtask(params: {
+    parentId: string;
+    title: string;
+    assigneeId?: string | null;
+    dueDate?: string | null;
+    actorId: string;
+    actorRole: string;
+    actorName: string;
+  }) {
+    const title = params.title.trim();
+    if (!title) throw new AppError(400, '하위 업무의 제목을 적어주세요.');
+    if (title.length > SUBTASK_TITLE_MAX) {
+      throw new AppError(400, `제목은 ${SUBTASK_TITLE_MAX}자를 넘을 수 없습니다.`);
+    }
+
+    const parent = await Post.findByPk(params.parentId);
+    if (!parent || parent.status !== 'published') {
+      throw new AppError(404, '상위 업무를 찾을 수 없습니다.');
+    }
+    if (parent.parentTaskId) {
+      throw new AppError(400, '하위 업무 아래에는 다시 하위 업무를 둘 수 없습니다.');
+    }
+    await assertTaskBoard(parent.boardType);
+    await assertCanManage(parent, params.actorId, params.actorRole);
+
+    const child = await Post.create({
+      title,
+      // 본문은 비워 둔다. 하위 업무는 '할 일 한 줄' 이고, 필요하면 글처럼 열어 채운다.
+      content: '',
+      boardType: parent.boardType,
+      author: params.actorName,
+      UserId: params.actorId,
+      parentTaskId: parent.id,
+      workStatus: 'todo',
+      status: 'published',
+    });
+
+    if (params.assigneeId || params.dueDate) {
+      await postTaskService.change({
+        postId: child.id,
+        boardType: parent.boardType,
+        actorId: params.actorId,
+        actorRole: params.actorRole,
+        actorName: params.actorName,
+        ...(params.assigneeId ? { assigneeId: params.assigneeId } : {}),
+        ...(params.dueDate ? { dueDate: params.dueDate } : {}),
+      });
+    }
+
+    const [view] = await findTasks(
+      { id: child.id },
+      [...WORK_STATUS_KEYS],
+      params.actorId,
+      params.actorRole
+    );
+    return view;
+  },
+
+  /** 하위에서 떼어 낸다. 글은 지우지 않는다 — 혼자 선 업무로 남는다. */
+  async detachSubtask(parentId: string, childId: string, actorId: string, actorRole: string) {
+    const child = await Post.findByPk(childId);
+    if (!child || child.parentTaskId !== parentId) {
+      throw new AppError(404, '하위 업무를 찾을 수 없습니다.');
+    }
+    await assertCanManage(child, actorId, actorRole);
+    child.parentTaskId = null;
+    await child.save();
   },
 
   /** 업무용으로 켠 게시판 중 내가 읽을 수 있는 것. 팀 보기에서 고를 목록이다. */

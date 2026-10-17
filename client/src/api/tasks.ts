@@ -105,6 +105,34 @@ export async function fetchBoardTasks(
   return unwrap(res);
 }
 
+/** 한 업무에 딸린 하위 업무. 끝난 것까지 함께 온다 — '3/5 끝남' 을 세려면 필요하다. */
+export async function fetchSubtasks(
+  boardType: string,
+  postId: string,
+  signal?: AbortSignal
+): Promise<MyTask[]> {
+  const res = await api.get(`/posts/${boardType}/${postId}/subtasks`, { signal });
+  return unwrap(res);
+}
+
+export async function addSubtask(
+  boardType: string,
+  postId: string,
+  body: { title: string; assigneeId?: string | null; dueDate?: string | null }
+): Promise<MyTask> {
+  const res = await api.post(`/posts/${boardType}/${postId}/subtasks`, body);
+  return unwrap(res);
+}
+
+/** 떼어 내기만 한다 — 글은 남는다. */
+export async function detachSubtask(
+  boardType: string,
+  postId: string,
+  childId: string
+): Promise<void> {
+  await api.delete(`/posts/${boardType}/${postId}/subtasks/${childId}`);
+}
+
 export interface TaskBoard {
   id: string;
   name: string;

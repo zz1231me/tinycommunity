@@ -32,6 +32,8 @@ export const taskKeys = {
     ['tasks', 'attachment-versions', boardType, postId] as const,
   activity: (boardType: string, postId: string) =>
     ['tasks', 'activity', boardType, postId] as const,
+  subtasks: (boardType: string, postId: string) =>
+    ['tasks', 'subtasks', boardType, postId] as const,
 } as const;
 
 /** 구독·팔로우, 알림 설정, 다른 사람 프로필 */

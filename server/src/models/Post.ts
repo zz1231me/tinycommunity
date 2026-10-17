@@ -43,6 +43,7 @@ export interface PostInstance extends Model<
   workStatus: CreationOptional<WorkStatus>;
   priority: CreationOptional<TaskPriority>;
   assigneeId: CreationOptional<string | null>;
+  parentTaskId: CreationOptional<string | null>;
   startDate: CreationOptional<string | null>;
   dueDate: CreationOptional<string | null>;
   status: CreationOptional<'draft' | 'published' | 'archived'>;
@@ -81,6 +82,7 @@ class PostModel
   declare public workStatus: CreationOptional<WorkStatus>;
   declare public priority: CreationOptional<TaskPriority>;
   declare public assigneeId: CreationOptional<string | null>;
+  declare public parentTaskId: CreationOptional<string | null>;
   declare public startDate: CreationOptional<string | null>;
   declare public dueDate: CreationOptional<string | null>;
   declare public status: CreationOptional<'draft' | 'published' | 'archived'>;
@@ -216,6 +218,13 @@ PostModel.init(
       // 담당자가 탈퇴해도 글은 남아야 하므로 FK 제약을 걸지 않는다
       comment: '담당자 사용자 id',
     },
+    // 상위 업무의 글 id. 한 단계만 둔다 — 하위의 하위는 만들지 않아 고리가 생길 수 없다.
+    // 상위 글이 지워져도 하위는 남아야 하므로(혼자 선 업무가 된다) FK 제약을 걸지 않는다.
+    parentTaskId: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: '상위 업무 글 id (하위 업무일 때만)',
+    },
     // 날짜만 쓴다. 시각을 넣으면 시간대에 따라 간트 막대가 하루씩 밀린다.
     startDate: {
       type: DataTypes.DATEONLY,
@@ -334,6 +343,8 @@ PostModel.init(
       { fields: ['boardType', 'workStatus'] },
       // 내가 맡은 일 모아 보기
       { fields: ['assigneeId', 'workStatus'] },
+      // 한 업무의 하위 업무 모아 보기
+      { fields: ['parentTaskId'] },
     ],
     scopes: {
       // paranoid: true 가 deletedAt IS NULL 조건을 자동으로 붙인다

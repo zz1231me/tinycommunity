@@ -1,0 +1,185 @@
+import request from 'supertest';
+import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
+import Board from '../models/Board';
+import { Post } from '../models/Post';
+
+// 하위 업무(지라의 subtask 자리).
+//
+// 글 하나가 그대로 하위 업무가 된다 — 담당자·마감·상태를 상위와 따로 가진다.
+//
+// 지켜야 하는 선:
+//  1. 한 단계만. 하위의 하위를 허용하면 고리가 생기고 화면도 끝없이 펼쳐진다.
+//  2. 상위를 바꿀 수 있는 사람만 하위를 붙인다 — 남의 업무에 일거리를 끼워 넣지 못하게.
+//  3. 떼어 내도 글은 남는다(혼자 선 업무가 된다). 지우는 것과 다르다.
+//  4. 끝난 하위도 목록에 온다 — '3/5 끝남' 을 세려면 끝난 것도 세야 한다.
+//  5. 업무용 게시판에서만.
+
+let adminCookie: string;
+let userCookie: string;
+
+const create = async (cookie: string, title: string, board = 'notice') => {
+  const res = await request(app)
+    .post(`/api/posts/${board}`)
+    .set(CSRF_HEADER)
+    .set('Cookie', cookie)
+    .send({ title, content: `<p>${title}</p>` });
+  expect(res.status).toBe(201);
+  return res.body.data.id as string;
+};
+
+const add = (cookie: string, parentId: string, body: unknown, board = 'notice') =>
+  request(app)
+    .post(`/api/posts/${board}/${parentId}/subtasks`)
+    .set(CSRF_HEADER)
+    .set('Cookie', cookie)
+    .send(body as object);
+
+const list = (cookie: string, parentId: string, board = 'notice') =>
+  request(app).get(`/api/posts/${board}/${parentId}/subtasks`).set('Cookie', cookie);
+
+const detach = (cookie: string, parentId: string, childId: string, board = 'notice') =>
+  request(app)
+    .delete(`/api/posts/${board}/${parentId}/subtasks/${childId}`)
+    .set(CSRF_HEADER)
+    .set('Cookie', cookie);
+
+const setTask = (cookie: string, id: string, body: unknown, board = 'notice') =>
+  request(app)
+    .patch(`/api/posts/${board}/${id}/task`)
+    .set(CSRF_HEADER)
+    .set('Cookie', cookie)
+    .send(body as object);
+
+beforeAll(async () => {
+  await seedTestData();
+  adminCookie = await loginAs('admin', 'TestAdmin123!');
+  userCookie = await loginAs('testuser', 'TestUser123!');
+  await Board.update({ taskEnabled: true }, { where: { id: 'notice' } });
+});
+
+afterAll(async () => {
+  await Board.update({ taskEnabled: false }, { where: { id: 'notice' } });
+});
+
+describe('붙이기', () => {
+  it('하위 업무를 만들면 상위에 딸려 나온다 — 상태는 할 일로 시작한다', async () => {
+    const parent = await create(adminCookie, `상위 ${Date.now()}`);
+
+    const made = await add(adminCookie, parent, { title: 'A 라인 점검' });
+    expect(made.status).toBe(201);
+    expect(made.body.data).toMatchObject({ title: 'A 라인 점검', workStatus: 'todo' });
+
+    const rows = (await list(adminCookie, parent)).body.data;
+    expect(rows.map((t: { title: string }) => t.title)).toEqual(['A 라인 점검']);
+  });
+
+  it('담당자를 함께 주면 그대로 지정된다', async () => {
+    const parent = await create(adminCookie, `담당 ${Date.now()}`);
+
+    const made = await add(adminCookie, parent, { title: '맡겨 둔 일', assigneeId: 'testuser' });
+
+    expect(made.status).toBe(201);
+    expect(made.body.data.assignee).toMatchObject({ id: 'testuser' });
+  });
+
+  it('제목이 비면 거절한다', async () => {
+    const parent = await create(adminCookie, `빈제목 ${Date.now()}`);
+    await add(adminCookie, parent, { title: '   ' }).expect(400);
+    await add(adminCookie, parent, {}).expect(400);
+  });
+
+  it('하위의 하위는 만들지 않는다 — 한 단계만', async () => {
+    const parent = await create(adminCookie, `두단계 ${Date.now()}`);
+    const child = (await add(adminCookie, parent, { title: '첫 단계' })).body.data.id;
+
+    const res = await add(adminCookie, child, { title: '두 번째 단계' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/하위 업무 아래/);
+  });
+
+  it('업무용이 아닌 게시판에서는 붙이지 못한다', async () => {
+    await Board.update({ taskEnabled: false }, { where: { id: 'notice' } });
+    const parent = await create(adminCookie, `업무아님 ${Date.now()}`);
+
+    const res = await add(adminCookie, parent, { title: '안 될 일' });
+
+    await Board.update({ taskEnabled: true }, { where: { id: 'notice' } });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('권한', () => {
+  it('상위를 바꿀 수 없는 사람은 붙이지 못한다', async () => {
+    const parent = await create(adminCookie, `남의업무 ${Date.now()}`);
+
+    const res = await add(userCookie, parent, { title: '끼워 넣기' });
+
+    expect(res.status).toBe(403);
+    expect((await list(adminCookie, parent)).body.data).toHaveLength(0);
+  });
+
+  it('담당자가 되면 붙일 수 있다 — 바꿀 수 있는 사람과 같은 규칙', async () => {
+    const parent = await create(adminCookie, `담당자추가 ${Date.now()}`);
+    await setTask(adminCookie, parent, { assigneeId: 'testuser' }).expect(200);
+
+    await add(userCookie, parent, { title: '담당자가 쪼갠 일' }).expect(201);
+  });
+});
+
+describe('떼어 내기', () => {
+  it('떼어 내면 목록에서 빠지지만 글은 남는다', async () => {
+    const parent = await create(adminCookie, `떼기 ${Date.now()}`);
+    const childId = (await add(adminCookie, parent, { title: '떼어 낼 일' })).body.data.id;
+
+    await detach(adminCookie, parent, childId).expect(200);
+
+    expect((await list(adminCookie, parent)).body.data).toHaveLength(0);
+    const still = await Post.findByPk(childId);
+    expect(still).not.toBeNull();
+    expect(still?.parentTaskId).toBeNull();
+  });
+
+  it('남의 하위를 아무나 떼어 내지 못한다', async () => {
+    const parent = await create(adminCookie, `떼기권한 ${Date.now()}`);
+    const childId = (await add(adminCookie, parent, { title: '지킬 일' })).body.data.id;
+
+    await detach(userCookie, parent, childId).expect(403);
+    expect((await list(adminCookie, parent)).body.data).toHaveLength(1);
+  });
+
+  it('상위가 다르면 404 — 번호만 안다고 떼어 내지 못한다', async () => {
+    const a = await create(adminCookie, `딴상위A ${Date.now()}`);
+    const b = await create(adminCookie, `딴상위B ${Date.now()}`);
+    const childId = (await add(adminCookie, a, { title: 'A 의 하위' })).body.data.id;
+
+    await detach(adminCookie, b, childId).expect(404);
+  });
+});
+
+describe('목록', () => {
+  it('끝난 하위도 함께 온다 — 몇 개 중 몇 개인지 세어야 한다', async () => {
+    const parent = await create(adminCookie, `세기 ${Date.now()}`);
+    const first = (await add(adminCookie, parent, { title: '끝낼 일' })).body.data.id;
+    await add(adminCookie, parent, { title: '남은 일' }).expect(201);
+    await setTask(adminCookie, first, { workStatus: 'done' }).expect(200);
+
+    const rows = (await list(adminCookie, parent)).body.data;
+    expect(rows).toHaveLength(2);
+    expect(rows.filter((t: { workStatus: string }) => t.workStatus === 'done')).toHaveLength(1);
+  });
+
+  it('글을 볼 수 있으면 하위도 본다', async () => {
+    const parent = await create(adminCookie, `읽기 ${Date.now()}`);
+    await add(adminCookie, parent, { title: '보이는 하위' }).expect(201);
+
+    const res = await list(userCookie, parent);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+  });
+
+  it('로그인하지 않으면 401', async () => {
+    const parent = await create(adminCookie, `비로그인 ${Date.now()}`);
+    await request(app).get(`/api/posts/notice/${parent}/subtasks`).expect(401);
+  });
+});

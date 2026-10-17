@@ -45,6 +45,9 @@ import {
   getTaskBoards,
   getReaders,
   getActivity,
+  getSubtasks,
+  addSubtask,
+  detachSubtask,
   getTaskPriorities,
   getWorkStatuses,
 } from '../controllers/postTask.controller';
@@ -514,6 +517,45 @@ router.get(
   requireFeature('post.tasks'),
   checkReadAccess as RequestHandler,
   asyncHandler((req, res) => getActivity(req as AuthRequest, res))
+);
+
+/**
+ * @openapi
+ * /api/posts/{boardType}/{id}/subtasks:
+ *   get:
+ *     tags: [Posts]
+ *     summary: 이 업무에 딸린 하위 업무 (끝난 것 포함)
+ *     security: [{ cookieAuth: [] }]
+ *   post:
+ *     tags: [Posts]
+ *     summary: 하위 업무 추가 — 상위 업무를 바꿀 수 있는 사람만
+ *     security: [{ cookieAuth: [] }]
+ * /api/posts/{boardType}/{id}/subtasks/{childId}:
+ *   delete:
+ *     tags: [Posts]
+ *     summary: 하위에서 떼어 낸다 (글은 지우지 않는다)
+ *     security: [{ cookieAuth: [] }]
+ */
+router.get(
+  '/:boardType/:id/subtasks',
+  authenticate as RequestHandler,
+  requireFeature('post.tasks'),
+  checkReadAccess as RequestHandler,
+  asyncHandler((req, res) => getSubtasks(req as AuthRequest, res))
+);
+router.post(
+  '/:boardType/:id/subtasks',
+  authenticate as RequestHandler,
+  requireFeature('post.tasks'),
+  checkReadAccess as RequestHandler,
+  asyncHandler((req, res) => addSubtask(req as AuthRequest, res))
+);
+router.delete(
+  '/:boardType/:id/subtasks/:childId',
+  authenticate as RequestHandler,
+  requireFeature('post.tasks'),
+  checkReadAccess as RequestHandler,
+  asyncHandler((req, res) => detachSubtask(req as AuthRequest, res))
 );
 
 router.get(
