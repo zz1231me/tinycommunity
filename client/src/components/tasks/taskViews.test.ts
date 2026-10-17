@@ -101,20 +101,30 @@ describe('countDue · filterTasks', () => {
   });
 
   it('제목·게시판·마감 조건을 모두 만족하는 것만 남긴다', () => {
-    const none = { query: '', boardType: '', due: null };
+    const none = { query: '', boardType: '', due: null, priority: null };
     expect(ids(filterTasks(tasks, { ...none, query: '견적' }, today))).toEqual(['late', 'soon']);
     expect(ids(filterTasks(tasks, { ...none, boardType: 'hr' }, today))).toEqual(['today']);
     expect(ids(filterTasks(tasks, { ...none, due: 'overdue' }, today))).toEqual(['late']);
-    expect(ids(filterTasks(tasks, { query: '견적', boardType: '', due: 'week' }, today))).toEqual([
+    expect(ids(filterTasks(tasks, { ...none, query: '견적', due: 'week' }, today))).toEqual([
       'soon',
     ]);
   });
 
+  it('우선순위로도 좁힌다 — 마감과 다른 축이라 함께 걸 수 있어야 한다', () => {
+    const none = { query: '', boardType: '', due: null, priority: null };
+    const list = [
+      task({ id: 'u', title: '급한 일', priority: 'urgent' }),
+      task({ id: 'n', title: '보통 일', priority: 'normal' }),
+    ];
+    expect(ids(filterTasks(list, { ...none, priority: 'urgent' }, today))).toEqual(['u']);
+    expect(ids(filterTasks(list, { ...none, priority: null }, today))).toEqual(['u', 'n']);
+  });
+
   it('검색은 대소문자를 가리지 않고 앞뒤 공백을 무시한다', () => {
     const list = [task({ id: 'a', title: 'QA Report' })];
-    expect(ids(filterTasks(list, { query: '  qa ', boardType: '', due: null }, today))).toEqual([
-      'a',
-    ]);
+    expect(
+      ids(filterTasks(list, { query: '  qa ', boardType: '', due: null, priority: null }, today))
+    ).toEqual(['a']);
   });
 });
 

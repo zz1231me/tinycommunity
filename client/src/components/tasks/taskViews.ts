@@ -2,7 +2,7 @@
 
 import { addDays, differenceInCalendarDays, format, parseISO, startOfDay } from 'date-fns';
 import type { MyTask, WorkStatus } from '../../api/tasks';
-import { PRIORITY_RANK } from './taskPriority';
+import { PRIORITY_RANK, type TaskPriority } from './taskPriority';
 
 /** 칸반에 그리는 상태. 'none' 은 업무로 추적하지 않는 글이라 열을 두지 않는다. */
 export type KanbanStatus = Exclude<WorkStatus, 'none'>;
@@ -95,6 +95,8 @@ export interface TaskFilter {
   /** 게시판 하나로 좁힌다. 빈 문자열이면 전체. */
   boardType: string;
   due: DueFilter | null;
+  /** 이 우선순위만 본다. null 이면 전체. */
+  priority: TaskPriority | null;
 }
 
 export function filterTasks(tasks: MyTask[], filter: TaskFilter, today: Date): MyTask[] {
@@ -103,6 +105,7 @@ export function filterTasks(tasks: MyTask[], filter: TaskFilter, today: Date): M
     t =>
       (!q || t.title.toLowerCase().includes(q)) &&
       (!filter.boardType || t.boardType === filter.boardType) &&
+      (!filter.priority || t.priority === filter.priority) &&
       (!filter.due || matchesDue(t, filter.due, today))
   );
 }

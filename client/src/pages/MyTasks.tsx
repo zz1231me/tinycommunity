@@ -13,6 +13,8 @@ import { TaskKanban } from '../components/tasks/TaskKanban';
 import { TaskGantt } from '../components/tasks/TaskGantt';
 import { TaskList } from '../components/tasks/TaskList';
 import { TaskFilters } from '../components/tasks/TaskFilters';
+import { SavedFilters } from '../components/tasks/SavedFilters';
+import type { SavedTaskFilter } from '../api/taskFilters';
 import {
   countDue,
   filterTasks,
@@ -51,7 +53,7 @@ type View = (typeof VIEWS)[number]['key'];
 const OPEN_LIMIT = 100;
 const DONE_LIMIT = 50;
 
-const EMPTY_FILTER: TaskFilter = { query: '', boardType: '', due: null };
+const EMPTY_FILTER: TaskFilter = { query: '', boardType: '', due: null, priority: null };
 
 function isView(value: string | null): value is View {
   return VIEWS.some(v => v.key === value);
@@ -101,6 +103,21 @@ export default function MyTasks() {
   };
   const setShowDone = (next: boolean) => setPref('taskShowDone', next);
   const setSort = (next: TaskSort) => setPref('taskSort', next);
+  /**
+   * 저장된 필터를 그대로 되살린다. 범위도 함께 바꾸지만 setScope 를 쓰지 않는다 —
+   * 그쪽은 범위가 바뀔 때 조건을 비우는 자리라, 불러온 조건을 넣는 순서에 기대게 된다.
+   */
+  const applyPreset = (preset: SavedTaskFilter) => {
+    setParam('board', preset.scope || null);
+    setFilter({
+      query: preset.query,
+      boardType: preset.boardType,
+      due: preset.due,
+      priority: preset.priority,
+    });
+    setPref('taskSort', preset.sort);
+  };
+
   const setScope = (next: string) => {
     // 게시판 필터는 내 업무에서만 쓴다. 범위를 바꾸면 이전 조건이 남아 빈 화면이 되지 않게 비운다.
     setFilter(EMPTY_FILTER);
@@ -269,6 +286,9 @@ export default function MyTasks() {
         onFilterChange={setFilter}
         boards={boards}
         dueCounts={dueCounts}
+        savedFilters={
+          <SavedFilters current={{ ...filter, name: '', scope, sort }} onApply={applyPreset} />
+        }
         sort={view === 'list' ? sort : undefined}
         onSortChange={setSort}
       />

@@ -27,6 +27,13 @@ vi.mock('../api/tasks', async () => {
 });
 const { fetchMyTasks, fetchBoardTasks, fetchTaskBoards, changeTask } = api;
 
+const filterApi = vi.hoisted(() => ({
+  fetchTaskFilters: vi.fn(),
+  saveTaskFilter: vi.fn(),
+  deleteTaskFilter: vi.fn(),
+}));
+vi.mock('../api/taskFilters', () => filterApi);
+
 // 끌어 놓기는 happy-dom 에서 잴 수 없어, 놓은 결과(onMove 등)만 단추로 흉내 낸다.
 vi.mock('../components/tasks/TaskKanban', () => ({
   TaskKanban: ({
@@ -116,6 +123,7 @@ beforeEach(() => {
   document.getElementById('app-toast-container')?.remove();
   document.getElementById('app-toast-action-container')?.remove();
   fetchTaskBoards.mockResolvedValue([{ id: 'qc', name: 'QC' }]);
+  filterApi.fetchTaskFilters.mockResolvedValue([]);
   api.fetchWorkStatuses.mockResolvedValue([]);
 });
 
@@ -404,5 +412,38 @@ describe('일정 지우기', () => {
     await act(async () => fireEvent.click(screen.getByText('일정 지우기 누름')));
     await act(async () => fireEvent.click(screen.getByRole('button', { name: '일정 지우기' })));
     expect(changeTask).toHaveBeenCalledWith('qc', 'P1', { startDate: null, dueDate: null });
+  });
+});
+
+// 저장된 필터는 범위(내 업무 ↔ 게시판)까지 함께 되살린다. 범위를 바꾸는 평소 길은
+// 조건을 비우므로, 그 길로 가면 방금 불러온 조건이 지워진다.
+describe('저장된 필터 적용', () => {
+  it('범위가 다른 필터를 골라도 조건이 함께 살아난다', async () => {
+    filterApi.fetchTaskFilters.mockResolvedValue([
+      {
+        id: 1,
+        name: '품질 긴급',
+        scope: 'qc',
+        query: '',
+        boardType: '',
+        due: null,
+        priority: 'urgent',
+        sort: 'priority',
+      },
+    ]);
+    fetchBoardTasks.mockResolvedValue([
+      task('급한 일', { priority: 'urgent' }),
+      task('보통 일', { priority: 'normal' }),
+    ]);
+    view(makeClient());
+
+    fireEvent.click(await screen.findByRole('button', { name: /저장된 필터/ }));
+    fireEvent.click(await screen.findByRole('button', { name: '품질 긴급' }));
+
+    // 범위가 바뀌어 게시판 업무를 묻고
+    await screen.findByText('급한 일');
+    expect(fetchBoardTasks).toHaveBeenCalledWith('qc', ['todo', 'doing'], expect.anything());
+    // 우선순위 조건도 함께 살아 있다
+    expect(screen.queryByText('보통 일')).not.toBeInTheDocument();
   });
 });

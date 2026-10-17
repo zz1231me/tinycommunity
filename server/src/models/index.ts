@@ -22,6 +22,7 @@ import { PostAttachmentVersion } from './PostAttachmentVersion';
 import { PostActivity } from './PostActivity';
 import { PostLink } from './PostLink';
 import { PostTemplate } from './PostTemplate';
+import { TaskFilterPreset } from './TaskFilterPreset';
 import { FeatureFlag } from './FeatureFlag';
 import { FeatureRule } from './FeatureRule';
 import { Subscription } from './Subscription';
@@ -543,6 +544,7 @@ export {
   PostActivity,
   PostLink,
   PostTemplate,
+  TaskFilterPreset,
   FeatureFlag,
   FeatureRule,
   Subscription,

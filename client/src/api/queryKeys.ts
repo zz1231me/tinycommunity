@@ -16,6 +16,11 @@ export const templateKeys = {
   admin: ['post-templates', 'admin'] as const,
 };
 
+/** 저장된 업무 필터. 업무 목록과 함께 버려지지 않게 taskKeys 밖에 둔다. */
+export const savedFilterKeys = {
+  all: ['task-filters'] as const,
+};
+
 export const taskKeys = {
   all: ['tasks'] as const,
   statuses: ['tasks', 'statuses'] as const,

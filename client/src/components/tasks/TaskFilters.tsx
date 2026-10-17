@@ -1,7 +1,9 @@
 // 업무 거르기 줄. 보는 범위(내 업무·게시판), 제목 검색, 게시판, 마감 요약, 정렬.
 
+import type { ReactNode } from 'react';
 import { Search } from 'lucide-react';
 import type { TaskBoard } from '../../api/tasks';
+import { PRIORITY_LABEL, TASK_PRIORITIES, isTaskPriority } from './taskPriority';
 import {
   DUE_FILTERS,
   TASK_SORTS,
@@ -26,6 +28,8 @@ interface Props {
   /** 내 업무에서 고를 수 있는 게시판(지금 목록에 있는 것만) */
   boards: TaskBoard[];
   dueCounts: Record<DueFilter, number>;
+  /** 저장된 필터 고르기. 거르는 줄의 맨 앞에 선다. */
+  savedFilters?: ReactNode;
   /** 목록 보기에서만 정렬을 고른다 */
   sort?: TaskSort;
   onSortChange?: (sort: TaskSort) => void;
@@ -39,6 +43,7 @@ export function TaskFilters({
   onFilterChange,
   boards,
   dueCounts,
+  savedFilters,
   sort,
   onSortChange,
 }: Props) {
@@ -47,6 +52,7 @@ export function TaskFilters({
   return (
     <div className="mb-4 space-y-3">
       <div className="flex flex-wrap items-center gap-2">
+        {savedFilters}
         {scopes.length > 0 && (
           <select
             aria-label="보는 범위"
@@ -91,6 +97,19 @@ export function TaskFilters({
             ))}
           </select>
         )}
+        <select
+          aria-label="우선순위"
+          value={filter.priority ?? ''}
+          onChange={e => set({ priority: isTaskPriority(e.target.value) ? e.target.value : null })}
+          className="input w-auto py-1.5 text-sm"
+        >
+          <option value="">모든 우선순위</option>
+          {[...TASK_PRIORITIES].reverse().map(p => (
+            <option key={p} value={p}>
+              {PRIORITY_LABEL[p]}
+            </option>
+          ))}
+        </select>
         {sort && onSortChange && (
           <select
             aria-label="정렬"

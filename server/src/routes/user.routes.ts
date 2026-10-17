@@ -13,6 +13,11 @@ import {
   getUiPrefs,
   updateUiPrefs,
 } from '../controllers/userProfile.controller';
+import {
+  listTaskFilters,
+  createTaskFilter,
+  deleteTaskFilter,
+} from '../controllers/taskFilterPreset.controller';
 
 const router = Router();
 
@@ -76,6 +81,40 @@ router.get(
 router.patch(
   '/me/ui-prefs',
   asyncHandler((req, res) => updateUiPrefs(req as AuthRequest, res))
+);
+
+/**
+ * @swagger
+ * /api/users/me/task-filters:
+ *   get:
+ *     summary: 저장해 둔 업무 필터 목록
+ *     description: 지라의 saved filter 자리. 자주 쓰는 조건에 이름을 붙여 둔다.
+ *     tags: [Users]
+ *     security: [{ cookieAuth: [] }]
+ *   post:
+ *     summary: 지금 조건을 이름 붙여 저장 (같은 이름이면 덮어쓴다)
+ *     tags: [Users]
+ *     security: [{ cookieAuth: [] }]
+ * /api/users/me/task-filters/{id}:
+ *   delete:
+ *     summary: 저장된 필터 하나를 지운다
+ *     tags: [Users]
+ *     security: [{ cookieAuth: [] }]
+ */
+router.get(
+  '/me/task-filters',
+  requireFeature('post.tasks'),
+  asyncHandler((req, res) => listTaskFilters(req as AuthRequest, res))
+);
+router.post(
+  '/me/task-filters',
+  requireFeature('post.tasks'),
+  asyncHandler((req, res) => createTaskFilter(req as AuthRequest, res))
+);
+router.delete(
+  '/me/task-filters/:id',
+  requireFeature('post.tasks'),
+  asyncHandler((req, res) => deleteTaskFilter(req as AuthRequest, res))
 );
 /**
  * @swagger
