@@ -90,11 +90,18 @@ const CalendarPage: React.FC = () => {
   const handleEventDidMount = useCallback(
     (arg: {
       el: HTMLElement;
-      event: { backgroundColor: string; borderColor: string; title: string };
+      event: {
+        backgroundColor: string;
+        borderColor: string;
+        title: string;
+        extendedProps?: { fullTitle?: string };
+      };
     }) => {
       const color = arg.event.backgroundColor || arg.event.borderColor;
       if (color) arg.el.style.setProperty('--ev', color);
-      if (arg.event.title) arg.el.setAttribute('title', arg.event.title);
+      // 업무 칩은 좁은 칸을 위해 이름만 싣는다. 무엇인지는 여기 툴팁이 말해 준다.
+      const tooltip = arg.event.extendedProps?.fullTitle || arg.event.title;
+      if (tooltip) arg.el.setAttribute('title', tooltip);
     },
     []
   );
@@ -321,9 +328,9 @@ const CalendarPage: React.FC = () => {
   );
 
   return (
-    <div className="h-full flex flex-col lg:flex-row bg-slate-50 dark:bg-slate-900">
+    <div className="h-full flex flex-col xl:flex-row bg-slate-50 dark:bg-slate-900">
       <div
-        className="flex-1 flex flex-col min-h-0 mx-5 my-5 sm:mx-8 sm:my-7 lg:mr-4
+        className="flex-1 flex flex-col min-h-0 mx-5 my-5 sm:mx-8 sm:my-7 xl:mr-4
                       bg-white dark:bg-slate-900
                       rounded-2xl border border-slate-200 dark:border-slate-800
                       shadow-sm overflow-hidden relative"

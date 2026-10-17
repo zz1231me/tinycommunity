@@ -155,7 +155,11 @@ function Dashboard() {
 
           {/* 오른쪽 — 알림 + 유저 드롭다운 */}
           <div className="flex items-center gap-1 flex-shrink-0">
-            <RecentPostsMenu />
+            {/* 최신 소식은 좁은 화면에서 접는다. 다섯 개가 모두 서면 폭이 모자라
+                검색 칸이 0px 로 찌그러진다(375px 기준 25px 초과). 글 목록·탐색에서 볼 수 있다. */}
+            <div className="hidden sm:block">
+              <RecentPostsMenu />
+            </div>
             <MessageBadge />
             <AttendanceBadge />
             <NotificationBell />

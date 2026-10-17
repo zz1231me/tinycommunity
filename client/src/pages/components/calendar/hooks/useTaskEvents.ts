@@ -38,7 +38,10 @@ export function useTaskEvents(): EventInput[] {
         const color = overdue ? OVERDUE_COLOR : TASK_COLOR;
         return {
           id: `task:${t.id}`,
-          title: `업무 · ${t.title}`,
+          // 칸이 좁다. 칩에는 업무 이름만 싣고 '업무 ·' 는 툴팁(fullTitle)으로 보낸다 —
+          // 접두사가 92px 짜리 이름에서 42px 를 먹어 날짜 칸에서 두 글자만 남았다.
+          // 업무인지 아닌지는 색(TASK_COLOR/OVERDUE_COLOR)과 task-event 로도 구분된다.
+          title: t.title,
           start: first,
           // 종일 일정의 끝은 다음 날 0시다
           end: dateUtils.addDay(last),
@@ -47,7 +50,10 @@ export function useTaskEvents(): EventInput[] {
           backgroundColor: color,
           borderColor: color,
           classNames: ['task-event'],
-          extendedProps: { taskLink: `/dashboard/posts/${t.boardType}/${t.id}` },
+          extendedProps: {
+            taskLink: `/dashboard/posts/${t.boardType}/${t.id}`,
+            fullTitle: `업무 · ${t.title}`,
+          },
         };
       });
   }, [data, today]);

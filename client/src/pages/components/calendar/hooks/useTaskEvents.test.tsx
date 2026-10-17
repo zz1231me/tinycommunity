@@ -102,3 +102,16 @@ describe('useTaskEvents', () => {
     }
   });
 });
+
+// 날짜 칸은 좁다. 칩에 '업무 · ' 를 붙이면 92px 짜리 이름에서 42px 를 먹어
+// 1024px 화면에서 두 글자만 남았다. 접두사는 툴팁으로 보낸다.
+describe('칸이 좁아도 이름이 보이게', () => {
+  it('칩에는 업무 이름만 싣고, 무엇인지는 툴팁으로 남긴다', async () => {
+    fetchMyTasks.mockResolvedValue([task('a', { dueDate: '2026-10-17' })]);
+    const { result } = run();
+
+    await waitFor(() => expect(result.current).toHaveLength(1));
+    expect(result.current[0].title).toBe('업무 a');
+    expect(result.current[0].extendedProps).toMatchObject({ fullTitle: '업무 · 업무 a' });
+  });
+});

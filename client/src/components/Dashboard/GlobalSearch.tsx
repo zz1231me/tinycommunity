@@ -442,13 +442,19 @@ export function GlobalSearch() {
     <>
       {/* min-w-0: flex 아이템의 기본 min-width:auto 는 내용(입력창)보다 작아지지 않아,
           좁은 화면에서 헤더가 뷰포트를 넘겨 가로 스크롤을 만든다. */}
-      <div className="relative flex-1 min-w-0 max-w-2xl mx-1 sm:mx-4" ref={searchRef}>
+      {/* 좁은 화면에서는 돋보기 한 칸(36px)으로 접는다. flex-1 로 두면 오른쪽 아이콘들이
+          줄지 않아 이 칸이 0px 까지 찌그러지고, 버튼만 남아 옆 단추 위에 겹쳤다(실측 20px). */}
+      <div
+        className="relative w-9 flex-none sm:mx-4 sm:w-auto sm:max-w-2xl sm:flex-1 sm:min-w-0"
+        ref={searchRef}
+      >
         {/* 검색 버튼 (닫힌 상태) */}
         {!isOpen && (
           <button
             onClick={handleOpen}
             aria-label="전체 검색 열기 (⌘K)"
-            className="w-full min-w-0 flex items-center gap-3 px-4 py-2
+            className="w-full min-w-0 flex items-center justify-center gap-3 px-0 py-2
+                       sm:justify-start sm:px-4
                        bg-slate-50/80 dark:bg-slate-800/50
                        hover:bg-slate-100 dark:hover:bg-slate-700/50
                        rounded-xl transition-all duration-200"
@@ -470,7 +476,7 @@ export function GlobalSearch() {
             </svg>
             {/* 글자도 줄어들 수 있어야 한다 — 예전에는 이 span 이 고유 폭을 지켜서
                 좁은 화면에서 버튼 밖으로 삐져나가 오른쪽 알림·계정 아이콘과 겹쳤다. */}
-            <span className="min-w-0 truncate text-sm text-slate-500 dark:text-slate-400">
+            <span className="hidden min-w-0 truncate text-sm text-slate-500 dark:text-slate-400 sm:block">
               전체검색
             </span>
             <kbd className="hidden sm:inline-flex items-center gap-1 ml-auto px-2 py-1 text-xs font-mono text-slate-400 bg-white dark:bg-slate-800 rounded">
