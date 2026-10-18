@@ -37,15 +37,30 @@ function assertWithinLimits(title: string, content: string) {
 
 /** 상한을 넘은 몫을 오래된 것부터 지운다. 내 것만 본다. */
 async function pruneOldest(userId: string): Promise<void> {
-  const keep = await PostDraft.findAll({
+  // 남길 것의 '목록' 이 아니라 '경계 시각' 으로 지운다.
+  //
+  // 처음에는 최근 50개의 id 를 읽어 두고 그 밖을 지웠다. 두 곳에서 동시에 저장하면,
+  // 먼저 읽은 쪽의 목록에는 나중에 들어온 줄이 없어서 그것까지 지웠다 — 한꺼번에
+  // 60개를 만들어 보니 50개가 아니라 40개만 남았다. 아직 보이던 초안이 사라진 것이다.
+  //
+  // 경계 시각보다 '오래된' 것만 지우면, 그 뒤에 들어온 줄은 언제나 경계보다 새것이라
+  // 남의 손에 지워지지 않는다. 그 줄의 몫은 그 줄의 정리가 맡는다.
+  const boundary = await PostDraft.findAll({
     where: { UserId: userId },
-    order: [['updatedAt', 'DESC']],
-    attributes: ['id'],
-    limit: MAX_DRAFTS_PER_USER,
+    // offset 을 쓰므로 2차 정렬이 있어야 경계가 흔들리지 않는다(paginationOrder 가 본다).
+    order: [
+      ['updatedAt', 'DESC'],
+      ['id', 'DESC'],
+    ],
+    attributes: ['updatedAt'],
+    offset: MAX_DRAFTS_PER_USER - 1,
+    limit: 1,
   });
-  if (keep.length < MAX_DRAFTS_PER_USER) return;
+  const oldestKept = boundary[0]?.updatedAt;
+  if (!oldestKept) return;
+
   await PostDraft.destroy({
-    where: { UserId: userId, id: { [Op.notIn]: keep.map(d => d.id) } },
+    where: { UserId: userId, updatedAt: { [Op.lt]: oldestKept } },
     force: true,
   });
 }

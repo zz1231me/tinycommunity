@@ -74,4 +74,18 @@ describe('임시저장 개수', () => {
     for (let i = 0; i < 5; i++) await create(`초안 ${i}`);
     expect(await PostDraft.count({ where: { UserId: 'testuser' } })).toBe(5);
   });
+
+  // 처음 쓴 정리는 '남길 50개의 id' 를 읽어 두고 그 밖을 지웠다. 두 곳에서 동시에
+  // 저장하면 먼저 읽은 쪽의 목록에 나중 줄이 없어, 그것까지 지웠다 — 한꺼번에 60개를
+  // 만들어 보니 40개만 남았다. 아직 목록에 보이던 초안이 사라진 것이다.
+  it('한꺼번에 저장해도 상한 밑으로 깎이지 않는다', async () => {
+    const results = await Promise.allSettled(
+      Array.from({ length: MAX_DRAFTS_PER_USER + 10 }, (_, i) => create(`동시 ${i}`))
+    );
+    expect(results.filter(r => r.status === 'fulfilled').length).toBe(MAX_DRAFTS_PER_USER + 10);
+
+    const left = await PostDraft.count({ where: { UserId: 'testuser' } });
+    // 같은 시각에 걸린 줄은 함께 남으므로 조금 더 남을 수 있다. 모자라면 안 된다.
+    expect(left).toBeGreaterThanOrEqual(MAX_DRAFTS_PER_USER);
+  });
 });
