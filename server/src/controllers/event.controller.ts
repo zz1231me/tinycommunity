@@ -3,7 +3,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types/auth-request';
 import { getSettings } from '../utils/settingsCache';
-import { eventService } from '../services/event.service';
+import { eventService, MAX_RANGE_DAYS } from '../services/event.service';
 import { sendSuccess, sendError, sendUnauthorized, sendNotFound } from '../utils/response';
 
 const CSS_COLOR_REGEX =
@@ -193,6 +193,16 @@ export const getEvents = async (
   ) {
     sendError(res, 400, 'start/end는 유효한 날짜(ISO) 형식이어야 합니다.');
     return;
+  }
+
+  // 반복 일정은 이 창 안에서 펼쳐진다. 창이 넓을수록 만들어지는 번째가 늘어나므로
+  // 상한을 둔다 — 화면이 한 번에 묻는 가장 넓은 창은 100일이다.
+  if (start !== undefined && end !== undefined) {
+    const span = new Date(end).getTime() - new Date(start).getTime();
+    if (span > MAX_RANGE_DAYS * 86_400_000) {
+      sendError(res, 400, `조회 범위는 최대 ${MAX_RANGE_DAYS}일입니다.`);
+      return;
+    }
   }
 
   try {

@@ -44,6 +44,12 @@ export interface NewEventInput {
 const LIST_LIMIT = 2000;
 /** 펼치기 전에 읽어 둘 반복 규칙 수 */
 const RECURRING_LIMIT = 200;
+const DAY_MS = 86_400_000;
+/** 범위를 주지 않았을 때 보는 창. 달력 화면은 늘 범위를 보내므로 이 값은 비상용이다. */
+const DEFAULT_BACK_DAYS = 180;
+const DEFAULT_FORWARD_DAYS = 365;
+/** 한 번에 물을 수 있는 가장 넓은 창. 화면이 한 번에 묻는 가장 넓은 창은 100일이다. */
+export const MAX_RANGE_DAYS = 400;
 
 export class EventService extends BaseService {
   async getAllEvents(): Promise<EventInstance[]> {
@@ -106,11 +112,19 @@ export class EventService extends BaseService {
         }),
       ]);
 
-      const rangeStart = start ? new Date(start) : new Date(0);
-      const rangeEnd = end ? new Date(end) : new Date('2100-01-01');
-      const expanded = recurring.flatMap(event => {
+      // 범위를 주지 않은 요청에도 창이 있다. 예전에는 1970년부터 2100년까지였고,
+      // 2030년까지 매일 도는 일정 하나가 곧바로 500번째까지 꽉 찼다 — 번째마다 본문이
+      // 통째로 복사되므로 한 번의 요청이 수십 MB 를 만들었다.
+      const now = Date.now();
+      const rangeStart = start ? new Date(start) : new Date(now - DEFAULT_BACK_DAYS * DAY_MS);
+      const rangeEnd = end ? new Date(end) : new Date(now + DEFAULT_FORWARD_DAYS * DAY_MS);
+
+      const expanded: Array<Record<string, unknown>> = [];
+      for (const event of recurring) {
+        // 어차피 잘라 낼 몫은 만들지 않는다
+        if (expanded.length >= LIST_LIMIT) break;
         const json = event.toJSON() as Record<string, unknown>;
-        return expandOccurrences(
+        const occurrences = expandOccurrences(
           {
             start: new Date(event.start),
             end: new Date(event.end),
@@ -122,15 +136,18 @@ export class EventService extends BaseService {
           },
           rangeStart,
           rangeEnd
-        ).map(occ => ({
-          ...json,
-          start: occ.start,
-          end: occ.end,
-          /** 이 번째의 날짜. 하루만 쉬게 할 때 이 값으로 집는다. */
-          occurrenceDate: occ.date,
-          isRecurringOccurrence: true,
-        }));
-      });
+        );
+        for (const occ of occurrences) {
+          expanded.push({
+            ...json,
+            start: occ.start,
+            end: occ.end,
+            /** 이 번째의 날짜. 하루만 쉬게 할 때 이 값으로 집는다. */
+            occurrenceDate: occ.date,
+            isRecurringOccurrence: true,
+          });
+        }
+      }
 
       return [...plain.map(e => e.toJSON() as Record<string, unknown>), ...expanded]
         .sort(
