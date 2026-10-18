@@ -43,6 +43,7 @@ import {
   getMyTasks,
   getBoardTasks,
   getTaskBoards,
+  getAllTasks,
   getReaders,
   getActivity,
   getSubtasks,
@@ -133,6 +134,26 @@ router.get(
   authenticate as RequestHandler,
   requireFeature('post.tasks'),
   asyncHandler((req, res) => getTaskBoards(req as AuthRequest, res))
+);
+
+/**
+ * @swagger
+ * /api/posts/tasks/all:
+ *   get:
+ *     summary: 들어갈 수 있는 업무 게시판 전부의 업무(공용 보기)
+ *     tags: [Posts]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: 업무 목록 }
+ *       403: { description: 공유 보기가 꺼져 있음 }
+ */
+router.get(
+  '/tasks/all',
+  authenticate as RequestHandler,
+  requireFeature('post.tasks'),
+  // 스위치를 화면에서만 숨기지 않는다 — 꺼져 있으면 데이터도 막힌다.
+  requireFeature('post.tasksShared'),
+  asyncHandler((req, res) => getAllTasks(req as AuthRequest, res))
 );
 
 /**

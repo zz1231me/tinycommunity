@@ -233,6 +233,21 @@ export const postTaskService = {
     );
   },
 
+  /**
+   * 들어갈 수 있는 업무 게시판 전부를 한 장으로. 공용 간트가 쓴다.
+   *
+   * listMyTasks 와 같은 범위(taskBoardTypes)를 보되 담당자 조건만 뺀다 — 즉 이미
+   * 게시판 팀 보기로 볼 수 있던 것들이고, 새로 드러나는 업무는 없다. 비밀글·
+   * 못 들어가는 게시판은 findTasks 가 거른다.
+   */
+  async listAllTasks(userId: string, userRole: string, statuses: WorkStatus[]) {
+    const boardTypes = await taskBoardTypes(userId, userRole);
+    if (boardTypes.length === 0) return [];
+    // 'none' 은 업무로 추적하지 않는 일반 글이라 뺀다(팀 보기와 같은 규칙).
+    const tracked = statuses.filter(st => st !== 'none');
+    return findTasks({ boardType: { [Op.in]: boardTypes } }, tracked, userId, userRole);
+  },
+
   /** 한 게시판의 업무 전체. 읽을 수 있는 사람이면 누구나 보고, 바꾸기는 canEdit 인 것만. */
   async listBoardTasks(
     boardType: string,

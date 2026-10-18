@@ -131,6 +131,16 @@ export const getMyTasks = async (req: AuthRequest, res: Response): Promise<void>
   }
 };
 
+/** GET /api/posts/tasks/all — 들어갈 수 있는 업무 게시판 전부(공용 보기). */
+export const getAllTasks = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id: userId, role: userRole } = req.user;
+  try {
+    sendSuccess(res, await postTaskService.listAllTasks(userId, userRole, parseStatuses(req)));
+  } catch (err) {
+    sendServiceError(res, err, '업무를 불러오지 못했습니다.', { userId });
+  }
+};
+
 /** GET /api/posts/tasks/board/:boardType — 게시판 업무 전체. 읽기 권한은 라우터가 확인한다. */
 export const getBoardTasks = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id: userId, role: userRole } = req.user;

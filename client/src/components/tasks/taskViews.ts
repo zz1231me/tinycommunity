@@ -110,6 +110,9 @@ export function filterTasks(tasks: MyTask[], filter: TaskFilter, today: Date): M
   );
 }
 
+/** 범위 고르개의 '전체' 값. 게시판 id 와 겹치지 않는 글자를 쓴다. */
+export const SHARED_SCOPE = '*';
+
 export type TaskSort = 'stale' | 'due' | 'priority';
 
 export const TASK_SORTS: { key: TaskSort; label: string }[] = [

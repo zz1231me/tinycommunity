@@ -17,6 +17,7 @@ import { SavedFilters } from '../components/tasks/SavedFilters';
 import { downloadTaskCsv, toTaskCsv } from '../components/tasks/taskCsv';
 import type { SavedTaskFilter } from '../api/taskFilters';
 import {
+  SHARED_SCOPE,
   countDue,
   filterTasks,
   sortTasks,
@@ -28,6 +29,7 @@ import {
 import { useStatusLabel } from '../components/tasks/useStatusLabel';
 import {
   changeTask,
+  fetchAllTasks,
   fetchBoardTasks,
   fetchMyTasks,
   fetchTaskBoards,
@@ -79,9 +81,12 @@ export default function MyTasks() {
   const [filter, setFilter] = useState<TaskFilter>(EMPTY_FILTER);
 
   const statuses = showDone ? [...OPEN, 'done' as WorkStatus] : OPEN;
-  const queryKey = scope
-    ? taskKeys.board(scope, statuses.join(','))
-    : taskKeys.mine(statuses.join(','));
+  const shared = scope === SHARED_SCOPE;
+  const queryKey = shared
+    ? taskKeys.shared(statuses.join(','))
+    : scope
+      ? taskKeys.board(scope, statuses.join(','))
+      : taskKeys.mine(statuses.join(','));
 
   const queryClient = useQueryClient();
   const { confirm, dialog } = useConfirm();
@@ -124,7 +129,7 @@ export default function MyTasks() {
   const exportCsv = () => {
     downloadTaskCsv(
       toTaskCsv(visible, statusLabel),
-      `${scope ? scopeName : '내-업무'}-${format(today, 'yyyy-MM-dd')}.csv`
+      `${shared ? '전체-업무' : scope ? scopeName : '내-업무'}-${format(today, 'yyyy-MM-dd')}.csv`
     );
   };
 
@@ -137,7 +142,11 @@ export default function MyTasks() {
   const { data, isLoading, isError } = useQuery({
     queryKey,
     queryFn: ({ signal }) =>
-      scope ? fetchBoardTasks(scope, statuses, signal) : fetchMyTasks(statuses, signal),
+      shared
+        ? fetchAllTasks(statuses, signal)
+        : scope
+          ? fetchBoardTasks(scope, statuses, signal)
+          : fetchMyTasks(statuses, signal),
     // 글 상세가 이 키를 무효화하지 않으므로 마운트마다 다시 읽는다.
     refetchOnMount: 'always',
   });
@@ -248,7 +257,7 @@ export default function MyTasks() {
   return (
     <PageContainer>
       <PageHeader
-        title={scope ? `${scopeName} 업무` : '내 업무'}
+        title={shared ? '전체 업무' : scope ? `${scopeName} 업무` : '내 업무'}
         description={scope ? '바꿀 권한이 있는 업무만 옮길 수 있습니다.' : undefined}
         icon={<ClipboardList className="h-6 w-6 text-primary-600 dark:text-primary-400" />}
       >
@@ -315,12 +324,14 @@ export default function MyTasks() {
         </section>
       ) : isError ? (
         <section className="card overflow-hidden">
-          <ListError what={scope ? '게시판 업무' : '내 업무'} />
+          <ListError what={shared ? '전체 업무' : scope ? '게시판 업무' : '내 업무'} />
         </section>
       ) : tasks.length === 0 ? (
         <section className="card overflow-hidden">
           <ListState size="roomy">
-            {scope ? (
+            {shared ? (
+              '함께 보는 게시판에 아직 업무가 없습니다.'
+            ) : scope ? (
               '이 게시판에는 아직 업무가 없습니다.'
             ) : (
               <>

@@ -3,8 +3,10 @@
 import type { ReactNode } from 'react';
 import { Search } from 'lucide-react';
 import type { TaskBoard } from '../../api/tasks';
+import { useFeature } from '../../store/features';
 import { PRIORITY_LABEL, TASK_PRIORITIES, isTaskPriority } from './taskPriority';
 import {
+  SHARED_SCOPE,
   DUE_FILTERS,
   TASK_SORTS,
   type DueFilter,
@@ -48,6 +50,7 @@ export function TaskFilters({
   onSortChange,
 }: Props) {
   const set = (patch: Partial<TaskFilter>) => onFilterChange({ ...filter, ...patch });
+  const sharedAllowed = useFeature('post.tasksShared');
 
   return (
     <div className="mb-4 space-y-3">
@@ -61,6 +64,8 @@ export function TaskFilters({
             className="input w-auto py-1.5 text-sm"
           >
             <option value="">내 업무</option>
+            {/* 공유 보기. 꺼져 있으면 고를 수 없고, 서버도 그 길을 막는다. */}
+            {sharedAllowed && <option value={SHARED_SCOPE}>전체 업무</option>}
             {scopes.map(b => (
               <option key={b.id} value={b.id}>
                 {b.name} 전체

@@ -94,6 +94,19 @@ export async function fetchMyTasks(status?: WorkStatus[], signal?: AbortSignal):
   return unwrap(res);
 }
 
+/**
+ * 들어갈 수 있는 업무 게시판 전부(공유 보기). 'post.tasksShared' 가 꺼져 있으면 403 이다 —
+ * 화면에서 숨기는 것과 별개로 서버가 막는다.
+ */
+export async function fetchAllTasks(
+  status?: WorkStatus[],
+  signal?: AbortSignal
+): Promise<MyTask[]> {
+  const query = status?.length ? `?status=${status.join(',')}` : '';
+  const res = await api.get(`/posts/tasks/all${query}`, { signal });
+  return unwrap(res);
+}
+
 /** 한 게시판의 업무 전체(팀 보기) */
 export async function fetchBoardTasks(
   boardType: string,

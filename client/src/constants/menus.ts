@@ -7,7 +7,7 @@ export const HIDEABLE_MENUS: { key: string; label: string; description: string }
   { key: 'tools.wiki', label: '위키', description: '함께 고치는 문서' },
   { key: 'post.scrap', label: '스크랩', description: '나중에 볼 글' },
   { key: 'post.drafts', label: '임시저장', description: '쓰다 만 글' },
-  { key: 'post.tasks', label: '내 업무', description: '담당자가 나인 글' },
+  { key: 'post.tasks', label: '업무', description: '담당자가 나인 글과, 함께 보는 업무' },
   { key: 'social.dm', label: '메시지', description: '1:1 메시지' },
   { key: 'tools.memo', label: '메모', description: '나만 보는 메모장' },
   { key: 'tools.attendance', label: '출퇴근', description: '출근·퇴근 기록' },

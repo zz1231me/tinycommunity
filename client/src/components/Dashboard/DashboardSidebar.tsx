@@ -246,7 +246,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
               )}
               {showTasks && (
                 <SidebarNav
-                  label="내 업무"
+                  label="업무"
                   to="tasks"
                   closeSidebar={onClose}
                   icon={<ClipboardList className="w-4.5 h-4.5" />}

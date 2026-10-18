@@ -26,6 +26,8 @@ export const taskKeys = {
   statuses: ['tasks', 'statuses'] as const,
   mine: (status: string) => ['tasks', 'mine', status] as const,
   board: (boardType: string, status: string) => ['tasks', 'board', boardType, status] as const,
+  /** 공유 보기(게시판 전부) */
+  shared: (status: string) => ['tasks', 'shared', status] as const,
   boards: ['tasks', 'boards'] as const,
   readers: (boardType: string, postId: string) => ['tasks', 'readers', boardType, postId] as const,
   attachmentVersions: (boardType: string, postId: string) =>

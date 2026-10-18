@@ -53,6 +53,15 @@ export const FEATURES = {
     group: 'boards',
     defaultEnabled: true,
   },
+  'post.tasksShared': {
+    label: '업무 공유 보기',
+    description:
+      '업무 화면에서 들어갈 수 있는 게시판의 업무를 한 장으로 봅니다(간트·칸반·목록 공용). ' +
+      '게시판 팀 보기로 이미 볼 수 있는 업무들이며, 일정을 바꾸는 권한은 그대로입니다.',
+    group: 'boards',
+    defaultEnabled: true,
+    requires: ['post.tasks'],
+  },
   'post.tasks': {
     label: '담당자·업무 상태',
     description:
