@@ -1,6 +1,7 @@
 import { Op } from 'sequelize';
 import { BaseService } from './base.service';
 import { Comment, CommentInstance } from '../models/Comment';
+import { Post } from '../models/Post';
 import { CommentLike } from '../models/CommentLike';
 import { CommentReaction } from '../models/CommentReaction';
 import { User } from '../models/User';
@@ -8,9 +9,41 @@ import { AppError } from '../middlewares/error.middleware';
 import { isAdminOrManager } from '../config/constants';
 import { getCommentSettings } from '../utils/settingsCache';
 import { sanitizeHtmlContent } from '../utils/contentRenderer';
+import { SecretPostFields } from '../utils/postAccess';
 import { sequelize } from '../config/sequelize';
 
+/** 댓글과, 그 댓글이 달린 글의 '검사에 필요한 칸' 만. */
+export type CommentWithPost = CommentInstance & {
+  post: SecretPostFields & { boardType: string };
+};
+
 export class CommentService extends BaseService {
+  /**
+   * 주소의 게시판 칸이 진짜인지 함께 확인하며 집어 온다.
+   *
+   * /api/comments/:boardType/:commentId 에서 미들웨어는 URL 의 boardType 만 본다 —
+   * 내가 들어갈 수 있는 게시판 이름을 적으면 통과한다. 그래서 '이 댓글이 정말 그
+   * 게시판 글의 것인지' 를 여기서 다시 본다. 수정·삭제·좋아요·반응 네 곳이 같은
+   * 확인을 각자 적고 있었고, 한 곳만 빠져도 조용하다.
+   *
+   * 못 찾았거나 게시판이 다르면 null — '없다' 와 '남의 것이다' 를 구분해 알려 주지
+   * 않는 것이 의도다(존재 여부가 새어 나가지 않게).
+   */
+  async loadInBoard(commentId: number, boardType: string): Promise<CommentWithPost | null> {
+    const comment = (await Comment.findByPk(commentId, {
+      include: [
+        {
+          model: Post,
+          as: 'post',
+          attributes: ['boardType', 'UserId', 'isSecret', 'secretType', 'secretUserIds'],
+        },
+      ],
+    })) as CommentWithPost | null;
+
+    if (!comment?.post || comment.post.boardType !== boardType) return null;
+    return comment;
+  }
+
   /** 댓글 생성. authorName 은 컨트롤러가 넘기므로 User 를 따로 조회하지 않는다. */
   async createComment(
     postId: string,

@@ -15,7 +15,7 @@ import {
 } from '../utils/response';
 import { logError } from '../utils/logger';
 import { getSettings } from '../utils/settingsCache';
-import { checkSecretPostAccess, SecretPostFields } from '../utils/postAccess';
+import { checkSecretPostAccess } from '../utils/postAccess';
 import { Post } from '../models/Post';
 import { Comment } from '../models/Comment';
 
@@ -229,16 +229,8 @@ export const updateComment = async (
       return;
     }
 
-    // boardType 교차 검증: 댓글이 올바른 게시판 소속인지 확인
-    const comment = await Comment.findByPk(numericCommentId, {
-      include: [{ model: Post, as: 'post', attributes: ['boardType'] }],
-    });
+    const comment = await commentService.loadInBoard(numericCommentId, boardType);
     if (!comment) {
-      sendNotFound(res, '댓글');
-      return;
-    }
-    const post = (comment as Comment & { post?: { boardType: string } }).post;
-    if (!post || post.boardType !== boardType) {
       sendNotFound(res, '댓글');
       return;
     }
@@ -277,16 +269,8 @@ export const deleteComment = async (
       return;
     }
 
-    // boardType 교차 검증: 댓글이 올바른 게시판 소속인지 확인
-    const comment = await Comment.findByPk(numericCommentId, {
-      include: [{ model: Post, as: 'post', attributes: ['boardType'] }],
-    });
+    const comment = await commentService.loadInBoard(numericCommentId, boardType);
     if (!comment) {
-      sendNotFound(res, '댓글');
-      return;
-    }
-    const post = (comment as Comment & { post?: { boardType: string } }).post;
-    if (!post || post.boardType !== boardType) {
       sendNotFound(res, '댓글');
       return;
     }
@@ -338,25 +322,12 @@ export const likeComment = async (
       return;
     }
 
-    // boardType 교차 검증 + 비밀글 보호 필드 함께 조회 (URL 조작/IDOR 차단)
-    const comment = await Comment.findByPk(numericCommentId, {
-      include: [
-        {
-          model: Post,
-          as: 'post',
-          attributes: ['boardType', 'UserId', 'isSecret', 'secretType', 'secretUserIds'],
-        },
-      ],
-    });
+    const comment = await commentService.loadInBoard(numericCommentId, boardType);
     if (!comment) {
       sendNotFound(res, '댓글');
       return;
     }
-    const post = (comment as Comment & { post?: SecretPostFields & { boardType: string } }).post;
-    if (!post || post.boardType !== boardType) {
-      sendNotFound(res, '댓글');
-      return;
-    }
+    const post = comment.post;
 
     // 비밀글은 게시판 읽기 권한만으로는 부족하고, 접근 권한이 있어야 좋아요를 누를 수 있다.
     const access = checkSecretPostAccess(post, userId, req.user?.role);
@@ -415,24 +386,12 @@ export const reactToComment = async (
       return;
     }
 
-    const comment = await Comment.findByPk(numericCommentId, {
-      include: [
-        {
-          model: Post,
-          as: 'post',
-          attributes: ['boardType', 'UserId', 'isSecret', 'secretType', 'secretUserIds'],
-        },
-      ],
-    });
+    const comment = await commentService.loadInBoard(numericCommentId, boardType);
     if (!comment) {
       sendNotFound(res, '댓글');
       return;
     }
-    const post = (comment as Comment & { post?: SecretPostFields & { boardType: string } }).post;
-    if (!post || post.boardType !== boardType) {
-      sendNotFound(res, '댓글');
-      return;
-    }
+    const post = comment.post;
 
     const access = checkSecretPostAccess(post, userId, req.user?.role);
     if (!access.ok) {
