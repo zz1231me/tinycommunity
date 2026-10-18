@@ -82,3 +82,41 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # 처음 받은 사람이 밟는 길을 그대로 밟아 본다 — 특히 윈도우.
+  #
+  # 윈도우에서 막히는 자리는 빌드가 아니라 띄우는 순간이다. NODE_ENV 를 넣는 문법이
+  # 달라(set · $env:) development 로 남으면 Express 가 client/dist 를 서빙하지 않고
+  # 화면만 빈 채로 200 이 온다. 그래서 상태 코드가 아니라 화면이 들어 있는지까지 본다.
+  setup:
+    name: 처음 받은 사람 경로 (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+
+      # 막 클론한 상태 그대로. 의존성 설치와 server/.env 생성까지 한 번에.
+      - name: npm run setup
+        run: npm run setup
+
+      - name: .env 가 쓸 수 있는 값으로 만들어졌는가
+        run: node scripts/check-env.mjs
+
+      - name: npm run build
+        run: npm run build
+
+      # 빌드한 것을 실제로 띄워 화면까지 받아 본다(임시 DB·임시 시크릿을 쓴다).
+      - name: npm run smoke
+        run: npm run smoke

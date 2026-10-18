@@ -12,6 +12,7 @@
     "build": "node scripts/build.mjs",
     "secrets": "node scripts/secrets.mjs",
     "start": "node scripts/start.mjs",
+    "smoke": "node scripts/smoke.mjs",
     "test": "npm run test --prefix server && npm run test --prefix client",
     "test:server": "npm run test --prefix server",
     "test:client": "npm run test --prefix client",

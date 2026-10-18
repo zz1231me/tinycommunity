@@ -370,7 +370,8 @@ docker-compose down               # 중지 (down -v = 데이터 포함 삭제)
 | `npm run lint`                               | 양쪽 ESLint                                    |
 | `npm run typecheck` · `npm run format:check` | 양쪽 타입검사 · 서식 검사                      |
 
-스크립트 본체는 `scripts/` 에 있습니다(`setup.mjs`·`dev.mjs`·`build.mjs`·`start.mjs`·`secrets.mjs`).
+스크립트 본체는 `scripts/` 에 있습니다. CI 가 **windows-latest 와 ubuntu-latest 양쪽에서**
+`setup → build → smoke` 를 그대로 돌리므로, 처음 받는 경로가 두 OS 에서 깨지면 바로 빨강이 됩니다.
 
 **로컬 검증 (CI 기준)**
 
