@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import Event from '../models/Event';
+import { MAX_EXCEPT } from '../services/event.service';
 
 // 반복 일정 API.
 //
@@ -195,21 +196,17 @@ describe('반복 규칙의 시작을 뒤로 미는 수정', () => {
     });
 
   const editTitleOnly = (id: number, start: string, end: string) =>
-    request(app)
-      .put(`/api/events/${id}`)
-      .set(CSRF_HEADER)
-      .set('Cookie', adminCookie)
-      .send({
-        calendarId: 'default',
-        title: '제목만 바꿈',
-        body: '',
-        isAllday: false,
-        start,
-        end,
-        category: 'meeting',
-        location: '',
-        isReadOnly: false,
-      });
+    request(app).put(`/api/events/${id}`).set(CSRF_HEADER).set('Cookie', adminCookie).send({
+      calendarId: 'default',
+      title: '제목만 바꿈',
+      body: '',
+      isAllday: false,
+      start,
+      end,
+      category: 'meeting',
+      location: '',
+      isReadOnly: false,
+    });
 
   it('반복 종료일보다 늦은 시작은 거절한다 — 한 번도 서지 않는 일정이 된다', async () => {
     const id = (await daily()).body.data.id as number;
@@ -247,5 +244,50 @@ describe('반복 규칙의 시작을 뒤로 미는 수정', () => {
     expect(new Date(String(occ!.start)).toISOString()).not.toBe('2026-11-02T01:00:00.000Z');
     expect(new Date(String(occ!.seriesStart)).toISOString()).toBe('2026-11-02T01:00:00.000Z');
     expect(new Date(String(occ!.seriesEnd)).toISOString()).toBe('2026-11-02T02:00:00.000Z');
+  });
+});
+
+// 건너뛴 날짜는 무한정 쌓이지 않는다.
+//
+// 건너뛰기는 날짜가 실제 번째인지 보지 않는다(봐야 할 이유도 없다 — 규칙이 바뀌면
+// 번째도 바뀐다). 그래서 요청 한 번에 한 개씩 끝없이 쌓을 수 있었고, 그 줄은
+// 달력을 여는 모든 사람이 읽는다. 한 번에 펼쳐지는 번째가 500개라 그 이상 둘 이유도 없다.
+/** 1900-01-01 부터 하루씩. 모양이 YYYY-MM-DD 여야 컨트롤러를 지난다. */
+const fillerDates = (n: number) =>
+  Array.from({ length: n }, (_, i) => {
+    const d = new Date(Date.UTC(1900, 0, 1 + i));
+    return d.toISOString().slice(0, 10);
+  });
+
+describe('건너뛴 날짜의 상한', () => {
+  it('가득 차면 더 받지 않는다', async () => {
+    const made = await makeEvent(adminCookie, {
+      recurrenceType: 'daily',
+      recurrenceEndDate: '2026-11-30T00:00:00.000Z',
+    });
+    const id = made.body.data.id as number;
+
+    const full = fillerDates(MAX_EXCEPT);
+    await Event.update({ recurrenceExcept: full }, { where: { id } });
+
+    const res = await skip(adminCookie, id, '2026-11-03');
+
+    expect(res.status).toBe(409);
+    const row = await Event.findByPk(id);
+    expect((row?.recurrenceExcept ?? []).length).toBe(MAX_EXCEPT);
+  });
+
+  it('가득 찬 날짜를 다시 건너뛰는 것은 통한다 — 늘지 않으므로', async () => {
+    const made = await makeEvent(adminCookie, {
+      recurrenceType: 'daily',
+      recurrenceEndDate: '2026-11-30T00:00:00.000Z',
+    });
+    const id = made.body.data.id as number;
+
+    const full = fillerDates(MAX_EXCEPT);
+    await Event.update({ recurrenceExcept: full }, { where: { id } });
+
+    const res = await skip(adminCookie, id, full[0]);
+    expect(res.status).toBe(200);
   });
 });

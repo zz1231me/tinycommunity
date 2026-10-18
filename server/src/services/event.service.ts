@@ -50,6 +50,12 @@ const DEFAULT_BACK_DAYS = 180;
 const DEFAULT_FORWARD_DAYS = 365;
 /** 한 번에 물을 수 있는 가장 넓은 창. 화면이 한 번에 묻는 가장 넓은 창은 100일이다. */
 export const MAX_RANGE_DAYS = 400;
+/**
+ * 한 일정에 둘 수 있는 '건너뛴 날짜' 의 수. 날짜가 실제 번째인지는 보지 않으므로
+ * 요청 한 번에 한 개씩 끝없이 쌓을 수 있었다 — 그 줄은 달력을 여는 모든 사람이 읽는다.
+ * 한 번에 펼쳐지는 번째가 500개이므로 그보다 더 둘 이유도 없다.
+ */
+export const MAX_EXCEPT = 500;
 
 export class EventService extends BaseService {
   async getAllEvents(): Promise<EventInstance[]> {
@@ -286,6 +292,9 @@ export class EventService extends BaseService {
     await this.assertCanManage(event, userId, userRole);
 
     const except = new Set(event.recurrenceExcept ?? []);
+    if (!except.has(date) && except.size >= MAX_EXCEPT) {
+      throw new AppError(409, `건너뛴 날짜는 최대 ${MAX_EXCEPT}개까지 둘 수 있습니다.`);
+    }
     except.add(date);
     event.recurrenceExcept = [...except].sort();
     await event.save();

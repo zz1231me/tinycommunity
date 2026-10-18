@@ -429,7 +429,13 @@ const CalendarPage: React.FC = () => {
       <ConfirmationModal
         open={showDeleteConfirm}
         title="일정 삭제"
-        message={`"${selectedEvent?.title ?? ''}" 일정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
+        message={
+          // 번째를 눌러 들어왔어도 지워지는 것은 규칙 한 줄이다 — 반복 전체가 사라진다.
+          // 그 날 하루만 빼려면 '이 날 건너뛰기' 가 따로 있다.
+          selectedEvent?.isRecurringOccurrence
+            ? `"${selectedEvent.title}" 은(는) 반복 일정입니다. 이 날만이 아니라 반복 전체가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.`
+            : `"${selectedEvent?.title ?? ''}" 일정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`
+        }
         confirmLabel={isDeleting ? '삭제 중…' : '삭제'}
         cancelLabel="취소"
         variant="danger"
