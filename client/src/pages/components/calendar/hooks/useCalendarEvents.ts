@@ -1,6 +1,12 @@
 import { useState, useCallback, useRef } from 'react';
 import { EventInput } from '@fullcalendar/core';
-import { getEvents, createEvent, updateEvent, deleteEvent } from '../../../../api/events';
+import {
+  getEvents,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  editOccurrence,
+} from '../../../../api/events';
 import { CalendarEvent, EventFormData } from '../types';
 import { categoryColors } from '../constants';
 import { dateUtils } from '../utils';
@@ -225,6 +231,32 @@ export const useCalendarEvents = ({
     [loadEvents]
   );
 
+  /**
+   * 반복 중 이 날 하루만 고친다. 규칙은 그대로 두고 그 날을 건너뛴 뒤 그 자리에
+   * 따로 선 일정을 세운다 — 둘 다 서버가 한 트랜잭션에서 한다.
+   */
+  const handleEditOccurrence = useCallback(
+    async (eventId: number, date: string, formData: EventFormData, existing?: CalendarEvent) => {
+      const startDate = new Date(formData.start + 'T00:00:00Z');
+      const endDate = new Date(dateUtils.addDay(formData.end) + 'T00:00:00Z');
+
+      await editOccurrence(eventId, date, {
+        title: formData.title,
+        body: formData.body,
+        isAllday: formData.isAllday ?? existing?.isAllday ?? true,
+        start: startDate.toISOString(),
+        end: endDate.toISOString(),
+        category: formData.category,
+        location: formData.location,
+        color: formData.color,
+        backgroundColor: formData.backgroundColor,
+        borderColor: formData.color,
+      });
+      await loadEvents();
+    },
+    [loadEvents]
+  );
+
   const handleDeleteEvent = useCallback(
     async (eventId: number) => {
       try {
@@ -245,6 +277,7 @@ export const useCalendarEvents = ({
     loadEvents,
     handleCreateEvent,
     handleUpdateEvent,
+    handleEditOccurrence,
     handleDeleteEvent,
     canEditEvent,
   };

@@ -5,6 +5,7 @@ import {
   updateEvent,
   deleteEvent,
   skipOccurrence,
+  editOccurrence,
 } from '../controllers/event.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { checkEventPermission } from '../middlewares/eventPermission.middleware';
@@ -44,6 +45,20 @@ router.delete(
   '/:id/occurrences/:date',
   authenticate as RequestHandler,
   skipOccurrence as RequestHandler
+);
+
+/**
+ * @openapi
+ * /api/events/{id}/occurrences/{date}:
+ *   put:
+ *     tags: [Events]
+ *     summary: 반복 중 그 날 하루만 다르게 만든다 (규칙은 그대로)
+ *     security: [{ cookieAuth: [] }]
+ */
+router.put(
+  '/:id/occurrences/:date',
+  authenticate as RequestHandler,
+  editOccurrence as RequestHandler
 );
 
 export default router;

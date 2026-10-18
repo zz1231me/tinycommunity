@@ -29,6 +29,16 @@ export const createEvent = (event: CreateEventParams) => {
   return api.post('/events', event);
 };
 
+/**
+ * 반복 중 그 날 하루만 다르게 만든다. 규칙은 그대로 두고 그 날을 건너뛴 뒤,
+ * 그 자리에 따로 선 일정을 세운다(서버가 한 번에 한다).
+ */
+export const editOccurrence = (
+  id: number | string,
+  date: string,
+  event: Partial<CreateEventParams>
+) => api.put(`/events/${id}/occurrences/${date}`, event).then(unwrap);
+
 /** 반복 중 그 날 하루만 건너뛴다. 규칙은 그대로 두고 그 날짜만 빠진다. */
 export const skipOccurrence = (id: number, date: string) =>
   api.delete(`/events/${id}/occurrences/${date}`).then(unwrap);

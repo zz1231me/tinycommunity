@@ -453,6 +453,112 @@ export const deleteEvent = async (
  * 규칙 자체는 그대로 두고 건너뛸 날짜만 더한다. 반복 전체를 지우는 것과 다르므로
  * 지우는 권한(deleteEvent)과 같은 규칙으로 본다.
  */
+/**
+ * PUT /api/events/:id/occurrences/:date — 반복 중 그 날 하루만 다르게 만든다.
+ *
+ * 규칙 전체를 고치는 PUT /api/events/:id 와 다르다. 그 날을 건너뛰고 그 자리에
+ * 따로 선 일정 하나를 세운다. 예전에는 하루만 옮기려면 건너뛴 뒤 새로 만들어야 했다.
+ */
+export const editOccurrence = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const { id, date } = req.params;
+  const userId = req.user?.id;
+
+  if (!userId) {
+    sendUnauthorized(res, '로그인이 필요합니다.');
+    return;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    sendError(res, 400, '날짜는 YYYY-MM-DD 형식이어야 합니다.');
+    return;
+  }
+
+  // 반복 칸은 받지 않는다 — 떨어져 나온 하루는 더 반복하지 않는다.
+  const {
+    title,
+    body,
+    isAllday,
+    start,
+    end,
+    category,
+    location,
+    color,
+    backgroundColor,
+    dragBackgroundColor,
+    borderColor,
+  } = req.body ?? {};
+
+  if (!start || !end) {
+    sendError(res, 400, 'start, end는 필수입니다.');
+    return;
+  }
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    sendError(res, 400, '시작 또는 종료 날짜가 올바르지 않습니다.');
+    return;
+  }
+  if (isAllday ? startDate > endDate : startDate >= endDate) {
+    sendError(res, 400, '종료 시간은 시작 시간 이후여야 합니다.');
+    return;
+  }
+  if (title !== undefined && (typeof title !== 'string' || title.trim().length === 0)) {
+    sendError(res, 400, '제목이 올바르지 않습니다.');
+    return;
+  }
+  const settings = getSettings();
+  if (title && String(title).length > 255) {
+    sendError(res, 400, '제목은 255자를 초과할 수 없습니다.');
+    return;
+  }
+  if (body && String(body).length > settings.eventBodyMaxLength) {
+    sendError(res, 400, `내용은 ${settings.eventBodyMaxLength}자를 초과할 수 없습니다.`);
+    return;
+  }
+  if (location && String(location).length > settings.eventLocationMaxLength) {
+    sendError(res, 400, `장소는 ${settings.eventLocationMaxLength}자를 초과할 수 없습니다.`);
+    return;
+  }
+  for (const [field, val] of [
+    ['color', color],
+    ['backgroundColor', backgroundColor],
+    ['dragBackgroundColor', dragBackgroundColor],
+    ['borderColor', borderColor],
+  ] as const) {
+    if (!isValidCssColor(val)) {
+      sendError(res, 400, `${field} 값이 올바른 CSS 색상 형식이 아닙니다.`);
+      return;
+    }
+  }
+
+  // undefined 인 칸은 규칙에서 물려받는다(서비스가 채운다).
+  const patch = Object.fromEntries(
+    Object.entries({
+      title,
+      body,
+      isAllday,
+      start,
+      end,
+      category,
+      location,
+      color,
+      backgroundColor,
+      dragBackgroundColor,
+      borderColor,
+    }).filter(([, v]) => v !== undefined)
+  );
+
+  try {
+    const created = await eventService.editOccurrence(id, date, patch, userId, req.user?.role);
+    sendSuccess(res, created, '이 날만 따로 저장했습니다.', 201);
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const skipOccurrence = async (
   req: AuthRequest,
   res: Response,

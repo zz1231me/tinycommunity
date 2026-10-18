@@ -55,3 +55,67 @@ describe('일정 대화상자의 포커스', () => {
     expect(screen.getByRole('dialog', { name: '일정 상세' })).toBeInTheDocument();
   });
 });
+
+// 반복 일정을 고칠 때 '어디까지' 를 먼저 묻는다.
+//
+// 번째를 눌러 수정에 들어가면 예전에는 그대로 규칙 전체가 바뀌었다 — 제목만 고쳐도
+// 시작 날짜가 그 날로 밀려 앞의 날들이 사라졌다. 이제 범위를 고르고, 덜 위험한
+// '이 날만' 이 기본이다.
+describe('반복 일정 수정 범위', () => {
+  const form = {
+    title: '회의',
+    body: '',
+    isAllday: false,
+    start: '2026-11-20',
+    end: '2026-11-20',
+    category: 'meeting',
+    location: '',
+    color: '#3B82F6',
+    backgroundColor: '#3B82F6',
+  } as EventFormData;
+
+  const renderEdit = (props: Record<string, unknown> = {}) => {
+    const onEditScopeChange = vi.fn();
+    render(
+      <CalendarModal
+        isOpen
+        mode="edit"
+        selectedEvent={{ id: 1, title: '회의' } as never}
+        formData={form}
+        canEdit
+        canDelete
+        onClose={noop}
+        onEdit={noop}
+        onDelete={noop}
+        onSubmit={noop}
+        onFormChange={noop}
+        onCancelEdit={noop}
+        onEditScopeChange={onEditScopeChange}
+        {...props}
+      />
+    );
+    return onEditScopeChange;
+  };
+
+  it('반복의 번째면 범위를 고르는 줄이 있다', () => {
+    renderEdit({ editScope: 'one' });
+    expect(screen.getByRole('radio', { name: '이 날만' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: '반복 전체' })).not.toBeChecked();
+  });
+
+  it('고르면 알려 준다', () => {
+    const onEditScopeChange = renderEdit({ editScope: 'one' });
+    fireEvent.click(screen.getByRole('radio', { name: '반복 전체' }));
+    expect(onEditScopeChange).toHaveBeenCalledWith('all');
+  });
+
+  it('반복 전체를 고르면 앞의 날이 사라질 수 있다고 알린다', () => {
+    renderEdit({ editScope: 'all' });
+    expect(screen.getByText(/반복하는 모든 날이 함께 바뀝니다/)).toBeInTheDocument();
+  });
+
+  it('보통 일정에는 그 줄을 두지 않는다 — 양성 대조', () => {
+    renderEdit({ editScope: undefined });
+    expect(screen.queryByRole('radio', { name: '이 날만' })).not.toBeInTheDocument();
+  });
+});

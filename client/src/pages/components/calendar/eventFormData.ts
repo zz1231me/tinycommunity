@@ -9,16 +9,25 @@ import { DEFAULT_EVENT_COLOR } from '../../../constants/colors';
 import { dateUtils } from './utils';
 import { CalendarEvent, EventFormData } from './types';
 
-/** 이 벌이 가리키는 '규칙' 의 시작·끝 ISO. 보통 일정은 제 값 그대로다. */
-export function seriesRange(ev: CalendarEvent): { start: string; end?: string | null } {
-  if (ev.isRecurringOccurrence && ev.seriesStart) {
+/** 고치는 대상. 'all' 은 반복 규칙 전체, 'one' 은 그 날 하루만. */
+export type EditScope = 'all' | 'one';
+
+/**
+ * 이 벌이 가리키는 날짜. 'all' 이면 규칙의 시작, 'one' 이면 눌린 그 날이다.
+ * 보통 일정은 둘이 같다.
+ */
+export function rangeFor(
+  ev: CalendarEvent,
+  scope: EditScope = 'all'
+): { start: string; end?: string | null } {
+  if (scope === 'all' && ev.isRecurringOccurrence && ev.seriesStart) {
     return { start: ev.seriesStart, end: ev.seriesEnd };
   }
   return { start: ev.start, end: ev.end };
 }
 
-export function toFormData(ev: CalendarEvent): EventFormData {
-  const range = seriesRange(ev);
+export function toFormData(ev: CalendarEvent, scope: EditScope = 'all'): EventFormData {
+  const range = rangeFor(ev, scope);
   const start = dateUtils.isoToLocalDate(range.start);
   const end = range.end ? dateUtils.subtractDay(dateUtils.isoToLocalDate(range.end)) : start;
 

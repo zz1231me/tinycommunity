@@ -301,6 +301,87 @@ export class EventService extends BaseService {
     return event.recurrenceExcept;
   }
 
+  /**
+   * 반복 중 그 날 하루만 다르게 만든다.
+   *
+   * 규칙은 그대로 두고 그 날을 건너뛴 뒤, 그 자리에 따로 선 일정 하나를 세운다.
+   * 번째마다 예외를 따로 저장하는 표를 두는 대신 이미 있는 두 가지(건너뛰기 + 일정)를
+   * 쓴다 — 떨어져 나온 일정은 parentEventId 로 규칙을 가리키므로, 규칙을 지우면
+   * 같은 주인의 자식으로 함께 지워진다.
+   *
+   * 잠금 안에서 건너뛰기와 세우기를 같이 한다. 따로 하면 둘 중 하나만 남아,
+   * 그 날이 두 번 보이거나 아예 사라진다.
+   */
+  async editOccurrence(
+    id: string,
+    date: string,
+    patch: Partial<NewEventInput>,
+    userId: string,
+    userRole?: string
+  ): Promise<EventInstance | null> {
+    const createdId = await sequelize.transaction(async t => {
+      const event = await Event.findByPk(id, { transaction: t, lock: t.LOCK.UPDATE });
+      if (!event) throw new AppError(404, '이벤트를 찾을 수 없습니다.');
+      if (!event.recurrenceType || event.recurrenceType === 'none') {
+        throw new AppError(400, '반복 일정이 아닙니다.');
+      }
+      await this.assertCanEdit(event, userId, userRole);
+
+      const except = new Set(event.recurrenceExcept ?? []);
+      if (except.has(date)) {
+        throw new AppError(409, '이미 건너뛴 날입니다.');
+      }
+      if (except.size >= MAX_EXCEPT) {
+        throw new AppError(409, `건너뛴 날짜는 최대 ${MAX_EXCEPT}개까지 둘 수 있습니다.`);
+      }
+
+      // 손대지 않은 칸은 규칙에서 그대로 물려받는다. 색만 바꾸러 들어온 사람이
+      // 장소·메모를 잃지 않게.
+      const inherited = {
+        calendarId: event.calendarId,
+        title: event.title,
+        body: event.body,
+        isAllday: event.isAllday,
+        category: event.category,
+        location: event.location,
+        attendees: event.attendees,
+        state: event.state,
+        isReadOnly: event.isReadOnly,
+        color: event.color,
+        backgroundColor: event.backgroundColor,
+        dragBackgroundColor: event.dragBackgroundColor,
+        borderColor: event.borderColor,
+        customStyle: event.customStyle,
+      };
+
+      const created = await Event.create(
+        {
+          ...inherited,
+          ...patch,
+          ...(patch.body ? { body: sanitizeHtmlContent(String(patch.body)) } : {}),
+          // 떨어져 나온 하루는 더 반복하지 않는다
+          recurrenceType: 'none',
+          recurrenceInterval: 1,
+          recurrenceDays: null,
+          recurrenceEndDate: null,
+          recurrenceExcept: null,
+          parentEventId: Number(id),
+          // 주인은 규칙의 주인 그대로다. 관리자가 고쳐도 남의 일정이 내 것이 되지 않는다.
+          UserId: event.UserId,
+        } as unknown as CreationAttributes<EventInstance>,
+        { transaction: t }
+      );
+
+      except.add(date);
+      event.recurrenceExcept = [...except].sort();
+      await event.save({ transaction: t });
+
+      return created.id;
+    });
+
+    return this.findWithUser(createdId);
+  }
+
   async deleteEvent(id: string): Promise<void> {
     try {
       // 동시 삭제 요청의 TOCTOU 를 막으려고 트랜잭션 안에서 LOCK.UPDATE 로 읽는다.

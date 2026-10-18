@@ -35,6 +35,20 @@ describe('반복의 번째를 수정 창으로 옮길 때', () => {
     expect(form.start).toBe('2026-11-02');
   });
 
+  it("'이 날만' 을 고르면 눌린 그 날을 채운다", () => {
+    const occurrence = base({
+      start: '2026-11-20T01:00:00.000Z',
+      end: '2026-11-20T02:00:00.000Z',
+      isRecurringOccurrence: true,
+      occurrenceDate: '2026-11-20',
+      seriesStart: '2026-11-02T01:00:00.000Z',
+      seriesEnd: '2026-11-02T02:00:00.000Z',
+    });
+
+    expect(toFormData(occurrence, 'one').start).toBe('2026-11-20');
+    expect(toFormData(occurrence, 'all').start).toBe('2026-11-02');
+  });
+
   it('보통 일정은 제 날짜 그대로다 — 양성 대조', () => {
     const form = toFormData(base());
     expect(form.start).toBe('2026-11-02');

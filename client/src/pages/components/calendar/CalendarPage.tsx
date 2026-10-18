@@ -13,7 +13,10 @@ import { toast } from '../../../utils/toast';
 
 import { CalendarEvent, EventFormData, ModalMode } from './types';
 import { dateUtils } from './utils';
-import { toFormData } from './eventFormData';
+import { toFormData, type EditScope } from './eventFormData';
+
+/** 범위를 바꿀 때 날짜 두 칸만 갈아 끼운다 */
+const pickDates = (f: EventFormData) => ({ start: f.start, end: f.end });
 import { useNavigate } from 'react-router-dom';
 import { useCalendarEvents, railWindow } from './hooks/useCalendarEvents';
 import { useTaskEvents } from './hooks/useTaskEvents';
@@ -48,6 +51,7 @@ const CalendarPage: React.FC = () => {
     loadEvents,
     handleCreateEvent,
     handleUpdateEvent,
+    handleEditOccurrence,
     handleDeleteEvent,
     canEditEvent,
   } = useCalendarEvents({ userId: user?.id, isAdmin: isAdmin(), calendarRef });
@@ -68,6 +72,8 @@ const CalendarPage: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [calendarTitle, setCalendarTitle] = useState('');
   const [formData, setFormData] = useState<EventFormData>(DEFAULT_FORM);
+  /** 반복의 번째를 고칠 때, 이 날만인지 반복 전체인지. 기본은 덜 위험한 '이 날만'. */
+  const [editScope, setEditScope] = useState<EditScope>('one');
 
   // 날짜가 바뀔 때만 갱신한다. 초 단위 시계는 CalendarHeader 가 따로 들고 있다.
   useEffect(() => {
@@ -268,8 +274,23 @@ const CalendarPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       if (modalMode === 'create') await handleCreateEvent(formData);
-      else if (modalMode === 'edit' && selectedEvent)
-        await handleUpdateEvent(selectedEvent.id, formData, selectedEvent);
+      else if (modalMode === 'edit' && selectedEvent) {
+        const onlyThisDay =
+          selectedEvent.isRecurringOccurrence &&
+          editScope === 'one' &&
+          selectedEvent.occurrenceDate;
+        if (onlyThisDay) {
+          await handleEditOccurrence(
+            selectedEvent.id,
+            selectedEvent.occurrenceDate!,
+            formData,
+            selectedEvent
+          );
+          toast.success('이 날만 따로 저장했습니다.');
+        } else {
+          await handleUpdateEvent(selectedEvent.id, formData, selectedEvent);
+        }
+      }
       setIsModalOpen(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : '일정 저장에 실패했습니다.';
@@ -414,7 +435,21 @@ const CalendarPage: React.FC = () => {
         }}
         onEdit={() => {
           formDataSnapshotRef.current = formData;
+          // 창을 열 때 폼은 규칙의 시작으로 채워져 있다. '이 날만' 으로 들어가므로
+          // 날짜를 눌린 그 날로 돌려놓는다.
+          if (selectedEvent?.isRecurringOccurrence) {
+            setEditScope('one');
+            setFormData(prev => ({ ...prev, ...pickDates(toFormData(selectedEvent, 'one')) }));
+          }
           setModalMode('edit');
+        }}
+        editScope={selectedEvent?.isRecurringOccurrence ? editScope : undefined}
+        onEditScopeChange={scope => {
+          setEditScope(scope);
+          // 범위가 바뀌면 보는 날짜도 바뀐다. 적어 둔 제목·내용은 그대로 둔다.
+          if (selectedEvent) {
+            setFormData(prev => ({ ...prev, ...pickDates(toFormData(selectedEvent, scope)) }));
+          }
         }}
         onDelete={handleDelete}
         onSkipOccurrence={() => void handleSkipOccurrence()}

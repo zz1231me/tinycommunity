@@ -291,3 +291,161 @@ describe('건너뛴 날짜의 상한', () => {
     expect(res.status).toBe(200);
   });
 });
+
+// 반복 중 '이 날만' 고치기.
+//
+// 예전에는 하루만 시간을 옮기려면 그 날을 건너뛰고 새 일정을 따로 만들어야 했다.
+// 규칙을 고치면 모든 날이 함께 움직이므로 쓸 수 없었다.
+//
+// 지금은 그 날을 건너뛰고 그 자리에 따로 선 일정을 세운다. 규칙 쪽에는 건너뛴
+// 날짜만 남는다. 둘은 한 트랜잭션에서 함께 일어나야 한다 — 하나만 남으면 그 날이
+// 두 번 보이거나 아예 사라진다.
+describe('이 날만 고치기', () => {
+  const daily = () =>
+    makeEvent(adminCookie, {
+      title: '매일 회의',
+      body: '<p>원래 메모</p>',
+      location: '3층',
+      recurrenceType: 'daily',
+      recurrenceInterval: 1,
+      recurrenceEndDate: '2026-11-30T00:00:00.000Z',
+    });
+
+  const editOne = (cookie: string, id: number, date: string, body: Record<string, unknown>) =>
+    request(app)
+      .put(`/api/events/${id}/occurrences/${date}`)
+      .set(CSRF_HEADER)
+      .set('Cookie', cookie)
+      .send(body);
+
+  it('그 날만 바뀌고 나머지 날은 그대로다', async () => {
+    const id = (await daily()).body.data.id as number;
+
+    const res = await editOne(adminCookie, id, '2026-11-05', {
+      title: '이 날만 다른 회의',
+      start: '2026-11-05T05:00:00.000Z',
+      end: '2026-11-05T06:00:00.000Z',
+      isAllday: false,
+    });
+    expect(res.status).toBe(201);
+
+    const list = await listRange(
+      adminCookie,
+      '2026-11-02T00:00:00.000Z',
+      '2026-11-08T00:00:00.000Z'
+    );
+    const rows = list.body.data as Array<Record<string, unknown>>;
+
+    // 그 날에는 바꾼 것 하나만 선다 — 규칙에서 나온 번째는 빠졌다
+    const onThatDay = rows.filter(r => String(r.start).startsWith('2026-11-05'));
+    expect(onThatDay).toHaveLength(1);
+    expect(onThatDay[0].title).toBe('이 날만 다른 회의');
+    expect(onThatDay[0].isRecurringOccurrence).toBeFalsy();
+
+    // 다른 날은 규칙 그대로
+    const otherDay = rows.filter(r => String(r.start).startsWith('2026-11-06'));
+    expect(otherDay).toHaveLength(1);
+    expect(otherDay[0].title).toBe('매일 회의');
+  });
+
+  it('손대지 않은 칸은 규칙에서 물려받는다', async () => {
+    const id = (await daily()).body.data.id as number;
+
+    const res = await editOne(adminCookie, id, '2026-11-05', {
+      start: '2026-11-05T05:00:00.000Z',
+      end: '2026-11-05T06:00:00.000Z',
+      isAllday: false,
+    });
+
+    expect(res.status).toBe(201);
+    // 시간만 옮기러 들어온 사람이 제목·장소·메모를 잃지 않는다
+    expect(res.body.data.title).toBe('매일 회의');
+    expect(res.body.data.location).toBe('3층');
+    expect(res.body.data.body).toContain('원래 메모');
+  });
+
+  it('떨어져 나온 하루는 더 반복하지 않는다', async () => {
+    const id = (await daily()).body.data.id as number;
+    const res = await editOne(adminCookie, id, '2026-11-05', {
+      start: '2026-11-05T05:00:00.000Z',
+      end: '2026-11-05T06:00:00.000Z',
+      isAllday: false,
+    });
+
+    const made = await Event.findByPk(res.body.data.id as number);
+    expect(made?.recurrenceType).toBe('none');
+    expect(made?.parentEventId).toBe(id);
+    // 주인은 규칙의 주인 그대로다
+    expect(made?.UserId).toBe('admin');
+  });
+
+  it('규칙을 지우면 떨어져 나온 하루도 함께 사라진다', async () => {
+    const id = (await daily()).body.data.id as number;
+    const made = await editOne(adminCookie, id, '2026-11-05', {
+      start: '2026-11-05T05:00:00.000Z',
+      end: '2026-11-05T06:00:00.000Z',
+      isAllday: false,
+    });
+    const childId = made.body.data.id as number;
+
+    await request(app)
+      .delete(`/api/events/${id}`)
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .expect(200);
+
+    expect(await Event.findByPk(childId)).toBeNull();
+  });
+
+  it('이미 건너뛴 날은 다시 고칠 수 없다', async () => {
+    const id = (await daily()).body.data.id as number;
+    await skip(adminCookie, id, '2026-11-05');
+
+    const res = await editOne(adminCookie, id, '2026-11-05', {
+      start: '2026-11-05T05:00:00.000Z',
+      end: '2026-11-05T06:00:00.000Z',
+      isAllday: false,
+    });
+    expect(res.status).toBe(409);
+  });
+
+  it('반복이 아닌 일정에는 쓸 수 없다', async () => {
+    const id = (await makeEvent(adminCookie, {})).body.data.id as number;
+
+    const res = await editOne(adminCookie, id, '2026-11-05', {
+      start: '2026-11-05T05:00:00.000Z',
+      end: '2026-11-05T06:00:00.000Z',
+      isAllday: false,
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('남의 반복 일정은 고칠 수 없고, 건너뛴 날도 늘지 않는다', async () => {
+    const id = (await daily()).body.data.id as number;
+
+    const res = await editOne(userCookie, id, '2026-11-05', {
+      start: '2026-11-05T05:00:00.000Z',
+      end: '2026-11-05T06:00:00.000Z',
+      isAllday: false,
+    });
+
+    expect(res.status).toBe(403);
+    const row = await Event.findByPk(id);
+    expect(row?.recurrenceExcept ?? []).not.toContain('2026-11-05');
+    // 거절당한 요청이 일정 하나를 남기지 않는다
+    expect(await Event.count({ where: { parentEventId: id } })).toBe(0);
+  });
+
+  it('끝이 시작보다 앞서면 400 이고 아무것도 남지 않는다', async () => {
+    const id = (await daily()).body.data.id as number;
+
+    const res = await editOne(adminCookie, id, '2026-11-05', {
+      start: '2026-11-05T06:00:00.000Z',
+      end: '2026-11-05T05:00:00.000Z',
+      isAllday: false,
+    });
+
+    expect(res.status).toBe(400);
+    expect(await Event.count({ where: { parentEventId: id } })).toBe(0);
+  });
+});

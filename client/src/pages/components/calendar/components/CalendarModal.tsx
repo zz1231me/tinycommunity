@@ -2,6 +2,7 @@ import React, { Suspense, useRef } from 'react';
 import { lazyWithRetry as lazy } from '../../../../utils/lazyWithRetry';
 import { useFocusTrap } from '../../../../hooks/useFocusTrap';
 import { ModalMode, CalendarEvent, EventFormData } from '../types';
+import type { EditScope } from '../eventFormData';
 import { EventDetailView } from './EventDetailView';
 
 const EventForm = lazy(() => import('./EventForm').then(m => ({ default: m.EventForm })));
@@ -17,6 +18,9 @@ interface CalendarModalProps {
   isDeleting?: boolean;
   onClose: () => void;
   onEdit: () => void;
+  /** 반복의 번째를 고칠 때만 온다. 없으면 범위를 고르는 줄을 두지 않는다. */
+  editScope?: EditScope;
+  onEditScopeChange?: (scope: EditScope) => void;
   onDelete: () => void;
   /** 반복 중 이 날만 건너뛰기. 반복에서 펼쳐진 번째에서만 쓴다. */
   onSkipOccurrence?: () => void;
@@ -91,6 +95,8 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
   isDeleting = false,
   onClose,
   onEdit,
+  editScope,
+  onEditScopeChange,
   onDelete,
   onSkipOccurrence,
   onSubmit,
@@ -176,6 +182,48 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
               onSkipOccurrence={selectedEvent.isRecurringOccurrence ? onSkipOccurrence : undefined}
               onClose={onClose}
             />
+          )}
+
+          {mode === 'edit' && editScope && onEditScopeChange && (
+            // 반복 일정은 '이 날만' 과 '반복 전체' 가 전혀 다른 일이다. 고르기 전에는
+            // 저장 단추를 누를 수 없게 두지 않고, 덜 위험한 '이 날만' 을 기본으로 둔다.
+            <fieldset className="mb-4 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+              <legend className="px-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                어디까지 고칠까요?
+              </legend>
+              <div className="flex gap-2">
+                {(
+                  [
+                    ['one', '이 날만'],
+                    ['all', '반복 전체'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <label
+                    key={value}
+                    className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
+                      editScope === value
+                        ? 'border-primary-500 bg-primary-50 font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="edit-scope"
+                      value={value}
+                      checked={editScope === value}
+                      onChange={() => onEditScopeChange(value)}
+                      className="sr-only"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-2xs text-slate-500 dark:text-slate-400">
+                {editScope === 'one'
+                  ? '이 날 하루만 따로 저장합니다. 나머지 날은 그대로입니다.'
+                  : '반복하는 모든 날이 함께 바뀝니다. 시작 날짜를 바꾸면 그 앞의 날들은 사라집니다.'}
+              </p>
+            </fieldset>
           )}
 
           {(mode === 'create' || mode === 'edit') && (
