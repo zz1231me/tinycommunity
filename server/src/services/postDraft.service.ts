@@ -1,5 +1,6 @@
 // 작성 중인 글의 임시저장. 모든 질의는 소유자로 좁힌다(관리자에게도 보이지 않는다).
 
+import { Op } from 'sequelize';
 import { PostDraft } from '../models/PostDraft';
 import Board from '../models/Board';
 import { AppError } from '../middlewares/error.middleware';
@@ -7,6 +8,13 @@ import { getPostContentMaxLength, getPostTitleMaxLength } from '../utils/setting
 
 /** 목록 미리보기 길이. 본문 전체를 목록에 싣지 않는다 */
 const PREVIEW_LENGTH = 120;
+
+/**
+ * 한 사람이 둘 수 있는 임시저장 수. 목록이 보여 주는 수와 같게 둔다 — 그 너머는
+ * 화면에서 지울 길도 없이 본문을 통째로 쥐고 남는다. 자동 저장 중에 거절하면 쓰던
+ * 글을 잃으므로, 막는 대신 가장 오래 손대지 않은 것부터 정리한다.
+ */
+export const MAX_DRAFTS_PER_USER = 50;
 
 function toPlainPreview(html: string): string {
   const text = html
@@ -27,13 +35,28 @@ function assertWithinLimits(title: string, content: string) {
   }
 }
 
+/** 상한을 넘은 몫을 오래된 것부터 지운다. 내 것만 본다. */
+async function pruneOldest(userId: string): Promise<void> {
+  const keep = await PostDraft.findAll({
+    where: { UserId: userId },
+    order: [['updatedAt', 'DESC']],
+    attributes: ['id'],
+    limit: MAX_DRAFTS_PER_USER,
+  });
+  if (keep.length < MAX_DRAFTS_PER_USER) return;
+  await PostDraft.destroy({
+    where: { UserId: userId, id: { [Op.notIn]: keep.map(d => d.id) } },
+    force: true,
+  });
+}
+
 export const postDraftService = {
   /** 내 임시저장 목록 (최근에 손댄 순) */
   async list(userId: string) {
     const drafts = await PostDraft.findAll({
       where: { UserId: userId },
       order: [['updatedAt', 'DESC']],
-      limit: 50,
+      limit: MAX_DRAFTS_PER_USER,
     });
 
     // 어느 게시판의 글인지 알 수 있게 게시판 이름을 붙인다.
@@ -71,6 +94,7 @@ export const postDraftService = {
   async create(userId: string, boardType: string, title: string, content: string) {
     assertWithinLimits(title, content);
     const draft = await PostDraft.create({ UserId: userId, boardType, title, content });
+    await pruneOldest(userId);
     return { id: draft.id, updatedAt: draft.updatedAt };
   },
 
