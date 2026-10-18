@@ -225,6 +225,10 @@ function TitleCell({ row }: { row: { text?: string; task?: MyTask } }) {
 const COLUMNS = [{ id: 'text', header: '업무', width: 200, cell: TitleCell }];
 
 function Bar({ data }: { data: ITask }) {
+  // 화면을 켜 둔 채 자정을 넘겨도 어제 기준으로 칠하지 않게 공용 '오늘' 을 쓴다.
+  // 여기만 new Date() 를 직접 읽고 있어, 밤새 열어 둔 간트는 지난 마감을 붉게
+  // 칠하지 않은 채로 남았다(useToday 가 바로 그것 때문에 생긴 훅이다).
+  const today = useToday();
   const task = data.task as MyTask | undefined;
   const label = data.scheduled ? data.text : `${data.text} (일정 미정)`;
   if (!task) return <span className="truncate px-1">{label}</span>;
@@ -233,13 +237,13 @@ function Bar({ data }: { data: ITask }) {
   // 일정 미정 막대는 아직 움직이지 않았으면 '일정 미정' 그대로 둔다.
   const live =
     data.start && data.end ? fromGanttRange(data.start as Date, data.end as Date) : undefined;
-  const moved = live && (data.scheduled || live.startDate !== format(new Date(), 'yyyy-MM-dd'));
+  const moved = live && (data.scheduled || live.startDate !== format(today, 'yyyy-MM-dd'));
 
   const state = !data.scheduled
     ? 'task-bar-unscheduled'
     : task.workStatus === 'done'
       ? 'task-bar-done'
-      : dueInfo(task, new Date())?.tone === 'overdue'
+      : dueInfo(task, today)?.tone === 'overdue'
         ? 'task-bar-overdue'
         : '';
 

@@ -7,6 +7,7 @@ import { CalendarEvent } from '../types';
 import { categoryColors } from '../constants';
 import { DEFAULT_EVENT_COLOR } from '../../../../constants/colors';
 import { dateUtils } from '../utils';
+import { occurrenceKey } from '../hooks/useCalendarEvents';
 import { ListState } from '../../../../components/common/ListState';
 import { TodayTasks } from './TodayTasks';
 
@@ -102,7 +103,7 @@ export function TodayRail({ events, todayStr, onSelect }: TodayRailProps) {
         ) : (
           <div className="-mx-1 space-y-0.5">
             {today.map(i => (
-              <EventRow key={i.original.id} item={i} onSelect={onSelect} />
+              <EventRow key={occurrenceKey(i.original)} item={i} onSelect={onSelect} />
             ))}
           </div>
         )}
@@ -118,7 +119,9 @@ export function TodayRail({ events, todayStr, onSelect }: TodayRailProps) {
         ) : (
           <div className="-mx-1 space-y-0.5">
             {upcoming.map(i => (
-              <EventRow key={i.original.id} item={i} onSelect={onSelect} />
+              // 반복의 번째들은 id 가 같다. id 만 쓰면 한 목록에 같은 열쇠가 겹쳐,
+              // 데이터가 바뀌어도 React 가 옛 줄을 그대로 둔다.
+              <EventRow key={occurrenceKey(i.original)} item={i} onSelect={onSelect} />
             ))}
           </div>
         )}
