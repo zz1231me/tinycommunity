@@ -31,7 +31,7 @@ React + Express 기반의 풀스택 커뮤니티/게시판 플랫폼. SQLite·My
 - **메모·캘린더**: 사용자별 스티키 메모(색상·고정·드래그 정렬), FullCalendar 기반 일정(드래그&드롭, 역할별 권한)
 - **포인트**: 하루 한도 내 뽑기와 접속 시 출석 포인트, 상위 10명 순위와 내 자리, 포인트를 걸고 겨루는 1:1 가위바위보 대결(신청하는 순간 포인트를 맡기고, 승부와 정산을 한 트랜잭션으로 끝내며, 답이 없는 판은 자동 환불), 관리자 지정 확률·금액·횟수·출석량·판돈 범위, 서버 전용 추첨, 잔액과 별개로 남는 적립 원장
 - **출퇴근**: 하루 한 번 출근·퇴근 기록(초를 버리고 분 단위로 저장), 출근 시 체크리스트, 근무 시간 집계와 개인 통계, 헤더의 출근 아이콘(아직 안 찍었으면 눈에 띄게 표시), 출근 알림창과 퇴근 알림창(퇴근은 10분 전·정각·3분 뒤 세 번), 관리자 지정 기준 근무시간·안내 문구·출근 시각 보정(컴퓨터를 켜는 시간만큼 앞당겨 기록, 기본 0분)
-- **퇴근 공격**: 포인트로 사는 두 가지 방해 — *퇴근 방해*(기본 1분, 버튼이 도망다니고 깜빡이지만 끝까지 누르면 눌린다)와 *버튼 숨기기*(기본 10초, 그동안은 버튼이 아예 없다). 받은 쪽은 방어권으로 즉시 해제. 숨기기만 실제로 누를 수 없는 시간이 생기므로 짧게 두고 서버가 3~60초로 상한을 막는다. 어느 쪽이든 **기록되는 퇴근 시각은 언제나 실제로 누른 순간** 그대로다 — 남이 남의 근무 기록을 늦출 수 없다. 공격권을 사는 곳은 마이페이지의 포인트 탭이고, 받는 쪽 화면(경고 띠·도망가는 버튼)은 출퇴근 화면에 있다
+- **퇴근 공격**: 포인트로 사는 두 가지 방해 — _퇴근 방해_(기본 1분, 버튼이 도망다니고 깜빡이지만 끝까지 누르면 눌린다)와 _버튼 숨기기_(기본 10초, 그동안은 버튼이 아예 없다). 받은 쪽은 방어권으로 즉시 해제. 숨기기만 실제로 누를 수 없는 시간이 생기므로 짧게 두고 서버가 3~60초로 상한을 막는다. 어느 쪽이든 **기록되는 퇴근 시각은 언제나 실제로 누른 순간** 그대로다 — 남이 남의 근무 기록을 늦출 수 없다. 공격권을 사는 곳은 마이페이지의 포인트 탭이고, 받는 쪽 화면(경고 띠·도망가는 버튼)은 출퇴근 화면에 있다
 - **관리자**: 기능 스위치 27종(기능별 on/off, 의존성 자동 해소), 사용자·게시판·역할·태그·이벤트 관리, 테마(브랜드 색 계단 자동 생성), 보안/에러/감사/로그인 로그, 신고·IP 규칙·사이트 설정
 - **UI**: 라이트·다크·드라큘라 테마, 프로필 아바타, 반응형, 댓글 가상 스크롤
 
@@ -49,20 +49,27 @@ React + Express 기반의 풀스택 커뮤니티/게시판 플랫폼. SQLite·My
 
 ## 빠른 시작
 
-**요구사항**: Node.js 20.x 이상, npm 9.x 이상.
+**요구사항**: Node.js 20 이상. 그 외에는 아무것도 설치하지 않아도 됩니다(기본 DB가 SQLite입니다).
 
 ```bash
-# 1. 클론
 git clone https://github.com/zz1231me/tinycommunity.git
 cd tinycommunity
-
-# 2. 서버 (http://localhost:4000)
-cp server/.env.sample server/.env   # JWT_SECRET 등 시크릿 변경
-cd server && npm install && npm run dev
-
-# 3. 클라이언트 (새 터미널, http://localhost:8080)
-cd client && npm install && npm run dev
+npm run setup   # 의존성 설치 + server/.env 생성(시크릿 자동 생성)
+npm run dev     # 서버와 화면을 한 번에
 ```
+
+**Windows·macOS·Linux에서 명령이 같습니다.** PowerShell·cmd·bash 어디서든 위 네 줄 그대로입니다
+(OS별 `.sh`/`.bat` 를 따로 두지 않고 Node 스크립트 하나로 맞췄습니다).
+
+`npm run setup` 이 하는 일:
+
+1. `server/`·`client/` 의존성 설치
+2. `server/.env` 가 **없을 때만** `.env.sample` 을 바탕으로 만들고, `JWT_SECRET`·
+   `JWT_REFRESH_SECRET`·`ADMIN_DEFAULT_PASSWORD` 를 그 자리에서 새로 뽑아 넣습니다
+   (이미 있으면 손대지 않습니다 — 적어 둔 DB 접속 정보가 날아가지 않게)
+
+`npm run dev` 는 서버(4000)와 화면(8080)을 함께 띄우고 로그 줄머리에 `server`·`client` 를 붙입니다.
+한쪽이 멎으면 다른 쪽도 함께 내려갑니다.
 
 | 서비스                  | URL                            |
 | ----------------------- | ------------------------------ |
@@ -72,7 +79,8 @@ cd client && npm install && npm run dev
 
 - 기본 DB는 **SQLite**라 별도 설치가 필요 없습니다. 첫 실행 시 테이블·기본 데이터(admin 계정·역할·사이트 설정)가 자동 생성됩니다.
 - **초기 로그인**: ID `admin`, 비밀번호는 `server/.env`의 `ADMIN_DEFAULT_PASSWORD`. 로그인 후 반드시 변경하세요.
-- Windows에서 기본 명령(`npm run dev/build/test`)은 PowerShell/cmd에서 동작합니다. 보조 스크립트에 문제가 있으면 Git Bash/WSL2를 사용하세요.
+- **초기 비밀번호를 직접 정하려면** `server/.env` 의 `ADMIN_DEFAULT_PASSWORD` 를 바꾼 뒤 서버를 다시 띄우세요(계정이 이미 만들어진 뒤에는 화면에서 바꿉니다).
+- 포트를 바꾸려면 `server/.env` 의 `PORT`, 화면 쪽은 `client/vite.config.ts` 의 `server.port` 입니다.
 
 ---
 
@@ -178,21 +186,21 @@ flowchart TD
 
 **데이터 모델** (Sequelize, 49개)
 
-| 도메인             | 모델                                                                                          |
-| ------------------ | --------------------------------------------------------------------------------------------- |
-| 인증·사용자        | `User` `Role` `UserSession` `LoginHistory` `PasswordResetRequest`                             |
-| 게시판             | `Board` `BoardAccess` `BoardManager`                                                          |
-| 게시글             | `Post` `PostDraft` `PostTag` `PostRead` `PostLike` `PostScrap` `Bookmark`                     |
-| 게시글 이력        | `PostRevision` `PostAttachmentVersion` `PostActivity`                                         |
-| 댓글               | `Comment` `CommentLike` `CommentReaction`                                                     |
-| 소통               | `Conversation` `Message` `Subscription` `NotificationSetting` `Notification`                  |
-| 위키·메모          | `WikiPage` `WikiRevision` `Memo`                                                              |
-| 이벤트             | `Event` `EventPermission`                                                                     |
-| 태그·신고          | `Tag` `Report`                                                                                |
-| 커스텀 콘텐츠·공유 | `CustomPage` `Announcement` `TempShare`                                                       |
-| 포인트             | `UserPoint` `PointLedger`                                                                     |
-| 출퇴근             | `AttendanceRecord` `AttendancePolicy` `AttendanceChecklistItem`                               |
-| 운영·보안          | `SiteSettings` `FeatureFlag` `IpRule` `SecurityLog` `ErrorLog` `AuditLog` |
+| 도메인             | 모델                                                                         |
+| ------------------ | ---------------------------------------------------------------------------- |
+| 인증·사용자        | `User` `Role` `UserSession` `LoginHistory` `PasswordResetRequest`            |
+| 게시판             | `Board` `BoardAccess` `BoardManager`                                         |
+| 게시글             | `Post` `PostDraft` `PostTag` `PostRead` `PostLike` `PostScrap` `Bookmark`    |
+| 게시글 이력        | `PostRevision` `PostAttachmentVersion` `PostActivity`                        |
+| 댓글               | `Comment` `CommentLike` `CommentReaction`                                    |
+| 소통               | `Conversation` `Message` `Subscription` `NotificationSetting` `Notification` |
+| 위키·메모          | `WikiPage` `WikiRevision` `Memo`                                             |
+| 이벤트             | `Event` `EventPermission`                                                    |
+| 태그·신고          | `Tag` `Report`                                                               |
+| 커스텀 콘텐츠·공유 | `CustomPage` `Announcement` `TempShare`                                      |
+| 포인트             | `UserPoint` `PointLedger`                                                    |
+| 출퇴근             | `AttendanceRecord` `AttendancePolicy` `AttendanceChecklistItem`              |
+| 운영·보안          | `SiteSettings` `FeatureFlag` `IpRule` `SecurityLog` `ErrorLog` `AuditLog`    |
 
 **글 하나에 남는 기록** — 세 테이블에 나뉘어 쌓이고, 활동 기록 화면이 시간순으로 합칩니다.
 같은 내용을 두 곳에 적지 않습니다.
@@ -259,6 +267,41 @@ flowchart LR
 
 ---
 
+## 빌드와 배포 (Docker 없이)
+
+올릴 때는 Express 가 `client/dist` 를 직접 서빙합니다 — **화면과 API 가 같은 4000 포트**라
+리버스 프록시 없이도 돕니다.
+
+```bash
+npm run build     # 서버(tsc) + 화면(vite) 둘 다. 하나만 만들면 반쪽이 됩니다
+npm run secrets   # 올리기 전 한 번: JWT 키 두 개를 새로 뽑아 .env 에 끼웁니다
+npm start         # NODE_ENV=production 으로 실행 → http://localhost:4000
+```
+
+`npm start` 는 띄우기 **전에** `server/.env` 를 먼저 읽어, 시크릿이 `.env.sample` 그대로이거나
+너무 짧으면 고치는 방법과 함께 멈춥니다. 예전에는 같은 상황에서 Node 스택 트레이스가 20줄쯤
+쏟아져 무엇을 고쳐야 하는지 잘 보이지 않았습니다.
+
+**윈도우 주의**: `NODE_ENV=production npm start` 는 cmd·PowerShell 에서 듣지 않습니다
+(각각 `set`·`$env:` 문법입니다). 그래서 `npm start` 가 환경값을 직접 넣습니다 — 그냥 `npm start`
+만 쓰시면 됩니다.
+
+올리기 전에 `server/.env` 에서 확인할 것:
+
+| 값                       | 올릴 때                                     |
+| ------------------------ | ------------------------------------------- |
+| `NODE_ENV`               | `production`                                |
+| `JWT_SECRET` 두 개       | 32자 이상, 서로 다른 값 (`npm run secrets`) |
+| `ADMIN_DEFAULT_PASSWORD` | 약한 값이면 부팅이 막힙니다                 |
+| `COOKIE_SECURE`          | HTTPS 면 `true`, 사내망 HTTP 면 `false`     |
+| `CORS_ORIGINS`           | 다른 도메인에서 부를 때만                   |
+
+서비스로 계속 띄우려면 `pm2 start npm --name tinycommunity -- start` 처럼 `npm start` 를
+감싸거나, systemd 유닛의 `ExecStart` 에 `/usr/bin/npm start`(작업 디렉터리는 저장소 루트)를
+적으면 됩니다.
+
+---
+
 ## Docker 배포
 
 `docker-compose`는 MariaDB + App(Node) + Nginx를 함께 띄웁니다. 클라이언트 정적 파일은 이미지 빌드 시 포함됩니다.
@@ -314,14 +357,28 @@ docker-compose down               # 중지 (down -v = 데이터 포함 삭제)
 
 ## 개발
 
+**루트에서 한 번에**
+
+| 명령                                         | 하는 일                                        |
+| -------------------------------------------- | ---------------------------------------------- |
+| `npm run setup`                              | 의존성 설치 + `server/.env` 생성(처음 한 번)   |
+| `npm run dev`                                | 서버·화면 동시 실행                            |
+| `npm run build`                              | 서버·화면 프로덕션 빌드                        |
+| `npm start`                                  | 빌드한 것을 `NODE_ENV=production` 으로 실행    |
+| `npm run secrets`                            | `server/.env` 의 JWT 키 두 개를 새로 뽑아 교체 |
+| `npm test`                                   | 서버(Jest) + 화면(Vitest) 전부                 |
+| `npm run lint`                               | 양쪽 ESLint                                    |
+| `npm run typecheck` · `npm run format:check` | 양쪽 타입검사 · 서식 검사                      |
+
+스크립트 본체는 `scripts/` 에 있습니다(`setup.mjs`·`dev.mjs`·`build.mjs`·`start.mjs`·`secrets.mjs`).
+
 **로컬 검증 (CI 기준)**
 
 ```bash
-cd server && npm run typecheck && npm run lint && npm run format:check && npm test
-cd client && npm run typecheck && npm run lint && npm run format:check && npm test && npm run build
+npm run typecheck && npm run lint && npm run format:check && npm test && npm run build
 ```
 
-**주요 스크립트**
+**패키지별 스크립트**
 
 |           | 서버                      | 클라이언트                |
 | --------- | ------------------------- | ------------------------- |
@@ -343,6 +400,17 @@ cd client && npm run typecheck && npm run lint && npm run format:check && npm te
 ## 트러블슈팅
 
 **포트 충돌** — `lsof -i :4000`(Mac/Linux) 또는 `netstat -ano | findstr :4000`(Windows)로 확인. 서버 포트는 `server/.env`의 `PORT`, 클라이언트 API 대상은 `client/.env.local`의 `VITE_API_URL`로 변경.
+
+**`npm start` 가 시크릿 때문에 멈춤** — `server/.env` 가 `.env.sample` 그대로입니다.
+`npm run secrets` 로 JWT 키를 뽑고, `ADMIN_DEFAULT_PASSWORD` 는 직접 정하세요.
+개발용으로 그냥 띄울 때는 `npm run dev` 를 쓰면 이 검사를 거치지 않습니다.
+
+**`npm start` 는 떴는데 화면이 빈 페이지** — `client/dist` 가 없습니다. `npm run build` 는
+서버·화면을 함께 만듭니다(`server` 쪽만 빌드하면 API 만 뜹니다).
+
+**`npm run dev` 가 바로 꺼짐** — 줄머리(`server`·`client`)를 보고 어느 쪽인지 확인하세요.
+대개 포트가 이미 쓰이고 있는 경우이고(`Port 8080 is already in use`), 한쪽이 멎으면
+다른 쪽도 함께 내려갑니다.
 
 **DB 초기화** — SQLite는 `rm server/database.sqlite` 후 재실행. 외부 DB는 `DROP DATABASE tinycommunity;` → `CREATE DATABASE tinycommunity;`.
 

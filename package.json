@@ -1,9 +1,24 @@
 {
   "name": "jamtori",
   "private": true,
-  "description": "Monorepo root — pre-commit hooks via husky",
+  "description": "Monorepo root — 설치·실행·빌드 명령과 husky 훅",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "setup": "node scripts/setup.mjs",
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "secrets": "node scripts/secrets.mjs",
+    "start": "node scripts/start.mjs",
+    "test": "npm run test --prefix server && npm run test --prefix client",
+    "test:server": "npm run test --prefix server",
+    "test:client": "npm run test --prefix client",
+    "lint": "npm run lint --prefix server && npm run lint --prefix client",
+    "typecheck": "npm run typecheck --prefix server && npm run typecheck --prefix client",
+    "format": "npm run format --prefix server && npm run format --prefix client",
+    "format:check": "npm run format:check --prefix server && npm run format:check --prefix client"
   },
   "devDependencies": {
     "husky": "^9.0.0"
