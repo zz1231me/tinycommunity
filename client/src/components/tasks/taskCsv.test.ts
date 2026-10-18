@@ -63,3 +63,33 @@ describe('업무 CSV', () => {
     ]);
   });
 });
+
+// 엑셀이 수식으로 읽는 칸.
+//
+// = + - @ 로 시작하는 칸은 엑셀·구글시트가 값이 아니라 수식으로 읽는다. 제목은 남이
+// 적은 글자이고(공유 보기에서는 남의 업무가 한 파일에 모인다), 그 파일을 받은 사람이
+// 열면 그 자리에서 실행된다 — =HYPERLINK(...) 로 바깥 주소를 누르게 하거나
+// =IMPORTXML(...) 로 같은 시트의 값을 밖으로 보낼 수 있다.
+//
+// 따옴표로 감싸는 것만으로는 막히지 않는다. 엑셀은 따옴표를 벗긴 뒤 수식으로 읽는다.
+describe('수식으로 읽히는 칸', () => {
+  const titleCellOf = (csv: string) => csv.split('\r\n')[1].split(',')[0];
+
+  it.each(['=1+1', '+1+1', '-1+1', '@SUM(A1)'])('%s 로 시작하면 그대로 두지 않는다', start => {
+    const csv = toTaskCsv([task({ title: start })], () => '할 일');
+
+    expect(titleCellOf(csv).replace(/^"/, '')).not.toMatch(/^[=+\-@]/);
+  });
+
+  it('원래 글자는 읽을 수 있게 남는다 — 지우지 않는다', () => {
+    const csv = toTaskCsv([task({ title: '=1+1 예산안' })], () => '할 일');
+
+    expect(csv).toContain('=1+1 예산안');
+  });
+
+  it('보통 제목은 손대지 않는다 — 양성 대조', () => {
+    const csv = toTaskCsv([task({ title: '10월 보고서' })], () => '할 일');
+
+    expect(titleCellOf(csv)).toBe('10월 보고서');
+  });
+});
