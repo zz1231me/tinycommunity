@@ -449,3 +449,83 @@ describe('이 날만 고치기', () => {
     expect(await Event.count({ where: { parentEventId: id } })).toBe(0);
   });
 });
+
+// 규칙을 나중에 바꾸기.
+//
+// 화면이 수정 요청에 반복 칸을 싣지 않아, '매주' 로 바꿔 저장해도 성공 안내만 뜨고
+// 규칙은 그대로였다. 화면 쪽을 고치면서 서버가 받아 주는지도 여기서 고정한다 —
+// 바꾸기·끄기 둘 다.
+describe('반복 규칙을 나중에 바꾼다', () => {
+  const daily = () =>
+    makeEvent(adminCookie, {
+      recurrenceType: 'daily',
+      recurrenceInterval: 1,
+      recurrenceEndDate: '2026-11-30T00:00:00.000Z',
+    });
+
+  const edit = (id: number, patch: Record<string, unknown>) =>
+    request(app)
+      .put(`/api/events/${id}`)
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({
+        calendarId: 'default',
+        title: '주간 회의',
+        isAllday: false,
+        start: '2026-11-02T01:00:00.000Z',
+        end: '2026-11-02T02:00:00.000Z',
+        ...patch,
+      });
+
+  it('매일을 매주로 바꾸면 그대로 저장되고 펼쳐지는 날도 줄어든다', async () => {
+    const id = (await daily()).body.data.id as number;
+
+    const res = await edit(id, {
+      recurrenceType: 'weekly',
+      recurrenceDays: [1],
+      recurrenceEndDate: '2026-11-30T00:00:00.000Z',
+    });
+    expect(res.status).toBe(200);
+
+    const row = await Event.findByPk(id);
+    expect(row?.recurrenceType).toBe('weekly');
+    expect(row?.recurrenceDays).toEqual([1]);
+
+    // 11/2 ~ 11/30 의 월요일은 5번(2·9·16·23·30)이다. 매일이었다면 29번이다.
+    const list = await listRange(
+      adminCookie,
+      '2026-11-01T00:00:00.000Z',
+      '2026-11-30T23:59:59.000Z'
+    );
+    expect((list.body.data as unknown[]).length).toBe(5);
+  });
+
+  it('반복을 끄면 한 번짜리가 된다', async () => {
+    const id = (await daily()).body.data.id as number;
+
+    const res = await edit(id, { recurrenceType: 'none' });
+    expect(res.status).toBe(200);
+
+    const row = await Event.findByPk(id);
+    expect(row?.recurrenceType).toBe('none');
+
+    const list = await listRange(
+      adminCookie,
+      '2026-11-01T00:00:00.000Z',
+      '2026-11-30T23:59:59.000Z'
+    );
+    expect((list.body.data as unknown[]).length).toBe(1);
+  });
+
+  it('주간으로 바꾸면서 요일을 빠뜨리면 거절한다', async () => {
+    const id = (await daily()).body.data.id as number;
+
+    const res = await edit(id, {
+      recurrenceType: 'weekly',
+      recurrenceEndDate: '2026-11-30T00:00:00.000Z',
+    });
+
+    expect(res.status).toBe(400);
+    expect((await Event.findByPk(id))?.recurrenceType).toBe('daily');
+  });
+});

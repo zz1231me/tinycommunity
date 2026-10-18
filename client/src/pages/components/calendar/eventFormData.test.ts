@@ -17,6 +17,45 @@ const base = (over: Partial<CalendarEvent> = {}): CalendarEvent =>
     ...over,
   }) as CalendarEvent;
 
+// 규칙을 만든 뒤에는 화면에서 보거나 고칠 수 없었다. 매일 도는 일정을 수정 창에서
+// 열면 반복 칸이 '반복 안 함' 으로 떠 있었고, 거기서 매주로 바꿔 저장해도 성공 안내만
+// 뜨고 규칙은 그대로였다(폼을 채우지도, 보내지도 않았다).
+describe('반복 규칙을 수정 창에 채운다', () => {
+  it('지금 걸려 있는 규칙이 그대로 보인다', () => {
+    const form = toFormData(
+      base({
+        recurrenceType: 'weekly',
+        recurrenceDays: [1, 3],
+        recurrenceEndDate: '2026-12-31T00:00:00.000Z',
+      })
+    );
+
+    expect(form.recurrenceType).toBe('weekly');
+    expect(form.recurrenceDays).toEqual([1, 3]);
+    expect(form.recurrenceEndDate).toBe('2026-12-31');
+  });
+
+  it('반복이 아니면 반복 안 함이다 — 양성 대조', () => {
+    expect(toFormData(base()).recurrenceType).toBe('none');
+    expect(toFormData(base()).recurrenceEndDate).toBeUndefined();
+  });
+
+  it('번째를 눌러도 규칙은 규칙 그대로 보인다', () => {
+    const form = toFormData(
+      base({
+        isRecurringOccurrence: true,
+        seriesStart: '2026-11-02T01:00:00.000Z',
+        recurrenceType: 'daily',
+        recurrenceEndDate: '2026-11-30T00:00:00.000Z',
+      }),
+      'all'
+    );
+
+    expect(form.recurrenceType).toBe('daily');
+    expect(form.recurrenceEndDate).toBe('2026-11-30');
+  });
+});
+
 describe('반복의 번째를 수정 창으로 옮길 때', () => {
   it('규칙의 시작을 채운다 — 그 번째의 날짜가 아니라', () => {
     // 11월 20일 번째를 눌러 연 창. start 는 그 날로 덮여 있다.

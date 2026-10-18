@@ -199,6 +199,33 @@ export const useCalendarEvents = ({
     [loadEvents]
   );
 
+  /**
+   * 반복 규칙을 요청에 싣는다. 만들 때와 고칠 때가 같은 모양이어야 한다 —
+   * 고칠 때 싣지 않아서, 수정 창에서 '매주' 로 바꿔 저장해도 규칙이 그대로였다.
+   *
+   * 끄는 경우에는 recurrenceType 만 보낸다. 종료일·요일을 함께 보내면 서버가
+   * '반복 옵션을 바꾸려면 recurrenceType 을 함께 지정하라' 며 거절한다.
+   */
+  function recurrencePayload(formData: EventFormData, startDate: Date) {
+    const type = formData.recurrenceType ?? 'none';
+    if (type === 'none') return { recurrenceType: 'none' as const };
+
+    return {
+      recurrenceType: type,
+      recurrenceEndDate: formData.recurrenceEndDate
+        ? new Date(formData.recurrenceEndDate + 'T00:00:00Z').toISOString()
+        : undefined,
+      ...(type === 'weekly'
+        ? {
+            // 요일을 고르지 않았으면 시작일의 요일로 둔다(서버가 요일 배열을 요구한다)
+            recurrenceDays: formData.recurrenceDays?.length
+              ? formData.recurrenceDays
+              : [startDate.getUTCDay()],
+          }
+        : {}),
+    };
+  }
+
   const handleUpdateEvent = useCallback(
     async (eventId: number, formData: EventFormData, existingEvent?: CalendarEvent) => {
       try {
@@ -219,6 +246,7 @@ export const useCalendarEvents = ({
           color: formData.color,
           backgroundColor: formData.backgroundColor,
           borderColor: formData.color,
+          ...recurrencePayload(formData, startDate),
         };
 
         await updateEvent(eventId, eventData);

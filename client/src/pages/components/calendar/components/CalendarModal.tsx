@@ -243,6 +243,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
                 onCancel={mode === 'edit' ? onCancelEdit : onClose}
                 mode={mode}
                 submitting={isSubmitting}
+                hideRecurrence={editScope === 'one'}
               />
             </Suspense>
           )}

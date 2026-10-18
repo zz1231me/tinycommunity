@@ -141,34 +141,28 @@ const CalendarPage: React.FC = () => {
 
       // 반복의 번째를 눌렀으면 규칙의 시작을 채운다 — 수정 창은 규칙을 고치는 창이다.
       // 그 번째의 날짜를 채우면 제목만 바꿔 저장해도 규칙의 시작이 그 날로 밀린다.
-      const startDate = originalEvent.isRecurringOccurrence
-        ? toFormData(originalEvent).start
-        : event.startStr
-          ? dateUtils.isoToLocalDate(event.startStr)
-          : event.start
-            ? dateUtils.toLocalDateString(event.start)
-            : dateUtils.isoToLocalDate(originalEvent.start);
+      const base = toFormData(originalEvent);
 
-      const endDate = originalEvent.isRecurringOccurrence
-        ? toFormData(originalEvent).end
-        : event.endStr
-          ? dateUtils.subtractDay(dateUtils.isoToLocalDate(event.endStr))
-          : event.end
-            ? dateUtils.subtractDay(dateUtils.toLocalDateString(event.end))
-            : originalEvent.end
-              ? dateUtils.subtractDay(dateUtils.isoToLocalDate(originalEvent.end))
-              : startDate;
+      // 번째가 아닌 일정은 달력이 보는 날짜가 더 정확하다(여러 날·종일 처리).
+      const fromCalendar = originalEvent.isRecurringOccurrence
+        ? {}
+        : {
+            start: event.startStr
+              ? dateUtils.isoToLocalDate(event.startStr)
+              : event.start
+                ? dateUtils.toLocalDateString(event.start)
+                : base.start,
+            end: event.endStr
+              ? dateUtils.subtractDay(dateUtils.isoToLocalDate(event.endStr))
+              : event.end
+                ? dateUtils.subtractDay(dateUtils.toLocalDateString(event.end))
+                : base.end,
+          };
 
       setFormData({
-        title: event.title,
-        body: event.extendedProps.body || '',
+        ...base,
+        ...fromCalendar,
         isAllday: originalEvent.isAllday ?? event.allDay,
-        start: startDate,
-        end: endDate,
-        category: event.extendedProps.category || 'meeting',
-        location: event.extendedProps.location || '',
-        color: event.backgroundColor || DEFAULT_EVENT_COLOR,
-        backgroundColor: event.backgroundColor || DEFAULT_EVENT_COLOR,
       });
       setModalMode('view');
       setIsModalOpen(true);

@@ -54,6 +54,8 @@ interface EventFormProps {
   onCancel: () => void;
   mode: 'create' | 'edit';
   submitting?: boolean;
+  /** 반복 칸을 숨긴다. '이 날만' 으로 떼어 내는 하루는 더 반복하지 않는다. */
+  hideRecurrence?: boolean;
 }
 
 // 공통 input 클래스. 디자인 시스템 프리미티브(.input)에 위임한다.
@@ -98,6 +100,7 @@ export const EventForm: React.FC<EventFormProps> = ({
   onChange,
   onCancel,
   mode,
+  hideRecurrence,
   submitting = false,
 }) => {
   // 관리자 설정값. 서버 검증과 같은 한도를 화면에서도 미리 막는다.
@@ -271,7 +274,7 @@ export const EventForm: React.FC<EventFormProps> = ({
           />
         </div>
         {/* 반복 — 규칙 한 줄만 받는다. 날짜들은 서버가 보여 줄 때 펼친다. */}
-        <div>
+        <div className={hideRecurrence ? 'hidden' : undefined}>
           <FieldLabel htmlFor={`${fieldId}-repeat`}>반복</FieldLabel>
           <select
             id={`${fieldId}-repeat`}
@@ -295,7 +298,7 @@ export const EventForm: React.FC<EventFormProps> = ({
             ))}
           </select>
         </div>
-        {formData.recurrenceType && formData.recurrenceType !== 'none' && (
+        {!hideRecurrence && formData.recurrenceType && formData.recurrenceType !== 'none' && (
           <div>
             <FieldLabel required htmlFor={`${fieldId}-repeat-end`}>
               반복 종료일

@@ -41,5 +41,12 @@ export function toFormData(ev: CalendarEvent, scope: EditScope = 'all'): EventFo
     location: ev.location || '',
     color: ev.backgroundColor || DEFAULT_EVENT_COLOR,
     backgroundColor: ev.backgroundColor || DEFAULT_EVENT_COLOR,
+    // 반복 규칙도 함께 채운다. 비워 두면 매일 도는 일정이 수정 창에서 '반복 안 함'
+    // 으로 보였고, 거기서 매주로 바꿔 저장해도 아무 일도 일어나지 않았다.
+    recurrenceType: ev.recurrenceType ?? 'none',
+    ...(ev.recurrenceEndDate
+      ? { recurrenceEndDate: dateUtils.isoToLocalDate(ev.recurrenceEndDate) }
+      : {}),
+    ...(ev.recurrenceDays?.length ? { recurrenceDays: ev.recurrenceDays } : {}),
   };
 }
