@@ -35,6 +35,9 @@ export interface CalendarEvent {
   occurrenceDate?: string;
   /** 규칙에서 펼쳐진 것인지. 원본 한 줄과 구분한다. */
   isRecurringOccurrence?: boolean;
+  /** 번째가 아니라 규칙 자체의 시작·끝. 수정 창은 이 값으로 채운다. */
+  seriesStart?: string;
+  seriesEnd?: string;
 }
 
 export interface EventFormData {

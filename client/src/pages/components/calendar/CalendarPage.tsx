@@ -13,6 +13,7 @@ import { toast } from '../../../utils/toast';
 
 import { CalendarEvent, EventFormData, ModalMode } from './types';
 import { dateUtils } from './utils';
+import { toFormData } from './eventFormData';
 import { useNavigate } from 'react-router-dom';
 import { useCalendarEvents, railWindow } from './hooks/useCalendarEvents';
 import { useTaskEvents } from './hooks/useTaskEvents';
@@ -132,19 +133,25 @@ const CalendarPage: React.FC = () => {
       const originalEvent = event.extendedProps.originalEvent as CalendarEvent;
       setSelectedEvent(originalEvent);
 
-      const startDate = event.startStr
-        ? dateUtils.isoToLocalDate(event.startStr)
-        : event.start
-          ? dateUtils.toLocalDateString(event.start)
-          : dateUtils.isoToLocalDate(originalEvent.start);
+      // 반복의 번째를 눌렀으면 규칙의 시작을 채운다 — 수정 창은 규칙을 고치는 창이다.
+      // 그 번째의 날짜를 채우면 제목만 바꿔 저장해도 규칙의 시작이 그 날로 밀린다.
+      const startDate = originalEvent.isRecurringOccurrence
+        ? toFormData(originalEvent).start
+        : event.startStr
+          ? dateUtils.isoToLocalDate(event.startStr)
+          : event.start
+            ? dateUtils.toLocalDateString(event.start)
+            : dateUtils.isoToLocalDate(originalEvent.start);
 
-      const endDate = event.endStr
-        ? dateUtils.subtractDay(dateUtils.isoToLocalDate(event.endStr))
-        : event.end
-          ? dateUtils.subtractDay(dateUtils.toLocalDateString(event.end))
-          : originalEvent.end
-            ? dateUtils.subtractDay(dateUtils.isoToLocalDate(originalEvent.end))
-            : startDate;
+      const endDate = originalEvent.isRecurringOccurrence
+        ? toFormData(originalEvent).end
+        : event.endStr
+          ? dateUtils.subtractDay(dateUtils.isoToLocalDate(event.endStr))
+          : event.end
+            ? dateUtils.subtractDay(dateUtils.toLocalDateString(event.end))
+            : originalEvent.end
+              ? dateUtils.subtractDay(dateUtils.isoToLocalDate(originalEvent.end))
+              : startDate;
 
       setFormData({
         title: event.title,
@@ -165,19 +172,7 @@ const CalendarPage: React.FC = () => {
 
   const openEventDetail = useCallback((ev: CalendarEvent) => {
     setSelectedEvent(ev);
-    const startDate = dateUtils.isoToLocalDate(ev.start);
-    const endDate = ev.end ? dateUtils.subtractDay(dateUtils.isoToLocalDate(ev.end)) : startDate;
-    setFormData({
-      title: ev.title,
-      body: ev.body || '',
-      isAllday: ev.isAllday,
-      start: startDate,
-      end: endDate,
-      category: ev.category || 'meeting',
-      location: ev.location || '',
-      color: ev.backgroundColor || DEFAULT_EVENT_COLOR,
-      backgroundColor: ev.backgroundColor || DEFAULT_EVENT_COLOR,
-    });
+    setFormData(toFormData(ev));
     setModalMode('view');
     setIsModalOpen(true);
   }, []);

@@ -167,7 +167,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
 
       {event.isRecurringOccurrence && (
         <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
-          반복 일정입니다. 고치면 이후 모든 날에 함께 적용됩니다.
+          반복 일정입니다. 고치면 이 날뿐 아니라 반복 전체에 함께 적용됩니다.
         </p>
       )}
 

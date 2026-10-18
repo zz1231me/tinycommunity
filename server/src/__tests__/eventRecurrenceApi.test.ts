@@ -175,3 +175,77 @@ describe('하루만 건너뛰기', () => {
       .expect(401);
   });
 });
+
+// 반복 일정을 '나중 번째' 에서 고칠 때.
+//
+// 화면은 번째를 눌러 창을 열고, 그 번째의 날짜로 폼을 채운다. 거기서 제목만 바꿔
+// 저장해도 요청에는 그 번째의 날짜가 start 로 실려 간다 — 규칙의 시작이 통째로
+// 밀린다. 재어 보니 31번 서던 일정이 12번으로 줄었고, 종료일보다 뒤로 밀면 0번이
+// 되어 달력에서 사라졌다(행은 남아 있다).
+//
+// 서버 쪽에서 막을 수 있는 선은 '설 수 없는 상태' 다. 어디서 고치든 반복 종료일보다
+// 늦은 시작은 받지 않는다. 번째 쪽에는 규칙의 원래 시작을 함께 실어, 화면이 폼을
+// 번째 날짜가 아니라 규칙의 시작으로 채울 수 있게 한다.
+describe('반복 규칙의 시작을 뒤로 미는 수정', () => {
+  const daily = () =>
+    makeEvent(adminCookie, {
+      recurrenceType: 'daily',
+      recurrenceInterval: 1,
+      recurrenceEndDate: '2026-11-30T00:00:00.000Z',
+    });
+
+  const editTitleOnly = (id: number, start: string, end: string) =>
+    request(app)
+      .put(`/api/events/${id}`)
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({
+        calendarId: 'default',
+        title: '제목만 바꿈',
+        body: '',
+        isAllday: false,
+        start,
+        end,
+        category: 'meeting',
+        location: '',
+        isReadOnly: false,
+      });
+
+  it('반복 종료일보다 늦은 시작은 거절한다 — 한 번도 서지 않는 일정이 된다', async () => {
+    const id = (await daily()).body.data.id as number;
+
+    const res = await editTitleOnly(id, '2026-12-10T01:00:00.000Z', '2026-12-10T02:00:00.000Z');
+
+    expect(res.status).toBe(400);
+    const row = await Event.findByPk(id);
+    expect(new Date(String(row?.start)).toISOString()).toBe('2026-11-02T01:00:00.000Z');
+  });
+
+  it('종료일 안쪽으로 미는 것은 통한다 — 양성 대조', async () => {
+    // 규칙의 시작을 진짜로 옮기려는 사람까지 막으면 안 된다
+    const id = (await daily()).body.data.id as number;
+
+    const res = await editTitleOnly(id, '2026-11-20T01:00:00.000Z', '2026-11-20T02:00:00.000Z');
+
+    expect(res.status).toBe(200);
+  });
+
+  it('번째에는 규칙의 원래 시작이 함께 온다', async () => {
+    const id = (await daily()).body.data.id as number;
+
+    const res = await listRange(
+      adminCookie,
+      '2026-11-10T00:00:00.000Z',
+      '2026-11-12T00:00:00.000Z'
+    );
+    const occ = (res.body.data as Array<Record<string, unknown>>).find(
+      e => e.id === id && e.isRecurringOccurrence
+    );
+
+    expect(occ).toBeDefined();
+    // start 는 그 번째의 날짜다. 규칙의 시작은 따로 실린다.
+    expect(new Date(String(occ!.start)).toISOString()).not.toBe('2026-11-02T01:00:00.000Z');
+    expect(new Date(String(occ!.seriesStart)).toISOString()).toBe('2026-11-02T01:00:00.000Z');
+    expect(new Date(String(occ!.seriesEnd)).toISOString()).toBe('2026-11-02T02:00:00.000Z');
+  });
+});

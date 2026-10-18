@@ -145,6 +145,13 @@ export class EventService extends BaseService {
             /** 이 번째의 날짜. 하루만 쉬게 할 때 이 값으로 집는다. */
             occurrenceDate: occ.date,
             isRecurringOccurrence: true,
+            /**
+             * 규칙의 원래 시작·끝. start 는 이 번째의 날짜로 덮이므로, 화면이 번째에서
+             * 수정 창을 열 때 규칙의 시작을 알 길이 없었다 — 제목만 바꿔 저장해도
+             * 규칙의 시작이 그 번째로 밀렸다.
+             */
+            seriesStart: event.start,
+            seriesEnd: event.end,
           });
         }
       }
