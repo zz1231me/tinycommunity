@@ -83,10 +83,15 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      # app 컨테이너가 시작 시 복사한 최신 정적 파일을 서빙
-      - static_data:/usr/share/nginx/html:ro
-      - uploads_data:/app/server/uploads:ro
+      # 호스트 설치용 nginx.conf 가 아니라 컨테이너용을 쓴다. 원본은 upstream 이
+      # 127.0.0.1(= 컨테이너 안에서는 nginx 자신)이고 $project_root 가 호스트
+      # 경로라, 그대로 마운트하면 502 이거나 화면이 빈 채로 뜬다.
+      # nginx.docker.conf 는 nginx.conf 에서 만든다 — npm run nginx:docker
+      - ./nginx.docker.conf:/etc/nginx/nginx.conf:ro
+      # 설정의 $project_root 아래 모양 그대로 붙인다. 경로를 맞춰 두면 호스트
+      # 설치와 컨테이너가 같은 설정을 쓸 수 있다.
+      - static_data:/srv/tinycommunity/client/dist:ro
+      - uploads_data:/srv/tinycommunity/server/uploads:ro
     networks:
       - tinycommunity-network
 

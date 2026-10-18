@@ -13,6 +13,7 @@
     "secrets": "node scripts/secrets.mjs",
     "start": "node scripts/start.mjs",
     "smoke": "node scripts/smoke.mjs",
+    "nginx:docker": "node scripts/make-nginx-docker.mjs",
     "test": "npm run test --prefix server && npm run test --prefix client",
     "test:server": "npm run test --prefix server",
     "test:client": "npm run test --prefix client",
