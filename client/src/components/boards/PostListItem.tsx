@@ -77,7 +77,26 @@ export const PostListItem: React.FC<PostListItemProps> = ({
               />
             )}
 
-            {/* 고정 아이콘 — 기간 고정이면 언제까지인지 툴팁으로 알린다 */}
+            {/* 제목이 맨 앞이다. 앞에 표식을 두면 그 줄에만 있는 표식 때문에 제목이
+                줄마다 다른 자리에서 시작한다(실측: 291px 과 352px). 표식은 모두 뒤로 둔다 —
+                읽지 않음은 굵은 제목이 이미 말하고, 고정은 줄 색과 왼쪽 띠가 말한다. */}
+            {/* 제목 */}
+            <h3
+              title={post.title}
+              className={`
+              text-base text-slate-900 dark:text-slate-100 truncate min-w-0 flex-1
+              group-hover:text-primary-700 dark:group-hover:text-primary-400
+              transition-colors duration-100
+              ${!post.isRead ? 'font-semibold' : 'font-medium'}
+            `}
+            >
+              {post.title}
+            </h3>
+
+            {/* 업무 상태 — 'none' 이면 스스로 아무것도 그리지 않는다 */}
+            {showTasks && <WorkStatusBadge status={post.workStatus ?? 'none'} />}
+
+            {/* 고정 — 기간 고정이면 언제까지인지 툴팁으로 알린다 */}
             {post.isPinned && (
               <span
                 className="flex-shrink-0"
@@ -96,36 +115,19 @@ export const PostListItem: React.FC<PostListItemProps> = ({
               </span>
             )}
 
-            {/* 비밀글 아이콘 */}
+            {/* 비밀글 */}
             {post.isSecret && (
               <span className="flex-shrink-0" title="비밀글" aria-label="비밀글">
                 <LockIcon className="w-4 h-4 text-slate-400" />
               </span>
             )}
 
-            {/* 읽지 않은 표시 */}
+            {/* 읽지 않음 — 줄마다 깜빡이면 목록 전체가 들썩인다. 점만 둔다. */}
             {post.isRead === false && (
-              <span className="relative flex-shrink-0" title="읽지 않음" aria-label="읽지 않음">
-                <span className="w-2 h-2 bg-primary-500 rounded-full block" />
-                <span className="absolute inset-0 w-2 h-2 bg-primary-400 rounded-full animate-ping opacity-75" />
+              <span className="flex-shrink-0" title="읽지 않음" aria-label="읽지 않음">
+                <span className="block h-2 w-2 rounded-full bg-primary-500" />
               </span>
             )}
-
-            {/* 업무 상태 — 'none' 이면 스스로 아무것도 그리지 않는다 */}
-            {showTasks && <WorkStatusBadge status={post.workStatus ?? 'none'} />}
-
-            {/* 제목 */}
-            <h3
-              title={post.title}
-              className={`
-              text-base text-slate-900 dark:text-slate-100 truncate min-w-0 flex-1
-              group-hover:text-primary-700 dark:group-hover:text-primary-400
-              transition-colors duration-100
-              ${!post.isRead ? 'font-semibold' : 'font-medium'}
-            `}
-            >
-              {post.title}
-            </h3>
 
             {/* 태그 */}
             {post.tags && post.tags.length > 0 && (

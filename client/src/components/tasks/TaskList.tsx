@@ -26,10 +26,12 @@ export function TaskList({ tasks, today, showAssignee }: Props) {
             to={`/dashboard/posts/${task.boardType}/${task.id}`}
             className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/40 sm:px-6"
           >
-            <WorkStatusBadge status={task.workStatus} label={statusLabel(task.workStatus)} />
+            {/* 제목이 먼저다. 상태 칩을 앞에 두면 글자 수에 따라 칩 너비가 달라져
+                줄마다 제목이 338px·348px 처럼 들쭉날쭉한 자리에서 시작한다. */}
             <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 dark:text-slate-100">
               {task.title}
             </span>
+            <WorkStatusBadge status={task.workStatus} label={statusLabel(task.workStatus)} />
             <PriorityBadge priority={task.priority} />
             <DueBadge task={task} today={today} />
             {(task.startDate || task.dueDate) && (

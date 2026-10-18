@@ -86,7 +86,7 @@ export function TodayRail({ events, todayStr, onSelect }: TodayRailProps) {
     .slice(0, 6);
 
   return (
-    <aside className="hidden w-80 flex-shrink-0 flex-col gap-4 overflow-y-auto py-5 pr-5 sm:py-7 sm:pr-8 xl:flex">
+    <aside className="hidden w-80 flex-shrink-0 flex-col gap-4 overflow-y-auto py-4 pr-4 sm:py-6 sm:pr-6 xl:flex">
       {/* 오늘 마감인 내 업무가 맨 위다 — 일정보다 먼저 손이 가야 하는 쪽이다.
           없으면 아예 그리지 않는다. */}
       <TodayTasks />

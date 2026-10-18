@@ -93,13 +93,7 @@ export function SubtaskPanel({ boardType, postId, editable }: Props) {
         <ul className="divide-y divide-slate-100 dark:divide-slate-800">
           {subtasks.map(task => (
             <li key={task.id} className="flex items-center gap-2 py-2">
-              <span
-                className={`flex-shrink-0 rounded px-1.5 py-0.5 text-2xs font-semibold ${
-                  STATUS_TONE[task.workStatus] ?? STATUS_TONE.todo
-                }`}
-              >
-                {statusLabel(task.workStatus)}
-              </span>
+              {/* 제목이 먼저다 — 상태 칩을 앞에 두면 글자 수에 따라 제목 자리가 흔들린다 */}
               <Link
                 to={`/dashboard/posts/${task.boardType}/${task.id}`}
                 className={`min-w-0 flex-1 truncate text-sm font-medium text-slate-900 hover:underline dark:text-slate-100 ${
@@ -110,6 +104,13 @@ export function SubtaskPanel({ boardType, postId, editable }: Props) {
               >
                 {task.title}
               </Link>
+              <span
+                className={`flex-shrink-0 rounded px-1.5 py-0.5 text-2xs font-semibold ${
+                  STATUS_TONE[task.workStatus] ?? STATUS_TONE.todo
+                }`}
+              >
+                {statusLabel(task.workStatus)}
+              </span>
               <DueBadge task={task} today={today} />
               {task.assignee && (
                 <span className="hidden flex-shrink-0 text-xs text-slate-500 dark:text-slate-400 sm:inline">

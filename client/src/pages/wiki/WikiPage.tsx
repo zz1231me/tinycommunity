@@ -235,82 +235,58 @@ const WikiPageRoute = () => {
   };
 
   return (
-    <div className="flex h-full overflow-hidden">
-      {/* 페이지 트리. 데스크톱은 항상 표시, 모바일은 토글로 여닫는다 */}
-      <div
-        className={`${treeOpen ? 'flex' : 'hidden'} ${treeCollapsed ? 'lg:hidden' : 'lg:flex'} flex-col`}
-      >
-        <WikiSidebar
-          pages={allPages}
-          isEditing={isEditing || isCreating}
-          onInterceptNav={handleInterceptNav}
-        />
-        {pagesLoadError && (
-          <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-center">
-            <p className="text-xs text-red-500 dark:text-red-400 mb-2">
-              목록을 불러오지 못했습니다.
-            </p>
+    // 다른 화면과 같은 틀 안에 둔다. 예전에는 트리와 본문이 화면 가장자리에 그대로
+    // 붙어(x=240), 카드로 담는 다른 화면들(x=264)과 왼쪽 선이 어긋났다.
+    <div className="h-full p-4 sm:p-6">
+      <div className="flex h-full overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800/60">
+        {/* 페이지 트리. 데스크톱은 항상 표시, 모바일은 토글로 여닫는다 */}
+        <div
+          className={`${treeOpen ? 'flex' : 'hidden'} ${treeCollapsed ? 'lg:hidden' : 'lg:flex'} flex-col`}
+        >
+          <WikiSidebar
+            pages={allPages}
+            isEditing={isEditing || isCreating}
+            onInterceptNav={handleInterceptNav}
+          />
+          {pagesLoadError && (
+            <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-center">
+              <p className="text-xs text-red-500 dark:text-red-400 mb-2">
+                목록을 불러오지 못했습니다.
+              </p>
+              <button
+                onClick={() => fetchPages()}
+                className="text-xs text-primary-600 dark:text-primary-400 underline hover:no-underline"
+              >
+                다시 시도
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          {/* 넓은 화면 전용 트리 접기. 좁은 화면에는 아래 별도 토글이 있다 */}
+          <div className="hidden flex-shrink-0 border-b border-slate-200 bg-white px-4 py-2 lg:block dark:border-slate-700 dark:bg-slate-800">
             <button
-              onClick={() => fetchPages()}
-              className="text-xs text-primary-600 dark:text-primary-400 underline hover:no-underline"
+              type="button"
+              onClick={toggleTree}
+              aria-expanded={!treeCollapsed}
+              className="inline-flex items-center gap-1.5 text-sm text-slate-600 transition-colors hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
             >
-              다시 시도
+              {treeCollapsed ? (
+                <PanelLeftOpen className="h-4 w-4" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4" />
+              )}
+              {treeCollapsed ? '문서 트리 펼치기' : '문서 트리 접기'}
             </button>
           </div>
-        )}
-      </div>
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* 넓은 화면 전용 트리 접기. 좁은 화면에는 아래 별도 토글이 있다 */}
-        <div className="hidden flex-shrink-0 border-b border-slate-200 bg-white px-4 py-2 lg:block dark:border-slate-700 dark:bg-slate-800">
-          <button
-            type="button"
-            onClick={toggleTree}
-            aria-expanded={!treeCollapsed}
-            className="inline-flex items-center gap-1.5 text-sm text-slate-600 transition-colors hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
-          >
-            {treeCollapsed ? (
-              <PanelLeftOpen className="h-4 w-4" />
-            ) : (
-              <PanelLeftClose className="h-4 w-4" />
-            )}
-            {treeCollapsed ? '문서 트리 펼치기' : '문서 트리 접기'}
-          </button>
-        </div>
 
-        {/* 모바일 전용 트리 토글 */}
-        <div className="lg:hidden flex-shrink-0 px-4 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-          <button
-            type="button"
-            onClick={() => setTreeOpen(v => !v)}
-            aria-expanded={treeOpen}
-            className="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400"
-          >
-            <svg
-              aria-hidden="true"
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-            {treeOpen ? '문서 트리 닫기' : '문서 트리'}
-          </button>
-        </div>
-        {canEdit && (
-          <div className="flex-shrink-0 px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center gap-2 flex-wrap">
+          {/* 모바일 전용 트리 토글 */}
+          <div className="lg:hidden flex-shrink-0 px-4 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
             <button
-              onClick={() => {
-                setIsCreating(true);
-                setIsEditing(false);
-                setSaveError(null);
-              }}
-              className="btn-primary"
+              type="button"
+              onClick={() => setTreeOpen(v => !v)}
+              aria-expanded={treeOpen}
+              className="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400"
             >
               <svg
                 aria-hidden="true"
@@ -323,17 +299,25 @@ const WikiPageRoute = () => {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M12 4v16m8-8H4"
+                  d="M4 6h16M4 12h16M4 18h16"
                 />
               </svg>
-              새 페이지
+              {treeOpen ? '문서 트리 닫기' : '문서 트리'}
             </button>
-            {/* 페이지 액션(편집·삭제·이력)은 제목 옆 WikiDetail 에 있다 */}
-            {saveError && (
-              <span className="text-xs text-red-500 ml-2 flex items-center gap-1">
+          </div>
+          {canEdit && (
+            <div className="flex-shrink-0 px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => {
+                  setIsCreating(true);
+                  setIsEditing(false);
+                  setSaveError(null);
+                }}
+                className="btn-primary"
+              >
                 <svg
                   aria-hidden="true"
-                  className="w-3.5 h-3.5"
+                  className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -342,250 +326,272 @@ const WikiPageRoute = () => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    d="M12 4v16m8-8H4"
                   />
                 </svg>
-                {saveError}
-              </span>
-            )}
+                새 페이지
+              </button>
+              {/* 페이지 액션(편집·삭제·이력)은 제목 옆 WikiDetail 에 있다 */}
+              {saveError && (
+                <span className="text-xs text-red-500 ml-2 flex items-center gap-1">
+                  <svg
+                    aria-hidden="true"
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  {saveError}
+                </span>
+              )}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <LoadingSpinner message="위키 불러오는 중..." />
+            </div>
+          ) : isCreating ? (
+            <WikiEditor
+              page={null}
+              allPages={allPages}
+              onSave={handleSave}
+              onCancel={() => setIsCreating(false)}
+              isSaving={isSaving}
+              onImageUpload={handleImageUpload}
+            />
+          ) : isEditing && currentPage ? (
+            <WikiEditor
+              page={currentPage}
+              allPages={allPages}
+              onSave={handleSave}
+              onCancel={() => setIsEditing(false)}
+              isSaving={isSaving}
+              onImageUpload={handleImageUpload}
+            />
+          ) : currentPage ? (
+            <WikiDetail
+              page={currentPage}
+              allPages={allPages}
+              canEdit={canEdit}
+              onEdit={() => {
+                setIsEditing(true);
+                setIsCreating(false);
+              }}
+              onDelete={canEdit ? handleDelete : undefined}
+              onRestore={canEdit ? handleRestore : undefined}
+            />
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-slate-400">
+              <div className="text-center">
+                <div className="text-5xl mb-4">📖</div>
+                <p className="text-lg font-medium text-slate-500 dark:text-slate-400">
+                  위키 페이지를 선택하거나
+                </p>
+                <p className="text-sm text-slate-400 mt-1">새 페이지를 만드세요.</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 편집 중 이탈 확인 모달 */}
+        {pendingNavSlug !== undefined && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim">
+            <div
+              ref={navPanelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="저장하지 않은 변경사항"
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg
+                    aria-hidden="true"
+                    className="w-5 h-5 text-amber-600 dark:text-amber-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="card-title">저장하지 않은 변경사항</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    페이지를 이동하면 변경사항이 사라집니다.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 justify-end mt-6">
+                <button
+                  onClick={() => setPendingNavSlug(undefined)}
+                  className="px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                >
+                  계속 편집
+                </button>
+                <button
+                  onClick={confirmDiscard}
+                  className="px-4 py-2 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+                >
+                  저장 않고 이동
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <LoadingSpinner message="위키 불러오는 중..." />
-          </div>
-        ) : isCreating ? (
-          <WikiEditor
-            page={null}
-            allPages={allPages}
-            onSave={handleSave}
-            onCancel={() => setIsCreating(false)}
-            isSaving={isSaving}
-            onImageUpload={handleImageUpload}
-          />
-        ) : isEditing && currentPage ? (
-          <WikiEditor
-            page={currentPage}
-            allPages={allPages}
-            onSave={handleSave}
-            onCancel={() => setIsEditing(false)}
-            isSaving={isSaving}
-            onImageUpload={handleImageUpload}
-          />
-        ) : currentPage ? (
-          <WikiDetail
-            page={currentPage}
-            allPages={allPages}
-            canEdit={canEdit}
-            onEdit={() => {
-              setIsEditing(true);
-              setIsCreating(false);
-            }}
-            onDelete={canEdit ? handleDelete : undefined}
-            onRestore={canEdit ? handleRestore : undefined}
-          />
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-slate-400">
-            <div className="text-center">
-              <div className="text-5xl mb-4">📖</div>
-              <p className="text-lg font-medium text-slate-500 dark:text-slate-400">
-                위키 페이지를 선택하거나
+        {/* 삭제 확인 모달 */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim">
+            <div
+              ref={deletePanelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="페이지 삭제"
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg
+                    aria-hidden="true"
+                    className="w-5 h-5 text-red-600 dark:text-red-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="card-title">페이지 삭제</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    이 작업은 되돌릴 수 없습니다.
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                <strong className="text-slate-900 dark:text-slate-100">
+                  "{currentPage?.title}"
+                </strong>{' '}
+                페이지를 삭제하시겠습니까?
               </p>
-              <p className="text-sm text-slate-400 mt-1">새 페이지를 만드세요.</p>
+              {deleteError && (
+                <p className="text-xs text-red-500 mb-4 p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                  {deleteError}
+                </p>
+              )}
+              <div className="flex gap-3 justify-end mt-6">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteError(null);
+                  }}
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-60 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60 transition-colors flex items-center gap-2"
+                >
+                  {isDeleting && (
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  {isDeleting ? '삭제 중...' : '삭제'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 리비전 복원 확인 모달 */}
+        {restoreContent !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim">
+            <div
+              ref={restorePanelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="이 버전으로 복원"
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg
+                    aria-hidden="true"
+                    className="w-5 h-5 text-amber-600 dark:text-amber-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="card-title">이 버전으로 복원</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    현재 내용이 선택한 버전으로 바뀝니다(새 이력으로 기록).
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                선택한 버전의 내용으로 복원하시겠습니까?
+              </p>
+              {restoreError && (
+                <p className="text-xs text-red-500 mb-4 p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                  {restoreError}
+                </p>
+              )}
+              <div className="flex gap-3 justify-end mt-6">
+                <button
+                  onClick={() => {
+                    setRestoreContent(null);
+                    setRestoreError(null);
+                  }}
+                  disabled={isRestoring}
+                  className="px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-60 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={confirmRestore}
+                  disabled={isRestoring}
+                  className="px-4 py-2 text-sm font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-colors flex items-center gap-2"
+                >
+                  {isRestoring && (
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  {isRestoring ? '복원 중...' : '복원'}
+                </button>
+              </div>
             </div>
           </div>
         )}
       </div>
-
-      {/* 편집 중 이탈 확인 모달 */}
-      {pendingNavSlug !== undefined && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim">
-          <div
-            ref={navPanelRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="저장하지 않은 변경사항"
-            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg
-                  aria-hidden="true"
-                  className="w-5 h-5 text-amber-600 dark:text-amber-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h3 className="card-title">저장하지 않은 변경사항</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  페이지를 이동하면 변경사항이 사라집니다.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3 justify-end mt-6">
-              <button
-                onClick={() => setPendingNavSlug(undefined)}
-                className="px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-              >
-                계속 편집
-              </button>
-              <button
-                onClick={confirmDiscard}
-                className="px-4 py-2 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
-              >
-                저장 않고 이동
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 삭제 확인 모달 */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim">
-          <div
-            ref={deletePanelRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="페이지 삭제"
-            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg
-                  aria-hidden="true"
-                  className="w-5 h-5 text-red-600 dark:text-red-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h3 className="card-title">페이지 삭제</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  이 작업은 되돌릴 수 없습니다.
-                </p>
-              </div>
-            </div>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-              <strong className="text-slate-900 dark:text-slate-100">"{currentPage?.title}"</strong>{' '}
-              페이지를 삭제하시겠습니까?
-            </p>
-            {deleteError && (
-              <p className="text-xs text-red-500 mb-4 p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                {deleteError}
-              </p>
-            )}
-            <div className="flex gap-3 justify-end mt-6">
-              <button
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  setDeleteError(null);
-                }}
-                disabled={isDeleting}
-                className="px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-60 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={isDeleting}
-                className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60 transition-colors flex items-center gap-2"
-              >
-                {isDeleting && (
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                )}
-                {isDeleting ? '삭제 중...' : '삭제'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 리비전 복원 확인 모달 */}
-      {restoreContent !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-scrim">
-          <div
-            ref={restorePanelRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="이 버전으로 복원"
-            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg
-                  aria-hidden="true"
-                  className="w-5 h-5 text-amber-600 dark:text-amber-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h3 className="card-title">이 버전으로 복원</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  현재 내용이 선택한 버전으로 바뀝니다(새 이력으로 기록).
-                </p>
-              </div>
-            </div>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-              선택한 버전의 내용으로 복원하시겠습니까?
-            </p>
-            {restoreError && (
-              <p className="text-xs text-red-500 mb-4 p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                {restoreError}
-              </p>
-            )}
-            <div className="flex gap-3 justify-end mt-6">
-              <button
-                onClick={() => {
-                  setRestoreContent(null);
-                  setRestoreError(null);
-                }}
-                disabled={isRestoring}
-                className="px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-60 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={confirmRestore}
-                disabled={isRestoring}
-                className="px-4 py-2 text-sm font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-colors flex items-center gap-2"
-              >
-                {isRestoring && (
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                )}
-                {isRestoring ? '복원 중...' : '복원'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

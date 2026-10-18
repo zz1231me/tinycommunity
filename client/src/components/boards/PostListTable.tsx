@@ -20,7 +20,12 @@ interface PostListTableProps {
 /** 목록 머리줄. 로딩 화면(PostList)에서도 같은 것을 쓴다. */
 export const ColumnHeader = ({ showAssignee }: { showAssignee: boolean }) => (
   // card-header 는 flex 라 안쪽 12칸 그리드가 flex 항목이 되면 칼럼이 어긋난다. block 으로 되돌린다.
-  <div role="rowgroup" className="card-header block bg-slate-50 dark:bg-slate-900/60">
+  // 행은 왼쪽에 2px 강조 띠를 늘 자리로 잡아 둔다(고정·hover 때 색이 들어온다).
+  // 머리줄에도 같은 폭을 비워야 칸이 정확히 한 줄로 선다.
+  <div
+    role="rowgroup"
+    className="card-header block border-l-2 border-l-transparent bg-slate-50 dark:bg-slate-900/60"
+  >
     {/* grid 칼럼 설정(cols/gap)은 PostListItem 행과 같아야 정렬된다. */}
     <div
       role="row"
