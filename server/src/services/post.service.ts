@@ -32,6 +32,7 @@ import { PostRevision } from '../models/PostRevision';
 import { PostAttachmentVersion } from '../models/PostAttachmentVersion';
 import { getAccessibleBoardTypes } from './accessibleBoards';
 import type { WorkStatus } from '../config/workStatus';
+import { sanitizeStoredContent } from '../utils/contentRenderer';
 
 export interface SearchPostsParams {
   userId: string;
@@ -662,7 +663,8 @@ export class PostService extends BaseService {
       const post = await Post.create(
         {
           title: title.trim(),
-          content,
+          // 저장되는 값 자체를 씻는다. 응답의 rawContent 로도 나가는 값이다.
+          content: sanitizeStoredContent(content),
           boardType,
           author: authorName,
           UserId: userId,
@@ -884,7 +886,7 @@ export class PostService extends BaseService {
       }
 
       lockedPost.title = title.trim();
-      lockedPost.content = content;
+      lockedPost.content = sanitizeStoredContent(content);
       lockedPost.attachments = finalFiles.length > 0 ? finalFiles : null;
 
       // 비밀글 설정 업데이트

@@ -281,6 +281,27 @@ export function sanitizeHtmlContent(html: string): string {
   return sanitizeHtml(html, SANITIZE_OPTIONS);
 }
 
+/**
+ * 저장하기 전에 씻는다. 읽을 때(renderContentToHTML)도 씻지만, 저장된 값 자체와
+ * 응답의 rawContent(편집기 복원용)에는 원본이 그대로 남아 화면의 DOMPurify 가
+ * 유일한 방어선이 된다 — 댓글·일정에서 같은 이유로 이미 저장 쪽으로 옮겼다.
+ *
+ * 모양은 지킨다. TipTap JSON 문서로 저장된 옛 글은 그대로 두고(그 자체로는 실행되지
+ * 않으며 펼칠 때 씻는다), HTML 로 저장되는 지금 글만 씻는다.
+ */
+export function sanitizeStoredContent(content: string): string {
+  if (typeof content !== 'string') return content;
+  const trimmed = content.trimStart();
+  if (!trimmed.startsWith('{')) return sanitizeHtmlContent(content);
+  try {
+    const doc = JSON.parse(trimmed) as { type?: string };
+    // 'doc' 이 아니면 그냥 글자다 — 씻는다
+    return doc?.type === 'doc' ? content : sanitizeHtmlContent(content);
+  } catch {
+    return sanitizeHtmlContent(content);
+  }
+}
+
 export interface TiptapNode {
   type: string;
   attrs?: Record<string, any>;
