@@ -18,8 +18,3 @@ export const TASK_PRIORITY_KEYS = Object.keys(TASK_PRIORITIES) as TaskPriority[]
 export function isTaskPriority(value: unknown): value is TaskPriority {
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(TASK_PRIORITIES, value);
 }
-
-/** 급한 것이 먼저 오도록 내림차순으로 쓸 순위값 */
-export function priorityRank(value: TaskPriority): number {
-  return TASK_PRIORITIES[value].rank;
-}

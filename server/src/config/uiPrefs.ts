@@ -25,8 +25,6 @@ export type UiPrefs = Partial<{
   taskGanttZoom: (typeof UI_PREF_SPEC.taskGanttZoom)[number];
 }>;
 
-export const UI_PREF_KEYS = Object.keys(UI_PREF_SPEC) as UiPrefKey[];
-
 function isUiPrefKey(key: string): key is UiPrefKey {
   return Object.prototype.hasOwnProperty.call(UI_PREF_SPEC, key);
 }
