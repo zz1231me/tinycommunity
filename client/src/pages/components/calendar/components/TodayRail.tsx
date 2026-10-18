@@ -1,4 +1,4 @@
-// 캘린더 우측 레일. 오늘 일정과 다가오는 일정을 보여준다(넓은 화면 전용).
+// 캘린더 우측 레일. 오늘 할 일(마감 지남·오늘 마감)과 오늘·다가오는 일정을 보여준다(넓은 화면 전용).
 //
 // xl(1280) 부터 편다. 폭이 320px 로 고정이라 lg(1024) 에서 펴면 달력이 382px 만 쓰게 되고,
 // 날짜 칸이 좁아져 일정 이름이 두 글자만 남는다(실측: 108px 짜리 이름에 31px).
@@ -8,6 +8,7 @@ import { categoryColors } from '../constants';
 import { DEFAULT_EVENT_COLOR } from '../../../../constants/colors';
 import { dateUtils } from '../utils';
 import { ListState } from '../../../../components/common/ListState';
+import { TodayTasks } from './TodayTasks';
 
 interface TodayRailProps {
   events: CalendarEvent[];
@@ -86,6 +87,10 @@ export function TodayRail({ events, todayStr, onSelect }: TodayRailProps) {
 
   return (
     <aside className="hidden w-80 flex-shrink-0 flex-col gap-4 overflow-y-auto py-5 pr-5 sm:py-7 sm:pr-8 xl:flex">
+      {/* 오늘 마감인 내 업무가 맨 위다 — 일정보다 먼저 손이 가야 하는 쪽이다.
+          없으면 아예 그리지 않는다. */}
+      <TodayTasks />
+
       {/* 오늘 일정 */}
       <section className="card p-4">
         <div className="mb-3 flex items-baseline justify-between">
