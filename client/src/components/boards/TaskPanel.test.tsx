@@ -95,9 +95,13 @@ describe('우선순위', () => {
     api.changeTask.mockImplementation(async (_b, _p, change) => ({ ...state(), ...change }));
   });
 
+  // 다섯 개를 늘어놓으면 이 줄의 단추가 열한 개가 되고, 상태의 '없음' 과 우선순위의
+  // '없음' 이 똑같이 강조돼 헷갈린다. 고르는 칸 하나로 둔다.
   it('고르면 그 값만 저장 요청에 실린다 — 상태가 함께 덮이지 않게', async () => {
     setup(state());
-    await act(async () => fireEvent.click(screen.getByRole('radio', { name: '긴급' })));
+    await act(async () =>
+      fireEvent.change(screen.getByLabelText('우선순위'), { target: { value: 'urgent' } })
+    );
 
     expect(api.changeTask).toHaveBeenCalledWith('qc', 'P1', { priority: 'urgent' });
   });
@@ -106,6 +110,6 @@ describe('우선순위', () => {
     setup(state({ priority: 'high' }), false);
 
     expect(screen.getByTitle('우선순위 높음')).toBeInTheDocument();
-    expect(screen.queryByRole('radio', { name: '긴급' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('우선순위')).not.toBeInTheDocument();
   });
 });

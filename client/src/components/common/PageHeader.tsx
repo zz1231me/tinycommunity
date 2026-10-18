@@ -91,8 +91,13 @@ export const PageHeader = React.memo(
               )}
             </div>
           </div>
+          {/* 동작들은 가로로 선다. 예전에는 블록으로 쌓여, 1,152px 짜리 줄에서 142px 만
+              쓰면서 세 줄을 차지했다(내 업무 화면에서 93px). 자리가 모자라면 줄바꿈한다. */}
           {children && (
-            <nav className="flex-shrink-0" aria-label="페이지 액션">
+            <nav
+              className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2"
+              aria-label="페이지 액션"
+            >
               {children}
             </nav>
           )}

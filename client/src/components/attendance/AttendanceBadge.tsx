@@ -46,9 +46,9 @@ export function AttendanceBadge() {
       title={label}
       className="relative rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
     >
-      <Clock
-        className={`h-5 w-5 ${notCheckedIn ? 'text-amber-500 motion-safe:animate-pulse dark:text-amber-400' : ''}`}
-      />
+      {/* 아이콘과 점이 함께 뛰면 상단 바가 하루 내내 들썩인다. 색으로만 알리고,
+          움직임은 작은 점 하나에만 남긴다. */}
+      <Clock className={`h-5 w-5 ${notCheckedIn ? 'text-amber-500 dark:text-amber-400' : ''}`} />
       {notCheckedIn && (
         <span
           aria-hidden="true"

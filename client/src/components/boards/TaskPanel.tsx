@@ -132,29 +132,23 @@ export function TaskPanel({ boardType, postId, state, editable, onChange }: Prop
         <Flag className="h-4 w-4 flex-shrink-0 text-slate-400" aria-hidden="true" />
         <span className="text-xs font-medium text-slate-500 dark:text-slate-400">우선순위</span>
 
+        {/* 고르는 칸 하나로 둔다. 다섯 개를 늘어놓으면 이 줄의 단추가 열한 개가 되고,
+            상태의 '없음' 과 우선순위의 '없음' 이 똑같이 강조돼 둘이 헷갈린다.
+            자주 누르는 것은 상태라 그쪽만 펼쳐 둔다. */}
         {editable ? (
-          <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="우선순위 선택">
-            {TASK_PRIORITIES.map(key => {
-              const active = state.priority === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  disabled={mutate.isPending}
-                  onClick={() => mutate.mutate({ priority: key })}
-                  className={`rounded-md px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
-                    active
-                      ? 'bg-primary-600 text-white'
-                      : 'text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  {PRIORITY_LABEL[key]}
-                </button>
-              );
-            })}
-          </div>
+          <select
+            aria-label="우선순위"
+            value={state.priority}
+            disabled={mutate.isPending}
+            onChange={e => mutate.mutate({ priority: e.target.value as TaskPriority })}
+            className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+          >
+            {TASK_PRIORITIES.map(key => (
+              <option key={key} value={key}>
+                {PRIORITY_LABEL[key]}
+              </option>
+            ))}
+          </select>
         ) : state.priority === 'none' ? (
           <span className="text-xs text-slate-400">없음</span>
         ) : (

@@ -136,11 +136,14 @@ export function TaskFilters({
               key={f.key}
               type="button"
               aria-pressed={active}
+              // 0 건인 조건은 눌러도 빈 화면이 된다. 자리는 지키되(칸이 움직이지 않게)
+              // 흐리게 두고 누르지 못하게 한다.
+              disabled={count === 0 && !active}
               onClick={() => set({ due: active ? null : f.key })}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-45 ${
                 active
                   ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-500 dark:bg-primary-500/10 dark:text-primary-300'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:hover:bg-slate-800'
               }`}
             >
               {f.label}{' '}

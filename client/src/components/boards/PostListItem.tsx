@@ -36,13 +36,6 @@ export const PostListItem: React.FC<PostListItemProps> = ({
   // 썸네일이 없거나 깨진 경우 조용히 숨긴다(목록 정렬이 흐트러지지 않도록)
   const [thumbFailed, setThumbFailed] = React.useState(false);
 
-  const isNewPost = () => {
-    const diffInDays = Math.floor(
-      (Date.now() - new Date(post.createdAt).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    return diffInDays < 3;
-  };
-
   return (
     <div
       onClick={() => onPostClick(post.id)}
@@ -189,13 +182,6 @@ export const PostListItem: React.FC<PostListItemProps> = ({
               <span className="badge badge-red flex-shrink-0 hidden sm:inline-flex">
                 <HeartIcon />
                 {post.likeCount.toLocaleString()}
-              </span>
-            )}
-
-            {/* 새 글 배지 */}
-            {isNewPost() && (
-              <span className="badge flex-shrink-0 bg-secondary-100 text-secondary-700 dark:bg-secondary-900/40 dark:text-secondary-300">
-                NEW
               </span>
             )}
           </div>
