@@ -22,19 +22,6 @@ export const getMyPoints = async (req: AuthRequest, res: Response): Promise<void
 };
 
 /** POST /api/points/attendance — 하루 한 번 출석 포인트 */
-export const claimAttendance = async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const result = await pointService.claimAttendance(req.user.id);
-    sendSuccess(
-      res,
-      result,
-      result.granted ? '출석 포인트를 받았습니다.' : '오늘은 이미 받았습니다.'
-    );
-  } catch (err) {
-    fail(res, err, '출석 포인트 지급에 실패했습니다.', { userId: req.user.id });
-  }
-};
-
 /** POST /api/points/lottery — 한 번 뽑기 (결과는 서버가 정한다) */
 export const drawLottery = async (req: AuthRequest, res: Response): Promise<void> => {
   try {

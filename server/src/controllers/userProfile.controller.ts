@@ -8,7 +8,6 @@ import { Post } from '../models/Post';
 import { Comment } from '../models/Comment';
 import { SecurityLog } from '../models/SecurityLog';
 import { Board } from '../models/Board';
-import { PostLike } from '../models/PostLike';
 import User from '../models/User';
 import { getBoardAudienceWhere } from '../services/boardAudience';
 import { Op, fn, col, literal, type Order, type OrderItem } from 'sequelize';
@@ -171,23 +170,6 @@ export const getMySecurityLogs = async (req: AuthRequest, res: Response): Promis
 };
 
 // GET /api/users/me/activity  → 활동 통계
-export const getMyActivity = async (req: AuthRequest, res: Response): Promise<void> => {
-  const userId = req.user?.id;
-
-  try {
-    const [postCount, commentCount, likeGiven] = await Promise.all([
-      Post.count({ where: { UserId: userId } }),
-      Comment.count({ where: { UserId: userId } }),
-      // 내가 좋아요 누른 수
-      PostLike.count({ where: { UserId: userId } }),
-    ]);
-
-    sendSuccess(res, { postCount, commentCount, likeGiven });
-  } catch (_err) {
-    sendError(res, 500, '활동 통계 조회 실패');
-  }
-};
-
 // GET /api/users/search?q=name  → 사용자 이름 검색 (비밀글 대상 설정용)
 /** ?q=a&q=b 처럼 같은 이름이 두 번 오면 Express 가 배열을 주므로 첫 값만 쓴다 */
 function asScalar(value: unknown): string {

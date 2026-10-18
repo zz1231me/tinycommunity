@@ -8,7 +8,6 @@ import {
   getMyPosts,
   getMyComments,
   getMySecurityLogs,
-  getMyActivity,
   searchUsers,
   getUiPrefs,
   updateUiPrefs,
@@ -54,10 +53,6 @@ router.get(
 router.get(
   '/me/security-logs',
   asyncHandler((req, res) => getMySecurityLogs(req as AuthRequest, res))
-);
-router.get(
-  '/me/activity',
-  asyncHandler((req, res) => getMyActivity(req as AuthRequest, res))
 );
 
 /**

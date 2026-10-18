@@ -5,6 +5,7 @@ import { UserPoint } from '../models/UserPoint';
 import { PointLedger } from '../models/PointLedger';
 import { SiteSettings } from '../models';
 import { refreshSettingsCache } from '../utils/settingsCache';
+import { pointService } from '../services/point.service';
 import { FeatureFlag } from '../models/FeatureFlag';
 import { featureFlagService } from '../services/featureFlag.service';
 import { drawPrize } from '../services/point.service';
@@ -46,8 +47,11 @@ beforeEach(async () => {
 
 const draw = () => request(app).post('/api/points/lottery').set(CSRF_HEADER).set('Cookie', cookie);
 const status = () => request(app).get('/api/points/me').set('Cookie', cookie);
-const attend = () =>
-  request(app).post('/api/points/attendance').set(CSRF_HEADER).set('Cookie', cookie);
+/**
+ * 출석은 로그인·토큰 갱신이 자동으로 준다(auth.service). 수동 호출용 엔드포인트는
+ * 화면이 쓰지 않아 지웠으므로, 지켜야 할 규칙(하루 한 번·동시성)은 서비스에 직접 묻는다.
+ */
+const attend = async () => ({ body: { data: await pointService.claimAttendance(USER) } });
 
 /** 스위치를 직접 세운다 (기본값이 꺼짐이라 켜 두고 시작한다) */
 async function setLottery(enabled: boolean) {
@@ -173,7 +177,6 @@ describe('출석 포인트', () => {
   it('하루에 한 번만 받는다', async () => {
     await setRules({ attendanceBonus: 500 });
     const first = await attend();
-    expect(first.status).toBe(200);
     expect(first.body.data.granted).toBe(true);
     expect(first.body.data.balance).toBe(500);
 
@@ -207,7 +210,7 @@ describe('출석 포인트', () => {
     await setRules({ attendanceBonus: 500 });
     const results = await Promise.allSettled(Array.from({ length: 6 }, () => attend()));
     const granted = results.filter(
-      r => r.status === 'fulfilled' && r.value.body?.data?.granted
+      r => r.status === 'fulfilled' && r.value.body.data.granted
     ).length;
     expect(granted).toBeLessThanOrEqual(1);
     // 지급 기록은 아무리 동시에 눌러도 하루 한 줄뿐이다

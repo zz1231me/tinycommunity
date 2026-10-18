@@ -3,7 +3,6 @@ import asyncHandler from 'express-async-handler';
 import {
   getUserAccessibleBoards,
   checkUserBoardAccess,
-  createPersonalFolder,
   createAllUserPersonalFolders,
   setupDummyData, // ✅ 더미 데이터 설정 API 추가
   updateBoardInfo,
@@ -99,23 +98,6 @@ router.get('/check/:boardType', auth, asyncHandler(wrapAuthHandler(checkUserBoar
 // 게시판 내 관리(담당자) — 관리 가능 여부 조회 + 기본정보(이름/설명) 수정
 router.get('/:boardType/can-manage', auth, asyncHandler(wrapAuthHandler(getBoardManageCapability)));
 router.put('/:boardType/info', auth, asyncHandler(wrapAuthHandler(updateBoardInfo)));
-
-/**
- * @swagger
- * /api/boards/personal/create:
- *   post:
- *     summary: 개인 폴더 수동 생성
- *     description: 사용자의 개인 폴더가 없을 경우 수동으로 생성
- *     tags: [Boards]
- *     security:
- *       - cookieAuth: []
- *     responses:
- *       200:
- *         description: 개인 폴더 생성 완료
- *       400:
- *         description: 이미 개인 폴더 존재
- */
-router.post('/personal/create', auth, asyncHandler(wrapAuthHandler(createPersonalFolder)));
 
 /**
  * @swagger

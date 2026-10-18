@@ -8,12 +8,7 @@ import { postReadService } from '../services/postRead.service';
 import { Post } from '../models/Post';
 import { BoardManager } from '../models/BoardManager';
 import { ROLES } from '../config/constants';
-import {
-  isTaskPriority,
-  TASK_PRIORITIES,
-  TASK_PRIORITY_KEYS,
-  type TaskPriority,
-} from '../config/taskPriority';
+import { isTaskPriority, type TaskPriority } from '../config/taskPriority';
 import {
   isWorkStatus,
   WORK_STATUSES,
@@ -51,17 +46,6 @@ export const getWorkStatuses = async (_req: AuthRequest, res: Response): Promise
 };
 
 /** 우선순위 목록. 상태 목록과 같은 모양으로 돌려준다. */
-export const getTaskPriorities = async (_req: AuthRequest, res: Response): Promise<void> => {
-  sendSuccess(
-    res,
-    TASK_PRIORITY_KEYS.map(key => ({
-      key,
-      label: TASK_PRIORITIES[key].label,
-      description: TASK_PRIORITIES[key].description,
-    }))
-  );
-};
-
 export const changeTask = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id: actorId, role: actorRole, name: actorName } = req.user;
   const body = (req.body ?? {}) as {

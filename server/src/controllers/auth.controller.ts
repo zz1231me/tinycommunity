@@ -370,29 +370,6 @@ export const changePassword = async (
   }
 };
 
-export const getUserPermissions = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const authReq = req as AuthRequest;
-    const userRole = authReq.user?.role;
-    const userId = authReq.user?.id;
-
-    if (!userRole || !userId) {
-      sendUnauthorized(res, '로그인이 필요합니다.');
-      return;
-    }
-
-    const permissions = await authService.getUserPermissions(userId, userRole);
-    sendSuccess(res, permissions);
-  } catch (error) {
-    logError('사용자 권한 조회 실패', error);
-    next(error);
-  }
-};
-
 export const updateTheme = async (
   req: Request,
   res: Response,

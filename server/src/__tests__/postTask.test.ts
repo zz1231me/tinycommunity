@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { TASK_PRIORITIES, TASK_PRIORITY_KEYS } from '../config/taskPriority';
 import { app, seedTestData, loginAs, CSRF_HEADER } from './helpers';
 import User from '../models/User';
 import Board from '../models/Board';
@@ -964,16 +965,13 @@ describe('비밀글 담당자 — 명단에 없는 사람에게 제목이 새지
 });
 
 describe('우선순위', () => {
-  it('목록 API 가 키·이름을 돌려준다', async () => {
-    const res = await request(app).get('/api/posts/tasks/priorities').set('Cookie', userCookie);
-    expect(res.status).toBe(200);
-    expect(res.body.data.map((p: { key: string }) => p.key)).toEqual([
-      'none',
-      'low',
-      'normal',
-      'high',
-      'urgent',
-    ]);
+  // 목록 API 는 화면이 쓰지 않아 지웠다(화면이 같은 표를 들고 있다). 값 자체는
+  // 서버의 검사 기준이므로 여기서 고정한다 — 순서가 바뀌면 화면의 차례와 어긋난다.
+  it('키는 다섯 가지, 순서도 정해져 있다', () => {
+    expect([...TASK_PRIORITY_KEYS]).toEqual(['none', 'low', 'normal', 'high', 'urgent']);
+    for (const key of TASK_PRIORITY_KEYS) {
+      expect(TASK_PRIORITIES[key].label.length).toBeGreaterThan(0);
+    }
   });
 
   it('바꾸면 저장되고 목록에도 실린다', async () => {

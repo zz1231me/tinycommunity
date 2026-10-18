@@ -6,7 +6,6 @@ import {
   refreshToken,
   logout,
   getCurrentUser,
-  getUserPermissions,
   updateTheme,
   uploadAvatar as uploadAvatarController,
   deleteAvatar,
@@ -94,7 +93,6 @@ router.post('/password-reset-verify', validateBody(passwordResetVerifySchema), v
 router.post('/logout', authenticate, logout);
 router.get('/me', authenticate, getCurrentUser);
 router.post('/change-password', authenticate, validateBody(changePasswordSchema), changePassword);
-router.get('/permissions', authenticate, getUserPermissions);
 
 router.patch('/me/profile', authenticate, updateProfile);
 

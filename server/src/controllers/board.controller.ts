@@ -201,45 +201,6 @@ export const checkUserBoardAccess = async (req: AuthRequest, res: Response): Pro
   }
 };
 
-// 개인 폴더 수동 생성 API
-export const createPersonalFolder = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { id: userId, name: userName } = req.user;
-
-  try {
-    const existingBoard = await Board.findOne({
-      where: {
-        isPersonal: true,
-        ownerId: userId,
-        isActive: true,
-      },
-    });
-
-    if (existingBoard) {
-      return sendError(res, 400, '이미 개인 폴더가 존재합니다.');
-    }
-
-    const result = await findOrCreatePersonalFolder(userId, userName);
-
-    logSuccess('개인 폴더 수동 생성 완료', { userId, userName, boardId: result.board.id });
-
-    sendSuccess(
-      res,
-      {
-        personalBoard: {
-          id: result.board.id,
-          name: result.board.name,
-          description: result.board.description,
-          ownerId: userId,
-        },
-      },
-      '개인 폴더가 생성되었습니다.'
-    );
-  } catch (err) {
-    logError('createPersonalFolder 실패', err, { userId, userName });
-    sendError(res, 500, '개인 폴더 생성 실패');
-  }
-};
-
 // 모든 사용자 개인 폴더 일괄 생성 (관리자 전용)
 export const createAllUserPersonalFolders = async (
   _req: AuthRequest,

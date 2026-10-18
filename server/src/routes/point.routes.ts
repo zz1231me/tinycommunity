@@ -2,7 +2,6 @@ import { Router, RequestHandler } from 'express';
 import asyncHandler from 'express-async-handler';
 import {
   getMyPoints,
-  claimAttendance,
   drawLottery,
   getMyPointHistory,
   getPointRanking,
@@ -83,23 +82,6 @@ router.get(
 router.get(
   '/ranking',
   asyncHandler((req, res) => getPointRanking(req as AuthRequest, res))
-);
-
-/**
- * 출석 포인트는 로그인 시 자동 지급되며(auth.service), 이 엔드포인트는 수동 호출용이다.
- *
- * @swagger
- * /api/points/attendance:
- *   post:
- *     summary: 출석 포인트 받기 (하루 1회, 평소엔 로그인 시 자동 지급)
- *     tags: [Points]
- *     security: [{ cookieAuth: [] }]
- *     responses:
- *       200: { description: 지급 여부와 잔액 }
- */
-router.post(
-  '/attendance',
-  asyncHandler((req, res) => claimAttendance(req as AuthRequest, res))
 );
 
 /**
