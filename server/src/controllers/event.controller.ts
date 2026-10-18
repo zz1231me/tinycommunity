@@ -299,8 +299,7 @@ export const updateEvent = async (
       // 반복 규칙은 그대로 둔 채 시작만 뒤로 밀면, 아래의 반복 검사는 건너뛴다
       // (recurrenceFieldsTouched 가 아니므로). 그러면 종료일보다 늦은 시작이 저장되어
       // 번째가 하나도 서지 않는다 — 행은 남아 있는데 달력에서는 사라진 것처럼 보인다.
-      const typeNow =
-        recurrenceType !== undefined ? recurrenceType : existingEvent.recurrenceType;
+      const typeNow = recurrenceType !== undefined ? recurrenceType : existingEvent.recurrenceType;
       const endNow =
         recurrenceEndDate !== undefined ? recurrenceEndDate : existingEvent.recurrenceEndDate;
       if (typeNow && typeNow !== 'none' && endNow) {
