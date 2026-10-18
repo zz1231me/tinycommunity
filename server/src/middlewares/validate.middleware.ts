@@ -3,6 +3,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError } from 'zod';
 import { sendError } from '../utils/response';
+import { installKoreanZodMessages } from '../config/zodMessages';
+
+// 검증을 쓰는 쪽이면 어디서든 한글 문구가 걸려 있어야 한다. 한 번만 설치된다.
+installKoreanZodMessages();
 
 /**
  * 요청 바디를 zod 스키마로 검증하는 미들웨어 팩토리
