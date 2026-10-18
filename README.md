@@ -122,7 +122,7 @@ tinycommunity/
 | `DB_SSL` / `DB_SSL_CA`                                     | `false` / —         | DB SSL 및 CA 인증서                                     |
 | `ALLOWED_ADMIN_IPS`                                        | (미설정=전체 허용)  | 관리자 API 허용 IP(쉼표 구분)                           |
 | `CORS_ORIGINS`                                             | —                   | CORS 허용 오리진(쉼표 구분)                             |
-| `CORS_ALLOW_ALL` / `CORS_IP_PATTERN`                       | `false` / —         | 전체 허용 / 사설망 오리진 정규식(인트라넷 배포용)       |
+| `CORS_ALLOW_ALL` / `CORS_IP_PATTERN`                       | `false` / —         | 전체 허용 / 오리진 추가 허용 정규식(인트라넷 배포용)    |
 | `SECURITY_LOG_RETENTION_DAYS` / `ERROR_LOG_RETENTION_DAYS` | `90` / `30`         | 로그 보존 기간(일)                                      |
 
 ---
@@ -334,6 +334,13 @@ docker-compose down               # 중지 (down -v = 데이터 포함 삭제)
 ---
 
 ## 보안
+
+> **CORS 기본 동작**: 사설망 오리진(`192.168.*` · `10.*` · `172.16~31.*`)은 환경변수와 무관하게
+> **항상 허용**됩니다(`credentials: true` 포함). 사내망에서 IP 가 바뀌어도 막히지 않게 한
+> 선택이며, `CORS_IP_PATTERN` 은 그 밖의 오리진을 **더** 열 때 쓰는 값입니다.
+> 공개 인터넷에 올린다면 이 기본값을 좁히는 것을 검토하세요 — 같은 사설망의 다른 기기가
+> 띄운 페이지가 로그인 쿠키를 쓴 요청을 보낼 수 있습니다(`server/src/index.ts` 의
+> `PRIVATE_NETWORK_REGEX`).
 
 - HttpOnly 쿠키 JWT + 2FA(TOTP), 로그아웃/비밀번호 변경 시 `tokenVersion`으로 기존 세션 즉시 무효화
 - 무차별 대입 방지(로그인 15분 50회 — 성공한 로그인은 세지 않음 · 회원가입 1시간 10회 · 비밀글 비밀번호 5분 5회 · 2FA 5분 10회), IP 화이트리스트(Nginx + 앱)
