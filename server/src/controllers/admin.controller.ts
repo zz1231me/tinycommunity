@@ -14,7 +14,6 @@ import { User } from '../models/User';
 import { SecurityLog } from '../models/SecurityLog';
 import { sendSuccess, sendError } from '../utils/response';
 import { logError } from '../utils/logger';
-import { sanitizeHtmlContent } from '../utils/contentRenderer';
 import { getSettings } from '../utils/settingsCache';
 import {
   invalidateCache,
@@ -759,8 +758,8 @@ export const updateEventAsAdmin = async (req: Request, res: Response): Promise<v
       title,
       start,
       end,
-      // 관리자 경로에서도 본문을 정화한다.
-      body: body ? sanitizeHtmlContent(String(body)) : body,
+      // 정화는 eventService.updateEvent 가 한다(사용자 경로와 같은 자리).
+      body,
       location,
       color,
       backgroundColor,

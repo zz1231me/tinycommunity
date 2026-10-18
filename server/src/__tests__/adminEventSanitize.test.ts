@@ -71,3 +71,50 @@ describe('관리자가 고친 일정 본문도 정화한다', () => {
     expect(saved?.body ?? '').toContain('회의는 3층에서 합니다');
   });
 });
+
+// 사용자 경로(POST/PUT /api/events)의 정화는 위 관리자 경로와 따로다.
+// 본문을 씻는 자리를 컨트롤러에서 서비스로 옮기면서 재어 보니, 씻는 줄을 통째로
+// 지워도 기존 43개가 모두 초록이었다 — 그물에 구멍이 있었다.
+describe('사용자가 만들거나 고친 일정 본문도 정화한다', () => {
+  const create = (body: string) =>
+    request(app).post('/api/events').set(CSRF_HEADER).set('Cookie', adminCookie).send({
+      calendarId: 'default',
+      title: '사용자 경로 정화',
+      start: '2026-05-01T09:00:00.000Z',
+      end: '2026-05-01T10:00:00.000Z',
+      isAllday: false,
+      body,
+    });
+
+  it('만들 때 script 태그는 저장되지 않는다', async () => {
+    const res = await create('<p>남는 글</p><script>alert(1)</script>');
+    expect(res.status).toBe(201);
+
+    const saved = await Event.findByPk((res.body.data as { id: number }).id);
+    expect(saved?.body ?? '').not.toContain('<script');
+    // 통째로 비우는 구현도 막는다
+    expect(saved?.body ?? '').toContain('남는 글');
+  });
+
+  it('고칠 때도 script 태그는 저장되지 않는다', async () => {
+    const created = await create('<p>처음</p>');
+    const id = (created.body.data as { id: number }).id;
+
+    const res = await request(app)
+      .put(`/api/events/${id}`)
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({
+        title: '사용자 경로 정화',
+        start: '2026-05-01T09:00:00.000Z',
+        end: '2026-05-01T10:00:00.000Z',
+        isAllday: false,
+        body: '<p>고친 글</p><img src="x" onerror="alert(1)">',
+      });
+    expect(res.status).toBe(200);
+
+    const saved = await Event.findByPk(id);
+    expect(saved?.body ?? '').not.toContain('onerror');
+    expect(saved?.body ?? '').toContain('고친 글');
+  });
+});

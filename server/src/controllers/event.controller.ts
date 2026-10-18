@@ -1,21 +1,10 @@
+// 요청을 받고 400 을 가려내는 자리. 저장·권한 판정은 event.service 가 한다 —
+// 모델을 여기서 직접 부르지 않는 것이 그 경계다.
 import { Response, NextFunction } from 'express';
-import { Op } from 'sequelize';
-import { sequelize } from '../config/sequelize';
-import Event from '../models/Event';
-import { User } from '../models/User';
-import EventPermission from '../models/EventPermission';
 import { AuthRequest } from '../types/auth-request';
-import { sanitizeHtmlContent } from '../utils/contentRenderer';
 import { getSettings } from '../utils/settingsCache';
-import { expandOccurrences } from '../services/eventRecurrence';
-import {
-  sendSuccess,
-  sendError,
-  sendUnauthorized,
-  sendNotFound,
-  sendForbidden,
-} from '../utils/response';
-import { ROLES } from '../config/constants';
+import { eventService } from '../services/event.service';
+import { sendSuccess, sendError, sendUnauthorized, sendNotFound } from '../utils/response';
 
 const CSS_COLOR_REGEX =
   /^(#[0-9a-fA-F]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(\s*,\s*(0(\.\d+)?|1(\.0+)?|\.\d+))?\s*\)|hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%(\s*,\s*(0(\.\d+)?|1(\.0+)?|\.\d+))?\s*\)|[a-zA-Z]{1,30})$/;
@@ -39,13 +28,7 @@ export const createEvent = async (
   }
 
   try {
-    if (userRole !== ROLES.ADMIN) {
-      const eventPermission = await EventPermission.findOne({ where: { roleId: userRole } });
-      if (!eventPermission?.canCreate) {
-        sendForbidden(res, '이벤트를 생성할 권한이 없습니다.');
-        return;
-      }
-    }
+    await eventService.assertCanCreate(userRole);
 
     // UserId·id 주입을 막으려 허용 필드만 뽑아 쓴다.
     const {
@@ -161,34 +144,32 @@ export const createEvent = async (
       }
     }
 
-    const event = await Event.create({
-      calendarId,
-      title,
-      body: body ? sanitizeHtmlContent(String(body)) : body,
-      isAllday,
-      start,
-      end,
-      category,
-      location,
-      attendees,
-      state,
-      isReadOnly,
-      color,
-      backgroundColor,
-      dragBackgroundColor,
-      borderColor,
-      customStyle,
-      recurrenceType,
-      recurrenceInterval,
-      recurrenceDays,
-      recurrenceEndDate,
-      parentEventId,
-      UserId: userId,
-    });
-
-    const eventWithUser = await Event.findByPk(event.id, {
-      include: [{ model: User, as: 'user', attributes: ['id', 'name'] }],
-    });
+    const eventWithUser = await eventService.createEvent(
+      {
+        calendarId,
+        title,
+        body,
+        isAllday,
+        start,
+        end,
+        category,
+        location,
+        attendees,
+        state,
+        isReadOnly,
+        color,
+        backgroundColor,
+        dragBackgroundColor,
+        borderColor,
+        customStyle,
+        recurrenceType,
+        recurrenceInterval,
+        recurrenceDays,
+        recurrenceEndDate,
+        parentEventId,
+      },
+      userId
+    );
 
     sendSuccess(res, eventWithUser, '이벤트가 생성되었습니다.', 201);
   } catch (err) {
@@ -215,65 +196,7 @@ export const getEvents = async (
   }
 
   try {
-    // 반복이 아닌 일정: 보는 범위에 걸치는 것만.
-    const plainWhere = {
-      recurrenceType: 'none',
-      ...(start && end ? { start: { [Op.lte]: end }, end: { [Op.gte]: start } } : {}),
-    };
-    // 반복 일정: 처음 일정이 범위보다 앞서 있어도 이 범위에 번째가 설 수 있다.
-    // 범위 조건을 그대로 쓰면 작년에 시작한 '매주 회의' 가 통째로 빠진다.
-    const recurringWhere = {
-      recurrenceType: { [Op.ne]: 'none' },
-      ...(start && end
-        ? {
-            start: { [Op.lte]: end },
-            [Op.or]: [{ recurrenceEndDate: null }, { recurrenceEndDate: { [Op.gte]: start } }],
-          }
-        : {}),
-    };
-
-    const include = [{ model: User, as: 'user', attributes: ['id', 'name'] }];
-    const [plain, recurring] = await Promise.all([
-      Event.findAll({ where: plainWhere, include, order: [['start', 'ASC']], limit: 2000 }),
-      Event.findAll({ where: recurringWhere, include, order: [['start', 'ASC']], limit: 200 }),
-    ]);
-
-    // 반복은 규칙 한 줄로 저장하고 여기서 펼친다(services/eventRecurrence).
-    const rangeStart = start ? new Date(start) : new Date(0);
-    const rangeEnd = end ? new Date(end) : new Date('2100-01-01');
-    const expanded = recurring.flatMap(event => {
-      const json = event.toJSON() as Record<string, unknown>;
-      return expandOccurrences(
-        {
-          start: new Date(event.start),
-          end: new Date(event.end),
-          recurrenceType: event.recurrenceType,
-          recurrenceInterval: event.recurrenceInterval,
-          recurrenceDays: event.recurrenceDays ?? null,
-          recurrenceEndDate: event.recurrenceEndDate ?? null,
-          recurrenceExcept: event.recurrenceExcept ?? null,
-        },
-        rangeStart,
-        rangeEnd
-      ).map(occ => ({
-        ...json,
-        start: occ.start,
-        end: occ.end,
-        /** 이 번째의 날짜. 하루만 쉬게 할 때 이 값으로 집는다. */
-        occurrenceDate: occ.date,
-        isRecurringOccurrence: true,
-      }));
-    });
-
-    const all: Array<Record<string, unknown>> = [
-      ...plain.map(e => e.toJSON() as Record<string, unknown>),
-      ...expanded,
-    ].sort(
-      (a, b) =>
-        new Date(a.start as string | Date).getTime() - new Date(b.start as string | Date).getTime()
-    );
-
-    sendSuccess(res, all.slice(0, 2000));
+    sendSuccess(res, await eventService.listEventsInRange(start, end));
   } catch (err) {
     next(err);
   }
@@ -294,22 +217,8 @@ export const updateEvent = async (
   }
 
   try {
-    const existingEvent = await Event.findByPk(id);
-    if (!existingEvent) {
-      sendNotFound(res, '이벤트');
-      return;
-    }
-
-    const isOwner = existingEvent.UserId === userId;
-    const isAdminUser = userRole === ROLES.ADMIN;
-
-    if (!isOwner && !isAdminUser) {
-      const eventPermission = await EventPermission.findOne({ where: { roleId: userRole } });
-      if (!eventPermission?.canUpdate) {
-        sendForbidden(res, '다른 사용자의 일정을 수정할 권한이 없습니다.');
-        return;
-      }
-    }
+    const existingEvent = await eventService.loadEvent(id);
+    await eventService.assertCanEdit(existingEvent, userId, userRole);
 
     // UserId 변경으로 소유권이 바뀌지 않도록 허용 필드만 뽑아 쓴다.
     const {
@@ -457,40 +366,31 @@ export const updateEvent = async (
       }
     }
 
-    const [updated] = await Event.update(
-      {
-        calendarId,
-        title,
-        body: body !== undefined ? (body ? sanitizeHtmlContent(String(body)) : body) : undefined,
-        isAllday,
-        start,
-        end,
-        category,
-        location,
-        attendees,
-        state,
-        isReadOnly,
-        color,
-        backgroundColor,
-        dragBackgroundColor,
-        borderColor,
-        customStyle,
-        recurrenceType,
-        recurrenceInterval,
-        recurrenceDays,
-        recurrenceEndDate,
-        parentEventId,
-      },
-      { where: { id } }
-    );
-    if (updated === 0) {
-      sendNotFound(res, '이벤트');
-      return;
-    }
-
-    const updatedEvent = await Event.findByPk(id, {
-      include: [{ model: User, as: 'user', attributes: ['id', 'name'] }],
+    await eventService.updateEvent(id, {
+      calendarId,
+      title,
+      body,
+      isAllday,
+      start,
+      end,
+      category,
+      location,
+      attendees,
+      state,
+      isReadOnly,
+      color,
+      backgroundColor,
+      dragBackgroundColor,
+      borderColor,
+      customStyle,
+      recurrenceType,
+      recurrenceInterval,
+      recurrenceDays,
+      recurrenceEndDate,
+      parentEventId,
     });
+
+    const updatedEvent = await eventService.findWithUser(id);
     if (!updatedEvent) {
       sendNotFound(res, '이벤트');
       return;
@@ -509,7 +409,6 @@ export const deleteEvent = async (
 ): Promise<void> => {
   const { id } = req.params;
   const userId = req.user?.id;
-  const userRole = req.user?.role;
 
   if (!userId) {
     sendUnauthorized(res, '로그인이 필요합니다.');
@@ -517,39 +416,7 @@ export const deleteEvent = async (
   }
 
   try {
-    const existingEvent = await Event.findByPk(id);
-    if (!existingEvent) {
-      sendNotFound(res, '이벤트');
-      return;
-    }
-
-    const isOwner = existingEvent.UserId === userId;
-    const isAdminUser = userRole === ROLES.ADMIN;
-
-    if (!isOwner && !isAdminUser) {
-      const eventPermission = await EventPermission.findOne({ where: { roleId: userRole } });
-      if (!eventPermission?.canDelete) {
-        sendForbidden(res, '다른 사용자의 일정을 삭제할 권한이 없습니다.');
-        return;
-      }
-    }
-
-    // 부모를 지울 때 자식 인스턴스도 같은 트랜잭션에서 지운다.
-    // 같은 소유자의 자식만 지운다. parentEventId 는 임의로 설정할 수 있어 남의 이벤트가 함께 지워질 수 있다.
-    let deleted = 0;
-    await sequelize.transaction(async t => {
-      await Event.destroy({
-        where: { parentEventId: id, UserId: existingEvent.UserId },
-        transaction: t,
-      });
-      deleted = await Event.destroy({ where: { id }, transaction: t });
-    });
-
-    if (deleted === 0) {
-      sendNotFound(res, '이벤트');
-      return;
-    }
-
+    await eventService.deleteOwnEvent(id, userId, req.user?.role);
     sendSuccess(res, { deletedId: id }, '이벤트가 삭제되었습니다.');
   } catch (err) {
     next(err);
@@ -569,7 +436,6 @@ export const skipOccurrence = async (
 ): Promise<void> => {
   const { id, date } = req.params;
   const userId = req.user?.id;
-  const userRole = req.user?.role;
 
   if (!userId) {
     sendUnauthorized(res, '로그인이 필요합니다.');
@@ -581,35 +447,8 @@ export const skipOccurrence = async (
   }
 
   try {
-    const event = await Event.findByPk(id);
-    if (!event) {
-      sendNotFound(res, '이벤트');
-      return;
-    }
-    if (!event.recurrenceType || event.recurrenceType === 'none') {
-      sendError(res, 400, '반복 일정이 아닙니다.');
-      return;
-    }
-
-    const isOwner = event.UserId === userId;
-    if (!isOwner && userRole !== ROLES.ADMIN) {
-      const eventPermission = await EventPermission.findOne({ where: { roleId: userRole } });
-      if (!eventPermission?.canDelete) {
-        sendForbidden(res, '다른 사용자의 일정을 바꿀 권한이 없습니다.');
-        return;
-      }
-    }
-
-    const except = new Set(event.recurrenceExcept ?? []);
-    except.add(date);
-    event.recurrenceExcept = [...except].sort();
-    await event.save();
-
-    sendSuccess(
-      res,
-      { id: event.id, recurrenceExcept: event.recurrenceExcept },
-      '이 날은 건너뜁니다.'
-    );
+    const recurrenceExcept = await eventService.skipOccurrence(id, date, userId, req.user?.role);
+    sendSuccess(res, { id: Number(id), recurrenceExcept }, '이 날은 건너뜁니다.');
   } catch (err) {
     next(err);
   }
