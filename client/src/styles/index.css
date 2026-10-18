@@ -904,6 +904,14 @@ body {
            text-2xs font-bold leading-none tabular-nums;
   }
 
+  /* 머리줄의 숫자 배지 중 중립색.
+   *
+   * 빨강은 알림(벨) 하나만 쓴다 — 머리줄에 빨간 숫자가 셋이면(소식·메시지·알림)
+   * 어느 것이 급한지가 사라진다. 나머지는 '세어 둔 것' 일 뿐이라 중립색으로 둔다. */
+  .badge-count-muted {
+    @apply bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-100;
+  }
+
   /* ── 알림/상태 배너 ────────────────────── */
   .alert {
     @apply flex items-start gap-3 p-4 rounded-xl border text-sm;
