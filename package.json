@@ -8,6 +8,7 @@
   "scripts": {
     "prepare": "husky",
     "setup": "node scripts/setup.mjs",
+    "ports": "node scripts/ports.mjs",
     "dev": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",
     "secrets": "node scripts/secrets.mjs",

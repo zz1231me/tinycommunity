@@ -20,6 +20,11 @@ logger.warn = (msg, options) => {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
+  // 포트는 client/.env.local 에서 바꾼다. 8080·4000 을 이미 쓰고 있는 사람이 있어
+  // 박아 두면 strictPort 때문에 그냥 죽는다. npm run ports 가 이 값과 서버 PORT 를
+  // 함께 맞춰 준다.
+  const webPort = Number(env.VITE_PORT) || 8080;
+
   return {
     customLogger: logger,
     plugins: [react()],
@@ -63,7 +68,7 @@ export default defineConfig(({ mode }) => {
 
     server: {
       host: '0.0.0.0',
-      port: 8080,
+      port: webPort,
       strictPort: true,
       hmr: {
         overlay: true,
@@ -171,7 +176,7 @@ export default defineConfig(({ mode }) => {
 
     preview: {
       host: '0.0.0.0',
-      port: 8080,
+      port: webPort,
       strictPort: true,
       cors: true,
       // dev 서버와 동일한 proxy — npm run preview 시에도 API 요청이 Express로 전달됨

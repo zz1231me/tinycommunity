@@ -47,6 +47,7 @@ CI 가 windows-latest 와 ubuntu-latest 양쪽에서 이 경로를 그대로 밟
 | 명령                                         | 하는 일                                        |
 | -------------------------------------------- | ---------------------------------------------- |
 | `npm run setup`                              | 의존성 설치 + `server/.env` 생성(처음 한 번)   |
+| `npm run ports`                              | 서버·화면 포트를 함께 바꾸기                   |
 | `npm run dev`                                | 서버·화면 동시 실행                            |
 | `npm run build`                              | 서버·화면 프로덕션 빌드                        |
 | `npm start`                                  | 빌드한 것을 `NODE_ENV=production` 으로 실행    |
@@ -80,6 +81,35 @@ npm run typecheck && npm run lint && npm run format:check && npm test && npm run
 서버 보조 스크립트: `setup:{sqlite\|mysql\|mariadb\|postgresql}`(‧env 작성), `db:indexes`, `init:roles`.
 
 **규칙**: TypeScript strict · ESLint + Prettier · 미사용 파라미터 `_` 접두사 · 로깅은 `logInfo()`/`logError()` · 응답은 `sendSuccess()`/`sendError()`.
+
+---
+
+## 포트 바꾸기
+
+8080·4000 을 이미 다른 데 쓰고 있다면 한 명령으로 바꿉니다. 서버와 화면을 **함께**
+맞춰 주는 게 핵심입니다 — 한쪽만 바꾸면 화면은 뜨는데 로그인부터 실패합니다.
+
+```bash
+npm run ports                            # 지금 값 보기
+npm run ports -- --web 9000              # 화면만
+npm run ports -- --api 5000 --web 9000   # 둘 다
+```
+
+| 바뀌는 곳           | 값                                               |
+| ------------------- | ------------------------------------------------ |
+| `server/.env`       | `PORT`                                           |
+| `client/.env.local` | `VITE_PORT` · `VITE_API_URL`(서버 포트를 따라감) |
+
+돌고 있는 개발 서버가 있으면 다시 띄워야 적용됩니다. 설치할 때 미리 정해 두려면
+`npm run setup` 뒤에 바로 `npm run ports -- --api 5000 --web 9000` 을 돌리면 됩니다.
+
+**도커로 올릴 때**는 루트 `.env` 에서 호스트 포트를 정합니다(컨테이너 안은 그대로입니다).
+
+```bash
+APP_HOST_PORT=14000    # 앱  (기본 4000)
+HTTP_HOST_PORT=18080   # nginx (기본 80)
+DB_HOST_PORT=13306     # MariaDB (기본 3306)
+```
 
 ---
 
