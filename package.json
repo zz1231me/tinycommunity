@@ -7,6 +7,7 @@
   },
   "scripts": {
     "prepare": "husky",
+    "go": "node scripts/menu.mjs",
     "setup": "node scripts/setup.mjs",
     "ports": "node scripts/ports.mjs",
     "dev": "node scripts/dev.mjs",
