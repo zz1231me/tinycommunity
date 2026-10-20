@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { DEFAULT_TAG_COLOR } from '../../constants/colors';
 import { Avatar } from '../Avatar';
 import { LockIcon, EyeIcon, HeartIcon, ChatIcon, PaperclipIcon } from '../common/Icons';
@@ -17,7 +18,10 @@ const isSafeColor = (color: string): boolean =>
 interface PostListItemProps {
   post: Post;
   index: number;
-  onPostClick: (postId: string) => void;
+  /** 이 글의 주소. 진짜 href 여야 ⌘-클릭·가운데 클릭·'새 탭으로 열기' 가 먹는다. */
+  href: string;
+  /** 상세의 '목록으로' 가 제자리로 돌아오도록 넘기는 지금 목록 주소. */
+  listHref: string;
   formatDate: (dateString: string) => string;
   /** 업무용 게시판인지 — 아니면 상태 배지를 그리지 않는다 */
   showTasks?: boolean;
@@ -28,7 +32,8 @@ interface PostListItemProps {
 export const PostListItem: React.FC<PostListItemProps> = ({
   post,
   index: _index,
-  onPostClick,
+  href,
+  listHref,
   formatDate,
   showTasks = false,
   showAssignee = false,
@@ -37,10 +42,15 @@ export const PostListItem: React.FC<PostListItemProps> = ({
   const [thumbFailed, setThumbFailed] = React.useState(false);
 
   return (
-    <div
-      onClick={() => onPostClick(post.id)}
+    // 줄은 진짜 링크다. div+onClick 이던 때는 ⌘-클릭이 새 탭을 열지 않고 보던
+    // 목록을 덮어 버렸다(실측: 탭이 늘지 않고 현재 탭이 상세로 갔다). 여러 글을
+    // 탭으로 열어 두고 보는 건 게시판에서 흔한 일인데 그게 안 됐다.
+    // Link 는 평범한 클릭만 가로채고 ⌘·가운데·우클릭은 브라우저에 넘긴다.
+    <Link
+      to={href}
+      state={{ from: listHref }}
       className={`
-        px-4 sm:px-6 py-3 cursor-pointer transition-colors duration-100 group
+        block px-4 sm:px-6 py-3 transition-colors duration-100 group
         border-l-2 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0
         ${
           post.isPinned
@@ -50,14 +60,6 @@ export const PostListItem: React.FC<PostListItemProps> = ({
         hover:bg-primary-50/60 dark:hover:bg-primary-900/10
         hover:border-l-primary-500 dark:hover:border-l-primary-400
       `}
-      role="button"
-      tabIndex={0}
-      onKeyDown={e => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onPostClick(post.id);
-        }
-      }}
       aria-label={`${post.title} - ${post.author} 작성`}
     >
       <div className="grid grid-cols-12 gap-2 sm:gap-4 items-center">
@@ -255,6 +257,6 @@ export const PostListItem: React.FC<PostListItemProps> = ({
           </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 };

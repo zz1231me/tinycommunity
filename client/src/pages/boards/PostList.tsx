@@ -127,17 +127,13 @@ const PostList = () => {
   }, [showTasks, statusFilter.length]);
 
   const location = useLocation();
-  const handlePostClick = useCallback(
-    (postId: string) => {
-      if (boardType) {
-        // 상세에서 '목록으로' 누를 때 원위치하도록 지금 목록 URL 을 넘긴다.
-        navigate(`/dashboard/posts/${boardType}/${postId}`, {
-          state: { from: `${location.pathname}${location.search}` },
-        });
-      }
-    },
-    [boardType, navigate, location.pathname, location.search]
+  // 줄마다 진짜 href 를 만든다 — ⌘-클릭으로 새 탭에 띄우려면 주소가 있어야 한다.
+  const postHref = useCallback(
+    (postId: string) => `/dashboard/posts/${boardType}/${postId}`,
+    [boardType]
   );
+  // 상세에서 '목록으로' 누를 때 원위치하도록 지금 목록 URL 을 넘긴다.
+  const listHref = `${location.pathname}${location.search}`;
 
   const handleNewPost = useCallback(() => {
     if (boardType) {
@@ -511,7 +507,8 @@ const PostList = () => {
             posts={posts}
             currentPage={currentPage}
             pagination={pagination}
-            onPostClick={handlePostClick}
+            postHref={postHref}
+            listHref={listHref}
             onPageChange={handlePageChange}
             formatDate={formatRelativeDate}
             showTasks={showTasks}

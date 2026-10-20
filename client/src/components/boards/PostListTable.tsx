@@ -10,7 +10,10 @@ interface PostListTableProps {
   posts: Post[];
   currentPage: number;
   pagination: PaginationInfo | null;
-  onPostClick: (postId: string) => void;
+  /** 글 하나의 주소를 만든다. 줄이 진짜 링크여야 ⌘-클릭이 먹는다. */
+  postHref: (postId: string) => string;
+  /** 지금 목록 주소 — 상세의 '목록으로' 가 제자리로 돌아오게 넘긴다. */
+  listHref: string;
   onPageChange: (page: number) => void;
   formatDate: (dateString: string) => string;
   /** 업무용 게시판인지. 아니면 상태 배지와 담당자 칼럼을 그리지 않는다. */
@@ -58,7 +61,8 @@ export const PostListTable: React.FC<PostListTableProps> = ({
   posts,
   currentPage,
   pagination,
-  onPostClick,
+  postHref,
+  listHref,
   onPageChange,
   formatDate,
   showTasks = false,
@@ -97,7 +101,8 @@ export const PostListTable: React.FC<PostListTableProps> = ({
                 <PostListItem
                   post={post}
                   index={index}
-                  onPostClick={onPostClick}
+                  href={postHref(post.id)}
+                  listHref={listHref}
                   formatDate={formatDate}
                   showTasks={showTasks}
                   showAssignee={showAssignee}
@@ -124,7 +129,8 @@ export const PostListTable: React.FC<PostListTableProps> = ({
               <PostListItem
                 post={post}
                 index={pinnedPosts.length + index}
-                onPostClick={onPostClick}
+                href={postHref(post.id)}
+                listHref={listHref}
                 formatDate={formatDate}
                 showTasks={showTasks}
                 showAssignee={showAssignee}

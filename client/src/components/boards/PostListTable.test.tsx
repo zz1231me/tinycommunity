@@ -29,7 +29,8 @@ function draw(posts: Post[], showTasks: boolean) {
         posts={posts}
         currentPage={1}
         pagination={null}
-        onPostClick={vi.fn()}
+        postHref={id => `/dashboard/posts/qa/${id}`}
+        listHref="/dashboard/posts/qa?page=2"
         onPageChange={vi.fn()}
         formatDate={() => '방금 전'}
         showTasks={showTasks}
@@ -99,5 +100,28 @@ describe('업무용 게시판', () => {
   it('머리글과 행의 칸 합이 같다 — 담당자 칼럼이 없을 때', () => {
     const { container } = draw([base], true);
     expect(new Set(desktopSpanTotals(container)).size).toBe(1);
+  });
+});
+
+// 목록의 줄은 진짜 링크여야 한다.
+//
+// div 에 onClick 만 달려 있던 때는 ⌘-클릭이 새 탭을 열지 않고 보던 목록을 덮었다
+// (브라우저로 실측: 탭이 늘지 않고 현재 탭이 상세로 갔다). 게시판에서 글 몇 개를
+// 탭으로 열어 두는 건 흔한 일인데 그게 안 됐고, 링크 주소 복사도 우클릭 메뉴에
+// 뜨지 않았다. 그래서 '줄에 href 가 있는가' 를 고정한다.
+describe('목록 줄', () => {
+  it('글 주소를 가진 링크다 — ⌘-클릭으로 새 탭에 열 수 있게', () => {
+    draw([base], false);
+
+    const row = screen.getByRole('link', { name: /첫 글/ });
+    expect(row.getAttribute('href')).toBe('/dashboard/posts/qa/p1');
+  });
+
+  it('고정 글도 마찬가지다', () => {
+    draw([{ ...base, id: 'p9', title: '공지', isPinned: true }], false);
+
+    expect(screen.getByRole('link', { name: /공지/ }).getAttribute('href')).toBe(
+      '/dashboard/posts/qa/p9'
+    );
   });
 });
