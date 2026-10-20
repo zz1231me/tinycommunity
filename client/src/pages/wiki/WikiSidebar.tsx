@@ -26,6 +26,15 @@ function buildTree(pages: WikiTreePage[]): WikiTreePage[] {
 
 const MAX_WIKI_DEPTH = 10;
 
+/**
+ * 이 클릭이 지금 탭을 떠나게 하는가.
+ *
+ * ⌘·Ctrl(새 탭)·Shift(새 창)·Alt(내려받기)·가운데 버튼은 이 탭을 그대로 둔다.
+ * 편집 중 가로채기는 '쓰던 글이 날아갈 때' 만 끼어들어야 하므로 이것들은 보낸다.
+ */
+const leavesThisTab = (e: React.MouseEvent) =>
+  e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
+
 interface WikiTreeNodeProps {
   page: WikiTreePage & { children?: WikiTreePage[] };
   currentSlug?: string;
@@ -48,7 +57,7 @@ const WikiTreeNode: React.FC<WikiTreeNodeProps> = ({
   if (depth > MAX_WIKI_DEPTH) return null;
 
   const handleLinkClick = (e: React.MouseEvent) => {
-    if (isEditing && !isActive && onInterceptNav) {
+    if (isEditing && !isActive && onInterceptNav && leavesThisTab(e)) {
       e.preventDefault();
       onInterceptNav(page.slug);
     }
@@ -127,7 +136,7 @@ export const WikiSidebar: React.FC<WikiSidebarProps> = ({ pages, isEditing, onIn
   const tree = buildTree(pages);
 
   const handleHomeClick = (e: React.MouseEvent) => {
-    if (isEditing && onInterceptNav) {
+    if (isEditing && onInterceptNav && leavesThisTab(e)) {
       e.preventDefault();
       onInterceptNav(null);
     }
