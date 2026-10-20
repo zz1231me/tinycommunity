@@ -57,9 +57,15 @@ interface Props {
   tasks: MyTask[];
   /** 실패하면 거절한다. 그러면 막대를 저장된 자리로 되돌린다. */
   onReschedule: (task: MyTask, dates: { startDate: string; dueDate: string }) => Promise<void>;
+  /**
+   * 이미 카드 안에 들어가는 자리인가(달력 화면의 '간트' 보기).
+   * 테두리를 한 겹 더 두르지 않고, 높이도 그림만큼만 쓴다 — 32rem 로 고정하면
+   * 업무가 셋일 때 상자 안쪽이 300px 넘게 빈다(실측).
+   */
+  embedded?: boolean;
 }
 
-export function TaskGantt({ tasks, onReschedule }: Props) {
+export function TaskGantt({ tasks, onReschedule, embedded = false }: Props) {
   const { effectiveTheme } = useTheme();
   const Theme = effectiveTheme === 'dark' ? WillowDark : Willow;
   // 확대 단위도 계정에 저장한다. 기기마다 다르게 열리지 않게.
@@ -176,7 +182,13 @@ export function TaskGantt({ tasks, onReschedule }: Props) {
           ))}
         </div>
       </div>
-      <div className="task-gantt card h-[32rem] overflow-hidden">
+      <div
+        className={
+          embedded
+            ? 'task-gantt overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800'
+            : 'task-gantt card h-[32rem] overflow-hidden'
+        }
+      >
         <Theme fonts={false}>
           <Gantt
             key={`${resetKey}-${zoom}`}

@@ -14,6 +14,7 @@ import { toast } from '../../../utils/toast';
 import { CalendarEvent, EventFormData, ModalMode } from './types';
 import { dateUtils } from './utils';
 import { toFormData, type EditScope } from './eventFormData';
+import { CalendarGantt } from './components/CalendarGantt';
 
 /** 범위를 바꿀 때 날짜 두 칸만 갈아 끼운다 */
 const pickDates = (f: EventFormData) => ({ start: f.start, end: f.end });
@@ -371,43 +372,51 @@ const CalendarPage: React.FC = () => {
           onViewChange={handleViewChange}
         />
 
-        {/* expandRows 로 카드 높이를 채우고 행을 균등 분배한다 */}
-        <div className="flex-1 min-h-0 p-3 sm:p-4">
-          <div className="calendar-wrapper h-full">
-            <FullCalendar
-              ref={calendarRef}
-              plugins={[dayGridPlugin, interactionPlugin, listPlugin]}
-              locale={koLocale}
-              headerToolbar={false}
-              initialView="dayGridMonth"
-              height="100%"
-              expandRows={true}
-              events={calendarEvents}
-              selectable={true}
-              selectMirror={true}
-              unselectAuto={true}
-              editable={true}
-              eventDragMinDistance={5}
-              dragRevertDuration={300}
-              dragScroll={true}
-              longPressDelay={200}
-              select={handleDateSelect}
-              eventClick={handleEventClick}
-              eventDidMount={handleEventDidMount}
-              eventDrop={handleEventDrop}
-              eventResize={handleEventResize}
-              eventAllow={eventAllow}
-              datesSet={handleDatesSet}
-              nowIndicator={true}
-              weekends={true}
-              fixedWeekCount={false}
-              showNonCurrentDates={false}
-              dayMaxEvents={4}
-              noEventsContent={renderNoEvents}
-              dayCellClassNames={dayCellClassNames}
-            />
+        {currentView === 'gantt' ? (
+          // 같은 자리에서 보기만 바꾼다. 달력은 '언제 무엇이 있는가', 간트는 '얼마나
+          // 걸치는가' 를 보여 준다 — 업무 화면까지 들어가지 않아도 되도록 여기에 둔다.
+          <div className="flex-1 min-h-0 overflow-auto p-3 sm:p-4">
+            <CalendarGantt />
           </div>
-        </div>
+        ) : (
+          /* expandRows 로 카드 높이를 채우고 행을 균등 분배한다 */
+          <div className="flex-1 min-h-0 p-3 sm:p-4">
+            <div className="calendar-wrapper h-full">
+              <FullCalendar
+                ref={calendarRef}
+                plugins={[dayGridPlugin, interactionPlugin, listPlugin]}
+                locale={koLocale}
+                headerToolbar={false}
+                initialView="dayGridMonth"
+                height="100%"
+                expandRows={true}
+                events={calendarEvents}
+                selectable={true}
+                selectMirror={true}
+                unselectAuto={true}
+                editable={true}
+                eventDragMinDistance={5}
+                dragRevertDuration={300}
+                dragScroll={true}
+                longPressDelay={200}
+                select={handleDateSelect}
+                eventClick={handleEventClick}
+                eventDidMount={handleEventDidMount}
+                eventDrop={handleEventDrop}
+                eventResize={handleEventResize}
+                eventAllow={eventAllow}
+                datesSet={handleDatesSet}
+                nowIndicator={true}
+                weekends={true}
+                fixedWeekCount={false}
+                showNonCurrentDates={false}
+                dayMaxEvents={4}
+                noEventsContent={renderNoEvents}
+                dayCellClassNames={dayCellClassNames}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 넓은 화면에서만 보이는 오늘·다가오는 일정 레일 */}

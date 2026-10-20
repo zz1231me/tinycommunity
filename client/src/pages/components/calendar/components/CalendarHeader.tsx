@@ -3,12 +3,14 @@ import React from 'react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
-export type CalendarView = 'dayGridMonth' | 'dayGridWeek' | 'listMonth';
+export type CalendarView = 'dayGridMonth' | 'dayGridWeek' | 'listMonth' | 'gantt';
 
 const VIEW_OPTIONS: { key: CalendarView; label: string }[] = [
   { key: 'dayGridMonth', label: '월간' },
   { key: 'dayGridWeek', label: '주간' },
   { key: 'listMonth', label: '목록' },
+  // 달력과 같은 자리에서 보기만 바꿔 일정 띠를 본다(내 업무 기준).
+  { key: 'gantt', label: '간트' },
 ];
 
 // 시계는 자체 상태로 매초 갱신 — 부모(캘린더 전체)가 아니라 이 텍스트만 리렌더된다.
@@ -55,7 +57,12 @@ const CalendarHeaderBase: React.FC<CalendarHeaderProps> = ({
         {/* 상단/왼쪽 — 제목 + 네비게이션 */}
         <div className="flex items-center gap-3">
           {/* 이전/다음 */}
-          <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 flex-shrink-0">
+          {/* 간트는 달 단위가 아니라 기간 띠라 달 이동·오늘이 가리킬 곳이 없다 */}
+          <div
+            className={`flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 flex-shrink-0 ${
+              currentView === 'gantt' ? 'hidden' : ''
+            }`}
+          >
             <button
               onClick={onPrev}
               aria-label="이전 달"
@@ -108,7 +115,7 @@ const CalendarHeaderBase: React.FC<CalendarHeaderProps> = ({
 
           {/* 제목 */}
           <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 tabular-nums">
-            {title}
+            {currentView === 'gantt' ? '내 업무 일정' : title}
           </h2>
         </div>
 
