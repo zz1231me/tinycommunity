@@ -159,6 +159,14 @@ export function SubtaskPanel({ boardType, postId, editable }: Props) {
           </button>
         </form>
       )}
+      {editable && (
+        // 적으면 글이 하나 생긴다는 것을 말해 둔다. 모르고 적었다가 게시판에 글이
+        // 늘어난 것을 보고 놀라는 일이 있었다 — 담당자·마감을 따로 두려고 글로 만든다.
+        <p className="mt-1.5 text-2xs text-slate-400 dark:text-slate-500">
+          적으면 이 게시판에 글이 하나 만들어집니다. 담당자·마감을 따로 정할 수 있고, 떼어 내도 글은
+          남습니다.
+        </p>
+      )}
       {dialog}
     </section>
   );

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../store/auth';
 import { fetchPostById, deletePost, verifySecretPost, toggleLike } from '../api/posts';
@@ -10,6 +11,7 @@ import { decryptContent } from '../utils/crypto';
 import type { Assignee, WorkStatus } from '../api/tasks';
 import type { TaskPriority } from '../components/tasks/taskPriority';
 import type { Tag } from '../types/board.types';
+import { boardKeys, discoveryKeys, taskKeys } from '../api/queryKeys';
 
 /** 상세 응답에 함께 오는 "보는 사람의 상태" */
 export interface ViewerState {
@@ -70,6 +72,7 @@ interface UsePostDetailProps {
 }
 
 export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
+  const queryClient = useQueryClient();
   const fetchIdRef = useRef(0);
   const mountedRef = useRef(true);
   // 지금 보고 있는 글. 글 사이를 오갈 때 이 훅은 언마운트되지 않으므로(라우트에 key 가 없다)
@@ -198,8 +201,10 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
         return;
       }
 
-      if (!data || !data.title || !data.content) {
-        throw new Error('게시글 제목 또는 내용이 없습니다');
+      // 본문이 비면 그냥 빈 본문이다 — 하위 업무로 만든 글이 그렇다. 아래 화면은
+      // post.content 가 있을 때만 본문을 그리므로 비어 있어도 안전하다.
+      if (!data || !data.title) {
+        throw new Error('게시글 제목이 없습니다');
       }
 
       setIsLocked(false);
@@ -323,6 +328,15 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
     try {
       setIsDeleting(true);
       await deletePost(boardType!, id!);
+
+      // 지운 글을 다른 화면이 계속 들고 있지 않게 한다. 업무 게시판에서 하위 업무로
+      // 만든 글을 지우면 상위 글의 하위 목록에 그 줄이 남았고, 누르면 '없는 게시물'
+      // 이 떴다 — 서버는 바로 정리하는데 화면 캐시만 옛 목록을 쥐고 있었다.
+      // 어느 상위 글의 하위였는지 여기서는 알 수 없으므로 업무 쪽은 통째로 무효화한다.
+      void queryClient.invalidateQueries({ queryKey: taskKeys.all });
+      void queryClient.invalidateQueries({ queryKey: boardKeys.all });
+      void queryClient.invalidateQueries({ queryKey: discoveryKeys.all });
+
       navigate(`/dashboard/posts/${boardType}`);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
@@ -330,7 +344,7 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
     } finally {
       setIsDeleting(false);
     }
-  }, [id, boardType, navigate, canEditOrDelete]);
+  }, [id, boardType, navigate, canEditOrDelete, queryClient]);
 
   useEffect(() => {
     mountedRef.current = true;

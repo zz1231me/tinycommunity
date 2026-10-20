@@ -117,8 +117,11 @@ export async function fetchPostById(boardType: string, postId: string) {
     return postData;
   }
 
-  if (!postData.title || !postData.content) {
-    throw new Error('게시글 제목 또는 내용이 없습니다');
+  // 본문이 비어 있는 것은 오류가 아니다. 업무 게시판의 하위 업무는 제목만 있는 글로
+  // 만들어지는데(addSubtask 가 content: '' 로 넣는다), 여기서 막으면 목록에는 보이면서
+  // 누르면 '없는 게시물' 처럼 보인다. 제목이 없는 것만 깨진 데이터로 본다.
+  if (!postData.title) {
+    throw new Error('게시글 제목이 없습니다');
   }
 
   return postData;

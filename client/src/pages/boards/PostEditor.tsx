@@ -13,7 +13,9 @@ import {
 } from '../../components/editor';
 import { PageContainer } from '../../components/common/PageContainer';
 import UppyFileUpload from '../../components/editor/UppyFileUpload';
+import { useQueryClient } from '@tanstack/react-query';
 import { fetchPostById, createPost, updatePost } from '../../api/posts';
+import { boardKeys, discoveryKeys, taskKeys } from '../../api/queryKeys';
 import { getBoardTitle } from '../../constants/boardTitles';
 import { logger, fileLogger } from '../../utils/logger';
 import { useImageUpload } from '../../hooks/useImageUpload';
@@ -54,6 +56,14 @@ const PostEditor = ({ mode }: Props) => {
   const [searchParams] = useSearchParams();
   const resumeDraftId = searchParams.get('draft');
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  /** 글이 들어 있는 목록들을 다시 받아오게 한다(업무·게시판·탐색). */
+  const invalidateLists = () => {
+    void queryClient.invalidateQueries({ queryKey: taskKeys.all });
+    void queryClient.invalidateQueries({ queryKey: boardKeys.all });
+    void queryClient.invalidateQueries({ queryKey: discoveryKeys.all });
+  };
   const editorRef = useRef<CKEditorRef | null>(null);
   const { settings: siteSettings } = useSiteSettings();
 
@@ -331,6 +341,9 @@ const PostEditor = ({ mode }: Props) => {
         }
         logger.success('게시글 수정 완료');
         window.dispatchEvent(new Event('post-updated'));
+        // 이 글을 담고 있는 목록들도 갱신한다. 하위 업무로 만든 글의 제목을 고치면
+        // 상위 글의 하위 목록이 한동안 옛 제목을 보여 줬다(staleTime 30초).
+        invalidateLists();
         navigate(`/dashboard/posts/${finalBoardType}/${id}`);
       } else if (mode === 'create') {
         const res = await createPost({
@@ -360,6 +373,7 @@ const PostEditor = ({ mode }: Props) => {
             logger.warn('임시저장 삭제에 실패했습니다.', err)
           );
         }
+        invalidateLists();
         // id 가 없을 때만 목록으로 폴백한다.
         if (createdId) {
           navigate(`/dashboard/posts/${boardType}/${createdId}`);
