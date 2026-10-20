@@ -125,3 +125,38 @@ describe('목록 줄', () => {
     );
   });
 });
+
+// '표' 라고 말했으면 행이 있어야 한다.
+//
+// 바깥이 role="table" 인데 role="row" 는 머리줄 하나뿐이었다. 글 줄은 행이 아니라
+// 링크 하나라서, 보조도구는 글이 몇 개든 "표, 1행" 이라고 읽고 나머지는 표 밖을
+// 떠도는 링크 더미가 됐다(실측: 글 2개를 그렸을 때 행 1개).
+//
+// 칸 맞춤은 눈을 위한 것이지 표가 아니다. 표라고 말하기를 그만두고, 이름 붙은
+// 영역으로 두어 목록으로 건너뛸 수 있게 했다.
+describe('목록 역할', () => {
+  it('표라고 말하지 않는다 — 행이 없으니까', () => {
+    draw([base, { ...base, id: 'p2', title: '둘째 글' }], false);
+
+    expect(screen.queryByRole('table')).toBeNull();
+  });
+
+  it('이름 붙은 영역이라 목록으로 건너뛸 수 있다', () => {
+    draw([base], false);
+
+    expect(screen.getByRole('region', { name: '게시글 목록' })).toBeTruthy();
+  });
+
+  it('글 수만큼 링크가 있다 — 하나도 빠지지 않는다', () => {
+    draw([base, { ...base, id: 'p2', title: '둘째 글' }], false);
+
+    expect(screen.getAllByRole('link')).toHaveLength(2);
+  });
+
+  it('머리줄은 보조도구에 읽히지 않는다 — 짝지을 칸이 없다', () => {
+    draw([base], false);
+
+    // 눈에는 보이지만(칸 맞춤) 접근성 트리에서는 빠져야 한다
+    expect(screen.getByText('작성일').closest('[aria-hidden="true"]')).not.toBeNull();
+  });
+});
