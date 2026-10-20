@@ -55,3 +55,23 @@ describe('보는 범위', () => {
     expect(screen.getByRole('option', { name: '품질 전체' })).toBeInTheDocument();
   });
 });
+
+// 거르개는 한 줄에 모여 있어야 한다.
+//
+// '보는 범위·검색·중요도' 와 '마감으로 거르기' 는 둘 다 목록을 좁히는 조작인데 줄이
+// 나뉘어 있었다. 눈이 두 번 훑어야 했고 머리 영역만 42px 를 더 썼다(1512px 실측:
+// 첫 업무 줄 242px → 200px). 한 칸에 넣었으니, 나중에 다시 갈라지면 여기서 걸린다.
+describe('거르개 배치', () => {
+  beforeEach(() => setFeature(true));
+
+  it('마감 칩이 범위 고르개와 같은 줄에 있다', () => {
+    renderFilters();
+
+    const dueGroup = screen.getByRole('group', { name: '마감으로 거르기' });
+
+    // 바로 그 칸을 같이 쓰는지 본다. toContainElement 는 후손까지 세므로
+    // 바깥 래퍼만 짚게 되고, 줄이 갈라져 있어도 통과한다(실제로 그랬다).
+    expect(dueGroup.parentElement).not.toBeNull();
+    expect(dueGroup.parentElement).toBe(scopeSelect().parentElement);
+  });
+});

@@ -129,35 +129,40 @@ export function TaskFilters({
             ))}
           </select>
         )}
-      </div>
 
-      {/* 마감 요약. 누르면 그 조건으로 좁히고, 다시 누르면 푼다. */}
-      <div role="group" aria-label="마감으로 거르기" className="flex flex-wrap gap-2">
-        {DUE_FILTERS.map(f => {
-          const active = filter.due === f.key;
-          const count = dueCounts[f.key];
-          return (
-            <button
-              key={f.key}
-              type="button"
-              aria-pressed={active}
-              // 0 건인 조건은 눌러도 빈 화면이 된다. 자리는 지키되(칸이 움직이지 않게)
-              // 흐리게 두고 누르지 못하게 한다.
-              disabled={count === 0 && !active}
-              onClick={() => set({ due: active ? null : f.key })}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-45 ${
-                active
-                  ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-500 dark:bg-primary-500/10 dark:text-primary-300'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:hover:bg-slate-800'
-              }`}
-            >
-              {f.label}{' '}
-              <span className={`tabular-nums ${count > 0 && !active ? DUE_TONE[f.key] : ''}`}>
-                {count}
-              </span>
-            </button>
-          );
-        })}
+        {/* 마감 요약도 같은 줄에 둔다. 둘 다 목록을 좁히는 조작인데 줄이 나뉘어 있어
+            눈이 두 번 훑어야 했고, 머리 영역만 42px 더 썼다(1512px 실측). */}
+        <span
+          aria-hidden="true"
+          className="mx-0.5 hidden h-5 w-px flex-shrink-0 bg-slate-200 dark:bg-slate-700 sm:block"
+        />
+        <div role="group" aria-label="마감으로 거르기" className="flex flex-wrap gap-2">
+          {DUE_FILTERS.map(f => {
+            const active = filter.due === f.key;
+            const count = dueCounts[f.key];
+            return (
+              <button
+                key={f.key}
+                type="button"
+                aria-pressed={active}
+                // 0 건인 조건은 눌러도 빈 화면이 된다. 자리는 지키되(칸이 움직이지 않게)
+                // 흐리게 두고 누르지 못하게 한다.
+                disabled={count === 0 && !active}
+                onClick={() => set({ due: active ? null : f.key })}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-45 ${
+                  active
+                    ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-500 dark:bg-primary-500/10 dark:text-primary-300'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:hover:bg-slate-800'
+                }`}
+              >
+                {f.label}{' '}
+                <span className={`tabular-nums ${count > 0 && !active ? DUE_TONE[f.key] : ''}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
