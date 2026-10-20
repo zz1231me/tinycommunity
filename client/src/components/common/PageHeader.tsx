@@ -18,13 +18,24 @@ interface PageHeaderProps {
 
 export const PageHeader = React.memo(
   ({ title, description, icon, breadcrumbs, children }: PageHeaderProps) => {
+    // 마지막 조각이 바로 아래 제목과 같으면 그리지 않는다. 쓰는 쪽 두 군데가
+    // 모두 같은 문자열을 넘기고 있어서, 같은 이름이 33px 간격으로 두 번 나오고
+    // 그만큼 내용이 밀렸다(1512px 실측: 부스러기 y=80, 제목 y=113). 부스러기가
+    // 실어 나르는 건 올라가는 길 하나뿐이고, 그건 여기 남는다.
+    const trail =
+      breadcrumbs && breadcrumbs.length > 0 && breadcrumbs[breadcrumbs.length - 1].label === title
+        ? breadcrumbs.slice(0, -1)
+        : breadcrumbs;
+
     return (
       <div className="mb-4 pb-3 border-b border-slate-200 dark:border-slate-700/60">
-        {breadcrumbs && breadcrumbs.length > 0 && (
+        {trail && trail.length > 0 && (
           <nav aria-label="breadcrumb" className="mb-3">
             <ol className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-              {breadcrumbs.map((bc, idx) => {
-                const isLast = idx === breadcrumbs.length - 1;
+              {trail.map((bc, idx) => {
+                // 마지막 조각을 떼어 내고 나면 남은 것들은 모두 '올라가는 길' 이다.
+                // isLast 로 링크를 끄면 그 길까지 평범한 글자가 되어 버린다.
+                const isCurrent = idx === trail.length - 1 && !bc.to;
                 return (
                   <li key={`${bc.label}-${idx}`} className="flex items-center gap-1.5 min-w-0">
                     {idx > 0 && (
@@ -44,7 +55,7 @@ export const PageHeader = React.memo(
                         />
                       </svg>
                     )}
-                    {!isLast && bc.to ? (
+                    {bc.to ? (
                       <Link
                         to={bc.to}
                         className="min-w-0 max-w-[180px] sm:max-w-[320px] truncate hover:text-primary-600 dark:hover:text-primary-400 hover:underline transition-colors"
@@ -53,8 +64,8 @@ export const PageHeader = React.memo(
                       </Link>
                     ) : (
                       <span
-                        aria-current={isLast ? 'page' : undefined}
-                        className={`min-w-0 max-w-[180px] sm:max-w-[320px] truncate ${isLast ? 'text-slate-700 dark:text-slate-300 font-medium' : ''}`}
+                        aria-current={isCurrent ? 'page' : undefined}
+                        className={`min-w-0 max-w-[180px] sm:max-w-[320px] truncate ${isCurrent ? 'text-slate-700 dark:text-slate-300 font-medium' : ''}`}
                       >
                         {bc.label}
                       </span>
@@ -68,11 +79,11 @@ export const PageHeader = React.memo(
         {/* 제목과 동작을 한 줄에 두되, 자리가 모자라면 동작 묶음이 통째로 아랫줄로 내려간다.
             예전에는 sm 이상에서 무조건 한 줄이라 검색창·버튼이 제목을 밀어붙였고,
             설명 문구가 "…게시판 · 총" / "4개" 처럼 어정쩡하게 끊겼다. */}
-        <header
-          className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3"
-          role="banner"
-          aria-label={`${title} 페이지 헤더`}
-        >
+        {/* banner 는 사이트 전체 머리글 하나를 가리키는 이정표다. 위쪽 진짜
+            머리글이 이미 그것이라, 여기에도 달아 두면 페이지마다 '머리글' 이
+            둘이 되어 건너뛸 때 어디로 갈지 알 수 없었다. main 안의 header 는
+            이정표가 되지 않으므로 역할을 지우기만 하면 된다. */}
+        <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
           <div className="flex min-w-[14rem] flex-1 items-center gap-3">
             {icon && (
               <div
