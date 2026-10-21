@@ -80,6 +80,44 @@ describe('간트 나무 만들기', () => {
     expect(rows.filter(r => r.parent === 'a')).toHaveLength(2);
   });
 
+  // 서버는 updatedAt 순으로 준다. 그래서 하위가 상위보다 먼저 올 수 있는데, SVAR 는
+  // 그 경우 줄을 통째로 떨어뜨린다 — 실제로 일곱 줄 중 두 줄만 그려졌다.
+  it('하위가 상위보다 먼저 와도 모든 줄이 남는다', () => {
+    const rows = toGanttTree(
+      [
+        task({ id: 'plain1' }),
+        task({ id: 'child', parentTaskId: 'parent' }),
+        task({ id: 'plain2' }),
+        task({ id: 'parent' }),
+      ],
+      today
+    );
+    expect(rows).toHaveLength(4);
+    expect(rows.map(r => r.id)).toContain('child');
+  });
+
+  it('상위가 하위보다 먼저 놓인다', () => {
+    const rows = toGanttTree(
+      [task({ id: 'child', parentTaskId: 'parent' }), task({ id: 'parent' })],
+      today
+    );
+    const order = rows.map(r => r.id);
+    expect(order.indexOf('parent')).toBeLessThan(order.indexOf('child'));
+  });
+
+  it('하위는 상위 바로 뒤에 붙는다 — 사이에 남이 끼지 않게', () => {
+    const rows = toGanttTree(
+      [
+        task({ id: 'a' }),
+        task({ id: 'a-child', parentTaskId: 'a' }),
+        task({ id: 'b' }),
+        task({ id: 'b-child', parentTaskId: 'b' }),
+      ],
+      today
+    );
+    expect(rows.map(r => r.id)).toEqual(['a', 'a-child', 'b', 'b-child']);
+  });
+
   it('업무 원본을 함께 실어 준다 — 막대·왼쪽 목록이 쓴다', () => {
     const rows = toGanttTree([task({ id: 'x', title: '제목' })], today);
     expect((rows[0].task as MyTask).title).toBe('제목');
