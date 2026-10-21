@@ -713,9 +713,43 @@ describe('마감 알림', () => {
     expect(sent.map(n => n.relatedId).sort()).toEqual([today, tomorrow].sort());
     expect(sent.find(n => n.relatedId === today)?.message).toContain('오늘');
 
-    // 한 시간 뒤에 다시 돌아도 더 보내지 않는다
+    // 한 시간 뒤에 다시 돌아도 더 보내지 않는다. 전체 수로 센다 — 앞선 검사가 남긴
+    // 지난 마감에도 알림이 가므로(그게 규칙이다) 숫자를 못박지 않고 늘지 않음만 본다.
+    const afterFirst = await Notification.count({ where: { type: 'TASK_DUE' } });
     await sendDueReminders(new Date(2026, 9, 11, 11, 0));
-    expect(await Notification.count({ where: { type: 'TASK_DUE' } })).toBe(2);
+    expect(await Notification.count({ where: { type: 'TASK_DUE' } })).toBe(afterFirst);
+  });
+
+  it('마감이 지난 일도 알린다 — 놓치면 아무도 모른 채 지나간다', async () => {
+    const late = await createPost(adminCookie, `지난마감 ${Date.now()}`);
+    await setTask(adminCookie, late, {
+      assigneeId: 'testuser',
+      workStatus: 'todo',
+      dueDate: '2026-10-08',
+    });
+    await Notification.destroy({ where: {} });
+
+    await sendDueReminders(now);
+
+    const sent = await Notification.findOne({ where: { type: 'TASK_DUE', relatedId: late } });
+    expect(sent).not.toBeNull();
+    expect(sent?.message).toContain('3일 지났습니다');
+  });
+
+  it('너무 오래 지난 일은 그만 알린다 — 방치된 업무가 매일 같은 말을 반복하지 않게', async () => {
+    const ancient = await createPost(adminCookie, `오래된마감 ${Date.now()}`);
+    await setTask(adminCookie, ancient, {
+      assigneeId: 'testuser',
+      workStatus: 'todo',
+      dueDate: '2026-09-20',
+    });
+    await Notification.destroy({ where: {} });
+
+    await sendDueReminders(now);
+
+    expect(
+      await Notification.findOne({ where: { type: 'TASK_DUE', relatedId: ancient } })
+    ).toBeNull();
   });
 
   it('지정 뒤에 볼 수 없게 된 글은 알리지 않는다 — 알림에 제목이 실린다', async () => {
