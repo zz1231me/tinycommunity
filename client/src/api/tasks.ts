@@ -46,6 +46,8 @@ export interface MyTask {
   dueDate: string | null;
   /** 이 업무의 기간을 달력에 그릴지. 꺼도 간트·목록에는 남는다. */
   showOnCalendar: boolean;
+  /** 상위 업무 id. 간트가 하위를 상위 아래로 들여 그린다(목록과 같은 모양). */
+  parentTaskId: string | null;
   createdAt: string;
   updatedAt: string;
 }

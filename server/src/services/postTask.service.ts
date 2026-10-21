@@ -14,6 +14,7 @@ import { notificationService } from './notification.service';
 import { getAccessibleBoardTypes } from './accessibleBoards';
 import { checkUserBoardPermission } from '../controllers/board.controller';
 import { checkSecretPostAccess } from '../utils/postAccess';
+import { getPostTitleMaxLength } from '../utils/settingsCache';
 import { sequelize } from '../config/sequelize';
 import { logError } from '../utils/logger';
 
@@ -111,7 +112,8 @@ async function assertAssigneeCanSee(assigneeId: string, post: Post) {
 }
 
 /** 하위 업무 제목 상한. 한 줄짜리 할 일이라 글 제목보다 짧게 둔다. */
-const SUBTASK_TITLE_MAX = 200;
+// 하위 업무도 글 하나다. 제목 길이도 글과 같은 설정을 따른다 — 여기만 200 으로
+// 박아 두면 관리자가 글 제목 상한을 늘려도 하위 업무만 거절당한다.
 
 export const postTaskService = {
   async change(params: ChangeParams) {
@@ -147,6 +149,22 @@ export const postTaskService = {
       } else {
         await assertAssigneeCanSee(params.assigneeId, post);
         post.assigneeId = params.assigneeId;
+      }
+    }
+
+    // 업무에서 빼려는데 하위가 달려 있으면 막는다. 빼고 나면 상위는 업무 목록·간트·
+    // 칸반에서 사라지는데 하위는 남아, 무엇에 딸린 일인지 알 수 없는 줄이 된다
+    // (실제로 그런 데이터가 만들어져 있었다 — 하위만 맨 윗단에 떠 있었다).
+    // 떼어 낸 뒤에는 뺄 수 있다. 막는 것이지 영영 못 하게 하는 것이 아니다.
+    if (params.workStatus === 'none' && post.workStatus !== 'none') {
+      const children = await Post.count({
+        where: { parentTaskId: post.id, status: 'published' },
+      });
+      if (children > 0) {
+        throw new AppError(
+          400,
+          `하위 업무 ${children}개가 달려 있어 업무에서 뺄 수 없습니다. 먼저 하위 업무를 떼어 주세요.`
+        );
       }
     }
 
@@ -308,8 +326,9 @@ export const postTaskService = {
   }) {
     const title = params.title.trim();
     if (!title) throw new AppError(400, '하위 업무의 제목을 적어주세요.');
-    if (title.length > SUBTASK_TITLE_MAX) {
-      throw new AppError(400, `제목은 ${SUBTASK_TITLE_MAX}자를 넘을 수 없습니다.`);
+    const titleMax = getPostTitleMaxLength();
+    if (title.length > titleMax) {
+      throw new AppError(400, `제목은 ${titleMax}자를 넘을 수 없습니다.`);
     }
 
     const parent = await Post.findByPk(params.parentId);
@@ -460,6 +479,8 @@ async function findTasks(
             'startDate',
             'dueDate',
             'showOnCalendar',
+            // 간트가 하위 업무를 상위 아래로 들여 그린다(목록과 같은 모양).
+            'parentTaskId',
             'createdAt',
             'updatedAt',
             // 비밀글 여부를 함께 읽어 아래에서 거른다
@@ -504,6 +525,7 @@ async function findTasks(
       startDate: string | null;
       dueDate: string | null;
       showOnCalendar: boolean;
+      parentTaskId: string | null;
       createdAt: Date;
       updatedAt: Date;
       UserId: string | null;
@@ -528,6 +550,7 @@ async function findTasks(
       dueDate: plain.dueDate ?? null,
       // 예전에 만들어진 글은 이 칸이 비어 있을 수 있다 — 기본은 보임
       showOnCalendar: plain.showOnCalendar !== false,
+      parentTaskId: plain.parentTaskId ?? null,
       createdAt: plain.createdAt,
       updatedAt: plain.updatedAt,
       // assertCanManage 와 같은 규칙. 화면이 끌 수 없는 카드를 미리 막는 데 쓴다.

@@ -11,12 +11,13 @@ import { Gantt, Willow, WillowDark, type IApi, type ITask } from '@svar-ui/react
 // 없다(151KB → 33KB).
 import '@svar-ui/react-gantt/style.css';
 import './TaskGantt.css';
+import { toGanttTree } from './ganttTree';
 import type { MyTask } from '../../api/tasks';
 import { useTheme } from '../../contexts/ThemeContext';
 import { safeStorage } from '../../utils/safeStorage';
 import { Tooltip } from '../common/Tooltip';
 import { TaskTooltipContent } from './TaskTooltipContent';
-import { dueInfo, fromGanttRange, toGanttRange } from './taskViews';
+import { dueInfo, fromGanttRange } from './taskViews';
 import { useToday } from '../../hooks/useToday';
 import { useUiPrefs } from '../../hooks/useUiPrefs';
 
@@ -98,23 +99,7 @@ export function TaskGantt({ tasks, onReschedule, embedded = false }: Props) {
   /** 다시 그려질 때(확대 단위 변경) init 이 읽는다 — 보고 있던 달로 돌아가려고. */
   const anchorRef = useRef<Date>(startOfMonth(today));
 
-  const ganttTasks = useMemo<ITask[]>(
-    () =>
-      tasks.map(task => {
-        const range = toGanttRange(task, today);
-        return {
-          id: task.id,
-          text: task.title,
-          start: range.start,
-          end: range.end,
-          type: 'task',
-          scheduled: range.scheduled,
-          // 막대 템플릿·왼쪽 목록이 쓴다
-          task,
-        };
-      }),
-    [tasks, today]
-  );
+  const ganttTasks = useMemo<ITask[]>(() => toGanttTree(tasks, today), [tasks, today]);
 
   /**
    * 보고 있는 달. 이전·다음으로 옮긴다.
@@ -292,21 +277,59 @@ function highlightDay(date: Date, unit: string): string {
   return isWeekend(date) ? 'wx-weekend' : '';
 }
 
+/** 상태 점 색. 막대와 같은 뜻을 목록 쪽에서도 한눈에 보여 준다. */
+const STATUS_DOT: Record<string, string> = {
+  todo: 'bg-slate-400',
+  doing: 'bg-sky-500',
+  done: 'bg-emerald-500',
+};
+
 /** 왼쪽 목록의 업무 이름. 누르면 글이 열린다. */
 function TitleCell({ row }: { row: { text?: string; task?: MyTask } }) {
   const task = row.task;
   if (!task) return <span>{row.text}</span>;
   return (
-    <Link
-      to={`/dashboard/posts/${task.boardType}/${task.id}`}
-      className="block truncate hover:underline"
-    >
-      {task.title}
-    </Link>
+    <span className="flex min-w-0 items-center gap-2">
+      {/* 상태를 점으로. 이름만 있던 칸이라 어느 일이 끝났는지 막대를 보러 가야 했다. */}
+      <span
+        aria-hidden="true"
+        className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
+          STATUS_DOT[task.workStatus] ?? 'bg-slate-400'
+        }`}
+      />
+      <Link
+        to={`/dashboard/posts/${task.boardType}/${task.id}`}
+        className="min-w-0 truncate hover:underline"
+      >
+        {task.title}
+      </Link>
+    </span>
   );
 }
 
-const COLUMNS = [{ id: 'text', header: '업무', width: 200, cell: TitleCell }];
+/** 마감 칸. 지난 것은 붉게 — 막대 색과 같은 뜻을 목록 쪽에서도 보여 준다. */
+function DueCell({ row }: { row: { task?: MyTask } }) {
+  const today = useToday();
+  const task = row.task;
+  if (!task?.dueDate) return <span className="text-slate-400">—</span>;
+  const tone = dueInfo(task, today)?.tone;
+  return (
+    <span
+      className={
+        tone === 'overdue'
+          ? 'font-semibold text-rose-600 dark:text-rose-400'
+          : 'text-slate-600 dark:text-slate-300'
+      }
+    >
+      {task.dueDate.slice(5).replace('-', '/')}
+    </span>
+  );
+}
+
+const COLUMNS = [
+  { id: 'text', header: '업무', width: 210, flexgrow: 0, cell: TitleCell },
+  { id: 'due', header: '마감', width: 86, align: 'center' as const, flexgrow: 0, cell: DueCell },
+];
 
 function Bar({ data }: { data: ITask }) {
   // 화면을 켜 둔 채 자정을 넘겨도 어제 기준으로 칠하지 않게 공용 '오늘' 을 쓴다.

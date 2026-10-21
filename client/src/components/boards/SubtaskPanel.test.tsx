@@ -36,6 +36,7 @@ const task = (over: Partial<MyTask> = {}): MyTask => ({
   startDate: null,
   dueDate: null,
   showOnCalendar: true,
+  parentTaskId: null,
   createdAt: '2026-10-17T00:00:00.000Z',
   updatedAt: '2026-10-17T00:00:00.000Z',
   ...over,

@@ -266,4 +266,27 @@ describe('목록', () => {
     const parent = await create(adminCookie, `비로그인 ${Date.now()}`);
     await request(app).get(`/api/posts/notice/${parent}/subtasks`).expect(401);
   });
+
+  // 상위를 업무에서 빼면(workStatus 'none') 하위는 어디에도 딸리지 않은 채로 남는다.
+  // 업무 목록·간트·칸반은 업무인 글만 보여 주므로 상위가 사라지고, 하위만 맨 윗단에
+  // 떠서 무엇에 딸린 일인지 알 수 없게 된다. 실제 그런 데이터가 만들어져 있었다.
+  it('하위가 있으면 상위를 업무에서 뺄 수 없다', async () => {
+    const parent = await create(adminCookie, `빼기 ${Date.now()}`);
+    await setTask(adminCookie, parent, { workStatus: 'todo' }).expect(200);
+    const child = (await add(adminCookie, parent, { title: '남는 하위' })).body.data.id;
+
+    const res = await setTask(adminCookie, parent, { workStatus: 'none' });
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/하위 업무/);
+
+    // 떼어 내면 뺄 수 있다 — 막는 것이지 영영 못 하게 하는 것이 아니다.
+    await detach(adminCookie, parent, child).expect(200);
+    await setTask(adminCookie, parent, { workStatus: 'none' }).expect(200);
+  });
+
+  it('하위가 있어도 다른 상태로는 바꿀 수 있다 — 대조', async () => {
+    const parent = await create(adminCookie, `상태바꾸기 ${Date.now()}`);
+    await add(adminCookie, parent, { title: '하위' }).expect(201);
+    await setTask(adminCookie, parent, { workStatus: 'done' }).expect(200);
+  });
 });
