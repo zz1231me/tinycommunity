@@ -113,6 +113,7 @@ function show() {
       initialName="공지사항"
       initialDescription=""
       initialTaskEnabled={false}
+      initialCalendarEnabled={false}
       onClose={vi.fn()}
       onBoardUpdated={vi.fn()}
     />
@@ -292,6 +293,7 @@ describe('포커스', () => {
         initialName="공지사항"
         initialDescription=""
         initialTaskEnabled={false}
+        initialCalendarEnabled={false}
         onClose={onClose}
         onBoardUpdated={vi.fn()}
       />

@@ -1,10 +1,13 @@
-// 달력에 함께 띄우는 내 업무. 일정이 있고 아직 끝나지 않은 것만, 읽기 전용 종일 일정으로 그린다.
+// 달력에 함께 띄우는 업무. 일정이 있고 아직 끝나지 않은 것만, 읽기 전용 종일 일정으로 그린다.
 // 일정은 업무 화면·글 상세에서 바꾼다. 달력에서 끌어 바꾸면 '일정' 과 '업무' 의 편집 규칙이 섞인다.
+//
+// 전사 공유 달력에서는 '내 업무' 를, 게시판 달력에서는 '그 게시판의 업무' 를 띄운다 —
+// 게시판 달력에서 내 일만 보이면 프로젝트 일정으로 쓸 수 없다.
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { EventInput } from '@fullcalendar/core';
-import { fetchMyTasks, type WorkStatus } from '../../../../api/tasks';
+import { fetchBoardTasks, fetchMyTasks, type WorkStatus } from '../../../../api/tasks';
 import { taskKeys } from '../../../../api/queryKeys';
 import { useFeature } from '../../../../store/features';
 import { dueInfo } from '../../../../components/tasks/taskViews';
@@ -15,12 +18,19 @@ const OPEN: WorkStatus[] = ['todo', 'doing'];
 const TASK_COLOR = '#f97316';
 const OVERDUE_COLOR = '#e11d48';
 
-export function useTaskEvents(): EventInput[] {
-  const enabled = useFeature('post.tasks');
+/**
+ * @param scope 게시판 달력이면 그 게시판. `taskEnabled` 가 꺼져 있으면 업무를 아예 띄우지
+ *   않는다 — 달력만 켜고 업무는 쓰지 않는 게시판이 있고, 그런 게시판에 업무를 물으면
+ *   서버가 400 으로 거절한다.
+ */
+export function useTaskEvents(scope?: { boardId: string; taskEnabled: boolean }): EventInput[] {
+  const featureOn = useFeature('post.tasks');
+  const enabled = featureOn && (!scope || scope.taskEnabled);
   const { data = [] } = useQuery({
     // 업무 화면과 같은 키를 써서 한쪽에서 바꾸면 다른 쪽도 맞춰진다
-    queryKey: taskKeys.mine(OPEN.join(',')),
-    queryFn: ({ signal }) => fetchMyTasks(OPEN, signal),
+    queryKey: scope ? taskKeys.board(scope.boardId, OPEN.join(',')) : taskKeys.mine(OPEN.join(',')),
+    queryFn: ({ signal }) =>
+      scope ? fetchBoardTasks(scope.boardId, OPEN, signal) : fetchMyTasks(OPEN, signal),
     enabled,
   });
 

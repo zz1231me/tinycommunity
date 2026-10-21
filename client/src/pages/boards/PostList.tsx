@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { fetchPostsByType, PostListResponse } from '../../api/posts';
@@ -23,7 +23,27 @@ import { ColumnHeader, PostListTable } from '../../components/boards/PostListTab
 import { WorkStatusFilter } from '../../components/boards/WorkStatusFilter';
 import type { WorkStatus } from '../../api/tasks';
 import { BoardManagePanel } from '../../components/boards/BoardManagePanel';
+import { BoardTaskViews } from '../../components/tasks/BoardTaskViews';
+import CalendarPage from '../components/calendar/CalendarPage';
 import { boardKeys, keepIfSameBoard } from '../../api/queryKeys';
+
+/**
+ * 게시판 안에서 고를 수 있는 보기. 목록은 글 목록 그대로다.
+ * 보드·간트는 업무용 게시판에서, 달력은 달력을 켠 게시판에서 나온다 —
+ * 둘은 따로 켠다(일정만 쓰는 게시판도, 업무만 쓰는 게시판도 있다).
+ */
+const BOARD_VIEWS: ReadonlyArray<{
+  key: 'list' | 'kanban' | 'gantt' | 'calendar';
+  label: string;
+  needs: 'always' | 'task' | 'calendar';
+}> = [
+  { key: 'list', label: '목록', needs: 'always' },
+  { key: 'kanban', label: '보드', needs: 'task' },
+  { key: 'gantt', label: '간트', needs: 'task' },
+  { key: 'calendar', label: '달력', needs: 'calendar' },
+];
+
+type BoardView = (typeof BOARD_VIEWS)[number]['key'];
 
 const PostList = () => {
   const { boardType } = useParams<{ boardType: string }>();
@@ -32,6 +52,8 @@ const PostList = () => {
   const subscriptionsEnabled = useFeature('social.subscriptions');
   // 사이트 전체 스위치와 게시판 용도가 둘 다 켜져야 업무 상태 필터를 쓴다.
   const tasksEnabled = useFeature('post.tasks');
+  // 달력도 같은 규칙 — 사이트에서 일정을 끄면 게시판 달력도 없다(전역 검색도 같이 닫힌다).
+  const calendarFeature = useFeature('tools.calendar');
 
   // 뒤로가기 복원을 위해 페이지 번호를 URL 쿼리에서 읽는다.
   const currentPage = Math.max(1, Number(searchParams.get('page') ?? '1') || 1);
@@ -64,12 +86,16 @@ const PostList = () => {
       try {
         const res = await checkUserBoardAccess(boardType!);
         const data = res.data?.data?.board ?? res.data?.board;
+        const perms = res.data?.data?.permissions ?? res.data?.permissions;
         if (!data) return fallback;
         return {
           id: data.id,
           name: data.name,
           description: data.description || '게시글 목록을 확인하세요',
           taskEnabled: !!data.taskEnabled,
+          calendarEnabled: !!data.calendarEnabled,
+          // 달력에서 날짜를 끌어 일정을 세울 수 있는지 미리 안다 — 끌고 나서 403 을 보지 않게
+          canWrite: perms?.canWrite !== false,
         } as BoardInfo;
       } catch (err) {
         boardLogger.warn('게시판 정보 가져오기 실패, 기본 정보 사용', err);
@@ -120,6 +146,43 @@ const PostList = () => {
     : null;
 
   const showTasks = tasksEnabled && !!boardInfo?.taskEnabled;
+
+  const showCalendar = calendarFeature && !!boardInfo?.calendarEnabled;
+
+  /**
+   * 고른 보기는 주소에 남긴다 — 공유한 링크가 그대로 열리고, 글을 보고 뒤로 와도
+   * 보던 보기로 돌아온다. 그 게시판에서 쓸 수 없는 보기는 ?view= 가 남아 있어도 목록이다.
+   */
+  const availableViews = useMemo(
+    () =>
+      BOARD_VIEWS.filter(
+        v =>
+          v.needs === 'always' ||
+          (v.needs === 'task' && showTasks) ||
+          (v.needs === 'calendar' && showCalendar)
+      ),
+    [showTasks, showCalendar]
+  );
+  const urlView = searchParams.get('view');
+  const view: BoardView = availableViews.some(v => v.key === urlView)
+    ? (urlView as BoardView)
+    : 'list';
+  const setView = useCallback(
+    (next: BoardView) => {
+      setSearchParams(
+        prev => {
+          const nextParams = new URLSearchParams(prev);
+          if (next === 'list') nextParams.delete('view');
+          else nextParams.set('view', next);
+          // 목록의 쪽 번호는 보드·간트와 상관이 없다. 돌아왔을 때 3쪽부터 보이지 않게 비운다.
+          nextParams.delete('page');
+          return nextParams;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
 
   // 업무용이 꺼진 게시판에 상태 선택이 남으면 목록이 조용히 빈다. 선택을 비우는 것으로 처리한다.
   useEffect(() => {
@@ -413,6 +476,7 @@ const PostList = () => {
           boardType={boardType}
           initialName={boardInfo?.name || ''}
           initialTaskEnabled={!!boardInfo?.taskEnabled}
+          initialCalendarEnabled={!!boardInfo?.calendarEnabled}
           initialDescription={
             boardInfo?.description === '게시글 목록을 확인하세요'
               ? ''
@@ -427,6 +491,7 @@ const PostList = () => {
                     name: info.name,
                     description: info.description,
                     taskEnabled: info.taskEnabled,
+                    calendarEnabled: info.calendarEnabled,
                   }
                 : prev
             )
@@ -434,8 +499,33 @@ const PostList = () => {
         />
       )}
 
-      {/* 상태 줄과 태그 줄을 한 줄에 모은다 */}
-      {(showTasks || availableTags.length > 0) && (
+      {/* 같은 게시판을 목록·보드·간트·달력으로 본다. 고를 것이 하나뿐이면 줄을 두지 않는다. */}
+      {availableViews.length > 1 && (
+        <div
+          role="group"
+          aria-label="보기"
+          className="flex w-fit rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800"
+        >
+          {availableViews.map(v => (
+            <button
+              key={v.key}
+              type="button"
+              aria-pressed={view === v.key}
+              onClick={() => setView(v.key)}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                view === v.key
+                  ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100'
+                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* 상태 줄과 태그 줄을 한 줄에 모은다. 보드·간트에는 그 보기의 조건이 따로 있다. */}
+      {view === 'list' && (showTasks || availableTags.length > 0) && (
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           {showTasks && <WorkStatusFilter selected={statusFilter} onChange={handleStatusChange} />}
 
@@ -476,8 +566,26 @@ const PostList = () => {
         </div>
       )}
 
-      {/* 게시글 목록 카드. 다크모드에서는 shadow 대신 ring 으로 경계를 준다 */}
+      {boardType && (view === 'kanban' || view === 'gantt') && (
+        <BoardTaskViews boardType={boardType} view={view} />
+      )}
+
+      {/* 게시판 달력. 공유 달력과 같은 화면을 쓴다 — 일정 규칙이 두 벌로 갈라지지 않게. */}
+      {boardType && view === 'calendar' && (
+        <CalendarPage
+          boardId={boardType}
+          boardTaskEnabled={showTasks}
+          canManageBoard={canManage}
+          canCreate={boardInfo?.canWrite !== false}
+          embedded
+        />
+      )}
+
+      {/* 게시글 목록 카드. 다크모드에서는 shadow 대신 ring 으로 경계를 준다.
+          보드·간트로 넘어가도 지우지 않고 감춘다 — 적어 둔 검색어와 고른 태그가
+          돌아왔을 때 그대로 있어야 한다. */}
       <div
+        hidden={view !== 'list'}
         className="card overflow-hidden"
         role="region"
         aria-label={`${boardInfo?.name || '게시판'} 목록`}

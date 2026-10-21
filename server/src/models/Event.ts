@@ -35,6 +35,8 @@ export interface EventInstance extends Model<
   borderColor?: string;
   customStyle?: any;
   UserId: ForeignKey<string>;
+  /** 이 일정이 속한 게시판. 비어 있으면 전사 공유 일정이다. */
+  boardId?: string | null;
   recurrenceType?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
   recurrenceInterval?: number;
   recurrenceDays?: number[] | null;
@@ -70,6 +72,13 @@ export class Event
   declare public borderColor?: string;
   declare public customStyle?: any;
   declare public UserId: ForeignKey<string>;
+  /**
+   * 이 일정이 속한 게시판. 비어 있으면 전사 공유 일정이다.
+   *
+   * 권한이 갈린다 — 게시판 일정은 그 게시판을 읽을 수 있는 사람이 보고 쓸 수 있는
+   * 사람이 만든다(EventPermission 의 역할별 규칙은 공유 일정에만 쓴다).
+   */
+  declare public boardId?: string | null;
   declare public recurrenceType?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
   declare public recurrenceInterval?: number;
   declare public recurrenceDays?: number[] | null;
@@ -175,6 +184,13 @@ Event.init(
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
     },
+    boardId: {
+      // boards.id 와 같은 STRING. FK 제약은 걸지 않는다 — 기존 테이블에 컬럼을
+      // 보강하는 길(ensureModelColumns)이 제약을 추가하지 않기 때문이다.
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: '게시판 일정이면 그 게시판 id, 전사 공유 일정이면 NULL',
+    },
     recurrenceType: {
       type: DataTypes.ENUM('none', 'daily', 'weekly', 'monthly', 'yearly'),
       allowNull: false,
@@ -206,7 +222,13 @@ Event.init(
     tableName: 'Events',
     timestamps: true,
     // 기간·사용자·반복 인스턴스 조회의 풀스캔을 막는다. 기존 SQLite 테이블에는 add-indexes 스크립트로 적용한다.
-    indexes: [{ fields: ['start', 'end'] }, { fields: ['UserId'] }, { fields: ['parentEventId'] }],
+    indexes: [
+      { fields: ['start', 'end'] },
+      { fields: ['UserId'] },
+      { fields: ['parentEventId'] },
+      // 게시판 달력은 늘 boardId 로 좁혀 읽는다
+      { fields: ['boardId'] },
+    ],
     hooks: {
       // body 가 바뀌면 검색용 평문(bodyText)을 다시 만든다.
       beforeSave: async (event: Event) => {

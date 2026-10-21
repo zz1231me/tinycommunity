@@ -23,7 +23,7 @@ import { invalidateCache } from '../utils/cache';
 //    (게시판 생성/삭제, 활성화/권한 설정은 관리자 전용 — 여기서 처리하지 않음)
 export const updateBoardInfo = async (req: AuthRequest, res: Response): Promise<void> => {
   const { boardType } = req.params;
-  const { name, description, taskEnabled } = req.body;
+  const { name, description, taskEnabled, calendarEnabled } = req.body;
   const { id: userId, role: userRole } = req.user;
 
   const board = await Board.findByPk(boardType);
@@ -54,6 +54,9 @@ export const updateBoardInfo = async (req: AuthRequest, res: Response): Promise<
   if (taskEnabled !== undefined && typeof taskEnabled !== 'boolean') {
     return sendValidationError(res, 'taskEnabled', '업무용 여부는 true/false 여야 합니다.');
   }
+  if (calendarEnabled !== undefined && typeof calendarEnabled !== 'boolean') {
+    return sendValidationError(res, 'calendarEnabled', '달력 사용 여부는 true/false 여야 합니다.');
+  }
 
   try {
     // 이름/설명/용도만 전달 — order/isActive 등 다른 필드는 변경하지 않음.
@@ -62,6 +65,7 @@ export const updateBoardInfo = async (req: AuthRequest, res: Response): Promise<
       ...(name !== undefined && { name: name.trim() }),
       ...(description !== undefined && { description }),
       ...(taskEnabled !== undefined && { taskEnabled }),
+      ...(calendarEnabled !== undefined && { calendarEnabled }),
     });
     // 이름·설명이 바뀌면 사이드바 목록도 바뀐다 — 관리자 경로는 이미 비우고 있다
     invalidateCache('boards');
@@ -189,6 +193,8 @@ export const checkUserBoardAccess = async (req: AuthRequest, res: Response): Pro
         isPersonal: board.isPersonal,
         // 목록 화면이 담당자 칼럼·상태 필터를 그릴지 판단한다
         taskEnabled: !!board.taskEnabled,
+        // 달력 탭을 둘지 판단한다
+        calendarEnabled: !!board.calendarEnabled,
         ownerId: board.isPersonal ? board.ownerId : undefined,
       },
       permissions,

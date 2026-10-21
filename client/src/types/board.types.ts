@@ -42,6 +42,9 @@ export type BoardInfo = {
   isPersonal?: boolean; // ✅ 개인 폴더 여부
   /** 업무용 게시판 — 담당자·업무 상태를 쓴다 */
   taskEnabled?: boolean;
+  calendarEnabled?: boolean;
+  /** 이 게시판에 글·일정을 쓸 수 있는가 */
+  canWrite?: boolean;
   ownerId?: string; // ✅ 개인 폴더 소유자
   order?: number;
   permissions?: {

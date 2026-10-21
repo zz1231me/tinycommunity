@@ -18,8 +18,14 @@ interface BoardManagePanelProps {
   initialName: string;
   initialDescription: string;
   initialTaskEnabled: boolean;
+  initialCalendarEnabled: boolean;
   onClose: () => void;
-  onBoardUpdated: (info: { name: string; description: string; taskEnabled: boolean }) => void;
+  onBoardUpdated: (info: {
+    name: string;
+    description: string;
+    taskEnabled: boolean;
+    calendarEnabled: boolean;
+  }) => void;
 }
 
 const DEFAULT_COLOR = DEFAULT_TAG_COLOR;
@@ -70,12 +76,14 @@ export function BoardManagePanel({
   initialName,
   initialDescription,
   initialTaskEnabled,
+  initialCalendarEnabled,
   onClose,
   onBoardUpdated,
 }: BoardManagePanelProps) {
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
   const [taskEnabled, setTaskEnabled] = useState(initialTaskEnabled);
+  const [calendarEnabled, setCalendarEnabled] = useState(initialCalendarEnabled);
   const [savingInfo, setSavingInfo] = useState(false);
 
   const [tags, setTags] = useState<Tag[]>([]);
@@ -136,9 +144,14 @@ export function BoardManagePanel({
     }
     setSavingInfo(true);
     try {
-      await updateBoardInfo(boardType, { name: name.trim(), description, taskEnabled });
+      await updateBoardInfo(boardType, {
+        name: name.trim(),
+        description,
+        taskEnabled,
+        calendarEnabled,
+      });
       toast.success('게시판 정보가 저장되었습니다.');
-      onBoardUpdated({ name: name.trim(), description, taskEnabled });
+      onBoardUpdated({ name: name.trim(), description, taskEnabled, calendarEnabled });
     } catch {
       toast.error('게시판 정보 저장에 실패했습니다.');
     } finally {
@@ -382,6 +395,24 @@ export function BoardManagePanel({
                   글마다 담당자와 진행 상태(할 일·진행 중·완료)를 붙입니다. 끄면 상태 줄과 담당자
                   칼럼이 사라지고, 이미 지정된 담당은 &lsquo;내 업무&rsquo;에서도 빠집니다. 값은
                   지워지지 않으니 다시 켜면 그대로 돌아옵니다.
+                </span>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+              <input
+                type="checkbox"
+                checked={calendarEnabled}
+                onChange={e => setCalendarEnabled(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-600 dark:border-slate-600"
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-slate-900 dark:text-slate-100">
+                  게시판 달력
+                </span>
+                <span className="block text-xs text-slate-500 dark:text-slate-400">
+                  이 게시판만의 달력을 둡니다. 회의·마감처럼 글이 아닌 일정을 여기에 세우고, 업무용
+                  게시판이면 업무의 기간도 함께 그립니다. 이 게시판을 볼 수 있는 사람이 일정을 보고,
+                  글을 쓸 수 있는 사람이 일정을 세웁니다. 전사 공유 일정과는 섞이지 않습니다.
                 </span>
               </span>
             </label>

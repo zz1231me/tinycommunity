@@ -53,12 +53,18 @@ interface UseCalendarEventsProps {
   isAdmin?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   calendarRef: React.RefObject<any>;
+  /** 게시판 달력이면 그 게시판. 비우면 전사 공유 달력이다. */
+  boardId?: string;
+  /** 이 게시판의 관리자인가. 남이 세운 게시판 일정도 고칠 수 있다(서버와 같은 규칙). */
+  canManageBoard?: boolean;
 }
 
 export const useCalendarEvents = ({
   userId,
   isAdmin = false,
   calendarRef,
+  boardId,
+  canManageBoard = false,
 }: UseCalendarEventsProps) => {
   const [events, setEvents] = useState<EventInput[]>([]);
   // 레일은 보이는 달이 아니라 오늘 기준으로 고르므로 서버가 준 모양 그대로 들고 있는다.
@@ -69,9 +75,11 @@ export const useCalendarEvents = ({
 
   const canEditEvent = useCallback(
     (event: CalendarEvent) => {
-      return isAdmin || userId === event.UserId;
+      // 게시판 일정은 주인·관리자에 더해 그 게시판의 관리자도 고친다 — 서버의 규칙과 같다.
+      // 화면이 더 너그러우면 눌러 본 뒤에야 403 을 보게 된다.
+      return isAdmin || userId === event.UserId || (!!event.boardId && canManageBoard);
     },
-    [userId, isAdmin]
+    [userId, isAdmin, canManageBoard]
   );
 
   const loadEvents = useCallback(async () => {
@@ -94,11 +102,11 @@ export const useCalendarEvents = ({
 
     try {
       const eventData = merged
-        ? await getEvents(start, end)
+        ? await getEvents(start, end, boardId)
         : byId(
             await Promise.all([
-              getEvents(view.activeStart, view.activeEnd),
-              getEvents(rail.start, rail.end),
+              getEvents(view.activeStart, view.activeEnd, boardId),
+              getEvents(rail.start, rail.end, boardId),
             ])
           );
 
@@ -148,7 +156,8 @@ export const useCalendarEvents = ({
         setLoading(false);
       }
     }
-  }, [userId, calendarRef, canEditEvent]);
+    // boardId 가 바뀌면 다른 게시판의 달력이다. 빼 두면 탭을 옮겨도 앞 게시판 일정이 남는다.
+  }, [userId, calendarRef, canEditEvent, boardId]);
 
   const handleCreateEvent = useCallback(
     async (formData: EventFormData) => {
@@ -189,14 +198,15 @@ export const useCalendarEvents = ({
             : {}),
         };
 
-        await createEvent(eventData);
+        // 게시판 달력에서 세운 일정은 그 게시판에 남는다
+        await createEvent({ ...eventData, ...(boardId ? { boardId } : {}) });
         await loadEvents();
       } catch (error) {
         if (import.meta.env.DEV) console.error('❌ 이벤트 생성 실패:', error);
         throw error;
       }
     },
-    [loadEvents]
+    [loadEvents, boardId]
   );
 
   /**

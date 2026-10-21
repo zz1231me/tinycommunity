@@ -50,14 +50,27 @@ export async function globalSearch(params: SearchPostsParams) {
   // 역할·개인 예외까지 반영한 이 사람의 기능 상태로 거른다
   const flags = await featureFlagService.resolveFor({ id: userId, roleId: userRole });
 
-  // 이벤트 검색 권한. admin 은 항상 허용, 그 외 역할은 EventPermission.canRead 를 본다.
-  let canReadEvents = userRole === ROLES.ADMIN;
-  if (!canReadEvents) {
+  // 전사 공유 일정의 검색 권한. admin 은 항상 허용, 그 외 역할은 EventPermission.canRead 를 본다.
+  let canReadSharedEvents = userRole === ROLES.ADMIN;
+  if (!canReadSharedEvents) {
     const ep = await EventPermission.findOne({ where: { roleId: userRole } });
-    canReadEvents = ep ? ep.canRead : false; // 권한 레코드 없으면 기본 차단
+    canReadSharedEvents = ep ? ep.canRead : false; // 권한 레코드 없으면 기본 차단
   }
+  const calendarOn = flags['tools.calendar'] !== false;
   // 기능이 꺼져 있으면 권한과 무관하게 뺀다
-  canReadEvents = canReadEvents && flags['tools.calendar'] !== false;
+  canReadSharedEvents = canReadSharedEvents && calendarOn;
+
+  /**
+   * 게시판 일정은 역할이 아니라 게시판 접근을 따른다(달력 화면과 같은 규칙).
+   * 이 갈래가 없으면, 역할에 일정 읽기만 켜져 있으면 못 들어가는 게시판의 회의 제목이
+   * 전역 검색으로 새어 나온다 — 달력에서 막아 둔 것이 검색으로 뚫린다.
+   */
+  const boardEventScope = calendarOn && accessibleBoardTypes.length > 0;
+  const eventWhere: Array<Record<string, unknown>> = [
+    ...(canReadSharedEvents ? [{ boardId: null }] : []),
+    ...(boardEventScope ? [{ boardId: { [Op.in]: accessibleBoardTypes } }] : []),
+  ];
+  const canReadEvents = eventWhere.length > 0;
 
   // 서로 독립적인 조회라 병렬로 보낸다. 요약에 필요한 평문 컬럼만 고른다.
   const [posts, wikiPages, events, memos] = await Promise.all([
@@ -118,10 +131,16 @@ export async function globalSearch(params: SearchPostsParams) {
     canReadEvents
       ? Event.findAll({
           where: {
-            // 평문 컬럼으로 검색해 태그로 인한 매칭 누락을 막는다.
-            [Op.or]: [
-              { title: { [Op.like]: `%${escapedSearchTerm}%` } },
-              { bodyText: { [Op.like]: `%${escapedSearchTerm}%` } },
+            [Op.and]: [
+              // 볼 수 있는 일정만 — 전사 공유 일정과 들어갈 수 있는 게시판의 일정.
+              { [Op.or]: eventWhere },
+              {
+                // 평문 컬럼으로 검색해 태그로 인한 매칭 누락을 막는다.
+                [Op.or]: [
+                  { title: { [Op.like]: `%${escapedSearchTerm}%` } },
+                  { bodyText: { [Op.like]: `%${escapedSearchTerm}%` } },
+                ],
+              },
             ],
           },
           include: [

@@ -313,7 +313,19 @@ export const EventManagement = () => {
                           autoFocus
                         />
                       ) : (
-                        event.title
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          {event.title}
+                          {/* 이 목록에는 전사 공유 일정과 게시판 일정이 함께 온다.
+                              표식이 없으면 어느 게시판의 회의인지 모른 채 지우게 된다. */}
+                          {event.boardId && (
+                            <span
+                              className="badge badge-gray font-normal"
+                              title={`${event.boardId} 게시판의 일정입니다. 그 게시판 달력에서도 보입니다.`}
+                            >
+                              {event.boardId}
+                            </span>
+                          )}
+                        </span>
                       )}
                     </td>
                     <td className="admin-td">

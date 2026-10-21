@@ -19,5 +19,5 @@ export const checkBoardManageCapability = (boardType: string): Promise<{ canMana
 // 게시판 기본정보(이름/설명) 수정 — 담당자/관리자
 export const updateBoardInfo = (
   boardType: string,
-  data: { name?: string; description?: string; taskEnabled?: boolean }
+  data: { name?: string; description?: string; taskEnabled?: boolean; calendarEnabled?: boolean }
 ) => api.put(`/boards/${boardType}/info`, data).then(unwrap);

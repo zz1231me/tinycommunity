@@ -35,7 +35,10 @@ const task = (
   ...over,
 });
 
-function setup(tasks: MyTask[], props: { showDone?: boolean; showAssignee?: boolean } = {}) {
+function setup(
+  tasks: MyTask[],
+  props: { showDone?: boolean; showAssignee?: boolean; showBoard?: boolean } = {}
+) {
   const handlers = { onMove: vi.fn(), onSchedule: vi.fn(), onClearSchedule: vi.fn() };
   renderWithQuery(
     <MemoryRouter>
@@ -43,6 +46,7 @@ function setup(tasks: MyTask[], props: { showDone?: boolean; showAssignee?: bool
         tasks={tasks}
         showDone={props.showDone ?? true}
         showAssignee={props.showAssignee}
+        showBoard={props.showBoard}
         {...handlers}
       />
     </MemoryRouter>
@@ -188,5 +192,19 @@ describe('카드 메뉴', () => {
     });
     expect(await screen.findByText(/를 들었습니다/)).toBeInTheDocument();
     fireEvent.mouseUp(document);
+  });
+});
+
+describe('게시판 이름', () => {
+  it('여러 게시판을 함께 볼 때는 카드에 적는다', () => {
+    setup([task('1', 'todo')]);
+    expect(screen.getByText('QC')).toBeInTheDocument();
+  });
+
+  it('한 게시판만 보는 자리에서는 적지 않는다 — 카드마다 같은 이름이 반복될 뿐이다', () => {
+    setup([task('1', 'todo')], { showBoard: false });
+    expect(screen.queryByText('QC')).toBeNull();
+    // 업무 자체는 그대로 보인다
+    expect(screen.getByText('업무 1')).toBeInTheDocument();
   });
 });

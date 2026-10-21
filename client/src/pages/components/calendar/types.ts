@@ -20,6 +20,8 @@ export interface CalendarEvent {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   customStyle?: any;
   UserId: string;
+  /** 게시판 일정이면 그 게시판 id. 비어 있으면 전사 공유 일정이다. */
+  boardId?: string | null;
   user?: {
     id: string;
     name: string;

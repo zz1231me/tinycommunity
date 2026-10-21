@@ -26,6 +26,19 @@ export const checkEventPermission = (action: 'create' | 'read' | 'update' | 'del
         return;
       }
 
+      // 게시판 일정은 역할이 아니라 게시판 접근을 따른다. 여기서 역할 권한으로 먼저 거르면
+      // '게시판에 글은 쓰는데 일정은 못 세우는' 사람이 생겨 게시판 달력이 반쪽이 된다.
+      // 실제 판정은 컨트롤러가 event.service 로 한다(읽기도 같은 이유).
+      const boardId =
+        action === 'create'
+          ? (req.body as { boardId?: unknown } | undefined)?.boardId
+          : req.query?.boardId;
+      if (typeof boardId === 'string' && boardId.length > 0) {
+        logInfo('게시판 일정 — 게시판 권한으로 판정', { userRole, action, boardId });
+        next();
+        return;
+      }
+
       // 역할 정보 확인
       const role = await Role.findByPk(userRole);
       if (!role || !role.isActive) {
