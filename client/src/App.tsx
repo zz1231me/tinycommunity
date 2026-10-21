@@ -33,6 +33,7 @@ const PostList = lazy(() => import('./pages/boards/PostList'));
 const PostDetail = lazy(() => import('./pages/boards/PostDetail'));
 const PostEditor = lazy(() => import('./pages/boards/PostEditor'));
 const CalendarPage = lazy(() => import('./pages/components/calendar/CalendarPage'));
+const Overview = lazy(() => import('./pages/Overview'));
 const AdminUserPage = lazy(() => import('./pages/admin'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const MemoBoard = lazy(() => import('./pages/memos/MemoBoard'));
@@ -212,6 +213,9 @@ function App() {
                 <Route index element={<DashboardLanding />} />
 
                 {/* 주요 화면 */}
+                {/* 조망 화면은 스위치를 두지 않는다 — 모든 기능을 꺼도 갈 곳이 하나는 있어야 한다.
+                    안의 칸들이 각자 제 기능 스위치를 본다. */}
+                <Route path="overview" element={<Overview />} />
                 {/* 꺼진 기능도 주소 직접 입력·알림 링크로 닿을 수 있어 안내 화면을 둔다 */}
                 <Route
                   path="calendar"

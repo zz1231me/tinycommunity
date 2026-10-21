@@ -15,6 +15,12 @@ export const UI_PREF_SPEC = {
   taskShowDone: [true, false],
   /** 간트의 확대 단위 */
   taskGanttZoom: ['day', 'week', 'month'],
+  /**
+   * /dashboard 로 들어왔을 때 갈 첫 화면. 'auto' 는 켜져 있는 첫 곳으로 — 고르기를 무르는 값이다
+   * (보낸 키만 덮어쓰므로, 되돌릴 값이 없으면 한 번 고른 뒤로는 자동으로 돌아갈 수 없다).
+   * 고른 곳이 나중에 꺼지면 화면이 알아서 다음 곳으로 보낸다.
+   */
+  landing: ['auto', 'calendar', 'explore', 'memos', 'wiki', 'tasks', 'scraps'],
 } as const;
 
 export type UiPrefKey = keyof typeof UI_PREF_SPEC;
@@ -23,6 +29,7 @@ export type UiPrefs = Partial<{
   taskSort: (typeof UI_PREF_SPEC.taskSort)[number];
   taskShowDone: boolean;
   taskGanttZoom: (typeof UI_PREF_SPEC.taskGanttZoom)[number];
+  landing: (typeof UI_PREF_SPEC.landing)[number];
 }>;
 
 function isUiPrefKey(key: string): key is UiPrefKey {

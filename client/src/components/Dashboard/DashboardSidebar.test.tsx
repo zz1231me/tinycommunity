@@ -7,12 +7,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
+// 게시판 목록. 검사마다 바꾼다.
+const boards = vi.hoisted(() => ({
+  regular: [] as Array<{ id: string; name: string; taskEnabled?: boolean }>,
+  personal: [] as Array<{ id: string; name: string }>,
+}));
 vi.mock('../../hooks/useAccessibleBoards', () => ({
   useAccessibleBoards: () => ({
-    boards: [],
+    boards: [...boards.regular, ...boards.personal],
     loading: false,
-    regularBoards: [],
-    personalBoards: [],
+    regularBoards: boards.regular,
+    personalBoards: boards.personal,
   }),
 }));
 vi.mock('../../hooks/useBookmarks', () => ({
@@ -90,21 +95,74 @@ describe('본인이 숨긴 메뉴', () => {
     menu.hidden.clear();
   });
 
-  it('숨기지 않았으면 대시보드·탐색·위키가 보인다', () => {
+  it('숨기지 않았으면 대시보드·일정·탐색이 보인다', () => {
     const { getByRole } = renderSidebar(true);
     expect(getByRole('button', { name: /대시보드/ })).toBeInTheDocument();
+    expect(getByRole('button', { name: '일정' })).toBeInTheDocument();
     expect(getByRole('button', { name: /탐색/ })).toBeInTheDocument();
   });
 
-  it('일정을 숨기면 대시보드 메뉴가 빠진다 — 눌러도 꺼짐 화면만 나오던 자리다', () => {
+  it('일정을 숨기면 일정만 빠진다 — 대시보드는 일정이 아니라 조망 화면이다', () => {
     menu.hidden.add('tools.calendar');
-    const { queryByRole } = renderSidebar(true);
-    expect(queryByRole('button', { name: /대시보드/ })).not.toBeInTheDocument();
+    const { queryByRole, getByRole } = renderSidebar(true);
+    expect(queryByRole('button', { name: '일정' })).not.toBeInTheDocument();
+    // 스위치가 없는 화면이라, 모든 기능을 꺼도 갈 곳이 하나는 남는다
+    expect(getByRole('button', { name: /대시보드/ })).toBeInTheDocument();
   });
 
   it('탐색을 숨기면 탐색 메뉴가 빠진다', () => {
     menu.hidden.add('discovery.popular');
     const { queryByRole } = renderSidebar(true);
     expect(queryByRole('button', { name: /탐색/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('개인 공간', () => {
+  beforeEach(() => {
+    menu.hidden.clear();
+    boards.regular = [];
+    boards.personal = [];
+    setWidth(1280);
+  });
+
+  it('도구 묶음에서 바로 간다 — 프로필 드롭다운에만 있으면 찾지 못한다', () => {
+    boards.personal = [{ id: 'personal_abc', name: '홍길동님의 개인공간' }];
+    renderSidebar(true);
+
+    const entry = screen.getByRole('button', { name: /내 공간/ });
+    expect(entry).toBeInTheDocument();
+  });
+
+  it('개인 공간이 없으면 줄을 두지 않는다', () => {
+    renderSidebar(true);
+    expect(screen.queryByRole('button', { name: /내 공간/ })).toBeNull();
+  });
+});
+
+describe('업무 게시판 표식', () => {
+  beforeEach(() => {
+    menu.hidden.clear();
+    boards.regular = [];
+    boards.personal = [];
+    setWidth(1280);
+  });
+
+  it('업무용 게시판은 낭독기에도 그렇게 읽힌다', () => {
+    boards.regular = [
+      { id: 'work', name: '개발 업무', taskEnabled: true },
+      { id: 'notice', name: '공지사항', taskEnabled: false },
+    ];
+    renderSidebar(true);
+
+    expect(screen.getByRole('button', { name: '개발 업무 업무 게시판' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '공지사항' })).toBeInTheDocument();
+  });
+
+  it('업무 메뉴를 숨긴 사람에게는 표식도 없다', () => {
+    menu.hidden.add('post.tasks');
+    boards.regular = [{ id: 'work', name: '개발 업무', taskEnabled: true }];
+    renderSidebar(true);
+
+    expect(screen.getByRole('button', { name: '개발 업무' })).toBeInTheDocument();
   });
 });

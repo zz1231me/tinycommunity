@@ -8,6 +8,8 @@ export interface UiPrefs {
   taskSort?: 'stale' | 'due' | 'priority';
   taskShowDone?: boolean;
   taskGanttZoom?: 'day' | 'week' | 'month';
+  /** 서버 config/uiPrefs.ts 의 landing 과 같은 목록 */
+  landing?: 'auto' | 'calendar' | 'explore' | 'memos' | 'wiki' | 'tasks' | 'scraps';
 }
 
 export async function fetchUiPrefs(signal?: AbortSignal): Promise<UiPrefs> {

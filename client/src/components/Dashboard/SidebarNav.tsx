@@ -7,9 +7,11 @@ interface SidebarNavProps {
   to: string;
   icon: React.ReactNode;
   closeSidebar: () => void;
+  /** 이름 뒤에 붙는 표식(업무 게시판 등). 읽어 줄 말은 이 안에 함께 넣는다. */
+  trailing?: React.ReactNode;
 }
 
-export function SidebarNav({ label, to, icon, closeSidebar }: SidebarNavProps) {
+export function SidebarNav({ label, to, icon, closeSidebar, trailing }: SidebarNavProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const isActive =
@@ -43,6 +45,8 @@ export function SidebarNav({ label, to, icon, closeSidebar }: SidebarNavProps) {
       </span>
 
       <span className="flex-1 text-left truncate">{label}</span>
+
+      {trailing}
 
       {isActive && (
         <span className="w-1.5 h-1.5 rounded-full bg-primary-500 dark:bg-primary-400 flex-shrink-0" />
