@@ -250,6 +250,50 @@ async function widenEnumColumn(
   }
 }
 
+/**
+ * 파일 크기 컬럼을 BIGINT 로 넓힌다. ensureModelColumns 는 없는 컬럼을 ADD 할 뿐
+ * 있는 컬럼의 타입은 바꾸지 않으므로, 예전에 만들어진 표는 INTEGER 그대로다.
+ *
+ * 부호 있는 INTEGER 의 상한은 2,147,483,647 바이트(2047.99MiB)다. 관리자가 상한을
+ * 2GB 로 올리면 그 크기의 파일은 디스크에는 저장되는데 크기 값만 저장에 실패하거나
+ * (MySQL strict·PostgreSQL) 조용히 잘린다(MySQL 느슨한 설정).
+ */
+async function widenSizeColumn(table: string, column: string): Promise<void> {
+  const dialect = sequelize.getDialect();
+  // SQLite 는 타입을 느슨하게 보고 정수 크기 제한이 없다 — 할 일이 없다.
+  if (dialect === 'sqlite') return;
+
+  const qi = sequelize.getQueryInterface();
+  try {
+    const describe = await qi.describeTable(table);
+    const current = String(
+      (describe as Record<string, { type?: unknown }>)[column]?.type ?? ''
+    ).toUpperCase();
+    if (current.includes('BIGINT')) return;
+
+    if (dialect === 'postgres') {
+      await sequelize.query(`ALTER TABLE "${table}" ALTER COLUMN "${column}" TYPE BIGINT`);
+    } else {
+      await qi.changeColumn(table, column, { type: DataTypes.BIGINT, allowNull: false });
+    }
+    logger.info(`[${table}] ${column} 컬럼을 BIGINT 로 넓혔습니다`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.warn(
+      `[${table}] ${column} 컬럼 확장 실패: ${msg}\n` +
+        `  2GB 이상 파일의 크기가 잘리거나 저장에 실패할 수 있습니다.\n` +
+        `  MySQL/MariaDB: ALTER TABLE ${table} MODIFY COLUMN ${column} BIGINT NOT NULL;\n` +
+        `  PostgreSQL:    ALTER TABLE "${table}" ALTER COLUMN "${column}" TYPE BIGINT;`
+    );
+  }
+}
+
+/** 2GB 이상을 담을 수 있도록 파일 크기 컬럼을 넓힌다. */
+export async function widenFileSizeColumns(): Promise<void> {
+  await widenSizeColumn('PostAttachmentVersions', 'size');
+  await widenSizeColumn('temp_shares', 'size');
+}
+
 /** 값이 계속 늘어나는 컬럼(Notifications.type, users.theme 등)을 문자열로 넓힌다. */
 export async function widenGrowingEnums(): Promise<void> {
   await widenEnumColumn(

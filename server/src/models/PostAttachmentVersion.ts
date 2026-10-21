@@ -40,7 +40,20 @@ PostAttachmentVersionModel.init(
     },
     originalName: { type: DataTypes.STRING(255), allowNull: false },
     filename: { type: DataTypes.STRING(255), allowNull: false },
-    size: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    size: {
+      // BIGINT 다. 부호 있는 INTEGER 의 상한은 2,147,483,647 바이트(2047.99MiB)라
+      // 2GB 파일이 1바이트 차이로 넘친다 — MySQL·PostgreSQL 에서는 저장이 실패하고
+      // 느슨한 설정에서는 조용히 잘린 값이 남는다.
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      defaultValue: 0,
+      // mysql2·pg 드라이버는 BIGINT 를 문자열로 돌려준다(정밀도 보존). 파일 크기는
+      // 2^53 에 한참 못 미치므로 숫자로 바꿔 내보낸다 — 쓰는 쪽이 전부 숫자로 다룬다.
+      get(this: { getDataValue: (k: 'size') => unknown }): number {
+        const raw = this.getDataValue('size');
+        return raw === null || raw === undefined ? 0 : Number(raw);
+      },
+    },
     mimetype: { type: DataTypes.STRING(100), allowNull: false, defaultValue: '' },
     uploadedBy: { type: DataTypes.STRING(50), allowNull: true },
     createdAt: { type: DataTypes.DATE, allowNull: false },

@@ -93,6 +93,7 @@ import {
   initializeDefaultData,
   verifyFeatureCatalog,
   widenGrowingEnums,
+  widenFileSizeColumns,
 } from './config/bootstrap';
 import { refreshUploaders } from './middlewares/upload/refresh';
 import { sweepAllExpiredDuels } from './services/duel.service';
@@ -261,13 +262,25 @@ if (env.NODE_ENV === 'development') {
 
 // body 크기 제한을 런타임에 settingsCache 에서 읽어 재시작 없이 반영한다.
 // 매 요청마다 인스턴스를 만들면 비용이 커서 limitMb 가 바뀔 때만 새로 만든다.
+//
+/**
+ * JSON·폼 본문의 상한(MB). 파일 상한과 같이 올리지 않는다.
+ *
+ * 업로드한 파일은 multer 가 디스크에 흘려 쓰지만 JSON 본문은 express 가 통째로
+ * 메모리에 담는다. 파일 상한을 2GB 로 올렸다고 JSON 도 2GB 를 받으면, 요청 하나가
+ * 프로세스를 넘어뜨릴 수 있다 — 크기만 적어 보내면 되므로 파일을 올릴 필요도 없다.
+ *
+ * 100MB 는 본문에 붙여넣은 인라인 이미지(data:image)까지 넉넉히 담는 크기다.
+ */
+const JSON_BODY_CEILING_MB = 100;
+const bodyLimitMb = () => Math.min((getSettings().maxFileSizeMb ?? 100) + 10, JSON_BODY_CEILING_MB);
 let _jsonLimitMb = -1;
 let _jsonMiddleware: express.RequestHandler | null = null;
 let _urlLimitMb = -1;
 let _urlMiddleware: express.RequestHandler | null = null;
 
 app.use((req, res, next) => {
-  const limitMb = (getSettings().maxFileSizeMb ?? 100) + 10; // 10MB 여유 버퍼
+  const limitMb = bodyLimitMb(); // 파일 상한 + 10MB 여유 버퍼, 단 천장까지
   if (limitMb !== _jsonLimitMb || !_jsonMiddleware) {
     _jsonLimitMb = limitMb;
     _jsonMiddleware = express.json({
@@ -279,7 +292,7 @@ app.use((req, res, next) => {
   return _jsonMiddleware(req, res, next);
 });
 app.use((req, res, next) => {
-  const limitMb = (getSettings().maxFileSizeMb ?? 100) + 10;
+  const limitMb = bodyLimitMb();
   if (limitMb !== _urlLimitMb || !_urlMiddleware) {
     _urlLimitMb = limitMb;
     _urlMiddleware = express.urlencoded({
@@ -602,6 +615,7 @@ const startServer = async () => {
     logger.info('✅ 테이블 동기화 완료');
     // 기존 설치의 ENUM 컬럼(알림 종류·테마)을 문자열로 넓힌다 — 값이 계속 늘어나는 컬럼들
     await widenGrowingEnums();
+    await widenFileSizeColumns();
 
     // 기존 게시글/위키/이벤트의 검색용 평문 백필 — 신규 컬럼이 추가된 직후 1회 실행
     await backfillSearchText();
@@ -647,6 +661,16 @@ const startServer = async () => {
     remindDue();
     setInterval(remindDue, 60 * 60 * 1000);
 
+    /**
+     * 큰 파일 하나를 올리는 데 걸리는 시간. Node 의 기본 requestTimeout 은 300초라,
+     * 2GB 를 5분 안에 올리지 못하는 회선(약 57Mbps 미만)에서는 올리던 도중 끊겼다.
+     * nginx 의 proxy_read_timeout(1h)과 같은 값으로 맞춘다.
+     *
+     * 0(무제한)으로 두지는 않는다 — 본문을 아주 느리게 흘려보내 연결을 붙잡는 요청을
+     * 끊을 수단이 사라진다. 헤더 타임아웃(기본 60초)은 그대로 두어 그쪽은 계속 막는다.
+     */
+    const UPLOAD_REQUEST_TIMEOUT_MS = 60 * 60 * 1000;
+
     httpServer = app.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 API 서버 시작: http://0.0.0.0:${PORT}`);
       logger.info(`   📍 로컬 접속: http://127.0.0.1:${PORT}`);
@@ -657,6 +681,7 @@ const startServer = async () => {
         '📌 기본 관리자 계정: ID=admin (비밀번호는 환경변수 ADMIN_DEFAULT_PASSWORD 참조)'
       );
       logger.warn('   ⚠️  보안을 위해 admin 비밀번호를 반드시 변경하세요!');
+      httpServer!.requestTimeout = UPLOAD_REQUEST_TIMEOUT_MS;
 
       // 프로덕션에서 관리자 IP 화이트리스트가 비어 있으면 관리자 페이지가 전 IP에 노출됨 → 부팅 시 경고
       void getIpRuleCache()

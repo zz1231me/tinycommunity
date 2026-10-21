@@ -352,7 +352,9 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       [accountLockMinutes, 'accountLockMinutes', 1, 1440],
       [minPasswordLength, 'minPasswordLength', 6, 72],
       [maxFileCount, 'maxFileCount', 1, 20],
-      [maxFileSizeMb, 'maxFileSizeMb', 1, 1000],
+      // 2048MB(2GB)까지. 올릴 때 함께 맞춰야 하는 것 — nginx client_max_body_size,
+      // 첨부 크기 컬럼(BIGINT). 둘 중 하나라도 작으면 그 크기는 저장되지 않는다.
+      [maxFileSizeMb, 'maxFileSizeMb', 1, 2048],
       [maxImageSizeMb, 'maxImageSizeMb', 1, 500],
       [maxAvatarSizeMb, 'maxAvatarSizeMb', 1, 100],
       [maxArchiveSizeMb, 'maxArchiveSizeMb', 1, 1000],
