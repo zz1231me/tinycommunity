@@ -35,6 +35,11 @@ export type Post = {
   assignee?: { id: string; name: string; avatar?: string | null } | null;
   /** 이 업무의 기간을 달력에 그릴지. 상세 응답에만 온다. */
   showOnCalendar?: boolean;
+  /** 딸린 하위 업무 수. 펼치기 전에도 '3개 중 1개 끝남' 을 보여 주려고 목록이 함께 내려 준다 */
+  subtaskCount?: number;
+  subtaskDoneCount?: number;
+  /** 거를 때만 채워진다 — 하위 줄이 상위와 떨어져 나올 때 어디에 딸린 일인지 알리려고 */
+  parentTask?: { id: string; title: string } | null;
 };
 
 export type BoardInfo = {

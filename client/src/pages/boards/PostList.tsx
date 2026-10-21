@@ -620,6 +620,7 @@ const PostList = () => {
             onPageChange={handlePageChange}
             formatDate={formatRelativeDate}
             showTasks={showTasks}
+            boardType={boardType}
           />
         )}
       </div>

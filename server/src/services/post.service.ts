@@ -284,6 +284,18 @@ export class PostService extends BaseService {
       );
     }
 
+    // 하위 업무는 상위 줄 아래로 접어 둔다. 그냥 두면 만든 시각 순으로 흩어져,
+    // 상위가 3쪽에 있는데 하위만 1쪽에 떠서 무엇에 딸린 일인지 알 수 없다.
+    //
+    // 다만 **찾거나 거를 때는 접지 않는다.** 검색어에 맞는 하위 업무가 접힌 줄
+    // 안에 숨으면 '없다' 로 보인다 — 거르는 사람은 묶음이 아니라 맞는 것을 찾는다.
+    // 이때는 하위 줄에 상위 제목을 함께 내려 혼자 떠 있지 않게 한다.
+    const filtering =
+      Boolean(search) || (tagIds?.length ?? 0) > 0 || (workStatuses?.length ?? 0) > 0;
+    if (!filtering) {
+      andConditions.push({ parentTaskId: null });
+    }
+
     const whereCondition: WhereOptions<PostInstance> & { [key: symbol]: unknown } = {
       boardType,
       status: 'published', // 초안/보관 게시글은 목록에서 제외
@@ -331,6 +343,18 @@ export class PostService extends BaseService {
             through: { attributes: [] },
             required: false,
           },
+          // 거를 때만 하위 줄이 섞여 나온다. 그때 상위 제목이 없으면 그 줄만
+          // 떼어 놓고 보게 되어 무엇에 딸린 일인지 알 수 없다.
+          ...(filtering
+            ? [
+                {
+                  model: Post,
+                  as: 'parentTask',
+                  attributes: ['id', 'title'],
+                  required: false,
+                },
+              ]
+            : []),
         ],
         attributes: [
           'id',
@@ -356,6 +380,20 @@ export class PostService extends BaseService {
           [
             literal(`(SELECT COUNT(*) FROM PostLikes AS pl WHERE pl.PostId = Post.id)`),
             'likeCount',
+          ],
+          // 펼치기 전에도 '하위 3개 중 1개 끝남' 을 보여 주려면 개수가 먼저 와야 한다.
+          // 펼쳐 봐야 비로소 몇 개인지 아는 삼각형은 누를 이유를 주지 못한다.
+          [
+            literal(
+              `(SELECT COUNT(*) FROM Posts AS st WHERE st.parentTaskId = Post.id AND st.status = 'published')`
+            ),
+            'subtaskCount',
+          ],
+          [
+            literal(
+              `(SELECT COUNT(*) FROM Posts AS st WHERE st.parentTaskId = Post.id AND st.status = 'published' AND st.workStatus = 'done')`
+            ),
+            'subtaskDoneCount',
           ],
           ...isReadAttribute,
         ],
@@ -416,6 +454,14 @@ export class PostService extends BaseService {
         // 목록 썸네일용 첫 이미지의 저장 파일명. /api/uploads/thumb 이 권한을 다시 검사하므로 이 값만으로는 받을 수 없다.
         thumbnailName: revealAuthor ? firstImageAttachment(postData.attachments) : null,
         isRead: userId ? Boolean(postData.isRead) : undefined,
+        // 펼치기 삼각형과 '1/3' 진행을 그리는 값. 업무용이 아닌 게시판에서는 늘 0 이다.
+        subtaskCount: parseInt(postData.subtaskCount, 10) || 0,
+        subtaskDoneCount: parseInt(postData.subtaskDoneCount, 10) || 0,
+        // 거를 때만 채워진다(위 include 참고). 상위는 같은 게시판의 글이고 이 목록은
+        // 비밀글도 제목까지는 보여 주므로(위 title 주석), 제목을 붙여도 새로 새는 것은 없다.
+        parentTask: postData.parentTask
+          ? { id: postData.parentTask.id, title: postData.parentTask.title }
+          : null,
         tags: postData.tags || [],
         user: revealAuthor ? postData.user : null,
       };
