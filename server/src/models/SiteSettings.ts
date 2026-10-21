@@ -74,6 +74,7 @@ export interface SiteSettingsInstance extends Model<
   duelMaxStake: CreationOptional<number>;
   duelExpireMinutes: CreationOptional<number>;
   taskReminderDaysBefore: CreationOptional<number>;
+  taskOverdueDays: CreationOptional<number>;
   taskReminderHour: CreationOptional<number>;
   taskSoonDays: CreationOptional<number>;
   duelMaxOpenPerUser: CreationOptional<number>;
@@ -165,6 +166,7 @@ export class SiteSettings
   declare public duelMaxStake: CreationOptional<number>;
   declare public duelExpireMinutes: CreationOptional<number>;
   declare public taskReminderDaysBefore: CreationOptional<number>;
+  declare public taskOverdueDays: CreationOptional<number>;
   declare public taskReminderHour: CreationOptional<number>;
   declare public taskSoonDays: CreationOptional<number>;
   declare public duelMaxOpenPerUser: CreationOptional<number>;
@@ -552,6 +554,12 @@ SiteSettings.init(
       allowNull: false,
       defaultValue: TASK_DEFAULTS.reminderDaysBefore,
       field: 'task_reminder_days_before',
+    },
+    taskOverdueDays: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: TASK_DEFAULTS.overdueDays,
+      field: 'task_overdue_days',
     },
     taskReminderHour: {
       type: DataTypes.INTEGER,

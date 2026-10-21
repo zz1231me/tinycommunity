@@ -684,7 +684,12 @@ describe('마감 알림', () => {
     await refreshSettingsCache();
   };
   const resetTaskRules = () =>
-    setTaskRules({ taskReminderDaysBefore: 1, taskReminderHour: 9, taskSoonDays: 3 });
+    setTaskRules({
+      taskReminderDaysBefore: 1,
+      taskReminderHour: 9,
+      taskSoonDays: 3,
+      taskOverdueDays: 7,
+    });
 
   it('마감이 오늘·내일인 담당자에게 하루 한 번만 알린다', async () => {
     const today = await createPost(adminCookie, `오늘마감 ${Date.now()}`);
@@ -734,6 +739,33 @@ describe('마감 알림', () => {
     const sent = await Notification.findOne({ where: { type: 'TASK_DUE', relatedId: late } });
     expect(sent).not.toBeNull();
     expect(sent?.message).toContain('3일 지났습니다');
+  });
+
+  it('지난 뒤 며칠까지 알릴지는 관리자가 정한다 — 0 이면 지난 일은 알리지 않는다', async () => {
+    const late = await createPost(adminCookie, `설정0 ${Date.now()}`);
+    await setTask(adminCookie, late, {
+      assigneeId: 'testuser',
+      workStatus: 'todo',
+      dueDate: '2026-10-09',
+    });
+
+    try {
+      await setTaskRules({ taskOverdueDays: 0 });
+      await Notification.destroy({ where: {} });
+      await sendDueReminders(now);
+      expect(
+        await Notification.findOne({ where: { type: 'TASK_DUE', relatedId: late } })
+      ).toBeNull();
+
+      // 같은 업무라도 설정을 늘리면 알린다 — 창을 정하는 것이 이 값이다
+      await setTaskRules({ taskOverdueDays: 7 });
+      await Notification.destroy({ where: {} });
+      await sendDueReminders(now);
+      const sent = await Notification.findOne({ where: { type: 'TASK_DUE', relatedId: late } });
+      expect(sent?.message).toContain('2일 지났습니다');
+    } finally {
+      await resetTaskRules();
+    }
   });
 
   it('너무 오래 지난 일은 그만 알린다 — 방치된 업무가 매일 같은 말을 반복하지 않게', async () => {

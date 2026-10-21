@@ -93,6 +93,7 @@ export interface SiteSettings {
   /** 상대가 답하지 않으면 무효가 되기까지의 시간(분) */
   duelExpireMinutes: number;
   taskReminderDaysBefore: number;
+  taskOverdueDays: number;
   taskReminderHour: number;
   taskSoonDays: number;
   /** 한 사람이 동시에 걸어 둘 수 있는 판 수 */

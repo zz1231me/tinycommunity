@@ -820,6 +820,15 @@ export const SiteSettingsManagement = () => {
               unit="일"
             />
             <NumberInput
+              label="마감 알림 — 지난 뒤 며칠까지"
+              description="0 이면 지난 일은 알리지 않습니다. 7 이면 일주일 동안 매일 한 번 — 끝없이 알리면 방치된 업무가 같은 말을 반복합니다"
+              min={0}
+              max={30}
+              value={settings.taskOverdueDays}
+              onChange={v => set('taskOverdueDays', v)}
+              unit="일"
+            />
+            <NumberInput
               label="마감 알림 보내는 시각"
               description="이 시각부터 보냅니다. 정해 두지 않으면 자정 직후에 울립니다"
               min={0}

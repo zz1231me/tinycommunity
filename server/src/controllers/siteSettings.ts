@@ -184,6 +184,7 @@ function toPayload(s: SiteSettings) {
     duelMaxStake: s.duelMaxStake ?? DEFAULTS.duelMaxStake,
     duelExpireMinutes: s.duelExpireMinutes ?? DEFAULTS.duelExpireMinutes,
     taskReminderDaysBefore: s.taskReminderDaysBefore ?? DEFAULTS.taskReminderDaysBefore,
+    taskOverdueDays: s.taskOverdueDays ?? DEFAULTS.taskOverdueDays,
     taskReminderHour: s.taskReminderHour ?? DEFAULTS.taskReminderHour,
     taskSoonDays: s.taskSoonDays ?? DEFAULTS.taskSoonDays,
     duelMaxOpenPerUser: s.duelMaxOpenPerUser ?? DEFAULTS.duelMaxOpenPerUser,
@@ -314,6 +315,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       duelExpireMinutes,
       duelMaxOpenPerUser,
       taskReminderDaysBefore,
+      taskOverdueDays,
       taskReminderHour,
       taskSoonDays,
       attackCost,
@@ -633,6 +635,8 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
         0,
         14
       ),
+      // 지난 뒤로도 알리는 날 수. 0 이면 지난 일은 알리지 않는다(예전 동작).
+      taskOverdueDays: intOrKeep(taskOverdueDays, settings.taskOverdueDays, 0, 30),
       taskReminderHour: intOrKeep(taskReminderHour, settings.taskReminderHour, 0, 23),
       taskSoonDays: intOrKeep(taskSoonDays, settings.taskSoonDays, 1, 30),
       duelMaxOpenPerUser: intOrKeep(duelMaxOpenPerUser, settings.duelMaxOpenPerUser, 1, 20),

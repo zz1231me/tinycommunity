@@ -57,6 +57,7 @@ export interface SiteSettings {
   duelExpireMinutes: number;
   /** 업무 마감 며칠 전부터 알리는지. 0 이면 마감 당일에만 */
   taskReminderDaysBefore: number;
+  taskOverdueDays: number;
   /** 마감 알림을 보내기 시작하는 시각(0~23) */
   taskReminderHour: number;
   /** 마감이 이 날 수 안이면 '곧' 으로 칠한다 */
@@ -184,6 +185,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   duelExpireMinutes: 10,
   // 서버 config/task.ts 의 기본값과 같다. 응답이 오면 덮어쓴다.
   taskReminderDaysBefore: 1,
+  taskOverdueDays: 7,
   taskReminderHour: 9,
   taskSoonDays: 3,
   duelMaxOpenPerUser: 3,

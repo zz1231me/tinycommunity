@@ -138,6 +138,7 @@ export const SETTINGS_DEFAULTS = {
   duelMaxStake: DUEL_DEFAULTS.maxStake,
   duelExpireMinutes: DUEL_DEFAULTS.expireMinutes,
   taskReminderDaysBefore: TASK_DEFAULTS.reminderDaysBefore,
+  taskOverdueDays: TASK_DEFAULTS.overdueDays,
   taskReminderHour: TASK_DEFAULTS.reminderHour,
   taskSoonDays: TASK_DEFAULTS.soonDays,
   duelMaxOpenPerUser: DUEL_DEFAULTS.maxOpenPerUser,
@@ -212,6 +213,7 @@ export async function loadSettingsCache(): Promise<void> {
         duelMaxStake: settings.duelMaxStake ?? DEFAULTS.duelMaxStake,
         duelExpireMinutes: settings.duelExpireMinutes ?? DEFAULTS.duelExpireMinutes,
         taskReminderDaysBefore: settings.taskReminderDaysBefore ?? DEFAULTS.taskReminderDaysBefore,
+        taskOverdueDays: settings.taskOverdueDays ?? DEFAULTS.taskOverdueDays,
         taskReminderHour: settings.taskReminderHour ?? DEFAULTS.taskReminderHour,
         taskSoonDays: settings.taskSoonDays ?? DEFAULTS.taskSoonDays,
         duelMaxOpenPerUser: settings.duelMaxOpenPerUser ?? DEFAULTS.duelMaxOpenPerUser,
@@ -352,6 +354,7 @@ export function getDuelSettings() {
 export function getTaskSettings() {
   return {
     reminderDaysBefore: cachedSettings?.taskReminderDaysBefore ?? DEFAULTS.taskReminderDaysBefore,
+    overdueDays: cachedSettings?.taskOverdueDays ?? DEFAULTS.taskOverdueDays,
     reminderHour: cachedSettings?.taskReminderHour ?? DEFAULTS.taskReminderHour,
     soonDays: cachedSettings?.taskSoonDays ?? DEFAULTS.taskSoonDays,
   };
