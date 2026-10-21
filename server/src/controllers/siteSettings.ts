@@ -3,6 +3,7 @@ import { SiteSettings } from '../models';
 import { logInfo, logError } from '../utils/logger';
 import { sendSuccess, sendError } from '../utils/response';
 import { AuthRequest } from '../types/auth-request';
+import { MAX_FILE_SIZE_MB_CEILING } from '../config/constants';
 import { refreshMaintenanceCache } from '../middlewares/maintenance.middleware';
 import {
   refreshSettingsCache,
@@ -134,7 +135,6 @@ function toPayload(s: SiteSettings) {
     maxFileSizeMb: s.maxFileSizeMb ?? DEFAULTS.maxFileSizeMb,
     maxImageSizeMb: s.maxImageSizeMb ?? DEFAULTS.maxImageSizeMb,
     maxAvatarSizeMb: s.maxAvatarSizeMb ?? DEFAULTS.maxAvatarSizeMb,
-    maxArchiveSizeMb: s.maxArchiveSizeMb ?? DEFAULTS.maxArchiveSizeMb,
     maxImageCount: s.maxImageCount ?? DEFAULTS.maxImageCount,
     allowedImageExtensions: parseExtensionField(
       s.allowedImageExtensions,
@@ -271,7 +271,6 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       maxFileSizeMb,
       maxImageSizeMb,
       maxAvatarSizeMb,
-      maxArchiveSizeMb,
       maxImageCount,
       bcryptRounds,
       allowedImageExtensions,
@@ -352,12 +351,10 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       [accountLockMinutes, 'accountLockMinutes', 1, 1440],
       [minPasswordLength, 'minPasswordLength', 6, 72],
       [maxFileCount, 'maxFileCount', 1, 20],
-      // 2048MB(2GB)까지. 올릴 때 함께 맞춰야 하는 것 — nginx client_max_body_size,
-      // 첨부 크기 컬럼(BIGINT). 둘 중 하나라도 작으면 그 크기는 저장되지 않는다.
-      [maxFileSizeMb, 'maxFileSizeMb', 1, 2048],
+      // 천장과 함께 맞춰야 하는 것은 MAX_FILE_SIZE_MB_CEILING 주석에 적어 두었다.
+      [maxFileSizeMb, 'maxFileSizeMb', 1, MAX_FILE_SIZE_MB_CEILING],
       [maxImageSizeMb, 'maxImageSizeMb', 1, 500],
       [maxAvatarSizeMb, 'maxAvatarSizeMb', 1, 100],
-      [maxArchiveSizeMb, 'maxArchiveSizeMb', 1, 1000],
       [maxImageCount, 'maxImageCount', 1, 20],
       [defaultPageSize, 'defaultPageSize', 5, 100],
       // 제목 컬럼 중 가장 작은 것이 WikiPage.title STRING(200) 이다
@@ -535,8 +532,6 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       maxFileSizeMb: maxFileSizeMb !== undefined ? maxFileSizeMb : settings.maxFileSizeMb,
       maxImageSizeMb: maxImageSizeMb !== undefined ? maxImageSizeMb : settings.maxImageSizeMb,
       maxAvatarSizeMb: maxAvatarSizeMb !== undefined ? maxAvatarSizeMb : settings.maxAvatarSizeMb,
-      maxArchiveSizeMb:
-        maxArchiveSizeMb !== undefined ? maxArchiveSizeMb : settings.maxArchiveSizeMb,
       maxImageCount: maxImageCount !== undefined ? maxImageCount : settings.maxImageCount,
       bcryptRounds: bcryptRounds !== undefined ? bcryptRounds : settings.bcryptRounds,
       allowedImageExtensions:

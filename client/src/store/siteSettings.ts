@@ -19,7 +19,6 @@ export interface SiteSettings {
   maxFileSizeMb: number;
   maxImageSizeMb: number;
   maxAvatarSizeMb: number;
-  maxArchiveSizeMb: number;
   maxImageCount: number;
   allowedImageExtensions: string[];
   allowedDocumentExtensions: string[];
@@ -129,7 +128,6 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   maxFileSizeMb: 100,
   maxImageSizeMb: 10,
   maxAvatarSizeMb: 5,
-  maxArchiveSizeMb: 100,
   maxImageCount: 1,
   allowedImageExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.ico'],
   allowedDocumentExtensions: [

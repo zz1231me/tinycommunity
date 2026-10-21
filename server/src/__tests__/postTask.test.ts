@@ -10,6 +10,9 @@ import { SiteSettings } from '../models/SiteSettings';
 import { refreshSettingsCache } from '../utils/settingsCache';
 import { Post } from '../models/Post';
 import { sendDueReminders } from '../services/taskDue.service';
+import { DONE_LIMIT, OPEN_LIMIT } from '../services/postTask.service';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 
 // 담당자·업무 상태와 읽음 확인.
 //
@@ -1089,5 +1092,17 @@ describe('우선순위', () => {
       .set('Cookie', adminCookie)
       .send({ priority: 'high' })
       .expect(400);
+  });
+});
+
+describe('화면과 나눠 가진 상한', () => {
+  // 서버가 자르는 수를 화면도 알고 있어야 '더 있을 수 있습니다' 안내가 맞는다.
+  // 두 벌로 적혀 있으므로, 한쪽만 바꾸면 여기서 멈추고 다른 쪽을 가리킨다.
+  it('client/src/pages/MyTasks.tsx 의 OPEN_LIMIT·DONE_LIMIT 과 같다', () => {
+    const file = readFileSync(resolve(__dirname, '../../../client/src/pages/MyTasks.tsx'), 'utf-8');
+    const read = (name: string) => Number(file.match(new RegExp(`${name} = (\\d+)`))?.[1]);
+
+    expect(read('OPEN_LIMIT')).toBe(OPEN_LIMIT);
+    expect(read('DONE_LIMIT')).toBe(DONE_LIMIT);
   });
 });

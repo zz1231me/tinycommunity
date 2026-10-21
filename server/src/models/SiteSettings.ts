@@ -33,7 +33,6 @@ export interface SiteSettingsInstance extends Model<
   maxFileSizeMb: CreationOptional<number>;
   maxImageSizeMb: CreationOptional<number>;
   maxAvatarSizeMb: CreationOptional<number>;
-  maxArchiveSizeMb: CreationOptional<number>;
   maxImageCount: CreationOptional<number>;
   bcryptRounds: CreationOptional<number>;
   allowedImageExtensions: CreationOptional<string>;
@@ -127,7 +126,6 @@ export class SiteSettings
   declare public maxFileSizeMb: CreationOptional<number>;
   declare public maxImageSizeMb: CreationOptional<number>;
   declare public maxAvatarSizeMb: CreationOptional<number>;
-  declare public maxArchiveSizeMb: CreationOptional<number>;
   declare public maxImageCount: CreationOptional<number>;
   declare public bcryptRounds: CreationOptional<number>;
   declare public allowedImageExtensions: CreationOptional<string>;
@@ -302,12 +300,6 @@ SiteSettings.init(
       allowNull: false,
       defaultValue: 5,
       field: 'max_avatar_size_mb',
-    },
-    maxArchiveSizeMb: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 100,
-      field: 'max_archive_size_mb',
     },
     maxImageCount: {
       type: DataTypes.INTEGER,

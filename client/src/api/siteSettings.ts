@@ -23,7 +23,6 @@ export interface SiteSettings {
   /** 아바타 이미지 최대 크기 (MB) */
   maxAvatarSizeMb: number;
   /** 압축파일 최대 크기 (MB) */
-  maxArchiveSizeMb: number;
   /** 에디터 이미지 업로드 최대 개수 */
   maxImageCount: number;
   /** bcrypt 해싱 라운드 (10~14) */

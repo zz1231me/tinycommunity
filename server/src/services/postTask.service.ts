@@ -410,8 +410,15 @@ async function taskBoardTypes(userId: string, userRole: string): Promise<string[
   return taskBoards.map(b => b.id);
 }
 
-const OPEN_LIMIT = 100;
-const DONE_LIMIT = 50;
+/**
+ * 한 번에 내려 주는 업무 수.
+ *
+ * 화면도 이 수를 안다 — client/src/pages/MyTasks.tsx 가 목록이 가득 찼는지 보고
+ * '더 있을 수 있습니다' 를 띄운다. 여기만 바꾸면 그 안내가 조용히 거짓이 되므로
+ * (가득 차도 뜨지 않거나, 차지 않았는데 뜬다) 아래 검사가 두 값을 묶어 둔다.
+ */
+export const OPEN_LIMIT = 100;
+export const DONE_LIMIT = 50;
 
 /**
  * 업무 목록 공통 조회.

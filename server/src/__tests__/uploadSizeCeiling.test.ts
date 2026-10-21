@@ -1,4 +1,4 @@
-// 파일 상한을 2GB 까지 올릴 수 있는가, 그리고 올려도 조용히 깨지는 곳이 없는가.
+// 파일 상한을 3GB 까지 올릴 수 있는가, 그리고 올려도 조용히 깨지는 곳이 없는가.
 //
 // 상한 하나를 올리는 일이 아니다. 네 층이 함께 맞아야 한다.
 //  1. 관리자 설정의 검증 범위 (여기)
@@ -16,6 +16,7 @@ import { SiteSettings } from '../models/SiteSettings';
 import { TempShare } from '../models/TempShare';
 import { PostAttachmentVersion } from '../models/PostAttachmentVersion';
 import { refreshSettingsCache, getFileSizeLimits } from '../utils/settingsCache';
+import { MAX_FILE_SIZE_MB_CEILING } from '../config/constants';
 
 let adminCookie: string;
 
@@ -33,18 +34,18 @@ afterAll(async () => {
   await refreshSettingsCache();
 });
 
-describe('파일 상한 2GB', () => {
-  it('관리자가 2048MB 까지 올릴 수 있다', async () => {
-    const res = await put({ maxFileSizeMb: 2048 });
+describe('파일 상한 3GB', () => {
+  it('관리자가 천장까지 올릴 수 있다', async () => {
+    const res = await put({ maxFileSizeMb: MAX_FILE_SIZE_MB_CEILING });
     expect(res.status).toBe(200);
 
     await refreshSettingsCache();
     // 업로더가 실제로 쓰는 바이트 값까지 따라와야 한다
-    expect(getFileSizeLimits().DOCUMENT).toBe(2048 * 1024 * 1024);
+    expect(getFileSizeLimits().DOCUMENT).toBe(MAX_FILE_SIZE_MB_CEILING * 1024 * 1024);
   });
 
-  it('2048MB 를 넘기면 거절한다 — 받을 수 없는 값을 저장해 두지 않는다', async () => {
-    const res = await put({ maxFileSizeMb: 4096 });
+  it('천장을 넘기면 거절한다 — 받을 수 없는 값을 저장해 두지 않는다', async () => {
+    const res = await put({ maxFileSizeMb: MAX_FILE_SIZE_MB_CEILING + 1 });
     expect(res.status).toBe(400);
   });
 
@@ -55,8 +56,8 @@ describe('파일 상한 2GB', () => {
     }
   });
 
-  it('2GB 짜리 크기를 적어 둘 수 있다 — INTEGER 였다면 넘친다', async () => {
-    const twoGb = 2 * 1024 * 1024 * 1024; // 2,147,483,648 — 부호 있는 INT 상한 + 1
+  it('천장만 한 크기를 적어 둘 수 있다 — INTEGER 였다면 넘친다', async () => {
+    const twoGb = MAX_FILE_SIZE_MB_CEILING * 1024 * 1024; // 부호 있는 INT 상한을 넘는다
     const row = await TempShare.create({
       id: `size-${Date.now()}`,
       originalName: '큰파일.zip',
@@ -83,7 +84,7 @@ describe('층 사이가 어긋나지 않는다', () => {
       const m = conf.match(/client_max_body_size\s+(\d+)m;/);
       expect(m).not.toBeNull();
       // 여기가 더 작으면 관리자가 한도를 올려도 nginx 가 먼저 413 으로 끊는다
-      expect(Number(m?.[1])).toBeGreaterThanOrEqual(2048);
+      expect(Number(m?.[1])).toBeGreaterThanOrEqual(MAX_FILE_SIZE_MB_CEILING);
     }
   });
 });

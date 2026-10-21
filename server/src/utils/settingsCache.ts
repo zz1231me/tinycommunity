@@ -160,7 +160,6 @@ export const SETTINGS_DEFAULTS = {
   maxFileSizeMb: 100,
   maxImageSizeMb: 10,
   maxAvatarSizeMb: 5,
-  maxArchiveSizeMb: 100,
   maxImageCount: 1,
   bcryptRounds: 10,
   defaultPageSize: 10,
@@ -236,7 +235,6 @@ export async function loadSettingsCache(): Promise<void> {
         maxFileSizeMb: settings.maxFileSizeMb ?? DEFAULTS.maxFileSizeMb,
         maxImageSizeMb: settings.maxImageSizeMb ?? DEFAULTS.maxImageSizeMb,
         maxAvatarSizeMb: settings.maxAvatarSizeMb ?? DEFAULTS.maxAvatarSizeMb,
-        maxArchiveSizeMb: settings.maxArchiveSizeMb ?? DEFAULTS.maxArchiveSizeMb,
         maxImageCount: settings.maxImageCount ?? DEFAULTS.maxImageCount,
         bcryptRounds: Math.min(Math.max(settings.bcryptRounds ?? DEFAULTS.bcryptRounds, 10), 14),
         defaultPageSize: settings.defaultPageSize ?? DEFAULTS.defaultPageSize,
@@ -435,19 +433,24 @@ export function getBcryptRounds(): number {
   return Math.min(Math.max(cachedSettings?.bcryptRounds ?? DEFAULTS.bcryptRounds, 10), 14);
 }
 
-/** 파일 크기 제한 (바이트 단위) */
+/**
+ * 파일 크기 제한 (바이트 단위).
+ *
+ * 압축 파일을 위한 ARCHIVE 한도가 따로 있었는데 어느 업로더도 읽지 않았고 관리자 화면에도
+ * 없었다 — zip 도 실제로는 DOCUMENT 한도를 받는다. 쓰이지 않는 값이 설정처럼 보이면
+ * 바꿔 놓고 왜 안 듣는지 찾게 되므로 걷어냈다. 확장자 목록(allowedArchiveExtensions)은
+ * 실제로 쓰이므로 그대로 둔다.
+ */
 export function getFileSizeLimits(): {
   IMAGE: number;
   AVATAR: number;
   DOCUMENT: number;
-  ARCHIVE: number;
 } {
   const s = cachedSettings;
   return {
     IMAGE: (s?.maxImageSizeMb ?? DEFAULTS.maxImageSizeMb) * 1024 * 1024,
     AVATAR: (s?.maxAvatarSizeMb ?? DEFAULTS.maxAvatarSizeMb) * 1024 * 1024,
     DOCUMENT: (s?.maxFileSizeMb ?? DEFAULTS.maxFileSizeMb) * 1024 * 1024,
-    ARCHIVE: (s?.maxArchiveSizeMb ?? DEFAULTS.maxArchiveSizeMb) * 1024 * 1024,
   };
 }
 

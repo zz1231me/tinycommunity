@@ -1035,9 +1035,9 @@ export const SiteSettingsManagement = () => {
             />
             <NumberInput
               label="문서/일반 파일 최대 크기"
-              description="문서, 압축 첨부파일 1개당 최대 크기. 최대 2048MB(2GB)까지 — 웹서버(nginx)의 client_max_body_size 도 그만큼 열려 있어야 합니다"
+              description="문서, 압축 첨부파일 1개당 최대 크기. 최대 3072MB(3GB)까지 — 웹서버(nginx)의 client_max_body_size 도 그만큼 열려 있어야 합니다"
               min={1}
-              max={2048}
+              max={3072}
               value={settings.maxFileSizeMb}
               onChange={v => set('maxFileSizeMb', v)}
               unit="MB"
@@ -1147,6 +1147,15 @@ export const SiteSettingsManagement = () => {
             value={settings.maxAvatarSizeMb}
             onChange={v => set('maxAvatarSizeMb', v)}
             unit="MB"
+          />
+          <NumberInput
+            label="이미지 한 번에 올릴 수 있는 개수"
+            description="에디터에서 한 번에 선택할 수 있는 이미지 수"
+            min={1}
+            max={20}
+            value={settings.maxImageCount}
+            onChange={v => set('maxImageCount', v)}
+            unit="개"
           />
         </SettingList>
       </AdminSection>
