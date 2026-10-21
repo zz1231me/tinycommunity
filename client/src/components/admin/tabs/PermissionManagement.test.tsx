@@ -183,4 +183,20 @@ describe('권한 보기 바꾸기', () => {
     expect(screen.getByRole('rowheader', { name: /자유게시판/ })).toBeInTheDocument();
     expect(screen.queryByRole('rowheader', { name: /공지사항/ })).toBeNull();
   });
+
+  // 찾기로 줄을 줄여도 역할이 닿는 범위가 변하는 것은 아니다. 걸러진 것만 세면
+  // '자유' 로 찾았을 때 1/1 로 보여 실제(2개 중 1개)를 숨긴다.
+  it('찾는 중에도 세로줄 합계는 전체 게시판으로 센다', async () => {
+    await show();
+    go('한눈에');
+    fireEvent.click(within(screen.getByRole('group', { name: '볼 권한' })).getByText('쓰기'));
+    fireEvent.change(screen.getByRole('searchbox', { name: /게시판 이름/ }), {
+      target: { value: '자유' },
+    });
+
+    const cols = screen.getAllByRole('columnheader').map(c => c.textContent);
+    // 한 줄만 보이지만 일반 사용자는 두 게시판 중 한 곳에서 쓸 수 있다
+    expect(screen.getAllByRole('rowheader')).toHaveLength(1);
+    expect(cols.find(c => c?.startsWith('일반 사용자'))).toContain('1/2');
+  });
 });

@@ -123,8 +123,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     <>
       {children}
 
+      {/* 개발 중에만 뜨는 상태 패널. pointer-events-none 이 없으면 화면 오른쪽 아래에
+          겹치는 것을 눌러도 이 패널이 먼저 받는다 — 관리자 설정의 '설정 저장' 이 바로
+          이 자리라, 눌러도 아무 일이 없는 것처럼 보였다(클릭이 패널에 먹혔다). */}
       {import.meta.env.DEV && (
-        <div className="fixed bottom-4 right-4 bg-black/75 text-white p-2 rounded text-xs z-50">
+        <div className="pointer-events-none fixed bottom-4 right-4 z-50 rounded bg-black/75 p-2 text-xs text-white">
           <div>🔐 Login : {isAuthenticated ? '✅' : '❌'}</div>
           {user && (
             <>

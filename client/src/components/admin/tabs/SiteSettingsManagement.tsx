@@ -417,7 +417,9 @@ export const SiteSettingsManagement = () => {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* 묶음 고르기. 구역이 열넷이라 한 줄로 늘어놓으면 찾는 값까지 내려가는 것이 일이다.
-          위에 붙여 두어(sticky) 아래로 내려가도 다른 묶음으로 건너뛸 수 있게 한다. */}
+          위에 붙여 두어(sticky) 아래로 내려가도 다른 묶음으로 건너뛸 수 있게 한다.
+          '저장 안 됨' 안내는 아래 저장 바가 맡는다 — 거기가 눌러야 할 자리이고,
+          그 바도 붙어 있어 늘 보인다. 두 군데 적으면 같은 말이 두 번 뜬다. */}
       <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-1.5 border-b border-slate-200 bg-white/95 px-1 py-2 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
         <nav aria-label="설정 묶음" className="flex min-w-0 flex-wrap gap-1.5">
           {GROUPS.map(g => (
@@ -436,13 +438,6 @@ export const SiteSettingsManagement = () => {
             </button>
           ))}
         </nav>
-        {/* 다른 묶음에서 고친 것은 보이지 않는다. 바뀐 것이 있다는 사실은 늘 보여야
-            '저장을 눌렀던가?' 를 사람이 기억하지 않아도 된다. */}
-        {dirty && (
-          <span className="ml-auto whitespace-nowrap text-xs font-medium text-amber-600 dark:text-amber-400">
-            저장하지 않은 변경이 있습니다
-          </span>
-        )}
       </div>
 
       {/* 기본 정보 */}
@@ -1431,8 +1426,21 @@ export const SiteSettingsManagement = () => {
         </AdminSection>
       )}
 
-      {/* 저장 바 */}
-      <div className="flex justify-end gap-3 pt-2 pb-4">
+      {/* 저장 바. 화면 아래에 붙여 둔다(기능 설정 화면과 같은 방식) — 묶음 하나도
+          한 화면을 넘길 수 있어, 가운데쯤에서 고친 뒤 저장하려면 끝까지 내려가야 했다.
+          바뀐 것이 있을 때는 테두리를 띄워 눌러야 할 것이 있음을 알린다. */}
+      <div
+        className={`sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-end gap-3 px-1 py-3 ${
+          dirty
+            ? 'border-t border-amber-300 bg-amber-50/95 backdrop-blur dark:border-amber-700 dark:bg-amber-900/30'
+            : 'border-t border-slate-200 bg-white/95 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95'
+        }`}
+      >
+        {dirty && (
+          <span className="mr-auto text-sm font-medium text-amber-800 dark:text-amber-200">
+            저장하지 않은 변경이 있습니다.
+          </span>
+        )}
         <button
           type="button"
           onClick={async () => {

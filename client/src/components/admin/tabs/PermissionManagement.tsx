@@ -90,6 +90,7 @@ const PERMS: { id: PermKey; label: string }[] = [
  */
 function PermissionMatrix({
   boards,
+  allBoards,
   roles,
   permissions,
   perm,
@@ -98,7 +99,11 @@ function PermissionMatrix({
   disabled,
   dirtyBoards,
 }: {
+  /** 지금 그릴 줄(찾기로 걸러진 것). */
   boards: { id: string; name: string }[];
+  /** 세로줄 합계를 세는 모집단. 찾기로 거른다고 역할이 닿는 범위가 변하는 것은 아니므로,
+      걸러진 것만 세면 '자유' 로 찾았을 때 1/1 처럼 보여 실제(3/9)를 숨긴다. */
+  allBoards: { id: string; name: string }[];
   roles: { id: string; name: string }[];
   permissions: Record<string, BoardPermission[]>;
   perm: PermKey;
@@ -140,13 +145,13 @@ function PermissionMatrix({
                 게시판
               </th>
               {roles.map(role => {
-                const count = boards.filter(b => on(b.id, role.id)).length;
+                const count = allBoards.filter(b => on(b.id, role.id)).length;
                 return (
                   <th key={role.id} className="admin-th whitespace-nowrap px-3 text-center">
                     <span className="block">{role.name}</span>
                     {/* 세로줄 합계 — 이 역할이 몇 개 게시판에서 이 권한을 갖는지 */}
                     <span className="block text-xs font-normal tabular-nums text-slate-400">
-                      {count}/{boards.length}
+                      {count}/{allBoards.length}
                     </span>
                   </th>
                 );
@@ -500,6 +505,7 @@ export const PermissionManagement = () => {
           ) : view === 'matrix' ? (
             <PermissionMatrix
               boards={shownBoards}
+              allBoards={boards}
               roles={roles}
               permissions={boardPermissions}
               perm={matrixPerm}
