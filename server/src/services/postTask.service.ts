@@ -340,15 +340,23 @@ export const postTaskService = {
     });
 
     if (params.assigneeId || params.dueDate) {
-      await postTaskService.change({
-        postId: child.id,
-        boardType: parent.boardType,
-        actorId: params.actorId,
-        actorRole: params.actorRole,
-        actorName: params.actorName,
-        ...(params.assigneeId ? { assigneeId: params.assigneeId } : {}),
-        ...(params.dueDate ? { dueDate: params.dueDate } : {}),
-      });
+      try {
+        await postTaskService.change({
+          postId: child.id,
+          boardType: parent.boardType,
+          actorId: params.actorId,
+          actorRole: params.actorRole,
+          actorName: params.actorName,
+          ...(params.assigneeId ? { assigneeId: params.assigneeId } : {}),
+          ...(params.dueDate ? { dueDate: params.dueDate } : {}),
+        });
+      } catch (err) {
+        // 담당자·마감이 거절되면 방금 만든 글도 되돌린다. 남겨 두면 '만들지 못했습니다' 라고
+        // 답해 놓고 제목만 있는 하위가 생기고, 담당자를 고쳐 다시 누를 때마다 하나씩 쌓인다.
+        // 아무에게도 보인 적 없는 글이라 되돌리기(force)다 — 휴지통에 남길 삭제가 아니다.
+        await child.destroy({ force: true });
+        throw err;
+      }
     }
 
     const [view] = await findTasks(

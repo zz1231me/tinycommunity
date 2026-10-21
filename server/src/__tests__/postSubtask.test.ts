@@ -135,6 +135,22 @@ describe('붙이기', () => {
     await Board.update({ taskEnabled: true }, { where: { id: 'notice' } });
     expect(res.status).toBe(400);
   });
+
+  it('담당자 지정이 거절되면 하위 업무도 남지 않는다', async () => {
+    // subsecret 은 admin 만 읽는다. 그 게시판을 못 보는 사람을 담당자로 넣으면 지정이 거절된다.
+    const parent = await create(adminCookie, `되돌리기 ${Date.now()}`, 'subsecret');
+
+    const res = await add(
+      adminCookie,
+      parent,
+      { title: '맡길 수 없는 일', assigneeId: 'testuser' },
+      'subsecret'
+    );
+
+    expect(res.status).toBe(400);
+    // 거절해 놓고 글만 만들어 두면, 담당자를 고쳐 다시 누를 때마다 빈 하위가 쌓인다.
+    expect((await list(adminCookie, parent, 'subsecret')).body.data).toHaveLength(0);
+  });
 });
 
 describe('권한', () => {
