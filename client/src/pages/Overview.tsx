@@ -41,7 +41,8 @@ function CardShell({
   return (
     <section className="card flex flex-col p-4">
       <div className="mb-3 flex items-baseline justify-between gap-2">
-        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+        {/* card-title(16px) — 15px 로 두면 본문과 같아져 머리글로 읽히지 않는다(styles/index.css 의 타입 스케일) */}
+        <h2 className="card-title flex items-center gap-1.5">
           <span className="text-slate-400">{icon}</span>
           {title}
         </h2>

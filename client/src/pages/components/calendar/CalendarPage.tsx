@@ -397,6 +397,14 @@ const CalendarPage: React.FC<CalendarPageProps> = ({
           : 'h-full flex flex-col xl:flex-row bg-slate-50 dark:bg-slate-900'
       }
     >
+      {/*
+        이 화면만 제목이 없었다. 다른 화면은 PageHeader 가 h1 을 그리는데 달력은 화면을
+        가득 채우는 구성이라 그 자리가 없었고, 제목으로 건너뛰면 '2026년 10월'(h2)이
+        가장 먼저 잡혔다 — 날짜이지 이 화면의 이름이 아니다.
+        보이는 자리를 빼앗지 않도록 읽기 전용으로 둔다. 게시판 탭 안에서는 게시판 이름이
+        이미 h1 이므로 두지 않는다 — 한 문서에 h1 이 둘이면 어느 쪽이 이 화면인지 모른다.
+      */}
+      {!embedded && <h1 className="sr-only">일정</h1>}
       <div
         className={`flex flex-col min-h-0
                       bg-white dark:bg-slate-900
