@@ -183,8 +183,11 @@ export default function AttendancePage() {
 
   return (
     <PageContainer>
+      {/* 사이드바·메뉴 숨기기와 같은 이름을 쓴다(constants/menus.ts 의 규칙).
+          '출근 확인' 이라고 적혀 있어, 사이드바의 '출퇴근' 을 누른 사람이 다른 곳에 온
+          것처럼 읽혔다. 이 화면은 출근만이 아니라 퇴근과 지난 기록까지 다룬다. */}
       <PageHeader
-        title="출근 확인"
+        title="출퇴근"
         description={status.data?.policy.noticeText ?? ''}
         icon={<Clock className="h-6 w-6 text-primary-600 dark:text-primary-400" />}
       />

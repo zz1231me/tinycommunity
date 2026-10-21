@@ -540,12 +540,17 @@ export const PermissionManagement = () => {
                 <div key={board.id} className="card p-6">
                   <div className="mb-4 flex items-center justify-between gap-3">
                     {/* 게시판 이름은 100자까지 허용되므로 줄이지 않으면 화면이 가로로 늘어난다 */}
-                    <h3 className="flex min-w-0 items-baseline gap-2 text-base font-semibold text-slate-800 dark:text-slate-100">
+                    {/* 좁은 화면에서는 줄을 접는다. 한 줄로 두면 id 와 요약이 자리를
+                        먼저 가져가(둘 다 flex-shrink-0) 게시판 이름을 쥔 단추가 5px 로
+                        찌그러졌다 — 이름도 안 보이고 누를 수도 없었다(실측 375px). */}
+                    <h3 className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-base font-semibold text-slate-800 dark:text-slate-100">
                       <button
                         type="button"
                         onClick={() => toggleBoard(board.id)}
                         aria-expanded={open}
-                        className="flex min-w-0 items-baseline gap-2 text-left hover:text-primary-600 dark:hover:text-primary-400"
+                        // 줄어들되 찌그러지지는 않게. 늘어나게 두면(flex-1) 넓은 화면에서 이름이 자리를
+                        // 다 가져가 요약이 아랫줄로 밀린다.
+                        className="flex min-w-32 shrink items-baseline gap-2 text-left hover:text-primary-600 dark:hover:text-primary-400"
                       >
                         <ChevronRight
                           className={`h-4 w-4 flex-shrink-0 self-center transition-transform ${open ? 'rotate-90' : ''}`}
