@@ -115,3 +115,87 @@ describe('역할별 기능', () => {
     expect(screen.queryByRole('group', { name: '메모 역할별 사용' })).not.toBeInTheDocument();
   });
 });
+
+// 기능이 서른 개를 넘으면 쭉 늘어놓은 목록에서 하나를 눈으로 찾아야 한다(실측 4,851px).
+// 이름으로 거르고, 관리자가 실제로 묻는 것을 단추로 둔다.
+describe('기능 찾기와 거르기', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const many: FeatureCatalog = {
+    groups: { tools: '도구', boards: '게시판' },
+    features: [
+      { ...catalog().features[0], key: 'tools.memo', label: '메모', group: 'tools' },
+      {
+        ...catalog().features[0],
+        key: 'tools.calendar',
+        label: '일정',
+        group: 'tools',
+        enabled: false,
+        effective: false,
+      },
+      { ...catalog().features[0], key: 'boards.tag', label: '태그', group: 'boards' },
+    ],
+  };
+
+  const titles = () =>
+    screen.getAllByRole('switch').map(s => s.getAttribute('aria-label')?.replace(' 사용', ''));
+
+  it('이름으로 거른다', async () => {
+    setup(many);
+    await screen.findByRole('switch', { name: '메모 사용' });
+
+    fireEvent.change(screen.getByRole('searchbox', { name: /기능 이름/ }), {
+      target: { value: '일정' },
+    });
+    expect(titles()).toEqual(['일정']);
+  });
+
+  // 이름을 몰라도 키로 찾을 수 있어야 한다 — '달력' 을 찾는 사람은 'calendar' 를 친다.
+  it('기능 키로도 거른다', async () => {
+    setup(many);
+    await screen.findByRole('switch', { name: '메모 사용' });
+
+    fireEvent.change(screen.getByRole('searchbox', { name: /기능 이름/ }), {
+      target: { value: 'calendar' },
+    });
+    expect(titles()).toEqual(['일정']);
+  });
+
+  it('꺼진 것만 모아 본다 — 개수도 함께 알린다', async () => {
+    setup(many);
+    await screen.findByRole('switch', { name: '메모 사용' });
+
+    const off = screen.getByRole('button', { name: '꺼짐 1' });
+    fireEvent.click(off);
+    expect(titles()).toEqual(['일정']);
+    expect(off).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('맞는 것이 없으면 빈 목록 대신 그렇다고 말한다', async () => {
+    setup(many);
+    await screen.findByRole('switch', { name: '메모 사용' });
+
+    fireEvent.change(screen.getByRole('searchbox', { name: /기능 이름/ }), {
+      target: { value: '없는기능' },
+    });
+    expect(screen.getByText('조건에 맞는 기능이 없습니다.')).toBeInTheDocument();
+    expect(screen.queryAllByRole('switch')).toHaveLength(0);
+  });
+
+  it('거르는 중에도 고친 것은 저장에 실려 간다', async () => {
+    featuresApi.saveFeatures.mockResolvedValue(many);
+    setup(many);
+    await screen.findByRole('switch', { name: '메모 사용' });
+
+    // 메모를 끄고 나서 다른 것만 보이게 거른다
+    fireEvent.click(screen.getByRole('switch', { name: '메모 사용' }));
+    fireEvent.change(screen.getByRole('searchbox', { name: /기능 이름/ }), {
+      target: { value: '태그' },
+    });
+    expect(titles()).toEqual(['태그']);
+    expect(screen.getByText('저장하지 않은 변경 1건이 있습니다.')).toBeInTheDocument();
+
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: '저장' })));
+    expect(featuresApi.saveFeatures).toHaveBeenCalledWith({ 'tools.memo': false });
+  });
+});

@@ -3,7 +3,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Monitor, RotateCcw, Save, SlidersHorizontal, UserCog } from 'lucide-react';
+import {
+  AlertTriangle,
+  Monitor,
+  RotateCcw,
+  Save,
+  Search,
+  SlidersHorizontal,
+  UserCog,
+} from 'lucide-react';
 import {
   fetchFeatureCatalog,
   saveFeatures,
@@ -19,6 +27,7 @@ import { useFeatures } from '../../../store/features';
 import { toast } from '../../../utils/toast';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { AdminSection } from '../common/AdminSection';
+import { adminInputCls } from '../common/AdminFormField';
 import { ToggleSwitch } from '../../common/ToggleSwitch';
 import { Link } from 'react-router-dom';
 import { FEATURE_SETTINGS } from '../../../constants/featureSettings';
@@ -83,7 +92,10 @@ function FeatureRow({
           <p className="mt-1 text-xs text-slate-400">마지막 변경: {feature.updatedBy}</p>
         )}
 
-        {/* 역할별. 사이트 전체가 꺼져 있으면 역할 설정은 쓰이지 않으므로 감춘다. */}
+        {/* 역할별. 사이트 전체가 꺼져 있으면 역할 설정은 쓰이지 않으므로 감춘다.
+            한때 이 줄을 접어 봤다. 한 줄이 150px → 125px 로 17% 줄어드는 대신 역할을
+            바꾸려면 줄마다 한 번 더 눌러야 했다 — 이 화면에서 역할 지정은 곁다리가
+            아니라 본 일이다. 길이는 위의 찾기·거르기로 줄인다(끄기만 보면 1,450px). */}
         {value && roles.length > 0 && (
           <div
             className="mt-2 flex flex-wrap items-center gap-1.5"
@@ -166,6 +178,8 @@ const FeatureManagement = () => {
   const [draft, setDraft] = useState<Record<string, boolean>>({});
   // 역할별 편집 상태. 키 → 역할 → 켜짐 여부
   const [roleDraft, setRoleDraft] = useState<Record<string, Record<string, boolean>>>({});
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | 'off' | 'role' | 'blocked'>('all');
 
   // 서버 값이 새로 오면 편집 상태를 버린다. 어느 쪽이든 서버 값이 옳다.
   useEffect(() => {
@@ -252,15 +266,82 @@ const FeatureManagement = () => {
 
   const groups = Object.entries(data.groups) as Array<[string, string]>;
 
+  // 서른두 기능을 쭉 늘어놓으면 찾는 것 하나를 눈으로 훑어야 한다. 이름으로 거르고,
+  // 관리자가 실제로 묻는 것('뭐가 꺼져 있지', '어디에 제한을 걸었지')을 단추로 둔다.
+  const isOff = (f: AdminFeature) => !valueOf(f);
+  const isBlocked = (f: AdminFeature) => valueOf(f) && !f.effective;
+  const hasRoleRule = (f: AdminFeature) =>
+    roles.some(r => !(roleDraft[f.key]?.[r.id] ?? savedRoleOn(f.key, r.id)));
+
+  const counts = {
+    all: data.features.length,
+    off: data.features.filter(isOff).length,
+    role: data.features.filter(hasRoleRule).length,
+    blocked: data.features.filter(isBlocked).length,
+  };
+  const FILTERS = [
+    { id: 'all' as const, label: `전체 ${counts.all}` },
+    { id: 'off' as const, label: `꺼짐 ${counts.off}` },
+    { id: 'role' as const, label: `역할 제한 ${counts.role}` },
+    { id: 'blocked' as const, label: `막힘 ${counts.blocked}` },
+  ];
+  const needle = query.trim().toLowerCase();
+  const matches = (f: AdminFeature) => {
+    if (needle && !`${f.label} ${f.key}`.toLowerCase().includes(needle)) return false;
+    if (filter === 'off') return isOff(f);
+    if (filter === 'role') return hasRoleRule(f);
+    if (filter === 'blocked') return isBlocked(f);
+    return true;
+  };
+  const shown = data.features.filter(matches).length;
+
   return (
     <div className="space-y-6">
       <AdminSection
         title="기능 사용 설정"
-        description="끈 기능은 화면에서 사라지고 해당 API도 막힙니다. 이미 쌓인 데이터는 지워지지 않으며, 다시 켜면 그대로 돌아옵니다. 켜 둔 기능은 아래 역할 이름을 눌러 역할별로 끌 수 있고(관리자 역할은 제외), 사람별 예외는 사용자 관리의 '기능 예외' 에서 정합니다."
+        description="끈 기능은 화면에서 사라지고 해당 API도 막힙니다. 이미 쌓인 데이터는 지워지지 않으며, 다시 켜면 그대로 돌아옵니다. 켜 둔 기능은 역할 이름을 눌러 역할별로 끌 수 있고(관리자 역할은 제외), 사람별 예외는 사용자 관리의 '기능 예외' 에서 정합니다."
       >
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-0 flex-1 sm:max-w-xs">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="기능 이름으로 찾기"
+                aria-label="기능 이름으로 찾기"
+                className={adminInputCls('w-full pl-9')}
+              />
+            </div>
+            {FILTERS.map(f => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setFilter(f.id)}
+                aria-pressed={filter === f.id}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                  filter === f.id
+                    ? 'bg-primary-600 text-white'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {shown === 0 && (
+            <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+              조건에 맞는 기능이 없습니다.
+            </p>
+          )}
+
           {groups.map(([groupKey, groupLabel]) => {
-            const items = data.features.filter(f => f.group === groupKey);
+            const items = data.features.filter(f => f.group === groupKey && matches(f));
             if (items.length === 0) return null;
             return (
               <div key={groupKey} className="card overflow-hidden">

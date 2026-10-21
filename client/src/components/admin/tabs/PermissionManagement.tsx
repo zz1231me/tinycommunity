@@ -1,11 +1,22 @@
 // 권한 관리 컴포넌트
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, Loader2, Info, Map, Table2, AlertTriangle, RotateCw } from 'lucide-react';
+import {
+  AlertTriangle,
+  Check,
+  ChevronRight,
+  Info,
+  Loader2,
+  Map,
+  RotateCw,
+  Search,
+  Table2,
+} from 'lucide-react';
 import { useBoardManagement } from '../../../hooks/admin/useBoardManagement';
 import { useRoleManagement } from '../../../hooks/admin/useRoleManagement';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { AdminSection } from '../common/AdminSection';
+import { adminInputCls } from '../common/AdminFormField';
 import { PermissionGraph } from '../PermissionGraph';
 import { fetchWikiPermissions, updateWikiPermissions } from '../../../api/admin';
 import { toast } from '../../../utils/toast';
@@ -164,6 +175,20 @@ export const PermissionManagement = () => {
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirtyBoards]);
 
+  // 펼쳐 둔 게시판. 고친 게시판은 아래에서 늘 펼친 것으로 친다.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleBoard = (id: string) =>
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  const [boardQuery, setBoardQuery] = useState('');
+  const needle = boardQuery.trim().toLowerCase();
+  const shownBoards = needle
+    ? boards.filter(b => `${b.name} ${b.id}`.toLowerCase().includes(needle))
+    : boards;
+
   if (loadingBoards || loadingRoles) return <LoadingSpinner message="권한 설정을 불러오는 중..." />;
 
   const onPermissionToggle = (
@@ -307,21 +332,71 @@ export const PermissionManagement = () => {
         }
       >
         <div className="space-y-6">
+          {/* 게시판마다 역할 여섯 줄짜리 표를 다 펴 두면 아홉 게시판에 4,958px 이 된다.
+              게시판이 스무 개면 만 픽셀을 넘는다. 접어 두고 요약만 보여 준다 —
+              고친 게시판은 접지 않는다(저장 안 된 것을 숨기면 안 된다). */}
+          {boards.length > 1 && (
+            <div className="relative max-w-xs">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                value={boardQuery}
+                onChange={e => setBoardQuery(e.target.value)}
+                placeholder="게시판 이름으로 찾기"
+                aria-label="게시판 이름으로 찾기"
+                className={adminInputCls('w-full pl-9')}
+              />
+            </div>
+          )}
           {boards.length === 0 ? (
             <ListState size="roomy">게시판이 없습니다. 먼저 게시판을 생성해주세요.</ListState>
           ) : (
-            boards.map(board => {
+            shownBoards.map(board => {
               const isDirty = dirtyBoards.has(board.id);
+              const perms = roles.map(
+                role =>
+                  boardPermissions[board.id]?.find(p => p.roleId === role.id) ?? {
+                    roleId: role.id,
+                    roleName: role.name,
+                    canRead: false,
+                    canWrite: false,
+                    canDelete: false,
+                  }
+              );
+              // 접은 채로도 이 게시판이 얼마나 열려 있는지는 보여야 한다.
+              const summary = {
+                read: perms.filter(p => p.canRead).length,
+                write: perms.filter(p => p.canWrite).length,
+                del: perms.filter(p => p.canDelete).length,
+              };
+              const open = expanded.has(board.id) || isDirty;
               return (
                 <div key={board.id} className="card p-6">
                   <div className="mb-4 flex items-center justify-between gap-3">
                     {/* 게시판 이름은 100자까지 허용되므로 줄이지 않으면 화면이 가로로 늘어난다 */}
                     <h3 className="flex min-w-0 items-baseline gap-2 text-base font-semibold text-slate-800 dark:text-slate-100">
-                      <span className="truncate" title={board.name}>
-                        {board.name}
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => toggleBoard(board.id)}
+                        aria-expanded={open}
+                        className="flex min-w-0 items-baseline gap-2 text-left hover:text-primary-600 dark:hover:text-primary-400"
+                      >
+                        <ChevronRight
+                          className={`h-4 w-4 flex-shrink-0 self-center transition-transform ${open ? 'rotate-90' : ''}`}
+                          aria-hidden="true"
+                        />
+                        <span className="truncate" title={board.name}>
+                          {board.name}
+                        </span>
+                      </button>
                       <span className="flex-shrink-0 text-xs font-normal text-slate-400">
                         {board.id}
+                      </span>
+                      <span className="flex-shrink-0 text-xs font-normal tabular-nums text-slate-500 dark:text-slate-400">
+                        읽기 {summary.read} · 쓰기 {summary.write} · 삭제 {summary.del}
                       </span>
                     </h3>
                     {isDirty ? (
@@ -337,77 +412,85 @@ export const PermissionManagement = () => {
                     )}
                   </div>
 
-                  <div className="overflow-x-auto">
-                    {/* 칼럼 폭 고정. 카드마다 토글 칼럼 위치를 맞춘다. */}
-                    <table className="w-full table-fixed text-sm">
-                      <colgroup>
-                        <col />
-                        <col style={{ width: '90px' }} />
-                        <col style={{ width: '90px' }} />
-                        <col style={{ width: '90px' }} />
-                      </colgroup>
-                      <thead>
-                        <tr className="border-b border-slate-200 dark:border-slate-700">
-                          <th className="admin-th">역할</th>
-                          <th className="admin-th text-center">읽기</th>
-                          <th className="admin-th text-center">쓰기</th>
-                          <th className="admin-th text-center">삭제</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                        {roles.map(role => {
-                          const permission = boardPermissions[board.id]?.find(
-                            p => p.roleId === role.id
-                          ) || {
-                            roleId: role.id,
-                            roleName: role.name,
-                            canRead: false,
-                            canWrite: false,
-                            canDelete: false,
-                          };
-
-                          return (
-                            <tr key={role.id}>
-                              <td className="admin-td font-medium text-slate-800 dark:text-slate-100">
-                                {role.name}
-                              </td>
-                              <td className="admin-td text-center">
-                                <Toggle
-                                  checked={permission.canRead}
-                                  onChange={() => onPermissionToggle(board.id, role.id, 'canRead')}
-                                  disabled={saving}
-                                  label={`${role.name} 읽기 권한`}
-                                />
-                              </td>
-                              <td className="admin-td text-center">
-                                <Toggle
-                                  checked={permission.canWrite}
-                                  onChange={() => onPermissionToggle(board.id, role.id, 'canWrite')}
-                                  disabled={saving}
-                                  label={`${role.name} 쓰기 권한`}
-                                />
-                              </td>
-                              <td className="admin-td text-center">
-                                <Toggle
-                                  checked={permission.canDelete}
-                                  onChange={() =>
-                                    onPermissionToggle(board.id, role.id, 'canDelete')
-                                  }
-                                  disabled={saving}
-                                  label={`${role.name} 삭제 권한`}
-                                />
-                              </td>
+                  {open && (
+                    <>
+                      <div className="overflow-x-auto">
+                        {/* 칼럼 폭 고정. 카드마다 토글 칼럼 위치를 맞춘다. */}
+                        <table className="w-full table-fixed text-sm">
+                          <colgroup>
+                            <col />
+                            <col style={{ width: '90px' }} />
+                            <col style={{ width: '90px' }} />
+                            <col style={{ width: '90px' }} />
+                          </colgroup>
+                          <thead>
+                            <tr className="border-b border-slate-200 dark:border-slate-700">
+                              <th className="admin-th">역할</th>
+                              <th className="admin-th text-center">읽기</th>
+                              <th className="admin-th text-center">쓰기</th>
+                              <th className="admin-th text-center">삭제</th>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                            {roles.map(role => {
+                              const permission = boardPermissions[board.id]?.find(
+                                p => p.roleId === role.id
+                              ) || {
+                                roleId: role.id,
+                                roleName: role.name,
+                                canRead: false,
+                                canWrite: false,
+                                canDelete: false,
+                              };
 
-                  <p className="mt-4 flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                    <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                    읽기: 게시판·게시글 조회 | 쓰기: 게시글 작성 | 삭제: 게시글 삭제
-                  </p>
+                              return (
+                                <tr key={role.id}>
+                                  <td className="admin-td font-medium text-slate-800 dark:text-slate-100">
+                                    {role.name}
+                                  </td>
+                                  <td className="admin-td text-center">
+                                    <Toggle
+                                      checked={permission.canRead}
+                                      onChange={() =>
+                                        onPermissionToggle(board.id, role.id, 'canRead')
+                                      }
+                                      disabled={saving}
+                                      label={`${role.name} 읽기 권한`}
+                                    />
+                                  </td>
+                                  <td className="admin-td text-center">
+                                    <Toggle
+                                      checked={permission.canWrite}
+                                      onChange={() =>
+                                        onPermissionToggle(board.id, role.id, 'canWrite')
+                                      }
+                                      disabled={saving}
+                                      label={`${role.name} 쓰기 권한`}
+                                    />
+                                  </td>
+                                  <td className="admin-td text-center">
+                                    <Toggle
+                                      checked={permission.canDelete}
+                                      onChange={() =>
+                                        onPermissionToggle(board.id, role.id, 'canDelete')
+                                      }
+                                      disabled={saving}
+                                      label={`${role.name} 삭제 권한`}
+                                    />
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <p className="mt-4 flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                        읽기: 게시판·게시글 조회 | 쓰기: 게시글 작성 | 삭제: 게시글 삭제
+                      </p>
+                    </>
+                  )}
                 </div>
               );
             })
