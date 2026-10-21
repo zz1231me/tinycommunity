@@ -9,6 +9,7 @@ import {
   Loader2,
   Map,
   RotateCw,
+  Rows3,
   Search,
   Table2,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ import { useBoardManagement } from '../../../hooks/admin/useBoardManagement';
 import { useRoleManagement } from '../../../hooks/admin/useRoleManagement';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { AdminSection } from '../common/AdminSection';
+import type { BoardPermission } from '../../../types/admin.types';
 import { adminInputCls } from '../common/AdminFormField';
 import { PermissionGraph } from '../PermissionGraph';
 import { fetchWikiPermissions, updateWikiPermissions } from '../../../api/admin';
@@ -68,6 +70,124 @@ const WikiSaveStatus = ({ saving }: { saving: boolean }) =>
     </span>
   );
 
+type PermKey = 'canRead' | 'canWrite' | 'canDelete';
+
+const PERMS: { id: PermKey; label: string }[] = [
+  { id: 'canRead', label: '읽기' },
+  { id: 'canWrite', label: '쓰기' },
+  { id: 'canDelete', label: '삭제' },
+];
+
+/**
+ * 게시판 × 역할 표. 한 번에 권한 하나만 본다.
+ *
+ * 게시판별 카드는 "이 게시판은 누구에게 열려 있나" 만 답한다. 그 반대("이 역할은
+ * 어느 게시판을 쓸 수 있나")를 보려면 게시판을 전부 펼쳐 눈으로 모아야 했다.
+ * 가로줄로 읽으면 게시판 하나, 세로줄로 읽으면 역할 하나가 보인다.
+ *
+ * 읽기·쓰기·삭제를 한 칸에 다 넣으면 역할 여섯에 토글 열여덟이 한 줄에 들어가
+ * 가로로 터진다. 권한을 먼저 고르게 해 칸마다 토글 하나만 둔다.
+ */
+function PermissionMatrix({
+  boards,
+  roles,
+  permissions,
+  perm,
+  onPermChange,
+  onToggle,
+  disabled,
+  dirtyBoards,
+}: {
+  boards: { id: string; name: string }[];
+  roles: { id: string; name: string }[];
+  permissions: Record<string, BoardPermission[]>;
+  perm: PermKey;
+  onPermChange: (p: PermKey) => void;
+  onToggle: (boardId: string, roleId: string, key: PermKey) => void;
+  disabled: boolean;
+  dirtyBoards: Set<string>;
+}) {
+  const on = (boardId: string, roleId: string) =>
+    permissions[boardId]?.find(p => p.roleId === roleId)?.[perm] ?? false;
+  const label = PERMS.find(p => p.id === perm)!.label;
+
+  return (
+    <div className="space-y-3">
+      <div role="group" aria-label="볼 권한" className="flex gap-1">
+        {PERMS.map(p => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onPermChange(p.id)}
+            aria-pressed={perm === p.id}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              perm === p.id
+                ? 'bg-primary-600 text-white'
+                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {/* 역할이 늘면 가로로 넘친다. 게시판 이름 칸은 붙여 두어 어느 줄인지 놓치지 않게 한다. */}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 dark:border-slate-700">
+              <th className="admin-th sticky left-0 z-10 bg-white text-left dark:bg-slate-800">
+                게시판
+              </th>
+              {roles.map(role => {
+                const count = boards.filter(b => on(b.id, role.id)).length;
+                return (
+                  <th key={role.id} className="admin-th whitespace-nowrap px-3 text-center">
+                    <span className="block">{role.name}</span>
+                    {/* 세로줄 합계 — 이 역할이 몇 개 게시판에서 이 권한을 갖는지 */}
+                    <span className="block text-xs font-normal tabular-nums text-slate-400">
+                      {count}/{boards.length}
+                    </span>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+            {boards.map(board => (
+              <tr key={board.id}>
+                <th
+                  scope="row"
+                  className="admin-td sticky left-0 z-10 max-w-[14rem] truncate bg-white text-left font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-100"
+                  title={board.name}
+                >
+                  {board.name}
+                  {dirtyBoards.has(board.id) && (
+                    <span
+                      className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-amber-500 align-middle"
+                      title="저장하지 않은 변경"
+                    />
+                  )}
+                </th>
+                {roles.map(role => (
+                  <td key={role.id} className="admin-td px-3 text-center">
+                    <Toggle
+                      checked={on(board.id, role.id)}
+                      onChange={() => onToggle(board.id, role.id, perm)}
+                      disabled={disabled}
+                      label={`${board.name} ${role.name} ${label} 권한`}
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export const PermissionManagement = () => {
   const {
     boards,
@@ -85,7 +205,20 @@ export const PermissionManagement = () => {
 
   const { roles, loading: loadingRoles } = useRoleManagement();
 
-  const [showGraph, setShowGraph] = useState(false);
+  /**
+   * 보기 셋. 묻는 것이 서로 달라서 한 화면으로는 둘 다 답하지 못한다.
+   *
+   *  게시판별 — "이 게시판은 누구에게 열려 있나" (한 게시판을 꼼꼼히 고칠 때)
+   *  한눈에   — "이 역할은 어느 게시판을 쓸 수 있나" (가로줄·세로줄 양쪽으로 읽힌다)
+   *  관계도   — 전체 얼개만 훑어볼 때
+   *
+   * 예전에는 '관계도 보기' 를 눌러도 게시판 카드가 그대로 남은 채 관계도가 아래에
+   * 덧붙었다(실측 1,659 → 2,175px). 그런데 단추 이름은 '테이블 보기' 로 바뀌어,
+   * 보고 있지도 않은 곳으로 돌아가라고 말하고 있었다. 이제 한 번에 하나만 보여 준다.
+   */
+  const [view, setView] = useState<'board' | 'matrix' | 'graph'>('board');
+  /** 한눈에 보기에서 지금 보고 있는 권한. 셋을 한 칸에 넣으면 표가 가로로 터진다. */
+  const [matrixPerm, setMatrixPerm] = useState<'canRead' | 'canWrite' | 'canDelete'>('canRead');
   const [wikiRoles, setWikiRoles] = useState<string[]>([]);
   const [wikiSaving, setWikiSaving] = useState(false);
   // 저장 중 들어온 후속 토글을 모아 두어 클릭 유실을 막는다
@@ -311,23 +444,34 @@ export const PermissionManagement = () => {
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? '저장 중' : dirtyCount > 0 ? `저장 (${dirtyCount})` : '저장됨'}
             </button>
-            <button
-              type="button"
-              onClick={() => setShowGraph(v => !v)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700/50"
+            <div
+              role="group"
+              aria-label="권한 보기"
+              className="inline-flex gap-1 rounded-lg border border-slate-200 p-1 dark:border-slate-600"
             >
-              {showGraph ? (
-                <>
-                  <Table2 className="h-4 w-4" />
-                  테이블 보기
-                </>
-              ) : (
-                <>
-                  <Map className="h-4 w-4" />
-                  관계도 보기
-                </>
-              )}
-            </button>
+              {(
+                [
+                  { id: 'board', label: '게시판별', icon: Rows3 },
+                  { id: 'matrix', label: '한눈에', icon: Table2 },
+                  { id: 'graph', label: '관계도', icon: Map },
+                ] as const
+              ).map(v => (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => setView(v.id)}
+                  aria-pressed={view === v.id}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    view === v.id
+                      ? 'bg-primary-600 text-white'
+                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700/50'
+                  }`}
+                >
+                  <v.icon className="h-4 w-4" />
+                  {v.label}
+                </button>
+              ))}
+            </div>
           </div>
         }
       >
@@ -353,6 +497,19 @@ export const PermissionManagement = () => {
           )}
           {boards.length === 0 ? (
             <ListState size="roomy">게시판이 없습니다. 먼저 게시판을 생성해주세요.</ListState>
+          ) : view === 'matrix' ? (
+            <PermissionMatrix
+              boards={shownBoards}
+              roles={roles}
+              permissions={boardPermissions}
+              perm={matrixPerm}
+              onPermChange={setMatrixPerm}
+              onToggle={onPermissionToggle}
+              disabled={saving}
+              dirtyBoards={dirtyBoards}
+            />
+          ) : view === 'graph' ? (
+            <PermissionGraph roles={roles} boards={boards} accesses={graphAccesses} />
           ) : (
             shownBoards.map(board => {
               const isDirty = dirtyBoards.has(board.id);
@@ -496,11 +653,6 @@ export const PermissionManagement = () => {
             })
           )}
         </div>
-        {showGraph && (
-          <div className="mt-4">
-            <PermissionGraph roles={roles} boards={boards} accesses={graphAccesses} />
-          </div>
-        )}
       </AdminSection>
     </div>
   );
