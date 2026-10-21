@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
 import {
   Calendar,
   LayoutDashboard,
@@ -22,7 +22,7 @@ import { BoardIcon } from './BoardIcon';
 import { useSiteSettings } from '../../store/siteSettings';
 import { wikiInsertIndex } from '../../utils/sidebarOrder';
 import { useAccessibleBoards } from '../../hooks/useAccessibleBoards';
-import { useBookmarks } from '../../hooks/useBookmarks';
+import { bookmarkHref, useBookmarks } from '../../hooks/useBookmarks';
 import { useAuth } from '../../store/auth';
 import { useFeature, useFeatures, useMenuVisible } from '../../store/features';
 import { logger } from '../../utils/logger';
@@ -64,14 +64,8 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
   const hidden = narrow && !isOpen;
 
   const { boards, loading: boardsLoading, regularBoards, personalBoards } = useAccessibleBoards();
-  const {
-    bookmarks,
-    loading: bookmarksLoading,
-    error: bookmarksError,
-    openBookmark,
-  } = useBookmarks();
+  const { bookmarks, loading: bookmarksLoading, error: bookmarksError } = useBookmarks();
   const { getUserRole, user, isAdmin: isAdminCheck } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
 
   const userRole = getUserRole();
@@ -125,13 +119,9 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
   const showTasks = useMenuVisible('post.tasks');
   const showMessages = useMenuVisible('social.dm');
 
-  const handleAdminClick = () => {
-    navigate('/admin');
-    if (window.innerWidth < 1024) onClose();
-  };
-
-  const handleBookmarkManagementClick = () => {
-    navigate('/admin');
+  /** 사이드바의 다른 줄과 같은 규칙 — ⌘·가운데 클릭은 브라우저에 넘기고 서랍도 두드리지 않는다. */
+  const handleAdminClick = (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
     if (window.innerWidth < 1024) onClose();
   };
 
@@ -323,7 +313,8 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
             <div>
               <SectionLabel>관리</SectionLabel>
               <div className="space-y-0.5">
-                <button
+                <RouterLink
+                  to="/admin"
                   onClick={handleAdminClick}
                   className={`
                     w-full flex items-center gap-3 px-3 py-3 rounded-lg
@@ -345,7 +336,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
                   {isAdminActive && (
                     <span className="w-1.5 h-1.5 rounded-full bg-primary-500 dark:bg-primary-400 flex-shrink-0" />
                   )}
-                </button>
+                </RouterLink>
               </div>
             </div>
           )}
@@ -358,12 +349,13 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
                 북마크
               </p>
               {isAdmin && (
-                <button
-                  onClick={handleBookmarkManagementClick}
+                <RouterLink
+                  to="/admin"
+                  onClick={handleAdminClick}
                   className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 transition-colors"
                 >
                   관리
-                </button>
+                </RouterLink>
               )}
             </div>
             <div className="space-y-0.5">
@@ -379,9 +371,13 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
                 </p>
               ) : (
                 bookmarks.slice(0, 8).map(bookmark => (
-                  <button
+                  // 바깥 주소라 늘 새 탭이다. button + window.open 이던 때는 주소가 없어
+                  // 어디로 가는지 미리 볼 수도, 링크를 복사할 수도 없었다.
+                  <a
                     key={bookmark.id}
-                    onClick={() => openBookmark(bookmark.url)}
+                    href={bookmarkHref(bookmark.url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-base
                                text-slate-700 dark:text-slate-300
                                hover:bg-slate-100 dark:hover:bg-slate-800/70
@@ -392,7 +388,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
                     <span className="truncate flex-1 text-left text-base font-medium">
                       {bookmark.name}
                     </span>
-                  </button>
+                  </a>
                 ))
               )}
             </div>
