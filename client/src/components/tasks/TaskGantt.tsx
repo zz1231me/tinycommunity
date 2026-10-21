@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { addDays, format, isToday, isWeekend, max, min } from 'date-fns';
+import { addDays, addMonths, format, isToday, isWeekend, max, min, startOfMonth } from 'date-fns';
 import { Gantt, Willow, WillowDark, type IApi, type ITask } from '@svar-ui/react-gantt';
 // all.css 가 아니라 style.css 를 쓴다. all.css(dist-full)에는 "Open Sans"·Roboto 를
 // cdn.svar.dev 에서 받아오는 @font-face 가 들어 있어, 간트를 열 때마다 외부 요청이 나가고
@@ -93,6 +93,10 @@ export function TaskGantt({ tasks, onReschedule, embedded = false }: Props) {
   });
 
   const today = useToday();
+  /** 간트 API. 이전·다음으로 기간을 옮길 때 쓴다. */
+  const apiRef = useRef<IApi | null>(null);
+  /** 다시 그려질 때(확대 단위 변경) init 이 읽는다 — 보고 있던 달로 돌아가려고. */
+  const anchorRef = useRef<Date>(startOfMonth(today));
 
   const ganttTasks = useMemo<ITask[]>(
     () =>
@@ -112,15 +116,27 @@ export function TaskGantt({ tasks, onReschedule, embedded = false }: Props) {
     [tasks, today]
   );
 
-  // 보이는 범위. 오늘이 늘 들어가고, 앞뒤로 끌어 놓을 여유를 둔다.
+  /**
+   * 보고 있는 달. 이전·다음으로 옮긴다.
+   *
+   * 예전에는 보이는 기간이 불러온 업무에서만 나왔다(가장 이른 시작 −7일 ~ 가장 늦은 끝 +21일).
+   * 그래서 지난달을 볼 수 없었고, 업무가 없는 앞날도 3주까지만 보였다 — 달력에는 있는
+   * 이전·오늘·다음이 간트에만 없었다.
+   */
+  const [anchor, setAnchor] = useState(() => startOfMonth(today));
+
+  /**
+   * 보이는 범위. 보고 있는 달의 앞뒤로 여유를 두되, 업무가 걸친 구간과 합친다 —
+   * 창만 따라가면 멀리 있는 업무가 간트에서 사라져 목록과 어긋난다.
+   */
   const range = useMemo(() => {
     const starts = ganttTasks.map(t => t.start as Date);
     const ends = ganttTasks.map(t => t.end as Date);
     return {
-      start: addDays(min([today, ...starts]), -7),
-      end: addDays(max([addDays(today, 1), ...ends]), 21),
+      start: addDays(min([today, addMonths(anchor, -1), ...starts]), -7),
+      end: addDays(max([addDays(today, 1), addMonths(anchor, 2), ...ends]), 21),
     };
-  }, [ganttTasks, today]);
+  }, [ganttTasks, today, anchor]);
 
   const init = (api: IApi) => {
     const canEdit = (id: unknown) => latest.current.tasks.find(t => t.id === id)?.canEdit ?? false;
@@ -144,8 +160,29 @@ export function TaskGantt({ tasks, onReschedule, embedded = false }: Props) {
       latest.current.onReschedule(task, next).catch(() => setResetKey(k => k + 1));
     });
 
+    apiRef.current = api;
     // 처음 열면 오늘 근처를 보여 준다. 기본은 맨 왼쪽이라 오늘이 화면 밖에 있곤 했다.
-    void api.exec('scroll-chart', { date: addDays(today, -3) });
+    // 확대 단위를 바꾸면 다시 그려지므로(key), 그때는 보고 있던 달로 돌아간다.
+    void api.exec('scroll-chart', { date: scrollTarget(anchorRef.current) });
+  };
+
+  /** 그 달의 사흘 앞을 집는다 — 달 첫날이 화면 맨 왼쪽에 붙지 않게. */
+  function scrollTarget(month: Date) {
+    return addDays(month, -3);
+  }
+
+  const moveMonths = (step: number) => {
+    const next = addMonths(anchor, step);
+    setAnchor(next);
+    anchorRef.current = next;
+    void apiRef.current?.exec('scroll-chart', { date: scrollTarget(next) });
+  };
+
+  const goToday = () => {
+    const next = startOfMonth(today);
+    setAnchor(next);
+    anchorRef.current = next;
+    void apiRef.current?.exec('scroll-chart', { date: addDays(today, -3) });
   };
 
   const changeZoom = (next: Zoom) => {
@@ -160,26 +197,61 @@ export function TaskGantt({ tasks, onReschedule, embedded = false }: Props) {
         <p className="text-xs text-slate-500 dark:text-slate-400">
           막대를 끌어 일정을 옮기고, 끝을 늘여 기간을 바꿉니다. 점선은 일정이 아직 없는 일입니다.
         </p>
-        <div
-          role="group"
-          aria-label="간트 단위"
-          className="flex flex-shrink-0 rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800"
-        >
-          {ZOOMS.map(z => (
+        <div className="flex flex-shrink-0 items-center gap-2">
+          {/* 달력과 같은 이동 묶음. 간트에만 없어서 지난달도, 업무 없는 앞날도 볼 수 없었다. */}
+          <div
+            role="group"
+            aria-label="기간 이동"
+            className="flex items-center rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800"
+          >
             <button
-              key={z.key}
               type="button"
-              aria-pressed={zoom === z.key}
-              onClick={() => changeZoom(z.key)}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                zoom === z.key
-                  ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100'
-                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-              }`}
+              onClick={() => moveMonths(-1)}
+              aria-label="이전 달"
+              className="rounded-md px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
             >
-              {z.label}
+              ‹
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={goToday}
+              className="rounded-md px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              오늘
+            </button>
+            <button
+              type="button"
+              onClick={() => moveMonths(1)}
+              aria-label="다음 달"
+              className="rounded-md px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              ›
+            </button>
+          </div>
+          <span className="hidden text-xs tabular-nums text-slate-500 dark:text-slate-400 sm:inline">
+            {format(anchor, 'yyyy년 M월')}
+          </span>
+          <div
+            role="group"
+            aria-label="간트 단위"
+            className="flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800"
+          >
+            {ZOOMS.map(z => (
+              <button
+                key={z.key}
+                type="button"
+                aria-pressed={zoom === z.key}
+                onClick={() => changeZoom(z.key)}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  zoom === z.key
+                    ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100'
+                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                }`}
+              >
+                {z.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       <div
