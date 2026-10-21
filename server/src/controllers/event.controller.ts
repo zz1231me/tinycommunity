@@ -42,6 +42,9 @@ export const createEvent = async (
     }
 
     // UserId·id 주입을 막으려 허용 필드만 뽑아 쓴다.
+    // parentEventId 는 받지 않는다 — 반복의 '이 날만' 을 떼어 낼 때 서비스가 정하는 칸이고,
+    // 클라이언트가 보낸 적이 없다. 받아 두면 남의 일정을 부모로 지목해 걸어 둘 수 있고,
+    // 지울 때 같은 주인의 자식만 지우는 방어가 그 구멍을 막느라 쓰이고 있었다.
     const {
       calendarId,
       title,
@@ -63,7 +66,6 @@ export const createEvent = async (
       recurrenceInterval,
       recurrenceDays,
       recurrenceEndDate,
-      parentEventId,
     } = req.body;
 
     if (!calendarId || !title || !start || !end) {
@@ -177,7 +179,6 @@ export const createEvent = async (
         recurrenceInterval,
         recurrenceDays,
         recurrenceEndDate,
-        parentEventId,
         boardId,
       },
       userId
@@ -275,7 +276,6 @@ export const updateEvent = async (
       recurrenceInterval,
       recurrenceDays,
       recurrenceEndDate,
-      parentEventId,
     } = req.body;
 
     if (title !== undefined) {
@@ -434,7 +434,6 @@ export const updateEvent = async (
       recurrenceInterval,
       recurrenceDays,
       recurrenceEndDate,
-      parentEventId,
     });
 
     const updatedEvent = await eventService.findWithUser(id);
