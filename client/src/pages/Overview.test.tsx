@@ -14,6 +14,14 @@ import { screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { renderWithQuery } from '../test/renderWithQuery';
 
+// PageContainer 가 framer-motion 을 쓴다. happy-dom 에서 애니메이션이 취소되면
+// 잡히지 않는 AbortError 가 남아, 검사는 모두 통과해도 vitest 가 1 로 끝난다
+// (다른 검사 파일들이 같은 이유로 이 목을 둔다).
+vi.mock('framer-motion', () => ({
+  motion: new Proxy({}, { get: () => 'div' }),
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 const fetchMyTasks = vi.hoisted(() => vi.fn());
 const fetchRecentPosts = vi.hoisted(() => vi.fn());
 const getEvents = vi.hoisted(() => vi.fn());

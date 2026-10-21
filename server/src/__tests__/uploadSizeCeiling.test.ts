@@ -50,10 +50,10 @@ describe('파일 상한 3GB', () => {
   });
 
   it('크기 컬럼이 BIGINT 다 — SQLite 는 타입이 느슨해 값만 보면 통과하는 척한다', () => {
-    for (const model of [TempShare, PostAttachmentVersion]) {
-      const type = String(model.getAttributes().size.type).toUpperCase();
-      expect(type).toContain('BIGINT');
-    }
+    const sizeType = (attrs: { size: { type: unknown } }) => String(attrs.size.type).toUpperCase();
+
+    expect(sizeType(TempShare.getAttributes())).toContain('BIGINT');
+    expect(sizeType(PostAttachmentVersion.getAttributes())).toContain('BIGINT');
   });
 
   it('천장만 한 크기를 적어 둘 수 있다 — INTEGER 였다면 넘친다', async () => {
