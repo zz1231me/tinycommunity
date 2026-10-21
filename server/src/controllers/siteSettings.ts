@@ -13,6 +13,11 @@ import {
 } from '../utils/settingsCache';
 import { refreshUploaders } from '../middlewares/upload/refresh';
 import { validatePrizes, type LotteryPrize } from '../config/lottery';
+import {
+  parseEventCategories,
+  sanitizeEventCategories,
+  type EventCategory,
+} from '../config/eventCategory';
 import { invalidateIndexHtmlCache } from '../utils/indexHtml';
 import { auditLogService } from '../services/auditLog.service';
 import { isWorkStatus } from '../config/workStatus';
@@ -42,6 +47,7 @@ const DEFAULTS = {
   // 빈 객체는 코드 기본값을 쓴다는 뜻이다.
   workStatusLabels: JSON.stringify(SETTINGS_DEFAULTS.workStatusLabels),
   lotteryPrizes: JSON.stringify(SETTINGS_DEFAULTS.lotteryPrizes),
+  eventCategories: JSON.stringify(SETTINGS_DEFAULTS.eventCategories),
 };
 
 /** 업무 상태 이름 검사. 코드가 아는 키만 받고, 빈 문자열은 저장하지 않는다. */
@@ -177,6 +183,8 @@ function toPayload(s: SiteSettings) {
     workStatusLabels: parseLabelField(s.workStatusLabels),
     // 확률표는 사용자에게도 보여야 한다.
     lotteryPrizes: parsePrizeField(s.lotteryPrizes),
+    // 일정 분류는 고르는 폼·달력 칩이 쓰므로 모두에게 내려 준다.
+    eventCategories: parseEventCategories(s.eventCategories),
     lotteryDailyLimit: s.lotteryDailyLimit ?? DEFAULTS.lotteryDailyLimit,
     lotteryDrawCost: s.lotteryDrawCost ?? DEFAULTS.lotteryDrawCost,
     attendanceBonus: s.attendanceBonus ?? DEFAULTS.attendanceBonus,
@@ -305,6 +313,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       eventBodyMaxLength,
       eventLocationMaxLength,
       workStatusLabels,
+      eventCategories,
       lotteryPrizes,
       lotteryDailyLimit,
       lotteryDrawCost,
@@ -461,6 +470,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
     let parsedAllowedArchive: string[] | undefined;
     let parsedAllowedMedia: string[] | undefined;
     let parsedLotteryPrizes: LotteryPrize[] | undefined;
+    let parsedEventCategories: EventCategory[] | undefined;
     let parsedWorkStatusLabels: Record<string, string> | undefined;
 
     try {
@@ -488,6 +498,11 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       }
       if (lotteryPrizes !== undefined) {
         parsedLotteryPrizes = validatePrizes(lotteryPrizes);
+      }
+      if (eventCategories !== undefined) {
+        // 쓸 수 없는 줄은 버리고 남은 것만 저장한다. 하나도 남지 않으면 기본 목록으로
+        // 돌아간다 — 분류가 비면 일정을 만들 수 없다.
+        parsedEventCategories = sanitizeEventCategories(eventCategories);
       }
     } catch (validationError) {
       const msg = validationError instanceof Error ? validationError.message : '입력 형식 오류';
@@ -667,6 +682,10 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
         parsedWorkStatusLabels !== undefined
           ? JSON.stringify(parsedWorkStatusLabels)
           : settings.workStatusLabels,
+      eventCategories:
+        parsedEventCategories !== undefined
+          ? JSON.stringify(parsedEventCategories)
+          : settings.eventCategories,
     });
 
     refreshMaintenanceCache();

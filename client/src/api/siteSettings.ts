@@ -1,5 +1,16 @@
 import api, { uploadApi } from './axios';
 
+export interface EventCategoryOption {
+  key: string;
+  label: string;
+  emoji: string;
+  /** 칩 바탕색. 테두리·글자색은 화면이 이 색에서 계산한다. */
+  color: string;
+}
+
+/** 서버 config/eventCategory.ts 의 MAX_EVENT_CATEGORIES 와 같아야 한다. */
+export const MAX_EVENT_CATEGORIES = 20;
+
 export interface SiteSettings {
   siteName: string;
   siteTitle: string;
@@ -79,6 +90,7 @@ export interface SiteSettings {
   eventLocationMaxLength: number;
   /** 업무 상태 표시 이름. 비어 있는 키는 기본 이름을 쓴다 */
   workStatusLabels: Record<string, string>;
+  eventCategories: EventCategoryOption[];
   /** 로또 상품표. 확률 합이 100 미만이면 나머지가 꽝 */
   lotteryPrizes: { amount: number; weight: number }[];
   /** 하루에 뽑을 수 있는 횟수 */

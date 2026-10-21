@@ -9,6 +9,7 @@ import { sequelize } from '../config/sequelize';
 import { LOTTERY_DEFAULTS } from '../config/lottery';
 import { POINT_ATTACK_DEFAULTS } from '../config/pointAttack';
 import { TASK_DEFAULTS } from '../config/task';
+import { DEFAULT_EVENT_CATEGORIES } from '../config/eventCategory';
 import { DUEL_DEFAULTS } from '../config/duel';
 import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
 
@@ -64,6 +65,7 @@ export interface SiteSettingsInstance extends Model<
   wikiEditRoles: CreationOptional<string>;
   /** 업무 상태 표시 이름 (JSON). 키는 고정, 부르는 말만 팀에 맞춘다 */
   workStatusLabels: CreationOptional<string>;
+  eventCategories: CreationOptional<string>;
   /** 로또 상품표 (JSON 배열: [{amount, weight}]). 확률 합이 100 미만이면 나머지가 꽝 */
   lotteryPrizes: CreationOptional<string>;
   lotteryDailyLimit: CreationOptional<number>;
@@ -156,6 +158,7 @@ export class SiteSettings
   declare public draftExpiryMinutes: CreationOptional<number>;
   declare public wikiEditRoles: CreationOptional<string>;
   declare public workStatusLabels: CreationOptional<string>;
+  declare public eventCategories: CreationOptional<string>;
   declare public lotteryPrizes: CreationOptional<string>;
   declare public lotteryDailyLimit: CreationOptional<number>;
   declare public lotteryDrawCost: CreationOptional<number>;
@@ -496,6 +499,14 @@ SiteSettings.init(
       allowNull: false,
       defaultValue: '{}',
       field: 'work_status_labels',
+    },
+    eventCategories: {
+      // 일정 분류는 조직마다 다르다(재택·출장·교육…). 목록째로 관리자가 정하도록
+      // lotteryPrizes 처럼 JSON 문자열로 담는다.
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: JSON.stringify(DEFAULT_EVENT_CATEGORIES),
+      field: 'event_categories',
     },
     lotteryPrizes: {
       // 확률과 금액을 배포 없이 바꿀 수 있도록 workStatusLabels 처럼 JSON 문자열로 담는다.

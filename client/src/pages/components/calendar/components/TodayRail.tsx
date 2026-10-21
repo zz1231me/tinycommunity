@@ -3,8 +3,8 @@
 // xl(1280) 부터 편다. 폭이 320px 로 고정이라 lg(1024) 에서 펴면 달력이 382px 만 쓰게 되고,
 // 날짜 칸이 좁아져 일정 이름이 두 글자만 남는다(실측: 108px 짜리 이름에 31px).
 // 보이는 달과 무관하게 오늘 기준으로 표시하려고 CalendarEvent[] 를 직접 받는다.
-import { CalendarEvent } from '../types';
-import { categoryColors } from '../constants';
+import { CalendarEvent, CategoryColor } from '../types';
+import { useCategoryColors } from '../useEventCategories';
 import { DEFAULT_EVENT_COLOR } from '../../../../constants/colors';
 import { dateUtils } from '../utils';
 import { occurrenceKey } from '../hooks/useCalendarEvents';
@@ -26,15 +26,15 @@ interface RailItem {
   multiDay: boolean;
 }
 
-const toItem = (ev: CalendarEvent): RailItem => {
+const toItem = (ev: CalendarEvent, categoryColors: Record<string, CategoryColor>): RailItem => {
   const startD = dateUtils.isoToLocalDate(ev.start);
   const endD = ev.end ? dateUtils.subtractDay(dateUtils.isoToLocalDate(ev.end)) : startD;
   return {
     original: ev,
     title: ev.title,
     color:
+      (ev.category ? categoryColors[ev.category]?.bg : undefined) ||
       ev.backgroundColor ||
-      categoryColors[ev.category as keyof typeof categoryColors]?.bg ||
       DEFAULT_EVENT_COLOR,
     startD,
     endD: endD >= startD ? endD : startD,
@@ -75,7 +75,8 @@ function EventRow({ item, onSelect }: { item: RailItem; onSelect: (e: CalendarEv
 }
 
 export function TodayRail({ events, todayStr, onSelect }: TodayRailProps) {
-  const items = events.map(toItem);
+  const categoryColors = useCategoryColors();
+  const items = events.map(ev => toItem(ev, categoryColors));
 
   const today = items
     .filter(i => i.startD <= todayStr && todayStr <= i.endD)

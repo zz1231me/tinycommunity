@@ -8,6 +8,7 @@ import {
   updateSiteSettings,
   uploadSiteAsset,
   SiteSettings,
+  MAX_EVENT_CATEGORIES,
 } from '../../../api/siteSettings';
 import { useSiteSettings, DEFAULT_SETTINGS as STORE_DEFAULTS } from '../../../store/siteSettings';
 import { cacheSiteIdentity } from '../../../utils/siteIdentityCache';
@@ -267,6 +268,29 @@ export const SiteSettingsManagement = () => {
       'lotteryPrizes',
       (settings.lotteryPrizes ?? []).filter((_, i: number) => i !== index)
     );
+
+  // 일정 분류 편집. 키는 일정에 저장되는 값이라 만든 뒤에는 바꾸지 않는다 —
+  // 키를 고치면 그 분류로 저장된 예전 일정이 분류를 잃는다.
+  const eventCategories = settings.eventCategories ?? [];
+  const updateCategory = (index: number, field: 'label' | 'emoji' | 'color', value: string) => {
+    const next = [...eventCategories];
+    next[index] = { ...next[index], [field]: value };
+    set('eventCategories', next);
+  };
+  const addCategory = () => {
+    // 키가 겹치면 서버가 뒤엣것을 버린다. 같은 밀리초에 두 번 눌러도 겹치지 않게 센다.
+    const used = new Set(eventCategories.map(c => c.key));
+    let key = `cat_${Date.now().toString(36)}`;
+    for (let n = 2; used.has(key); n += 1) key = `cat_${Date.now().toString(36)}_${n}`;
+    set('eventCategories', [...eventCategories, { key, label: '', emoji: '', color: '#64748b' }]);
+  };
+  const removeCategory = (index: number) =>
+    set(
+      'eventCategories',
+      eventCategories.filter((_, i: number) => i !== index)
+    );
+  // 이름이 빈 줄은 서버가 조용히 버린다. 저장하고 나서야 사라진 것을 알면 당황스러우니 미리 알린다.
+  const blankCategory = eventCategories.some(c => !c.label.trim());
 
   const applyFavicon = (url: string) => {
     let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
@@ -540,6 +564,74 @@ export const SiteSettingsManagement = () => {
               ))}
             </div>
           </div>
+        </div>
+      </AdminSection>
+
+      {/* 일정 분류 */}
+      <AdminSection id="event-categories" title="일정 분류">
+        <div className="space-y-3">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            달력에서 일정을 만들 때 고르는 종류입니다. 색은 달력 칩의 바탕색이고, 테두리와 글자색은
+            읽히도록 이 색에서 계산합니다. 분류를 지워도 그 분류로 저장된 예전 일정은 그대로
+            열립니다 — 다만 기본 색으로 보입니다. 최대 {MAX_EVENT_CATEGORIES}개.
+          </p>
+          {blankCategory && (
+            <p className="text-xs font-medium text-red-500">
+              이름이 비어 있는 분류는 저장되지 않고 사라집니다.
+            </p>
+          )}
+          {eventCategories.length === 0 && (
+            <p className="text-xs font-medium text-red-500">
+              분류가 하나도 없으면 일정을 만들 수 없어, 저장하면 기본 분류로 되돌아갑니다.
+            </p>
+          )}
+          <div className="space-y-2">
+            {eventCategories.map((category, i) => (
+              <div key={category.key} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  maxLength={8}
+                  value={category.emoji}
+                  onChange={e => updateCategory(i, 'emoji', e.target.value)}
+                  className={adminInputCls('w-16 text-center')}
+                  aria-label={`${i + 1}번 분류 그림문자`}
+                  placeholder="🙂"
+                />
+                <input
+                  type="text"
+                  maxLength={20}
+                  value={category.label}
+                  onChange={e => updateCategory(i, 'label', e.target.value)}
+                  className={adminInputCls('w-40')}
+                  aria-label={`${i + 1}번 분류 이름`}
+                  placeholder="연차"
+                />
+                <input
+                  type="color"
+                  value={category.color}
+                  onChange={e => updateCategory(i, 'color', e.target.value)}
+                  className="h-9 w-12 cursor-pointer rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-800"
+                  aria-label={`${i + 1}번 분류 색`}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeCategory(i)}
+                  className="ml-auto rounded-lg border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  삭제
+                </button>
+              </div>
+            ))}
+          </div>
+          {eventCategories.length < MAX_EVENT_CATEGORIES && (
+            <button
+              type="button"
+              onClick={addCategory}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+              + 분류 추가
+            </button>
+          )}
         </div>
       </AdminSection>
 

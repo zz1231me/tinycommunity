@@ -1,3 +1,4 @@
+import type { EventCategoryOption } from '../api/siteSettings';
 import { create } from 'zustand';
 import { readCachedIdentity } from '../utils/siteIdentityCache';
 
@@ -45,6 +46,7 @@ export interface SiteSettings {
   eventBodyMaxLength: number;
   eventLocationMaxLength: number;
   workStatusLabels: Record<string, string>;
+  eventCategories: EventCategoryOption[];
   lotteryPrizes: { amount: number; weight: number }[];
   lotteryDailyLimit: number;
   lotteryDrawCost: number;
@@ -168,6 +170,15 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   eventBodyMaxLength: 10000,
   eventLocationMaxLength: 500,
   workStatusLabels: {},
+  // 서버가 내려 주기 전까지 쓰는 값. 서버의 config/eventCategory.ts 기본값과 같다.
+  eventCategories: [
+    { key: 'annual', label: '연차', emoji: '🏖️', color: '#fb7185' },
+    { key: 'morning_half', label: '오전반차', emoji: '🌅', color: '#fbbf24' },
+    { key: 'afternoon_half', label: '오후반차', emoji: '🌆', color: '#fb923c' },
+    { key: 'meeting', label: '회의', emoji: '💼', color: '#6366f1' },
+    { key: 'dinner', label: '회식', emoji: '🍻', color: '#2dd4bf' },
+    { key: 'etc', label: '기타', emoji: '📝', color: '#94a3b8' },
+  ],
   lotteryPrizes: [
     { amount: 1500, weight: 3 },
     { amount: 1000, weight: 10 },

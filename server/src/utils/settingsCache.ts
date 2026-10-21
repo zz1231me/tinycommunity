@@ -2,6 +2,7 @@ import { SiteSettings } from '../models/SiteSettings';
 import { logInfo, logError } from './logger';
 import { LOTTERY_DEFAULTS, type LotteryPrize } from '../config/lottery';
 import { TASK_DEFAULTS } from '../config/task';
+import { DEFAULT_EVENT_CATEGORIES, parseEventCategories } from '../config/eventCategory';
 import { DUEL_DEFAULTS } from '../config/duel';
 import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
 import { POINT_ATTACK_DEFAULTS } from '../config/pointAttack';
@@ -130,6 +131,7 @@ function parsePrizes(raw: string | null | undefined): LotteryPrize[] {
 export const SETTINGS_DEFAULTS = {
   /** 업무 상태 표시 이름. 비워 두면 코드 기본값(workStatus.ts)을 쓴다. */
   workStatusLabels: {} as Record<string, string>,
+  eventCategories: DEFAULT_EVENT_CATEGORIES,
   lotteryPrizes: LOTTERY_DEFAULTS.prizes,
   lotteryDailyLimit: LOTTERY_DEFAULTS.dailyLimit,
   lotteryDrawCost: LOTTERY_DEFAULTS.drawCost,
@@ -204,6 +206,7 @@ export async function loadSettingsCache(): Promise<void> {
     if (settings) {
       cachedSettings = {
         workStatusLabels: parseLabels(settings.workStatusLabels),
+        eventCategories: parseEventCategories(settings.eventCategories),
         lotteryPrizes: parsePrizes(settings.lotteryPrizes),
         lotteryDailyLimit: settings.lotteryDailyLimit ?? DEFAULTS.lotteryDailyLimit,
         lotteryDrawCost: settings.lotteryDrawCost ?? DEFAULTS.lotteryDrawCost,

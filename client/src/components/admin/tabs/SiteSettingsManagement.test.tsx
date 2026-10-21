@@ -23,6 +23,7 @@ vi.mock('../../../api/siteSettings', () => ({
   getAdminSiteSettings,
   updateSiteSettings,
   uploadSiteAsset: vi.fn(),
+  MAX_EVENT_CATEGORIES: 20,
 }));
 
 beforeEach(() => {

@@ -8,7 +8,7 @@ import {
   editOccurrence,
 } from '../../../../api/events';
 import { CalendarEvent, EventFormData } from '../types';
-import { categoryColors } from '../constants';
+import { useCategoryColors } from '../useEventCategories';
 import { dateUtils } from '../utils';
 import { toast } from '../../../../utils/toast';
 import { DEFAULT_EVENT_COLOR } from '../../../../constants/colors';
@@ -82,6 +82,8 @@ export const useCalendarEvents = ({
     [userId, isAdmin, canManageBoard]
   );
 
+  const categoryColors = useCategoryColors();
+
   const loadEvents = useCallback(async () => {
     if (!userId) return;
 
@@ -119,13 +121,15 @@ export const useCalendarEvents = ({
         start: event.start,
         end: event.end,
         allDay: event.isAllday,
+        // 분류 색을 일정에 저장된 색보다 먼저 본다. 저장된 색은 만들 때의 분류 색을
+        // 베껴 둔 것이라, 관리자가 분류 색을 바꾸면 예전 일정만 옛 색으로 남는다.
         backgroundColor:
+          (event.category ? categoryColors[event.category]?.bg : undefined) ||
           event.backgroundColor ||
-          categoryColors[event.category as keyof typeof categoryColors]?.bg ||
           DEFAULT_EVENT_COLOR,
         borderColor:
+          (event.category ? categoryColors[event.category]?.border : undefined) ||
           event.borderColor ||
-          categoryColors[event.category as keyof typeof categoryColors]?.border ||
           DEFAULT_EVENT_COLOR,
         // textColor 는 주입하지 않는다. 인라인 style 이 calendar.css 의 color-mix 글자색을 덮는다.
         // 반복에서 펼쳐진 번째는 끌어 옮기지 않는다 — 한 번째만 옮기는 규칙이 없다.
@@ -157,7 +161,7 @@ export const useCalendarEvents = ({
       }
     }
     // boardId 가 바뀌면 다른 게시판의 달력이다. 빼 두면 탭을 옮겨도 앞 게시판 일정이 남는다.
-  }, [userId, calendarRef, canEditEvent, boardId]);
+  }, [userId, calendarRef, canEditEvent, boardId, categoryColors]);
 
   const handleCreateEvent = useCallback(
     async (formData: EventFormData) => {

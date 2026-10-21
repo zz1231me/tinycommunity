@@ -6,17 +6,7 @@ import { ConfirmationModal } from '../common/ConfirmationModal';
 import { toast } from '../../../utils/toast';
 import { formatDateTime } from '../../../utils/date';
 import { ListState } from '../../common/ListState';
-
-// 일정 분류(category) 라벨 — 캘린더 카테고리 키와 일치
-const CATEGORY_NAMES: Record<string, string> = {
-  annual: '연차',
-  morning_half: '오전반차',
-  afternoon_half: '오후반차',
-  meeting: '회의',
-  dinner: '회식',
-  etc: '기타',
-};
-const categoryLabel = (c?: string | null) => (c ? CATEGORY_NAMES[c] || c : '미분류');
+import { useSiteSettings } from '../../../store/siteSettings';
 
 const formatDate = formatDateTime;
 
@@ -24,6 +14,12 @@ type PeriodFilter = 'all' | 'upcoming' | 'past' | 'thisMonth';
 type EventSortKey = 'start' | 'title';
 
 export const EventManagement = () => {
+  // 분류 이름은 사이트 설정에서 온다. 설정에서 지운 분류를 쓰던 예전 일정도 있으므로
+  // 이름을 못 찾으면 키를 그대로 보여 준다 — 빈칸으로 두면 무슨 일정인지 알 수 없다.
+  const eventCategories = useSiteSettings(s => s.settings.eventCategories);
+  const categoryLabel = (c?: string | null) =>
+    c ? (eventCategories.find(x => x.key === c)?.label ?? c) : '미분류';
+
   const {
     events,
     permissions: eventPermissions,
