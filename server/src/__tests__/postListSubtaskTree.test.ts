@@ -63,6 +63,11 @@ beforeAll(async () => {
   await seedTestData();
   adminCookie = await loginAs('admin', 'TestAdmin123!');
   await Board.update({ taskEnabled: true }, { where: { id: BOARD } });
+  // 상위가 옮겨 갈 다른 게시판
+  await Board.findOrCreate({
+    where: { id: 'treeother' },
+    defaults: { id: 'treeother', name: '다른 게시판', order: 94, taskEnabled: true },
+  });
 
   parentId = await create('트리상위 현장점검');
   childA = await addSub(parentId, '트리하위 자재확인');
@@ -121,6 +126,38 @@ describe('목록에서 하위 업무 접기', () => {
   it('업무 상태로 걸러도 하위가 나온다', async () => {
     const { posts } = await listPosts('&workStatus=done');
     expect(posts.map(p => p.id)).toContain(childB);
+  });
+
+  // 글은 게시판을 옮길 수 있는데(updatePost 의 targetBoardType) 옮겨도 parentTaskId 는
+  // 남는다. 거르지 않으면 못 들어가는 게시판의 제목이 이 줄에 실려 나간다.
+  it('다른 게시판으로 옮겨 간 상위의 제목은 붙이지 않는다', async () => {
+    const parent = await create('트리상위 옮겨질것');
+    const child = await addSub(parent, '트리하위 남는것');
+    await Post.update({ boardType: 'treeother' }, { where: { id: parent } });
+
+    const { posts } = await listPosts('&search=트리하위 남는것');
+    const row = posts.find(p => p.id === child)!;
+    expect(row).toBeDefined();
+    expect(row.parentTask).toBeNull();
+
+    await Post.update({ boardType: BOARD }, { where: { id: parent } });
+  });
+
+  // 직접 쓴 SQL 이라 paranoid 가 붙여 주는 deletedAt 조건이 없다. 빼먹으면 펼쳐도
+  // 아무것도 없는데 '하위 0/1' 이라고 적힌 줄이 남는다.
+  it('지운 하위는 세지 않는다', async () => {
+    const parent = await create('트리상위 셈하기');
+    const a = await addSub(parent, '트리하위 남을것');
+    await addSub(parent, '트리하위 지울것');
+    expect((await listPosts()).posts.find(p => p.id === parent)!.subtaskCount).toBe(2);
+
+    const res = await request(app)
+      .delete(`/api/posts/${BOARD}/${a}`)
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+
+    expect((await listPosts()).posts.find(p => p.id === parent)!.subtaskCount).toBe(1);
   });
 
   it('떼어 내면 다시 맨 윗단으로 올라온다', async () => {

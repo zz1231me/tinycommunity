@@ -709,7 +709,15 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       .catch(err => logError('사이트 설정 감사 로그 기록 실패', err));
 
     logInfo('사이트 설정 업데이트', { siteName: settings.siteName });
-    sendSuccess(res, toPayload(settings), '사이트 설정이 업데이트되었습니다.');
+    // 관리자 조회(GET /admin)와 **같은 모양**으로 돌려준다. 이 길도 isAdmin 뒤에 있다.
+    // 공개용 toPayload 만 돌려주던 때는 보안 설정 아홉 개(로그인 시도 횟수·잠금 시간·
+    // bcrypt·로그 보존일·토큰 유효기간)가 빠져 있었고, 화면이 그 응답으로 폼을
+    // 덮어쓰면서 저장 직후 그 칸들이 비어 보였다.
+    sendSuccess(
+      res,
+      { ...toPayload(settings), ...adminOnlyPayload(settings) },
+      '사이트 설정이 업데이트되었습니다.'
+    );
   } catch (error) {
     logError('사이트 설정 업데이트 실패', error);
     sendError(res, 500, '사이트 설정 업데이트에 실패했습니다.');

@@ -345,12 +345,18 @@ export class PostService extends BaseService {
           },
           // 거를 때만 하위 줄이 섞여 나온다. 그때 상위 제목이 없으면 그 줄만
           // 떼어 놓고 보게 되어 무엇에 딸린 일인지 알 수 없다.
+          //
+          // **이 게시판의, 발행된 상위만** 붙인다. 글은 게시판을 옮길 수 있는데
+          // (updatePost 의 targetBoardType) 옮겨도 parentTaskId 는 남는다. 거르지
+          // 않으면 못 들어가는 게시판으로 옮겨 간 상위나 임시저장·보관된 상위의
+          // 제목이 이 줄에 실려 나온다. listSubtasks 도 같은 이유로 게시판을 본다.
           ...(filtering
             ? [
                 {
                   model: Post,
                   as: 'parentTask',
                   attributes: ['id', 'title'],
+                  where: { boardType, status: 'published' },
                   required: false,
                 },
               ]
@@ -383,15 +389,20 @@ export class PostService extends BaseService {
           ],
           // 펼치기 전에도 '하위 3개 중 1개 끝남' 을 보여 주려면 개수가 먼저 와야 한다.
           // 펼쳐 봐야 비로소 몇 개인지 아는 삼각형은 누를 이유를 주지 못한다.
+          //
+          // 직접 쓴 SQL 이라 Sequelize 의 paranoid 가 붙여 주는 조건이 없다.
+          // deletedAt 을 빼면 **지운 하위가 계속 세어져**, 펼치면 아무것도 없는데
+          // '하위 0/1' 이라고 적힌 줄이 남는다. 게시판도 맞춘다 — 묶음은 한 게시판
+          // 안에서만 뜻이 있고, 옮겨 간 글의 parentTaskId 는 남아 있기 때문이다.
           [
             literal(
-              `(SELECT COUNT(*) FROM Posts AS st WHERE st.parentTaskId = Post.id AND st.status = 'published')`
+              `(SELECT COUNT(*) FROM Posts AS st WHERE st.parentTaskId = Post.id AND st.boardType = Post.boardType AND st.status = 'published' AND st.deletedAt IS NULL)`
             ),
             'subtaskCount',
           ],
           [
             literal(
-              `(SELECT COUNT(*) FROM Posts AS st WHERE st.parentTaskId = Post.id AND st.status = 'published' AND st.workStatus = 'done')`
+              `(SELECT COUNT(*) FROM Posts AS st WHERE st.parentTaskId = Post.id AND st.boardType = Post.boardType AND st.status = 'published' AND st.deletedAt IS NULL AND st.workStatus = 'done')`
             ),
             'subtaskDoneCount',
           ],
