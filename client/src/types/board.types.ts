@@ -33,6 +33,8 @@ export type Post = {
   priority?: TaskPriority;
   /** 담당자. 목록·상세 모두 같은 모양으로 내려온다 */
   assignee?: { id: string; name: string; avatar?: string | null } | null;
+  /** 이 업무의 기간을 달력에 그릴지. 상세 응답에만 온다. */
+  showOnCalendar?: boolean;
 };
 
 export type BoardInfo = {

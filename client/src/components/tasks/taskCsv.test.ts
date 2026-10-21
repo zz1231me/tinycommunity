@@ -21,6 +21,7 @@ const task = (over: Partial<MyTask> = {}): MyTask => ({
   canEdit: true,
   startDate: '2026-10-12',
   dueDate: '2026-10-17',
+  showOnCalendar: true,
   createdAt: '2026-10-01T00:00:00.000Z',
   updatedAt: '2026-10-15T09:30:00.000Z',
   ...over,

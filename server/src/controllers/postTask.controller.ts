@@ -54,6 +54,7 @@ export const changeTask = async (req: AuthRequest, res: Response): Promise<void>
     priority?: unknown;
     startDate?: unknown;
     dueDate?: unknown;
+    showOnCalendar?: unknown;
     ifWorkStatus?: unknown;
   };
 
@@ -63,9 +64,14 @@ export const changeTask = async (req: AuthRequest, res: Response): Promise<void>
     body.workStatus === undefined &&
     body.priority === undefined &&
     body.startDate === undefined &&
-    body.dueDate === undefined
+    body.dueDate === undefined &&
+    body.showOnCalendar === undefined
   ) {
     sendError(res, 400, '바꿀 담당자나 상태를 지정해주세요.');
+    return;
+  }
+  if (body.showOnCalendar !== undefined && typeof body.showOnCalendar !== 'boolean') {
+    sendError(res, 400, '달력 표시 여부는 true/false 여야 합니다.');
     return;
   }
   if (!isDateOnlyOrNull(body.startDate) || !isDateOnlyOrNull(body.dueDate)) {
@@ -105,6 +111,7 @@ export const changeTask = async (req: AuthRequest, res: Response): Promise<void>
       priority: body.priority as TaskPriority | undefined,
       startDate: body.startDate as string | null | undefined,
       dueDate: body.dueDate as string | null | undefined,
+      showOnCalendar: body.showOnCalendar as boolean | undefined,
       ifWorkStatus: body.ifWorkStatus as WorkStatus | undefined,
     });
     sendSuccess(res, result);

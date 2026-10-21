@@ -1106,3 +1106,48 @@ describe('화면과 나눠 가진 상한', () => {
     expect(read('DONE_LIMIT')).toBe(DONE_LIMIT);
   });
 });
+
+describe('달력에 표시', () => {
+  // 일정은 그대로 두고 달력에서만 뺀다. 기간은 필요한데 달력이 그것으로 가득 차는
+  // 업무가 있다 — 끈 업무도 간트·목록에는 남아야 한다.
+  it('기본은 표시다 — 끄는 쪽이 예외다', async () => {
+    const id = await createPost(adminCookie, `달력기본 ${Date.now()}`);
+    const res = await setTask(adminCookie, id, { startDate: '2026-11-02', dueDate: '2026-11-04' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.showOnCalendar).toBe(true);
+  });
+
+  it('끄면 목록에는 남고 달력 표시만 꺼진다', async () => {
+    const id = await createPost(adminCookie, `달력끄기 ${Date.now()}`);
+    await setTask(adminCookie, id, {
+      assigneeId: 'testuser',
+      workStatus: 'todo',
+      startDate: '2026-11-02',
+      dueDate: '2026-11-04',
+    });
+
+    const off = await setTask(adminCookie, id, { showOnCalendar: false });
+    expect(off.status).toBe(200);
+    expect(off.body.data.showOnCalendar).toBe(false);
+
+    // 목록에서 사라지면 안 된다 — 간트·보드가 같은 목록을 쓴다
+    const mine = await request(app).get('/api/posts/tasks/mine').set('Cookie', userCookie);
+    const row = mine.body.data.find((t: { id: string }) => t.id === id);
+    expect(row).toBeTruthy();
+    expect(row.showOnCalendar).toBe(false);
+    expect(row.dueDate).toBe('2026-11-04');
+  });
+
+  it('true/false 가 아니면 거절한다', async () => {
+    const id = await createPost(adminCookie, `달력타입 ${Date.now()}`);
+    const res = await setTask(adminCookie, id, { showOnCalendar: 'no' });
+    expect(res.status).toBe(400);
+  });
+
+  it('이것만 보내도 바꿀 수 있다 — 아무것도 안 바꾸는 요청으로 보지 않는다', async () => {
+    const id = await createPost(adminCookie, `달력단독 ${Date.now()}`);
+    const res = await setTask(adminCookie, id, { showOnCalendar: false });
+    expect(res.status).toBe(200);
+  });
+});

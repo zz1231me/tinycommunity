@@ -33,6 +33,11 @@ interface ChangeParams {
   startDate?: string | null;
   dueDate?: string | null;
   /**
+   * 이 업무의 기간을 달력에 그릴지. 일정은 그대로 두고 달력에서만 뺀다 —
+   * 기간은 필요한데 달력이 그것으로 가득 차는 업무가 있다(간트·목록에는 남는다).
+   */
+  showOnCalendar?: boolean;
+  /**
    * 이 상태일 때만 바꾼다. 다르면 409. '되돌리기' 처럼 방금 본 상태를 전제로 한 변경이
    * 그새 다른 사람이 바꾼 상태를 덮어쓰지 않게 한다.
    */
@@ -154,6 +159,7 @@ export const postTaskService = {
     }
 
     if (params.priority !== undefined) post.priority = params.priority;
+    if (params.showOnCalendar !== undefined) post.showOnCalendar = params.showOnCalendar;
     if (params.startDate !== undefined) post.startDate = params.startDate;
     if (params.dueDate !== undefined) post.dueDate = params.dueDate;
     // 한쪽만 바꿔도 저장된 다른 쪽과 어긋날 수 있어 합친 뒤에 본다
@@ -218,6 +224,7 @@ export const postTaskService = {
       priority: post.priority,
       startDate: post.startDate ?? null,
       dueDate: post.dueDate ?? null,
+      showOnCalendar: post.showOnCalendar !== false,
     };
   },
 
@@ -452,6 +459,7 @@ async function findTasks(
             'assigneeId',
             'startDate',
             'dueDate',
+            'showOnCalendar',
             'createdAt',
             'updatedAt',
             // 비밀글 여부를 함께 읽어 아래에서 거른다
@@ -495,6 +503,7 @@ async function findTasks(
       assigneeId: string | null;
       startDate: string | null;
       dueDate: string | null;
+      showOnCalendar: boolean;
       createdAt: Date;
       updatedAt: Date;
       UserId: string | null;
@@ -517,6 +526,8 @@ async function findTasks(
         : null,
       startDate: plain.startDate ?? null,
       dueDate: plain.dueDate ?? null,
+      // 예전에 만들어진 글은 이 칸이 비어 있을 수 있다 — 기본은 보임
+      showOnCalendar: plain.showOnCalendar !== false,
       createdAt: plain.createdAt,
       updatedAt: plain.updatedAt,
       // assertCanManage 와 같은 규칙. 화면이 끌 수 없는 카드를 미리 막는 데 쓴다.

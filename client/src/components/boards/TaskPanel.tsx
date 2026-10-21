@@ -56,6 +56,7 @@ export function TaskPanel({ boardType, postId, state, editable, onChange }: Prop
       priority?: TaskPriority;
       startDate?: string | null;
       dueDate?: string | null;
+      showOnCalendar?: boolean;
     }) => changeTask(boardType, postId, change),
     onSuccess: next => {
       if (!aliveRef.current) return;
@@ -213,6 +214,28 @@ export function TaskPanel({ boardType, postId, state, editable, onChange }: Prop
           task={{ dueDate: state.dueDate, workStatus: state.workStatus }}
           today={new Date()}
         />
+        {/*
+          일정은 그대로 두고 달력에서만 뺀다. 기간은 필요한데 달력이 그것으로 가득 차는
+          업무가 있다 — 끄면 간트·목록에는 남고 달력에서만 사라진다.
+          일정이 없으면 애초에 달력에 그려질 것이 없으므로 두지 않는다.
+        */}
+        {hasSchedule &&
+          (editable ? (
+            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <input
+                type="checkbox"
+                checked={state.showOnCalendar}
+                disabled={mutate.isPending}
+                onChange={e => mutate.mutate({ showOnCalendar: e.target.checked })}
+                className="h-3.5 w-3.5 rounded border-slate-300 text-primary-600 dark:border-slate-600"
+              />
+              달력에 표시
+            </label>
+          ) : (
+            !state.showOnCalendar && (
+              <span className="text-xs text-slate-400">달력에 표시하지 않음</span>
+            )
+          ))}
       </div>
 
       {pickingAssignee && editable && (

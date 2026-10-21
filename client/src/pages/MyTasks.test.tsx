@@ -78,6 +78,7 @@ const task = (title: string, over: Partial<MyTask> = {}): MyTask => ({
   canEdit: true,
   startDate: null,
   dueDate: null,
+  showOnCalendar: true,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
   ...over,
@@ -327,6 +328,7 @@ describe('팀 보기에서 옮길 때', () => {
       assignee: { id: 'me', name: '나', avatar: null },
       startDate: null,
       dueDate: null,
+      showOnCalendar: true,
     });
     view(makeClient(), '/?board=qc&view=kanban');
     await screen.findByText('주인 없는 일:todo');
@@ -343,6 +345,7 @@ describe('팀 보기에서 옮길 때', () => {
       assignee: { id: 'u2', name: '김동료', avatar: null },
       startDate: null,
       dueDate: null,
+      showOnCalendar: true,
     });
     view(makeClient(), '/?board=qc&view=kanban');
     await screen.findByText('주인 있는 일:todo');

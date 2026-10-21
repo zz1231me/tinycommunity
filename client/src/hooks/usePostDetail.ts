@@ -48,6 +48,8 @@ export type Post = {
   /** 업무 일정 YYYY-MM-DD. 정하지 않았으면 null */
   startDate?: string | null;
   dueDate?: string | null;
+  /** 이 업무의 기간을 달력에 그릴지 */
+  showOnCalendar?: boolean;
   /** 이 글이 속한 게시판 */
   board?: { id: string; name: string; taskEnabled: boolean } | null;
   /** 이 글의 태그 */
@@ -154,6 +156,7 @@ export const usePostDetail = ({ boardType, id }: UsePostDetailProps) => {
         assignee: data.assignee ?? null,
         startDate: data.startDate ?? null,
         dueDate: data.dueDate ?? null,
+        showOnCalendar: data.showOnCalendar !== false,
         board: data.board ?? null,
         tags: Array.isArray(data.tags) ? data.tags : [],
         user: data.user,
