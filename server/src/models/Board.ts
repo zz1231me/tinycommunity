@@ -21,7 +21,10 @@ export interface BoardInstance extends Model<
   id: string;
   name: string;
   description: string | null;
-  isActive: boolean;
+  // DB 가 기본값(true)을 주므로 만들 때는 생략할 수 있다. CreationOptional 이 아니면
+  // Board.create 를 부르는 모든 자리가 isActive 를 적어야 하고, 적지 않은 자리는
+  // 타입 검사에서만 터진다(실행은 멀쩡해서 오래 남았다).
+  isActive: CreationOptional<boolean>;
   order: number;
   isPersonal: CreationOptional<boolean>; // 개인 폴더 여부
   taskEnabled: CreationOptional<boolean>; // 업무용 게시판 여부
@@ -42,7 +45,7 @@ export class Board
   declare public id: string;
   declare public name: string;
   declare public description: string | null;
-  declare public isActive: boolean;
+  declare public isActive: CreationOptional<boolean>;
   declare public order: number;
   declare public isPersonal: CreationOptional<boolean>;
   declare public taskEnabled: CreationOptional<boolean>;
