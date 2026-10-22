@@ -33,6 +33,13 @@ export type Post = {
   priority?: TaskPriority;
   /** 담당자. 목록·상세 모두 같은 모양으로 내려온다 */
   assignee?: { id: string; name: string; avatar?: string | null } | null;
+  /** 이 업무의 기간을 달력에 그릴지. 상세 응답에만 온다. */
+  showOnCalendar?: boolean;
+  /** 딸린 하위 업무 수. 펼치기 전에도 '3개 중 1개 끝남' 을 보여 주려고 목록이 함께 내려 준다 */
+  subtaskCount?: number;
+  subtaskDoneCount?: number;
+  /** 거를 때만 채워진다 — 하위 줄이 상위와 떨어져 나올 때 어디에 딸린 일인지 알리려고 */
+  parentTask?: { id: string; title: string } | null;
 };
 
 export type BoardInfo = {
@@ -42,6 +49,9 @@ export type BoardInfo = {
   isPersonal?: boolean; // ✅ 개인 폴더 여부
   /** 업무용 게시판 — 담당자·업무 상태를 쓴다 */
   taskEnabled?: boolean;
+  calendarEnabled?: boolean;
+  /** 이 게시판에 글·일정을 쓸 수 있는가 */
+  canWrite?: boolean;
   ownerId?: string; // ✅ 개인 폴더 소유자
   order?: number;
   permissions?: {

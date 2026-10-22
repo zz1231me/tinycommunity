@@ -38,11 +38,16 @@ function readCache(): UiPrefs {
 export function useUiPrefs(): {
   prefs: UiPrefs;
   setPref: <K extends keyof UiPrefs>(key: K, value: UiPrefs[K]) => void;
+  /**
+   * 서버 값을 한 번이라도 읽었는가(실패도 읽은 것으로 친다).
+   * 되돌릴 수 없는 판단 — 첫 화면으로 어디에 보낼지 — 은 이 값을 기다린다.
+   */
+  ready: boolean;
 } {
   const loggedIn = useAuth(s => s.isAuthenticated);
   const [prefs, setPrefs] = useState<UiPrefs>(readCache);
 
-  const { data } = useQuery({
+  const { data, isError } = useQuery({
     queryKey: ['ui-prefs'],
     queryFn: ({ signal }) => fetchUiPrefs(signal),
     enabled: loggedIn,
@@ -83,5 +88,5 @@ export function useUiPrefs(): {
     });
   }, []);
 
-  return { prefs, setPref };
+  return { prefs, setPref, ready: !loggedIn || data !== undefined || isError };
 }

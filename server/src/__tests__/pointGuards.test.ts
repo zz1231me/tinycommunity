@@ -10,7 +10,7 @@ import { duelService } from '../services/duel.service';
 import { FeatureFlag } from '../models/FeatureFlag';
 import { featureFlagService } from '../services/featureFlag.service';
 import { refreshSettingsCache, getLotterySettings } from '../utils/settingsCache';
-import type { DuelHand } from '../config/duel';
+import type { DuelHand } from '../models/PointDuel';
 
 const A = 'admin';
 const B = 'testuser';

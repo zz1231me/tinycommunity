@@ -20,6 +20,8 @@ export interface CalendarEvent {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   customStyle?: any;
   UserId: string;
+  /** 게시판 일정이면 그 게시판 id. 비어 있으면 전사 공유 일정이다. */
+  boardId?: string | null;
   user?: {
     id: string;
     name: string;
@@ -60,18 +62,18 @@ export interface EventFormData {
 
 export type ModalMode = 'view' | 'create' | 'edit';
 
+// 글자색은 담아 두지 않는다. 바탕색에서 계산하는 값이라(useEventCategories 의 readableText)
+// 따로 들고 다니면 색만 바뀌었을 때 둘이 어긋난다.
 export interface Category {
   key: string;
   emoji: string;
   label: string;
   bg: string;
   border: string;
-  textColor: string;
 }
 
 export interface CategoryColor {
   bg: string;
   border: string;
   label: string;
-  textColor: string;
 }

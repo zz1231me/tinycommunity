@@ -1,4 +1,5 @@
-// 마감이 오늘·내일인 업무를 담당자에게 알린다. 주기적으로 돌지만 같은 글은 하루 한 번만 알린다.
+// 마감이 가까운(그리고 이미 지난) 업무를 담당자에게 알린다. 주기적으로 돌지만 같은 글은
+// 하루 한 번만 알린다.
 // 날짜는 프로세스 시간대(운영은 TZ=Asia/Seoul)의 달력 날짜로 센다.
 //
 // 알림에는 글 제목이 실린다. 담당자로 지정된 뒤에 게시판 권한을 잃었거나, 글이 비밀글이 되어
@@ -21,27 +22,38 @@ export function localDate(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** 마감일까지 남은 날로 문구를 고른다. 0=오늘, 1=내일, 그 뒤는 'N일 뒤'. */
-function whenLabel(daysLeft: number): string {
-  if (daysLeft <= 0) return '오늘';
-  if (daysLeft === 1) return '내일';
-  return `${daysLeft}일 뒤`;
+/** 마감까지 남은 날로 문구를 고른다. 음수면 이미 지난 것이다. */
+function whenPhrase(daysLeft: number): string {
+  if (daysLeft < 0) return `${-daysLeft}일 지났습니다`;
+  if (daysLeft === 0) return '오늘입니다';
+  if (daysLeft === 1) return '내일입니다';
+  return `${daysLeft}일 뒤입니다`;
 }
 
 /** 보낸 알림 수를 돌려준다 */
 export async function sendDueReminders(now = new Date()): Promise<number> {
-  const { reminderDaysBefore, reminderHour } = getTaskSettings();
+  const { reminderDaysBefore, reminderHour, overdueDays } = getTaskSettings();
+  /**
+   * 마감이 지난 뒤로도 알리는 날 수. 관리자가 사이트 설정에서 정한다(0 이면 지난 일은 알리지 않는다).
+   *
+   * 예전에는 오늘부터 앞쪽만 봤다. 마감일 아침에 한 번 울리고 그 뒤로는 조용해서, 그 알림을
+   * 놓치면 늦은 일을 아무도 모른 채 지나갔다 — 정작 지난 일이 가장 급한데.
+   * 그렇다고 끝없이 알리면 방치된 업무가 매일 같은 말을 반복한다.
+   */
+  const overdue = Math.max(0, overdueDays);
 
   // 정해 둔 시각 전에는 보내지 않는다. 주기는 1시간이라, 이 가드가 없으면 자정 직후
   // 첫 차례에 '마감이 오늘입니다' 가 나가 한밤중에 울린다.
   if (now.getHours() < reminderHour) return 0;
 
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  // 오늘부터 reminderDaysBefore 일 뒤까지. 0 이면 마감 당일만 알린다.
+  // 지난 overdue 일부터 reminderDaysBefore 일 뒤까지.
   const window: string[] = [];
-  for (let i = 0; i <= Math.max(0, reminderDaysBefore); i += 1) {
+  for (let i = -overdue; i <= Math.max(0, reminderDaysBefore); i += 1) {
     window.push(localDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + i)));
   }
+  /** 창에서의 자리로 남은 날을 센다. 창의 첫 칸이 overdue 일 전이다. */
+  const daysLeftOf = (dueDate: string) => window.indexOf(dueDate) - overdue;
 
   const posts = await Post.findAll({
     where: {
@@ -101,11 +113,11 @@ export async function sendDueReminders(now = new Date()): Promise<number> {
   for (const post of posts) {
     const userId = post.assigneeId as string;
     if (already.has(`${userId}:${post.id}`) || !canSee(post)) continue;
-    const when = whenLabel(window.indexOf(post.dueDate as string));
+    const when = whenPhrase(daysLeftOf(post.dueDate as string));
     const created = await notificationService.create({
       userId,
       type: 'TASK_DUE',
-      message: `"${post.title}" 마감이 ${when}입니다.`,
+      message: `"${post.title}" 마감이 ${when}`,
       link: `/dashboard/posts/${post.boardType}/${post.id}`,
       relatedId: post.id,
     });

@@ -2,7 +2,7 @@ import { DEFAULT_EVENT_COLOR } from '../../../../constants/colors';
 import { useCodeHighlight } from '../../../../hooks/useCodeHighlight';
 import React, { useRef, useMemo } from 'react';
 import { CalendarEvent } from '../types';
-import { categoryColors } from '../constants';
+import { readableText, useCategoryColors } from '../useEventCategories';
 import { formatDateRange } from '../utils';
 import { sanitizeHTML } from '../../../../utils/htmlSanitizer';
 import { formatDateTime } from '../../../../utils/date';
@@ -50,9 +50,12 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
   const bodyHtml = useMemo(() => ({ __html: sanitizeHTML(event.body ?? '') }), [event.body]);
   useCodeHighlight(bodyRef);
 
-  const categoryInfo = categoryColors[event.category as keyof typeof categoryColors];
+  const categoryColors = useCategoryColors();
+  const categoryInfo = event.category ? categoryColors[event.category] : undefined;
   const categoryLabel = categoryInfo?.label || '기타';
-  const eventColor = event.backgroundColor || DEFAULT_EVENT_COLOR;
+  // 분류 색이 먼저다. 일정에 저장된 색은 만들 때의 분류 색을 베껴 둔 것이라,
+  // 관리자가 분류 색을 바꾸면 예전 일정만 옛 색으로 남는다.
+  const eventColor = categoryInfo?.bg || event.backgroundColor || DEFAULT_EVENT_COLOR;
 
   return (
     <div className="space-y-4">
@@ -62,7 +65,8 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({
       >
         <span
           className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
-          style={{ backgroundColor: eventColor, color: categoryInfo?.textColor ?? '#ffffff' }}
+          // 분류가 지워진 옛 일정은 색만 남는다. 그 색 위에서도 읽히게 글자색을 계산한다.
+          style={{ backgroundColor: eventColor, color: readableText(eventColor) }}
         >
           {categoryLabel}
         </span>

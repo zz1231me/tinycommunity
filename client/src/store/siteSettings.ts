@@ -1,3 +1,4 @@
+import type { EventCategoryOption } from '../api/siteSettings';
 import { create } from 'zustand';
 import { readCachedIdentity } from '../utils/siteIdentityCache';
 
@@ -19,7 +20,6 @@ export interface SiteSettings {
   maxFileSizeMb: number;
   maxImageSizeMb: number;
   maxAvatarSizeMb: number;
-  maxArchiveSizeMb: number;
   maxImageCount: number;
   allowedImageExtensions: string[];
   allowedDocumentExtensions: string[];
@@ -46,6 +46,7 @@ export interface SiteSettings {
   eventBodyMaxLength: number;
   eventLocationMaxLength: number;
   workStatusLabels: Record<string, string>;
+  eventCategories: EventCategoryOption[];
   lotteryPrizes: { amount: number; weight: number }[];
   lotteryDailyLimit: number;
   lotteryDrawCost: number;
@@ -57,6 +58,7 @@ export interface SiteSettings {
   duelExpireMinutes: number;
   /** 업무 마감 며칠 전부터 알리는지. 0 이면 마감 당일에만 */
   taskReminderDaysBefore: number;
+  taskOverdueDays: number;
   /** 마감 알림을 보내기 시작하는 시각(0~23) */
   taskReminderHour: number;
   /** 마감이 이 날 수 안이면 '곧' 으로 칠한다 */
@@ -128,7 +130,6 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   maxFileSizeMb: 100,
   maxImageSizeMb: 10,
   maxAvatarSizeMb: 5,
-  maxArchiveSizeMb: 100,
   maxImageCount: 1,
   allowedImageExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.ico'],
   allowedDocumentExtensions: [
@@ -169,6 +170,15 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   eventBodyMaxLength: 10000,
   eventLocationMaxLength: 500,
   workStatusLabels: {},
+  // 서버가 내려 주기 전까지 쓰는 값. 서버의 config/eventCategory.ts 기본값과 같다.
+  eventCategories: [
+    { key: 'annual', label: '연차', emoji: '🏖️', color: '#fb7185' },
+    { key: 'morning_half', label: '오전반차', emoji: '🌅', color: '#fbbf24' },
+    { key: 'afternoon_half', label: '오후반차', emoji: '🌆', color: '#fb923c' },
+    { key: 'meeting', label: '회의', emoji: '💼', color: '#6366f1' },
+    { key: 'dinner', label: '회식', emoji: '🍻', color: '#2dd4bf' },
+    { key: 'etc', label: '기타', emoji: '📝', color: '#94a3b8' },
+  ],
   lotteryPrizes: [
     { amount: 1500, weight: 3 },
     { amount: 1000, weight: 10 },
@@ -184,6 +194,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   duelExpireMinutes: 10,
   // 서버 config/task.ts 의 기본값과 같다. 응답이 오면 덮어쓴다.
   taskReminderDaysBefore: 1,
+  taskOverdueDays: 7,
   taskReminderHour: 9,
   taskSoonDays: 3,
   duelMaxOpenPerUser: 3,

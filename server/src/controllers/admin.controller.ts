@@ -436,7 +436,7 @@ export const getAllBoards = async (_req: Request, res: Response): Promise<void> 
 
 export const createBoard = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id, name, description, order, taskEnabled } = req.body;
+    const { id, name, description, order, taskEnabled, calendarEnabled } = req.body;
 
     if (!id || typeof id !== 'string' || !/^[a-zA-Z0-9_-]{2,50}$/.test(id.trim())) {
       sendError(res, 400, '게시판 ID는 2~50자의 영문/숫자/-/_ 만 허용됩니다.');
@@ -459,6 +459,10 @@ export const createBoard = async (req: Request, res: Response): Promise<void> =>
       sendError(res, 400, '업무용 여부는 true/false 여야 합니다.');
       return;
     }
+    if (calendarEnabled !== undefined && typeof calendarEnabled !== 'boolean') {
+      sendError(res, 400, '달력 사용 여부는 true/false 여야 합니다.');
+      return;
+    }
 
     await boardService.createBoard({
       id: id.trim(),
@@ -466,6 +470,7 @@ export const createBoard = async (req: Request, res: Response): Promise<void> =>
       description,
       order,
       taskEnabled,
+      calendarEnabled,
     });
     invalidateCache('boards'); // 사이드바/접근 가능 게시판 목록 즉시 반영
     logAudit(req, 'create_board', {
@@ -489,7 +494,7 @@ export const createBoard = async (req: Request, res: Response): Promise<void> =>
 export const updateBoard = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, description, order, isActive, taskEnabled } = req.body;
+    const { name, description, order, isActive, taskEnabled, calendarEnabled } = req.body;
 
     if (name !== undefined) {
       if (typeof name !== 'string' || !name.trim()) {
@@ -510,6 +515,10 @@ export const updateBoard = async (req: Request, res: Response): Promise<void> =>
       sendError(res, 400, '업무용 여부는 true/false 여야 합니다.');
       return;
     }
+    if (calendarEnabled !== undefined && typeof calendarEnabled !== 'boolean') {
+      sendError(res, 400, '달력 사용 여부는 true/false 여야 합니다.');
+      return;
+    }
 
     await boardService.updateBoard(id, {
       name: name?.trim(),
@@ -517,12 +526,13 @@ export const updateBoard = async (req: Request, res: Response): Promise<void> =>
       order,
       isActive,
       ...(taskEnabled !== undefined && { taskEnabled }),
+      ...(calendarEnabled !== undefined && { calendarEnabled }),
     });
     invalidateCache('boards'); // 이름/활성/순서 변경 즉시 반영
     logAudit(req, 'update_board', {
       targetType: 'board',
       targetId: id,
-      afterValue: { name, description, order, isActive, taskEnabled },
+      afterValue: { name, description, order, isActive, taskEnabled, calendarEnabled },
     });
     sendSuccess(res, null, '게시판 수정 완료');
   } catch (error: unknown) {

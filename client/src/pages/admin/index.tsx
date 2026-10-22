@@ -6,6 +6,7 @@ import { Home } from 'lucide-react';
 import { PageContainer } from '../../components/common/PageContainer';
 import { scrollContentToTop } from '../../utils/scroll';
 import { TabNavigation } from '../../components/admin/common/TabNavigation';
+import { adminTabTitle } from '../../components/admin/common/adminTabs';
 import { LoadingSpinner } from '../../components/admin/common/LoadingSpinner';
 
 // Lazy load tab components
@@ -57,6 +58,7 @@ import { PageHeader } from '../../components/common/PageHeader';
 
 const AdminUserPage = () => {
   const location = useLocation();
+  const here = adminTabTitle(location.pathname);
 
   // 관리자 탭(라우트) 전환 시 상단으로 (긴 탭→짧은 탭 잔여 스크롤 방지)
   // admin은 독립 라우트(=window 스크롤)이므로 공통 헬퍼로 처리
@@ -68,9 +70,16 @@ const AdminUserPage = () => {
     // admin은 Dashboard <main> 밖 독립 라우트라 배경/높이를 직접 제공
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <PageContainer>
+        {/* 머리글은 지금 보고 있는 화면의 이름을 단다. 스물다섯 화면이 모두 '관리자
+            페이지' 였어서 제목만 보고는 어디인지 알 수 없었고, 화면마다 제 이름을 다는
+            사용자 쪽과도 어긋났다. 메뉴에 적힌 이름을 그대로 쓴다. */}
         <PageHeader
-          title="관리자 페이지"
-          description="시스템 전체를 관리하는 컨트롤 센터"
+          breadcrumbs={[
+            { label: '관리자', to: '/admin' },
+            ...(here ? [{ label: here.group }] : []),
+          ]}
+          title={here?.label ?? '관리자 페이지'}
+          description={here ? '' : '시스템 전체를 관리하는 컨트롤 센터'}
           icon={
             <svg
               aria-hidden="true"

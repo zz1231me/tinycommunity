@@ -23,7 +23,7 @@ import { PointRanking } from '../components/points/PointRanking';
 import { DuelPanel } from '../components/points/DuelPanel';
 import { AttackPanel } from '../components/points/AttackPanel';
 import { HalvePanel } from '../components/points/HalvePanel';
-import { useFeature, type FeatureKey } from '../store/features';
+import { useFeature, useFeatures, type FeatureKey } from '../store/features';
 import { useNotificationArrival } from '../hooks/useNotificationArrival';
 import { useAuth } from '../store/auth';
 import { useSiteSettings } from '../store/siteSettings';
@@ -150,6 +150,37 @@ export default function Profile() {
   useEffect(() => {
     if (isTabId(requestedTab)) setActiveTab(requestedTab);
   }, [requestedTab, location.key]);
+
+  /**
+   * 포인트 화면 안의 칸. 판 다섯 개를 쌓아 두니 한 화면에 하나도 다 안 들어왔다.
+   *
+   * 겨루기 판 셋(대결·퇴근 공격·반토막)은 저마다 기능 스위치가 있다. 셋 다 꺼져
+   * 있으면 빈 칸만 남으므로 칸 자체를 두지 않는다.
+   */
+  const anyGame = duelEnabled || attackEnabled || halveEnabled;
+  const pointViews = [
+    { id: 'draw' as const, label: '뽑기·내역' },
+    ...(anyGame ? [{ id: 'play' as const, label: '겨루기' }] : []),
+    { id: 'rank' as const, label: '순위' },
+  ];
+  // 알림에서 특정 대결을 가리켜 들어오면(?duel=) 그 판이 있는 칸에서 시작해야 한다.
+  // 기본 칸에서 열면 대결 판이 아예 그려지지 않아 눌러도 아무 데도 닿지 않는다.
+  const [pointView, setPointView] = useState<'draw' | 'play' | 'rank'>(
+    focusDuelId && duelEnabled ? 'play' : 'draw'
+  );
+  useEffect(() => {
+    if (focusDuelId && duelEnabled) setPointView('play');
+  }, [focusDuelId, duelEnabled, location.key]);
+  // 스위치가 꺼져 칸이 사라졌는데 그 칸을 보고 있으면 빈 화면이 된다.
+  //
+  // 기능 목록을 받아 오기 전에는 모든 스위치가 꺼짐으로 읽힌다. 그때 되돌리면
+  // 알림(?duel=)으로 겨루기 칸에 들어온 사람이 목록이 도착하는 순간 뽑기 칸으로
+  // 튕긴다(실측: 주소의 duel 이 사라지고 '뽑기·내역' 이 열렸다). 다 받은 뒤에만 본다.
+  const featuresLoaded = useFeatures(s => s.loaded);
+  const pointViewExists = pointViews.some(v => v.id === pointView);
+  useEffect(() => {
+    if (featuresLoaded && !pointViewExists) setPointView('draw');
+  }, [featuresLoaded, pointViewExists]);
 
   // 꺼진 기능의 탭은 링크로도 열지 않는다. visibleTabs 는 매 렌더 새 배열이라 의존성에는 참/거짓만 넣는다.
   const activeTabVisible = visibleTabs.some(t => t.id === activeTab);
@@ -631,25 +662,63 @@ export default function Profile() {
             {/* 포인트 탭 */}
             {activeTab === 'points' && lotteryEnabled && (
               <div className="space-y-6">
+                {/* 판을 다섯 개 쌓아 두니 한 화면에 하나도 다 안 들어왔다(실측 3335px).
+                    하는 일이 다른 것끼리 묶어 한 번에 하나만 보여 준다. 겨루기 판이
+                    기능 스위치로 모두 꺼져 있으면 그 칸은 아예 두지 않는다. */}
+                <nav
+                  aria-label="포인트 화면"
+                  className="flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-800"
+                >
+                  {pointViews.map(v => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => setPointView(v.id)}
+                      aria-current={pointView === v.id ? 'page' : undefined}
+                      className={`flex-shrink-0 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${
+                        pointView === v.id
+                          ? 'bg-primary-600 text-white shadow-sm'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </nav>
+
                 {/* 포인트가 움직이는 판마다 onSpent 로 알리고, 모든 판이 refreshSignal 로 다시 읽는다 */}
-                <LotteryPanel refreshSignal={pointsVersion} onSpent={bumpPoints} />
-                {duelEnabled && (
-                  <DuelPanel
-                    myId={user.id}
-                    focusDuelId={focusDuelId}
-                    focusKey={location.key}
-                    onFocusHandled={clearDuelFocus}
-                    refreshSignal={pointsVersion}
-                    onSpent={bumpPoints}
-                  />
+                {pointView === 'draw' && (
+                  <LotteryPanel refreshSignal={pointsVersion} onSpent={bumpPoints} />
                 )}
-                {attackEnabled && (
-                  <AttackPanel myId={user.id} refreshSignal={pointsVersion} onSpent={bumpPoints} />
+                {pointView === 'play' && (
+                  <div className="space-y-6">
+                    {duelEnabled && (
+                      <DuelPanel
+                        myId={user.id}
+                        focusDuelId={focusDuelId}
+                        focusKey={location.key}
+                        onFocusHandled={clearDuelFocus}
+                        refreshSignal={pointsVersion}
+                        onSpent={bumpPoints}
+                      />
+                    )}
+                    {attackEnabled && (
+                      <AttackPanel
+                        myId={user.id}
+                        refreshSignal={pointsVersion}
+                        onSpent={bumpPoints}
+                      />
+                    )}
+                    {halveEnabled && (
+                      <HalvePanel
+                        myId={user.id}
+                        refreshSignal={pointsVersion}
+                        onSpent={bumpPoints}
+                      />
+                    )}
+                  </div>
                 )}
-                {halveEnabled && (
-                  <HalvePanel myId={user.id} refreshSignal={pointsVersion} onSpent={bumpPoints} />
-                )}
-                <PointRanking refreshSignal={pointsVersion} />
+                {pointView === 'rank' && <PointRanking refreshSignal={pointsVersion} />}
               </div>
             )}
             {activeTab === 'notifications' && <NotificationSettings />}

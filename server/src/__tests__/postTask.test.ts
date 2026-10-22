@@ -10,6 +10,9 @@ import { SiteSettings } from '../models/SiteSettings';
 import { refreshSettingsCache } from '../utils/settingsCache';
 import { Post } from '../models/Post';
 import { sendDueReminders } from '../services/taskDue.service';
+import { DONE_LIMIT, OPEN_LIMIT } from '../services/postTask.service';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 
 // 담당자·업무 상태와 읽음 확인.
 //
@@ -684,7 +687,12 @@ describe('마감 알림', () => {
     await refreshSettingsCache();
   };
   const resetTaskRules = () =>
-    setTaskRules({ taskReminderDaysBefore: 1, taskReminderHour: 9, taskSoonDays: 3 });
+    setTaskRules({
+      taskReminderDaysBefore: 1,
+      taskReminderHour: 9,
+      taskSoonDays: 3,
+      taskOverdueDays: 7,
+    });
 
   it('마감이 오늘·내일인 담당자에게 하루 한 번만 알린다', async () => {
     const today = await createPost(adminCookie, `오늘마감 ${Date.now()}`);
@@ -713,9 +721,70 @@ describe('마감 알림', () => {
     expect(sent.map(n => n.relatedId).sort()).toEqual([today, tomorrow].sort());
     expect(sent.find(n => n.relatedId === today)?.message).toContain('오늘');
 
-    // 한 시간 뒤에 다시 돌아도 더 보내지 않는다
+    // 한 시간 뒤에 다시 돌아도 더 보내지 않는다. 전체 수로 센다 — 앞선 검사가 남긴
+    // 지난 마감에도 알림이 가므로(그게 규칙이다) 숫자를 못박지 않고 늘지 않음만 본다.
+    const afterFirst = await Notification.count({ where: { type: 'TASK_DUE' } });
     await sendDueReminders(new Date(2026, 9, 11, 11, 0));
-    expect(await Notification.count({ where: { type: 'TASK_DUE' } })).toBe(2);
+    expect(await Notification.count({ where: { type: 'TASK_DUE' } })).toBe(afterFirst);
+  });
+
+  it('마감이 지난 일도 알린다 — 놓치면 아무도 모른 채 지나간다', async () => {
+    const late = await createPost(adminCookie, `지난마감 ${Date.now()}`);
+    await setTask(adminCookie, late, {
+      assigneeId: 'testuser',
+      workStatus: 'todo',
+      dueDate: '2026-10-08',
+    });
+    await Notification.destroy({ where: {} });
+
+    await sendDueReminders(now);
+
+    const sent = await Notification.findOne({ where: { type: 'TASK_DUE', relatedId: late } });
+    expect(sent).not.toBeNull();
+    expect(sent?.message).toContain('3일 지났습니다');
+  });
+
+  it('지난 뒤 며칠까지 알릴지는 관리자가 정한다 — 0 이면 지난 일은 알리지 않는다', async () => {
+    const late = await createPost(adminCookie, `설정0 ${Date.now()}`);
+    await setTask(adminCookie, late, {
+      assigneeId: 'testuser',
+      workStatus: 'todo',
+      dueDate: '2026-10-09',
+    });
+
+    try {
+      await setTaskRules({ taskOverdueDays: 0 });
+      await Notification.destroy({ where: {} });
+      await sendDueReminders(now);
+      expect(
+        await Notification.findOne({ where: { type: 'TASK_DUE', relatedId: late } })
+      ).toBeNull();
+
+      // 같은 업무라도 설정을 늘리면 알린다 — 창을 정하는 것이 이 값이다
+      await setTaskRules({ taskOverdueDays: 7 });
+      await Notification.destroy({ where: {} });
+      await sendDueReminders(now);
+      const sent = await Notification.findOne({ where: { type: 'TASK_DUE', relatedId: late } });
+      expect(sent?.message).toContain('2일 지났습니다');
+    } finally {
+      await resetTaskRules();
+    }
+  });
+
+  it('너무 오래 지난 일은 그만 알린다 — 방치된 업무가 매일 같은 말을 반복하지 않게', async () => {
+    const ancient = await createPost(adminCookie, `오래된마감 ${Date.now()}`);
+    await setTask(adminCookie, ancient, {
+      assigneeId: 'testuser',
+      workStatus: 'todo',
+      dueDate: '2026-09-20',
+    });
+    await Notification.destroy({ where: {} });
+
+    await sendDueReminders(now);
+
+    expect(
+      await Notification.findOne({ where: { type: 'TASK_DUE', relatedId: ancient } })
+    ).toBeNull();
   });
 
   it('지정 뒤에 볼 수 없게 된 글은 알리지 않는다 — 알림에 제목이 실린다', async () => {
@@ -1023,5 +1092,62 @@ describe('우선순위', () => {
       .set('Cookie', adminCookie)
       .send({ priority: 'high' })
       .expect(400);
+  });
+});
+
+describe('화면과 나눠 가진 상한', () => {
+  // 서버가 자르는 수를 화면도 알고 있어야 '더 있을 수 있습니다' 안내가 맞는다.
+  // 두 벌로 적혀 있으므로, 한쪽만 바꾸면 여기서 멈추고 다른 쪽을 가리킨다.
+  it('client/src/pages/MyTasks.tsx 의 OPEN_LIMIT·DONE_LIMIT 과 같다', () => {
+    const file = readFileSync(resolve(__dirname, '../../../client/src/pages/MyTasks.tsx'), 'utf-8');
+    const read = (name: string) => Number(file.match(new RegExp(`${name} = (\\d+)`))?.[1]);
+
+    expect(read('OPEN_LIMIT')).toBe(OPEN_LIMIT);
+    expect(read('DONE_LIMIT')).toBe(DONE_LIMIT);
+  });
+});
+
+describe('달력에 표시', () => {
+  // 일정은 그대로 두고 달력에서만 뺀다. 기간은 필요한데 달력이 그것으로 가득 차는
+  // 업무가 있다 — 끈 업무도 간트·목록에는 남아야 한다.
+  it('기본은 표시다 — 끄는 쪽이 예외다', async () => {
+    const id = await createPost(adminCookie, `달력기본 ${Date.now()}`);
+    const res = await setTask(adminCookie, id, { startDate: '2026-11-02', dueDate: '2026-11-04' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.showOnCalendar).toBe(true);
+  });
+
+  it('끄면 목록에는 남고 달력 표시만 꺼진다', async () => {
+    const id = await createPost(adminCookie, `달력끄기 ${Date.now()}`);
+    await setTask(adminCookie, id, {
+      assigneeId: 'testuser',
+      workStatus: 'todo',
+      startDate: '2026-11-02',
+      dueDate: '2026-11-04',
+    });
+
+    const off = await setTask(adminCookie, id, { showOnCalendar: false });
+    expect(off.status).toBe(200);
+    expect(off.body.data.showOnCalendar).toBe(false);
+
+    // 목록에서 사라지면 안 된다 — 간트·보드가 같은 목록을 쓴다
+    const mine = await request(app).get('/api/posts/tasks/mine').set('Cookie', userCookie);
+    const row = mine.body.data.find((t: { id: string }) => t.id === id);
+    expect(row).toBeTruthy();
+    expect(row.showOnCalendar).toBe(false);
+    expect(row.dueDate).toBe('2026-11-04');
+  });
+
+  it('true/false 가 아니면 거절한다', async () => {
+    const id = await createPost(adminCookie, `달력타입 ${Date.now()}`);
+    const res = await setTask(adminCookie, id, { showOnCalendar: 'no' });
+    expect(res.status).toBe(400);
+  });
+
+  it('이것만 보내도 바꿀 수 있다 — 아무것도 안 바꾸는 요청으로 보지 않는다', async () => {
+    const id = await createPost(adminCookie, `달력단독 ${Date.now()}`);
+    const res = await setTask(adminCookie, id, { showOnCalendar: false });
+    expect(res.status).toBe(200);
   });
 });

@@ -28,9 +28,23 @@ export const createEvent = async (
   }
 
   try {
-    await eventService.assertCanCreate(userRole);
+    // 게시판 일정이면 역할이 아니라 그 게시판의 쓰기 권한을 본다.
+    const rawBoardId = (req.body as { boardId?: unknown })?.boardId;
+    if (rawBoardId !== undefined && rawBoardId !== null && typeof rawBoardId !== 'string') {
+      sendError(res, 400, '게시판 id 가 올바르지 않습니다.');
+      return;
+    }
+    const boardId = typeof rawBoardId === 'string' && rawBoardId ? rawBoardId : null;
+    if (boardId) {
+      await eventService.assertBoardCalendarAccess(boardId, userId, userRole, 'canWrite');
+    } else {
+      await eventService.assertCanCreate(userRole);
+    }
 
     // UserId·id 주입을 막으려 허용 필드만 뽑아 쓴다.
+    // parentEventId 는 받지 않는다 — 반복의 '이 날만' 을 떼어 낼 때 서비스가 정하는 칸이고,
+    // 클라이언트가 보낸 적이 없다. 받아 두면 남의 일정을 부모로 지목해 걸어 둘 수 있고,
+    // 지울 때 같은 주인의 자식만 지우는 방어가 그 구멍을 막느라 쓰이고 있었다.
     const {
       calendarId,
       title,
@@ -52,7 +66,6 @@ export const createEvent = async (
       recurrenceInterval,
       recurrenceDays,
       recurrenceEndDate,
-      parentEventId,
     } = req.body;
 
     if (!calendarId || !title || !start || !end) {
@@ -166,7 +179,7 @@ export const createEvent = async (
         recurrenceInterval,
         recurrenceDays,
         recurrenceEndDate,
-        parentEventId,
+        boardId,
       },
       userId
     );
@@ -185,6 +198,9 @@ export const getEvents = async (
   // query string 이 배열로 들어오는 경우를 거른다.
   const start = typeof req.query.start === 'string' ? req.query.start : undefined;
   const end = typeof req.query.end === 'string' ? req.query.end : undefined;
+  // 주지 않으면 전사 공유 달력이다. 주면 그 게시판의 달력 — 읽을 수 있는지 먼저 본다.
+  const boardId =
+    typeof req.query.boardId === 'string' && req.query.boardId ? req.query.boardId : null;
 
   // 잘못된 날짜를 그대로 넘기면 PostgreSQL/MySQL 에서 캐스팅 오류로 500 이 되므로 400 으로 거른다.
   if (
@@ -206,7 +222,15 @@ export const getEvents = async (
   }
 
   try {
-    sendSuccess(res, await eventService.listEventsInRange(start, end));
+    if (boardId) {
+      const userId = req.user?.id;
+      if (!userId) {
+        sendUnauthorized(res, '로그인이 필요합니다.');
+        return;
+      }
+      await eventService.assertBoardCalendarAccess(boardId, userId, req.user?.role, 'canRead');
+    }
+    sendSuccess(res, await eventService.listEventsInRange(start, end, boardId));
   } catch (err) {
     next(err);
   }
@@ -252,7 +276,6 @@ export const updateEvent = async (
       recurrenceInterval,
       recurrenceDays,
       recurrenceEndDate,
-      parentEventId,
     } = req.body;
 
     if (title !== undefined) {
@@ -411,7 +434,6 @@ export const updateEvent = async (
       recurrenceInterval,
       recurrenceDays,
       recurrenceEndDate,
-      parentEventId,
     });
 
     const updatedEvent = await eventService.findWithUser(id);

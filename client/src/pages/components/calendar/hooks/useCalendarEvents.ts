@@ -8,7 +8,7 @@ import {
   editOccurrence,
 } from '../../../../api/events';
 import { CalendarEvent, EventFormData } from '../types';
-import { categoryColors } from '../constants';
+import { useCategoryColors } from '../useEventCategories';
 import { dateUtils } from '../utils';
 import { toast } from '../../../../utils/toast';
 import { DEFAULT_EVENT_COLOR } from '../../../../constants/colors';
@@ -53,12 +53,18 @@ interface UseCalendarEventsProps {
   isAdmin?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   calendarRef: React.RefObject<any>;
+  /** 게시판 달력이면 그 게시판. 비우면 전사 공유 달력이다. */
+  boardId?: string;
+  /** 이 게시판의 관리자인가. 남이 세운 게시판 일정도 고칠 수 있다(서버와 같은 규칙). */
+  canManageBoard?: boolean;
 }
 
 export const useCalendarEvents = ({
   userId,
   isAdmin = false,
   calendarRef,
+  boardId,
+  canManageBoard = false,
 }: UseCalendarEventsProps) => {
   const [events, setEvents] = useState<EventInput[]>([]);
   // 레일은 보이는 달이 아니라 오늘 기준으로 고르므로 서버가 준 모양 그대로 들고 있는다.
@@ -69,10 +75,14 @@ export const useCalendarEvents = ({
 
   const canEditEvent = useCallback(
     (event: CalendarEvent) => {
-      return isAdmin || userId === event.UserId;
+      // 게시판 일정은 주인·관리자에 더해 그 게시판의 관리자도 고친다 — 서버의 규칙과 같다.
+      // 화면이 더 너그러우면 눌러 본 뒤에야 403 을 보게 된다.
+      return isAdmin || userId === event.UserId || (!!event.boardId && canManageBoard);
     },
-    [userId, isAdmin]
+    [userId, isAdmin, canManageBoard]
   );
+
+  const categoryColors = useCategoryColors();
 
   const loadEvents = useCallback(async () => {
     if (!userId) return;
@@ -94,11 +104,11 @@ export const useCalendarEvents = ({
 
     try {
       const eventData = merged
-        ? await getEvents(start, end)
+        ? await getEvents(start, end, boardId)
         : byId(
             await Promise.all([
-              getEvents(view.activeStart, view.activeEnd),
-              getEvents(rail.start, rail.end),
+              getEvents(view.activeStart, view.activeEnd, boardId),
+              getEvents(rail.start, rail.end, boardId),
             ])
           );
 
@@ -111,13 +121,15 @@ export const useCalendarEvents = ({
         start: event.start,
         end: event.end,
         allDay: event.isAllday,
+        // 분류 색을 일정에 저장된 색보다 먼저 본다. 저장된 색은 만들 때의 분류 색을
+        // 베껴 둔 것이라, 관리자가 분류 색을 바꾸면 예전 일정만 옛 색으로 남는다.
         backgroundColor:
+          (event.category ? categoryColors[event.category]?.bg : undefined) ||
           event.backgroundColor ||
-          categoryColors[event.category as keyof typeof categoryColors]?.bg ||
           DEFAULT_EVENT_COLOR,
         borderColor:
+          (event.category ? categoryColors[event.category]?.border : undefined) ||
           event.borderColor ||
-          categoryColors[event.category as keyof typeof categoryColors]?.border ||
           DEFAULT_EVENT_COLOR,
         // textColor 는 주입하지 않는다. 인라인 style 이 calendar.css 의 color-mix 글자색을 덮는다.
         // 반복에서 펼쳐진 번째는 끌어 옮기지 않는다 — 한 번째만 옮기는 규칙이 없다.
@@ -148,7 +160,8 @@ export const useCalendarEvents = ({
         setLoading(false);
       }
     }
-  }, [userId, calendarRef, canEditEvent]);
+    // boardId 가 바뀌면 다른 게시판의 달력이다. 빼 두면 탭을 옮겨도 앞 게시판 일정이 남는다.
+  }, [userId, calendarRef, canEditEvent, boardId, categoryColors]);
 
   const handleCreateEvent = useCallback(
     async (formData: EventFormData) => {
@@ -189,14 +202,15 @@ export const useCalendarEvents = ({
             : {}),
         };
 
-        await createEvent(eventData);
+        // 게시판 달력에서 세운 일정은 그 게시판에 남는다
+        await createEvent({ ...eventData, ...(boardId ? { boardId } : {}) });
         await loadEvents();
       } catch (error) {
         if (import.meta.env.DEV) console.error('❌ 이벤트 생성 실패:', error);
         throw error;
       }
     },
-    [loadEvents]
+    [loadEvents, boardId]
   );
 
   /**

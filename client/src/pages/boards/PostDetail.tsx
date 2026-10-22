@@ -149,6 +149,7 @@ const PostDetail = () => {
     assignee: null,
     startDate: null,
     dueDate: null,
+    showOnCalendar: true,
   });
   const [postTags, setPostTags] = useState<Tag[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -172,6 +173,7 @@ const PostDetail = () => {
       assignee: post.assignee ?? null,
       startDate: post.startDate ?? null,
       dueDate: post.dueDate ?? null,
+      showOnCalendar: post.showOnCalendar !== false,
     });
     setPostTags(post.tags ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -36,6 +36,12 @@ interface CalendarHeaderProps {
   onNext: () => void;
   onToday: () => void;
   onViewChange: (view: CalendarView) => void;
+  /**
+   * 고를 수 있는 보기를 좁힌다. 게시판 달력에는 '간트' 를 두지 않는다 —
+   * 여기 간트는 '내 업무' 를 그리는데, 게시판 탭에는 그 게시판의 간트가 따로 있다.
+   * 같은 이름의 다른 것이 한 화면에 둘 있으면 어느 쪽이 무엇인지 알 수 없다.
+   */
+  views?: CalendarView[];
 }
 
 const CalendarHeaderBase: React.FC<CalendarHeaderProps> = ({
@@ -46,7 +52,9 @@ const CalendarHeaderBase: React.FC<CalendarHeaderProps> = ({
   onNext,
   onToday,
   onViewChange,
+  views,
 }) => {
+  const viewOptions = views ? VIEW_OPTIONS.filter(o => views.includes(o.key)) : VIEW_OPTIONS;
   return (
     <div
       className="flex-shrink-0 px-5 py-3 bg-white dark:bg-slate-900
@@ -134,7 +142,7 @@ const CalendarHeaderBase: React.FC<CalendarHeaderProps> = ({
 
           {/* 뷰 전환 탭 */}
           <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
-            {VIEW_OPTIONS.map(opt => (
+            {viewOptions.map(opt => (
               <button
                 key={opt.key}
                 onClick={() => onViewChange(opt.key)}

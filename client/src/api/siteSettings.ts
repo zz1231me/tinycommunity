@@ -1,5 +1,16 @@
 import api, { uploadApi } from './axios';
 
+export interface EventCategoryOption {
+  key: string;
+  label: string;
+  emoji: string;
+  /** 칩 바탕색. 테두리·글자색은 화면이 이 색에서 계산한다. */
+  color: string;
+}
+
+/** 서버 config/eventCategory.ts 의 MAX_EVENT_CATEGORIES 와 같아야 한다. */
+export const MAX_EVENT_CATEGORIES = 20;
+
 export interface SiteSettings {
   siteName: string;
   siteTitle: string;
@@ -23,7 +34,6 @@ export interface SiteSettings {
   /** 아바타 이미지 최대 크기 (MB) */
   maxAvatarSizeMb: number;
   /** 압축파일 최대 크기 (MB) */
-  maxArchiveSizeMb: number;
   /** 에디터 이미지 업로드 최대 개수 */
   maxImageCount: number;
   /** bcrypt 해싱 라운드 (10~14) */
@@ -80,6 +90,7 @@ export interface SiteSettings {
   eventLocationMaxLength: number;
   /** 업무 상태 표시 이름. 비어 있는 키는 기본 이름을 쓴다 */
   workStatusLabels: Record<string, string>;
+  eventCategories: EventCategoryOption[];
   /** 로또 상품표. 확률 합이 100 미만이면 나머지가 꽝 */
   lotteryPrizes: { amount: number; weight: number }[];
   /** 하루에 뽑을 수 있는 횟수 */
@@ -93,6 +104,7 @@ export interface SiteSettings {
   /** 상대가 답하지 않으면 무효가 되기까지의 시간(분) */
   duelExpireMinutes: number;
   taskReminderDaysBefore: number;
+  taskOverdueDays: number;
   taskReminderHour: number;
   taskSoonDays: number;
   /** 한 사람이 동시에 걸어 둘 수 있는 판 수 */

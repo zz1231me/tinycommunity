@@ -9,6 +9,7 @@ import { sequelize } from '../config/sequelize';
 import { LOTTERY_DEFAULTS } from '../config/lottery';
 import { POINT_ATTACK_DEFAULTS } from '../config/pointAttack';
 import { TASK_DEFAULTS } from '../config/task';
+import { DEFAULT_EVENT_CATEGORIES } from '../config/eventCategory';
 import { DUEL_DEFAULTS } from '../config/duel';
 import { ATTACK_DEFAULTS } from '../config/attendanceAttack';
 
@@ -33,7 +34,6 @@ export interface SiteSettingsInstance extends Model<
   maxFileSizeMb: CreationOptional<number>;
   maxImageSizeMb: CreationOptional<number>;
   maxAvatarSizeMb: CreationOptional<number>;
-  maxArchiveSizeMb: CreationOptional<number>;
   maxImageCount: CreationOptional<number>;
   bcryptRounds: CreationOptional<number>;
   allowedImageExtensions: CreationOptional<string>;
@@ -65,6 +65,7 @@ export interface SiteSettingsInstance extends Model<
   wikiEditRoles: CreationOptional<string>;
   /** 업무 상태 표시 이름 (JSON). 키는 고정, 부르는 말만 팀에 맞춘다 */
   workStatusLabels: CreationOptional<string>;
+  eventCategories: CreationOptional<string>;
   /** 로또 상품표 (JSON 배열: [{amount, weight}]). 확률 합이 100 미만이면 나머지가 꽝 */
   lotteryPrizes: CreationOptional<string>;
   lotteryDailyLimit: CreationOptional<number>;
@@ -74,6 +75,7 @@ export interface SiteSettingsInstance extends Model<
   duelMaxStake: CreationOptional<number>;
   duelExpireMinutes: CreationOptional<number>;
   taskReminderDaysBefore: CreationOptional<number>;
+  taskOverdueDays: CreationOptional<number>;
   taskReminderHour: CreationOptional<number>;
   taskSoonDays: CreationOptional<number>;
   duelMaxOpenPerUser: CreationOptional<number>;
@@ -126,7 +128,6 @@ export class SiteSettings
   declare public maxFileSizeMb: CreationOptional<number>;
   declare public maxImageSizeMb: CreationOptional<number>;
   declare public maxAvatarSizeMb: CreationOptional<number>;
-  declare public maxArchiveSizeMb: CreationOptional<number>;
   declare public maxImageCount: CreationOptional<number>;
   declare public bcryptRounds: CreationOptional<number>;
   declare public allowedImageExtensions: CreationOptional<string>;
@@ -157,6 +158,7 @@ export class SiteSettings
   declare public draftExpiryMinutes: CreationOptional<number>;
   declare public wikiEditRoles: CreationOptional<string>;
   declare public workStatusLabels: CreationOptional<string>;
+  declare public eventCategories: CreationOptional<string>;
   declare public lotteryPrizes: CreationOptional<string>;
   declare public lotteryDailyLimit: CreationOptional<number>;
   declare public lotteryDrawCost: CreationOptional<number>;
@@ -165,6 +167,7 @@ export class SiteSettings
   declare public duelMaxStake: CreationOptional<number>;
   declare public duelExpireMinutes: CreationOptional<number>;
   declare public taskReminderDaysBefore: CreationOptional<number>;
+  declare public taskOverdueDays: CreationOptional<number>;
   declare public taskReminderHour: CreationOptional<number>;
   declare public taskSoonDays: CreationOptional<number>;
   declare public duelMaxOpenPerUser: CreationOptional<number>;
@@ -300,12 +303,6 @@ SiteSettings.init(
       allowNull: false,
       defaultValue: 5,
       field: 'max_avatar_size_mb',
-    },
-    maxArchiveSizeMb: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 100,
-      field: 'max_archive_size_mb',
     },
     maxImageCount: {
       type: DataTypes.INTEGER,
@@ -503,6 +500,14 @@ SiteSettings.init(
       defaultValue: '{}',
       field: 'work_status_labels',
     },
+    eventCategories: {
+      // 일정 분류는 조직마다 다르다(재택·출장·교육…). 목록째로 관리자가 정하도록
+      // lotteryPrizes 처럼 JSON 문자열로 담는다.
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: JSON.stringify(DEFAULT_EVENT_CATEGORIES),
+      field: 'event_categories',
+    },
     lotteryPrizes: {
       // 확률과 금액을 배포 없이 바꿀 수 있도록 workStatusLabels 처럼 JSON 문자열로 담는다.
       type: DataTypes.TEXT,
@@ -552,6 +557,12 @@ SiteSettings.init(
       allowNull: false,
       defaultValue: TASK_DEFAULTS.reminderDaysBefore,
       field: 'task_reminder_days_before',
+    },
+    taskOverdueDays: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: TASK_DEFAULTS.overdueDays,
+      field: 'task_overdue_days',
     },
     taskReminderHour: {
       type: DataTypes.INTEGER,

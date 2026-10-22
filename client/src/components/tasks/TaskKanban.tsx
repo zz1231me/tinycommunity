@@ -41,6 +41,11 @@ interface Props {
   showDone: boolean;
   /** 팀 보기에서는 카드마다 담당자를 보여 준다 */
   showAssignee?: boolean;
+  /**
+   * 카드에 게시판 이름을 적는가. 한 게시판만 보는 자리(게시판 안의 보드)에서는 끈다 —
+   * 모든 카드에 같은 이름이 반복되면 읽을 것만 늘고 구별에는 쓸모가 없다.
+   */
+  showBoard?: boolean;
   onMove: (task: MyTask, to: KanbanStatus) => void;
   onSchedule: (task: MyTask, schedule: Schedule) => void;
   onClearSchedule: (task: MyTask) => void;
@@ -73,6 +78,7 @@ export function TaskKanban({
   tasks,
   showDone,
   showAssignee = false,
+  showBoard = true,
   onMove,
   onSchedule,
   onClearSchedule,
@@ -144,6 +150,7 @@ export function TaskKanban({
                 task={task}
                 today={today}
                 showAssignee={showAssignee}
+                showBoard={showBoard}
                 onMove={onMove}
                 onSchedule={onSchedule}
                 onClearSchedule={onClearSchedule}
@@ -166,7 +173,15 @@ export function TaskKanban({
       </div>
       {/* 끌리는 모습은 덮개로 그린다. 원래 카드는 제자리에 남아 놓는 순간 링크가 눌리지 않는다. */}
       <DragOverlay>
-        {dragging && <CardBody task={dragging} today={today} showAssignee={showAssignee} lifted />}
+        {dragging && (
+          <CardBody
+            task={dragging}
+            today={today}
+            showAssignee={showAssignee}
+            showBoard={showBoard}
+            lifted
+          />
+        )}
       </DragOverlay>
     </DndContext>
   );
@@ -206,12 +221,21 @@ interface CardProps {
   task: MyTask;
   today: Date;
   showAssignee: boolean;
+  showBoard: boolean;
   onMove: Props['onMove'];
   onSchedule: Props['onSchedule'];
   onClearSchedule: Props['onClearSchedule'];
 }
 
-function Card({ task, today, showAssignee, onMove, onSchedule, onClearSchedule }: CardProps) {
+function Card({
+  task,
+  today,
+  showAssignee,
+  showBoard,
+  onMove,
+  onSchedule,
+  onClearSchedule,
+}: CardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task.id,
     data: { status: task.workStatus },
@@ -231,6 +255,7 @@ function Card({ task, today, showAssignee, onMove, onSchedule, onClearSchedule }
           task={task}
           today={today}
           showAssignee={showAssignee}
+          showBoard={showBoard}
           menu={
             task.canEdit ? (
               <TaskCardMenu
@@ -256,12 +281,14 @@ function CardBody({
   task,
   today,
   showAssignee,
+  showBoard,
   menu,
   lifted = false,
 }: {
   task: MyTask;
   today: Date;
   showAssignee: boolean;
+  showBoard: boolean;
   menu?: React.ReactNode;
   lifted?: boolean;
 }) {
@@ -283,7 +310,11 @@ function CardBody({
       <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-400">
         <PriorityBadge priority={task.priority} />
         <DueBadge task={task} today={today} />
-        <span className="min-w-0 flex-1 truncate">{task.boardName}</span>
+        {showBoard ? (
+          <span className="min-w-0 flex-1 truncate">{task.boardName}</span>
+        ) : (
+          <span className="flex-1" />
+        )}
         {showAssignee &&
           (task.assignee ? (
             <span

@@ -26,6 +26,8 @@ export interface TaskState {
   /** YYYY-MM-DD. 정하지 않았으면 null */
   startDate: string | null;
   dueDate: string | null;
+  /** 이 업무의 기간을 달력에 그릴지. 꺼도 간트·목록에는 남는다. */
+  showOnCalendar: boolean;
 }
 
 export interface MyTask {
@@ -42,6 +44,10 @@ export interface MyTask {
   startDate: string | null;
   /** YYYY-MM-DD, 당일 포함 */
   dueDate: string | null;
+  /** 이 업무의 기간을 달력에 그릴지. 꺼도 간트·목록에는 남는다. */
+  showOnCalendar: boolean;
+  /** 상위 업무 id. 간트가 하위를 상위 아래로 들여 그린다(목록과 같은 모양). */
+  parentTaskId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -80,6 +86,8 @@ export async function changeTask(
     priority?: TaskPriority;
     startDate?: string | null;
     dueDate?: string | null;
+    /** 달력에 그릴지. 일정은 그대로 두고 달력에서만 뺀다. */
+    showOnCalendar?: boolean;
     /** 이 상태일 때만 바꾼다. 다르면 서버가 409 로 거절한다(되돌리기용). */
     ifWorkStatus?: WorkStatus;
   }

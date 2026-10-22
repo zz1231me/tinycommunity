@@ -153,3 +153,49 @@ describe('남의 일정', () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe('parentEventId 는 요청에서 받지 않는다', () => {
+  // 반복의 '이 날만' 을 떼어 낼 때 서비스가 정하는 칸이다. 받아 두면 남의 일정을 부모로
+  // 지목해 걸어 둘 수 있고, 지울 때 '같은 주인의 자식만' 이라는 방어가 그 구멍을 막는 데
+  // 쓰이게 된다. 클라이언트는 이 칸을 보낸 적이 없다.
+  const create = (cookie: string, extra: Record<string, unknown>) =>
+    request(app)
+      .post('/api/events')
+      .set(CSRF_HEADER)
+      .set('Cookie', cookie)
+      .send({
+        calendarId: 'default',
+        title: '부모 지목 시도',
+        isAllday: false,
+        start: '2026-09-01T01:00:00.000Z',
+        end: '2026-09-01T02:00:00.000Z',
+        ...extra,
+      });
+
+  it('만들 때 보내도 붙지 않는다', async () => {
+    const target = await makeEvent('evt-owner', '남의 일정');
+
+    const res = await create(adminCookie, { parentEventId: target.id });
+
+    expect(res.status).toBe(201);
+    const made = await Event.findByPk(res.body.data.id);
+    expect(made?.parentEventId ?? null).toBeNull();
+  });
+
+  it('고칠 때 보내도 붙지 않는다', async () => {
+    const target = await makeEvent('evt-owner', '부모가 될 뻔한 일정');
+    const made = await create(adminCookie, {});
+    expect(made.status).toBe(201);
+
+    await request(app)
+      .put(`/api/events/${made.body.data.id}`)
+      .set(CSRF_HEADER)
+      .set('Cookie', adminCookie)
+      .send({ title: '제목만 바꾼다', parentEventId: target.id })
+      .expect(200);
+
+    const after = await Event.findByPk(made.body.data.id);
+    expect(after?.parentEventId ?? null).toBeNull();
+    expect(after?.title).toBe('제목만 바꾼다');
+  });
+});

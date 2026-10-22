@@ -8,6 +8,7 @@ import {
   updateSiteSettings,
   uploadSiteAsset,
   SiteSettings,
+  MAX_EVENT_CATEGORIES,
 } from '../../../api/siteSettings';
 import { useSiteSettings, DEFAULT_SETTINGS as STORE_DEFAULTS } from '../../../store/siteSettings';
 import { cacheSiteIdentity } from '../../../utils/siteIdentityCache';
@@ -130,6 +131,31 @@ const AssetUploader: React.FC<AssetUploaderProps> = ({ label, hint, accept, valu
   );
 };
 
+/**
+ * 설정 묶음.
+ *
+ * 구역이 열넷이라 한 줄로 늘어놓으면 찾는 값까지 내려가는 것이 일이었다. 한 번에
+ * 한 묶음만 보여 준다. 저장은 여전히 한 번에 전부다 — 폼 하나에 담긴 같은 설정이고,
+ * 묶음마다 저장을 두면 '어디까지 저장됐지' 를 사람이 외워야 한다.
+ *
+ * hashes 는 다른 화면에서 '설정 열기' 로 건너올 때 쓰는 주소다. 그 구역이 어느 묶음에
+ * 있는지 알아야 묶음을 먼저 열고 스크롤할 수 있다.
+ */
+const GROUPS = [
+  { id: 'site', label: '사이트', hashes: [] as string[] },
+  { id: 'members', label: '회원·보안', hashes: ['security'] },
+  { id: 'content', label: '글·댓글', hashes: ['comments', 'content-limits', 'editor'] },
+  { id: 'work', label: '업무·일정', hashes: ['tasks', 'event-categories'] },
+  { id: 'files', label: '파일', hashes: ['attachment-limits', 'file-limits'] },
+  { id: 'points', label: '포인트', hashes: ['lottery'] },
+  { id: 'system', label: '시스템', hashes: ['log-retention'] },
+] as const;
+
+type GroupId = (typeof GROUPS)[number]['id'];
+
+const groupForHash = (hash: string): GroupId | null =>
+  GROUPS.find(g => (g.hashes as readonly string[]).includes(hash))?.id ?? null;
+
 interface NumberInputProps {
   label: string;
   description: string;
@@ -217,6 +243,12 @@ export const SiteSettingsManagement = () => {
   /** 불러오기 실패. 기본값으로 진짜 설정을 덮어쓰지 않도록 폼을 열지 않는다 */
   const [loadFailed, setLoadFailed] = useState(false);
   const isDirty = useRef(false);
+  /**
+   * 안 저장된 변경이 있는지. isDirty 는 ref 라 화면을 다시 그리지 않으므로 따로 둔다.
+   * 묶음마다 따로 보여 주는 화면이라, 다른 묶음에서 고친 것이 눈에 보이지 않는다 —
+   * 바뀐 것이 있다는 사실만큼은 어느 묶음에 있든 보여야 한다.
+   */
+  const [dirty, setDirty] = useState(false);
 
   const [resetting, setResetting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -231,11 +263,21 @@ export const SiteSettingsManagement = () => {
 
   const set = <K extends keyof SiteSettings>(key: K, val: SiteSettings[K]) => {
     isDirty.current = true;
+    setDirty(true);
     setSettings(prev => ({ ...prev, [key]: val }));
   };
 
   // 기능 설정 화면에서 '설정 열기' 로 들어오면 해당 구역까지 데려간다.
   const { hash } = useLocation();
+  const [group, setGroup] = useState<GroupId>(() => groupForHash(hash.slice(1)) ?? 'site');
+
+  // 주소가 가리키는 구역이 다른 묶음에 있으면 그 묶음을 먼저 연다. 안 그러면
+  // 구역이 아직 그려지지 않아 getElementById 가 못 찾고 아무 일도 일어나지 않는다.
+  useEffect(() => {
+    const target = groupForHash(hash.slice(1));
+    if (target) setGroup(target);
+  }, [hash]);
+
   useEffect(() => {
     if (!hash) return;
     const el = document.getElementById(hash.slice(1));
@@ -247,7 +289,8 @@ export const SiteSettingsManagement = () => {
       2000
     );
     return () => clearTimeout(t);
-  }, [hash, loading]);
+    // group 이 바뀐 뒤에야 그 구역이 그려지므로 group 도 지켜본다.
+  }, [hash, loading, group]);
 
   // 상품표 편집. 확률 합계는 화면에서 바로 보여 주고 최종 검사는 서버가 한다.
   const prizeTotal =
@@ -267,6 +310,29 @@ export const SiteSettingsManagement = () => {
       'lotteryPrizes',
       (settings.lotteryPrizes ?? []).filter((_, i: number) => i !== index)
     );
+
+  // 일정 분류 편집. 키는 일정에 저장되는 값이라 만든 뒤에는 바꾸지 않는다 —
+  // 키를 고치면 그 분류로 저장된 예전 일정이 분류를 잃는다.
+  const eventCategories = settings.eventCategories ?? [];
+  const updateCategory = (index: number, field: 'label' | 'emoji' | 'color', value: string) => {
+    const next = [...eventCategories];
+    next[index] = { ...next[index], [field]: value };
+    set('eventCategories', next);
+  };
+  const addCategory = () => {
+    // 키가 겹치면 서버가 뒤엣것을 버린다. 같은 밀리초에 두 번 눌러도 겹치지 않게 센다.
+    const used = new Set(eventCategories.map(c => c.key));
+    let key = `cat_${Date.now().toString(36)}`;
+    for (let n = 2; used.has(key); n += 1) key = `cat_${Date.now().toString(36)}_${n}`;
+    set('eventCategories', [...eventCategories, { key, label: '', emoji: '', color: '#64748b' }]);
+  };
+  const removeCategory = (index: number) =>
+    set(
+      'eventCategories',
+      eventCategories.filter((_, i: number) => i !== index)
+    );
+  // 이름이 빈 줄은 서버가 조용히 버린다. 저장하고 나서야 사라진 것을 알면 당황스러우니 미리 알린다.
+  const blankCategory = eventCategories.some(c => !c.label.trim());
 
   const applyFavicon = (url: string) => {
     let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
@@ -310,6 +376,7 @@ export const SiteSettingsManagement = () => {
       setSettings(updated);
       updateStore(updated);
       isDirty.current = false; // 저장 성공 시 dirty 플래그 초기화
+      setDirty(false);
       document.title = updated.siteTitle;
       if (updated.faviconUrl) applyFavicon(updated.faviconUrl);
       // 캐시도 갱신한다. 안 하면 새로고침 때 index.html 이 옛 제목을 잠깐 보인다.
@@ -349,166 +416,584 @@ export const SiteSettingsManagement = () => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* 기본 정보 */}
-      <AdminSection title="기본 정보">
-        <SettingList>
-          <SettingRow label="사이트 이름" description="헤더와 사이드바에 표시되는 이름" required>
-            <input
-              type="text"
-              value={settings.siteName}
-              onChange={e => set('siteName', e.target.value)}
-              // 빈 칸 힌트는 지금 쓰이는 이름이어야 한다. 제품 이름을 박아 두면 딴 이름이 비친다.
-              placeholder={storeSettings.siteName}
-              required
-              className="input max-w-sm"
-            />
-          </SettingRow>
-
-          <SettingRow label="페이지 타이틀" description="브라우저 탭에 표시되는 제목" required>
-            <input
-              type="text"
-              value={settings.siteTitle}
-              onChange={e => set('siteTitle', e.target.value)}
-              placeholder={storeSettings.siteTitle}
-              required
-              className="input max-w-sm"
-            />
-          </SettingRow>
-
-          <SettingRow label="사이트 설명" description="메타 태그, SEO, 로그인 페이지에 사용">
-            <textarea
-              value={settings.description ?? ''}
-              onChange={e => set('description', e.target.value || null)}
-              rows={3}
-              placeholder="사이트에 대한 간단한 설명을 입력하세요."
-              className="input resize-none"
-            />
-          </SettingRow>
-        </SettingList>
-      </AdminSection>
-
-      {/* 브랜딩 */}
-      <AdminSection title="브랜딩">
-        <SettingList>
-          <AssetUploader
-            label="로고 이미지"
-            hint="PNG · JPG · WebP · GIF 지원 — 파일 업로드 또는 외부 URL 직접 입력"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            value={settings.logoUrl}
-            onChange={url => set('logoUrl', url)}
-          />
-          <AssetUploader
-            label="파비콘"
-            hint=".ico · PNG · JPG 지원 — 브라우저 탭에 표시되는 아이콘"
-            accept="image/x-icon,image/vnd.microsoft.icon,image/png,image/jpeg,image/webp,.ico"
-            value={settings.faviconUrl}
-            onChange={url => set('faviconUrl', url)}
-          />
-        </SettingList>
-      </AdminSection>
-
-      {/* 회원가입 설정 */}
-      <AdminSection title="회원가입 설정">
-        <SettingList>
-          <SettingRow
-            label="회원가입 허용"
-            description="끄면 로그인 페이지에서 회원가입 버튼이 사라집니다."
-          >
-            <ToggleSwitch
-              checked={settings.allowRegistration}
-              label="회원가입 허용"
-              onChange={v => {
-                set('allowRegistration', v);
-                if (!v) set('requireApproval', false);
-              }}
-            />
-          </SettingRow>
-
-          {settings.allowRegistration && (
-            <SettingRow
-              label="신규 가입 승인 필요"
-              description="켜면 관리자가 승인하기 전까지 신규 가입자가 로그인할 수 없습니다."
+      {/* 묶음 고르기. 구역이 열넷이라 한 줄로 늘어놓으면 찾는 값까지 내려가는 것이 일이다.
+          위에 붙여 두어(sticky) 아래로 내려가도 다른 묶음으로 건너뛸 수 있게 한다.
+          '저장 안 됨' 안내는 아래 저장 바가 맡는다 — 거기가 눌러야 할 자리이고,
+          그 바도 붙어 있어 늘 보인다. 두 군데 적으면 같은 말이 두 번 뜬다. */}
+      <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-1.5 border-b border-slate-200 bg-white/95 px-1 py-2 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+        <nav aria-label="설정 묶음" className="flex min-w-0 flex-wrap gap-1.5">
+          {GROUPS.map(g => (
+            <button
+              key={g.id}
+              type="button"
+              onClick={() => setGroup(g.id)}
+              aria-current={group === g.id ? 'page' : undefined}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                group === g.id
+                  ? 'bg-primary-600 text-white'
+                  : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'
+              }`}
             >
-              <ToggleSwitch
-                checked={settings.requireApproval}
-                label="신규 가입 승인 필요"
-                onChange={v => set('requireApproval', v)}
+              {g.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* 기본 정보 */}
+      {group === 'site' && (
+        <AdminSection title="기본 정보">
+          <SettingList>
+            <SettingRow label="사이트 이름" description="헤더와 사이드바에 표시되는 이름" required>
+              <input
+                type="text"
+                value={settings.siteName}
+                onChange={e => set('siteName', e.target.value)}
+                // 빈 칸 힌트는 지금 쓰이는 이름이어야 한다. 제품 이름을 박아 두면 딴 이름이 비친다.
+                placeholder={storeSettings.siteName}
+                required
+                className="input max-w-sm"
               />
             </SettingRow>
-          )}
-        </SettingList>
-      </AdminSection>
 
-      {/* 댓글 설정 */}
-      <AdminSection title="댓글 설정">
-        <div className="space-y-4">
-          <SettingRow
-            label="비로그인 댓글 허용"
-            description="켜면 로그인하지 않은 사람도 댓글을 쓸 수 있습니다."
-          >
-            <ToggleSwitch
-              checked={settings.allowGuestComment}
-              label="비로그인 댓글 허용"
-              onChange={v => set('allowGuestComment', v)}
-            />
-          </SettingRow>
+            <SettingRow label="페이지 타이틀" description="브라우저 탭에 표시되는 제목" required>
+              <input
+                type="text"
+                value={settings.siteTitle}
+                onChange={e => set('siteTitle', e.target.value)}
+                placeholder={storeSettings.siteTitle}
+                required
+                className="input max-w-sm"
+              />
+            </SettingRow>
+
+            <SettingRow label="사이트 설명" description="메타 태그, SEO, 로그인 페이지에 사용">
+              <textarea
+                value={settings.description ?? ''}
+                onChange={e => set('description', e.target.value || null)}
+                rows={3}
+                placeholder="사이트에 대한 간단한 설명을 입력하세요."
+                className="input resize-none"
+              />
+            </SettingRow>
+          </SettingList>
+        </AdminSection>
+      )}
+
+      {/* 브랜딩 */}
+      {group === 'site' && (
+        <AdminSection title="브랜딩">
           <SettingList>
-            <NumberInput
-              label="대댓글 최대 깊이"
-              description="원댓글 포함 허용되는 댓글 중첩 단계 수"
-              min={1}
-              max={5}
-              value={settings.commentMaxDepth}
-              onChange={v => set('commentMaxDepth', v)}
-              unit="단계"
+            <AssetUploader
+              label="로고 이미지"
+              hint="PNG · JPG · WebP · GIF 지원 — 파일 업로드 또는 외부 URL 직접 입력"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              value={settings.logoUrl}
+              onChange={url => set('logoUrl', url)}
             />
-            <NumberInput
-              label="게시글당 최대 댓글 수"
-              description="DoS 방지를 위한 게시글당 댓글 상한"
-              min={100}
-              max={5000}
-              value={settings.commentMaxCount}
-              onChange={v => set('commentMaxCount', v)}
-              unit="개"
-            />
-            <NumberInput
-              label="댓글 본문 최대 글자수"
-              description="댓글 1개의 본문 길이 상한"
-              min={100}
-              max={10000}
-              value={settings.commentContentMaxLength}
-              onChange={v => set('commentContentMaxLength', v)}
-              unit="자"
-            />
-            <NumberInput
-              label="사용자당 최대 메모 개수"
-              description="개인 메모 보드의 사용자별 메모 상한 (DoS 방지)"
-              min={10}
-              max={2000}
-              value={settings.memoMaxPerUser}
-              onChange={v => set('memoMaxPerUser', v)}
-              unit="개"
-            />
-            <NumberInput
-              label="이벤트 본문 최대 글자수"
-              description="캘린더 이벤트의 본문(설명) 길이 상한"
-              min={100}
-              max={100000}
-              value={settings.eventBodyMaxLength}
-              onChange={v => set('eventBodyMaxLength', v)}
-              unit="자"
-            />
-            <NumberInput
-              label="이벤트 장소 최대 글자수"
-              description="캘린더 이벤트의 장소 필드 길이 상한"
-              min={10}
-              max={2000}
-              value={settings.eventLocationMaxLength}
-              onChange={v => set('eventLocationMaxLength', v)}
-              unit="자"
+            <AssetUploader
+              label="파비콘"
+              hint=".ico · PNG · JPG 지원 — 브라우저 탭에 표시되는 아이콘"
+              accept="image/x-icon,image/vnd.microsoft.icon,image/png,image/jpeg,image/webp,.ico"
+              value={settings.faviconUrl}
+              onChange={url => set('faviconUrl', url)}
             />
           </SettingList>
+        </AdminSection>
+      )}
 
+      {/* 회원가입 설정 */}
+      {group === 'members' && (
+        <AdminSection title="회원가입 설정">
+          <SettingList>
+            <SettingRow
+              label="회원가입 허용"
+              description="끄면 로그인 페이지에서 회원가입 버튼이 사라집니다."
+            >
+              <ToggleSwitch
+                checked={settings.allowRegistration}
+                label="회원가입 허용"
+                onChange={v => {
+                  set('allowRegistration', v);
+                  if (!v) set('requireApproval', false);
+                }}
+              />
+            </SettingRow>
+
+            {settings.allowRegistration && (
+              <SettingRow
+                label="신규 가입 승인 필요"
+                description="켜면 관리자가 승인하기 전까지 신규 가입자가 로그인할 수 없습니다."
+              >
+                <ToggleSwitch
+                  checked={settings.requireApproval}
+                  label="신규 가입 승인 필요"
+                  onChange={v => set('requireApproval', v)}
+                />
+              </SettingRow>
+            )}
+          </SettingList>
+        </AdminSection>
+      )}
+
+      {/* 댓글 설정 */}
+      {group === 'content' && (
+        <AdminSection id="comments" title="댓글·메모">
+          <div className="space-y-4">
+            <SettingRow
+              label="비로그인 댓글 허용"
+              description="켜면 로그인하지 않은 사람도 댓글을 쓸 수 있습니다."
+            >
+              <ToggleSwitch
+                checked={settings.allowGuestComment}
+                label="비로그인 댓글 허용"
+                onChange={v => set('allowGuestComment', v)}
+              />
+            </SettingRow>
+            <SettingList>
+              <NumberInput
+                label="대댓글 최대 깊이"
+                description="원댓글 포함 허용되는 댓글 중첩 단계 수"
+                min={1}
+                max={5}
+                value={settings.commentMaxDepth}
+                onChange={v => set('commentMaxDepth', v)}
+                unit="단계"
+              />
+              <NumberInput
+                label="게시글당 최대 댓글 수"
+                description="DoS 방지를 위한 게시글당 댓글 상한"
+                min={100}
+                max={5000}
+                value={settings.commentMaxCount}
+                onChange={v => set('commentMaxCount', v)}
+                unit="개"
+              />
+              <NumberInput
+                label="댓글 본문 최대 글자수"
+                description="댓글 1개의 본문 길이 상한"
+                min={100}
+                max={10000}
+                value={settings.commentContentMaxLength}
+                onChange={v => set('commentContentMaxLength', v)}
+                unit="자"
+              />
+              <NumberInput
+                label="사용자당 최대 메모 개수"
+                description="개인 메모 보드의 사용자별 메모 상한 (DoS 방지)"
+                min={10}
+                max={2000}
+                value={settings.memoMaxPerUser}
+                onChange={v => set('memoMaxPerUser', v)}
+                unit="개"
+              />
+            </SettingList>
+          </div>
+        </AdminSection>
+      )}
+
+      {/* 일정 분류 */}
+      {group === 'work' && (
+        <AdminSection id="event-categories" title="일정">
+          <div className="space-y-3">
+            <SettingList>
+              <NumberInput
+                label="이벤트 본문 최대 글자수"
+                description="캘린더 이벤트의 본문(설명) 길이 상한"
+                min={100}
+                max={100000}
+                value={settings.eventBodyMaxLength}
+                onChange={v => set('eventBodyMaxLength', v)}
+                unit="자"
+              />
+              <NumberInput
+                label="이벤트 장소 최대 글자수"
+                description="캘린더 이벤트의 장소 필드 길이 상한"
+                min={10}
+                max={2000}
+                value={settings.eventLocationMaxLength}
+                onChange={v => set('eventLocationMaxLength', v)}
+                unit="자"
+              />
+            </SettingList>
+
+            <h4 className="pt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+              일정 분류
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              달력에서 일정을 만들 때 고르는 종류입니다. 색은 달력 칩의 바탕색이고, 테두리와
+              글자색은 읽히도록 이 색에서 계산합니다. 분류를 지워도 그 분류로 저장된 예전 일정은
+              그대로 열립니다 — 다만 기본 색으로 보입니다. 최대 {MAX_EVENT_CATEGORIES}개.
+            </p>
+            {blankCategory && (
+              <p className="text-xs font-medium text-red-500">
+                이름이 비어 있는 분류는 저장되지 않고 사라집니다.
+              </p>
+            )}
+            {eventCategories.length === 0 && (
+              <p className="text-xs font-medium text-red-500">
+                분류가 하나도 없으면 일정을 만들 수 없어, 저장하면 기본 분류로 되돌아갑니다.
+              </p>
+            )}
+            <div className="space-y-2">
+              {eventCategories.map((category, i) => (
+                <div key={category.key} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    maxLength={8}
+                    value={category.emoji}
+                    onChange={e => updateCategory(i, 'emoji', e.target.value)}
+                    className={adminInputCls('w-16 text-center')}
+                    aria-label={`${i + 1}번 분류 그림문자`}
+                    placeholder="🙂"
+                  />
+                  <input
+                    type="text"
+                    maxLength={20}
+                    value={category.label}
+                    onChange={e => updateCategory(i, 'label', e.target.value)}
+                    className={adminInputCls('w-40')}
+                    aria-label={`${i + 1}번 분류 이름`}
+                    placeholder="연차"
+                  />
+                  <input
+                    type="color"
+                    value={category.color}
+                    onChange={e => updateCategory(i, 'color', e.target.value)}
+                    className="h-9 w-12 cursor-pointer rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-800"
+                    aria-label={`${i + 1}번 분류 색`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeCategory(i)}
+                    className="ml-auto rounded-lg border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    삭제
+                  </button>
+                </div>
+              ))}
+            </div>
+            {eventCategories.length < MAX_EVENT_CATEGORIES && (
+              <button
+                type="button"
+                onClick={addCategory}
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                + 분류 추가
+              </button>
+            )}
+          </div>
+        </AdminSection>
+      )}
+
+      {/* 포인트 뽑기 */}
+      {group === 'points' && (
+        <AdminSection id="lottery" title="포인트 뽑기">
+          <FeatureOffNotice feature="tools.lottery" name="포인트 뽑기" />
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              확률·금액·횟수를 여기서 정합니다. 추첨은 서버에서만 이뤄지고, 아래 확률표는 사용자
+              화면에도 그대로 보입니다. (기능 자체를 켜고 끄는 것은 <b>기능 설정</b> 탭입니다)
+            </p>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  상품과 확률
+                </h4>
+                <span
+                  className={`text-xs font-semibold tabular-nums ${
+                    prizeTotal > 100 ? 'text-red-500' : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  합계 {prizeTotal}%{' '}
+                  {prizeTotal <= 100 &&
+                    `· 미당첨 ${(100 - prizeTotal).toFixed(2).replace(/\.?0+$/, '')}%`}
+                </span>
+              </div>
+              {prizeTotal > 100 && (
+                <p className="text-xs font-medium text-red-500">
+                  확률의 합이 100%를 넘으면 뒤쪽 상품은 영영 나오지 않습니다. 저장이 거부됩니다.
+                </p>
+              )}
+              <div className="space-y-2">
+                {(settings.lotteryPrizes ?? []).map((prize, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      value={prize.amount}
+                      onChange={e => updatePrize(i, 'amount', Number(e.target.value))}
+                      className={adminInputCls('w-32')}
+                      aria-label={`${i + 1}번 상품 포인트`}
+                    />
+                    <span className="text-sm text-slate-500 dark:text-slate-400">P</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.01"
+                      value={prize.weight}
+                      onChange={e => updatePrize(i, 'weight', Number(e.target.value))}
+                      className={adminInputCls('w-24')}
+                      aria-label={`${i + 1}번 상품 확률`}
+                    />
+                    <span className="text-sm text-slate-500 dark:text-slate-400">%</span>
+                    <button
+                      type="button"
+                      onClick={() => removePrize(i)}
+                      className="ml-auto rounded-lg border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={addPrize}
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                + 상품 추가
+              </button>
+            </div>
+
+            <SettingList>
+              <NumberInput
+                label="하루 뽑기 횟수"
+                description="한 사람이 하루에 뽑을 수 있는 횟수"
+                min={1}
+                max={200}
+                value={settings.lotteryDailyLimit}
+                onChange={v => set('lotteryDailyLimit', v)}
+                unit="회"
+              />
+              <NumberInput
+                label="뽑기 참가비"
+                description="한 번 뽑을 때마다 깎이는 포인트. 0 이면 공짜입니다."
+                min={0}
+                max={100000}
+                value={settings.lotteryDrawCost}
+                onChange={v => set('lotteryDrawCost', v)}
+                unit="P"
+              />
+              <NumberInput
+                label="출석 포인트"
+                description="하루 한 번 접속하면 자동 지급"
+                min={0}
+                max={100000}
+                value={settings.attendanceBonus}
+                onChange={v => set('attendanceBonus', v)}
+                unit="P"
+              />
+            </SettingList>
+
+            <h4 className="mt-6 text-sm font-semibold text-slate-800 dark:text-slate-200">
+              포인트 대결
+            </h4>
+            <SettingList>
+              <NumberInput
+                label="최소 판돈"
+                description="한 판에 걸 수 있는 가장 적은 포인트"
+                min={1}
+                max={1000000}
+                value={settings.duelMinStake}
+                onChange={v => set('duelMinStake', v)}
+                unit="P"
+              />
+              <NumberInput
+                label="최대 판돈"
+                description="한 판에 전 재산이 오가지 않게 막는 상한"
+                min={1}
+                max={1000000}
+                value={settings.duelMaxStake}
+                onChange={v => set('duelMaxStake', v)}
+                unit="P"
+              />
+              <NumberInput
+                label="대결 유효 시간"
+                description="상대가 이 시간 안에 답하지 않으면 무효가 되고 건 포인트를 돌려줍니다"
+                min={1}
+                max={120}
+                value={settings.duelExpireMinutes}
+                onChange={v => set('duelExpireMinutes', v)}
+                unit="분"
+              />
+              <NumberInput
+                label="동시 신청 가능 판 수"
+                description="한 사람이 한꺼번에 걸어 둘 수 있는 대결 수"
+                min={1}
+                max={20}
+                value={settings.duelMaxOpenPerUser}
+                onChange={v => set('duelMaxOpenPerUser', v)}
+                unit="판"
+              />
+            </SettingList>
+
+            <h4 className="mt-6 text-sm font-semibold text-slate-800 dark:text-slate-200">
+              퇴근 공격
+            </h4>
+            <SettingList>
+              <NumberInput
+                label="퇴근 방해 값"
+                description="상대의 퇴근 버튼이 잠깐 말을 안 듣게 만듭니다 (기록은 그대로입니다)"
+                min={0}
+                max={100000}
+                value={settings.attackCost}
+                onChange={v => set('attackCost', v)}
+                unit="P"
+              />
+              <NumberInput
+                label="버튼 숨기기 값"
+                description="상대의 퇴근 버튼을 잠깐 감춥니다"
+                min={0}
+                max={100000}
+                value={settings.attackHideCost}
+                onChange={v => set('attackHideCost', v)}
+                unit="P"
+              />
+              <NumberInput
+                label="방어권 값"
+                description="공격보다 싸야 방어할 마음이 듭니다"
+                min={0}
+                max={100000}
+                value={settings.attackDefendCost}
+                onChange={v => set('attackDefendCost', v)}
+                unit="P"
+              />
+              <NumberInput
+                label="방해 지속 시간"
+                description="퇴근 버튼이 말을 안 듣는 시간"
+                min={5}
+                max={600}
+                value={settings.attackBlockSeconds}
+                onChange={v => set('attackBlockSeconds', v)}
+                unit="초"
+              />
+              <NumberInput
+                label="숨기는 시간"
+                description="이 시간 동안은 정말로 누를 수 없으므로 짧게 둡니다"
+                min={3}
+                max={60}
+                value={settings.attackHideSeconds}
+                onChange={v => set('attackHideSeconds', v)}
+                unit="초"
+              />
+              <NumberInput
+                label="하루 공격 횟수"
+                description="퇴근 공격과 포인트 날리기를 합쳐서 셉니다"
+                min={1}
+                max={100}
+                value={settings.attackDailyLimit}
+                onChange={v => set('attackDailyLimit', v)}
+                unit="회"
+              />
+              <NumberInput
+                label="한 사람에게 쌓이는 공격 수"
+                description="이보다 많이 쌓이면 더 보낼 수 없습니다"
+                min={1}
+                max={50}
+                value={settings.attackMaxStack}
+                onChange={v => set('attackMaxStack', v)}
+                unit="개"
+              />
+              <NumberInput
+                label="숨기기 합계 상한"
+                description="숨기기만 실제로 누를 수 없어 개수와 별개로 합계를 제한합니다"
+                min={5}
+                max={300}
+                value={settings.attackHideTotalMaxSeconds}
+                onChange={v => set('attackHideTotalMaxSeconds', v)}
+                unit="초"
+              />
+              <NumberInput
+                label="포인트 날리기 — 값"
+                description="한 번 던지는 값입니다. 빗나가도 돌려주지 않습니다"
+                min={0}
+                max={100000}
+                value={settings.pointAttackCost}
+                onChange={v => set('pointAttackCost', v)}
+                unit="P"
+              />
+              <NumberInput
+                label="포인트 날리기 — 통할 확률"
+                description="0 이면 아무도 못 맞히고, 100 이면 던질 때마다 맞습니다"
+                min={0}
+                max={100}
+                value={settings.pointAttackPercent}
+                onChange={v => set('pointAttackPercent', v)}
+                unit="%"
+              />
+              <NumberInput
+                label="포인트 날리기 — 한 번에 던지는 수"
+                description="화면의 'xN' 단추가 이 값을 씁니다. 1 이면 묶음 단추를 숨깁니다"
+                min={1}
+                max={50}
+                value={settings.pointAttackMaxBurst}
+                onChange={v => set('pointAttackMaxBurst', v)}
+                unit="회"
+              />
+              <NumberInput
+                label="포인트 날리기 — 없앨 비율"
+                description="통했을 때 상대 포인트에서 없앨 몫입니다. 50 이면 절반"
+                min={1}
+                max={100}
+                value={settings.pointAttackLossPercent}
+                onChange={v => set('pointAttackLossPercent', v)}
+                unit="%"
+              />
+            </SettingList>
+          </div>
+        </AdminSection>
+      )}
+
+      {/* 업무 */}
+      {group === 'work' && (
+        <AdminSection id="tasks" title="업무">
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              글에 담당자·일정을 붙이는 업무 기능의 설정입니다. 마감 알림은 담당자에게만 가고 같은
+              글은 하루 한 번만 보냅니다.
+            </p>
+            <SettingList>
+              <NumberInput
+                label="마감 알림 — 며칠 전부터"
+                description="0 이면 마감 당일에만 알립니다. 3 이면 사흘 전부터 매일 한 번"
+                min={0}
+                max={14}
+                value={settings.taskReminderDaysBefore}
+                onChange={v => set('taskReminderDaysBefore', v)}
+                unit="일"
+              />
+              <NumberInput
+                label="마감 알림 — 지난 뒤 며칠까지"
+                description="0 이면 지난 일은 알리지 않습니다. 7 이면 일주일 동안 매일 한 번 — 끝없이 알리면 방치된 업무가 같은 말을 반복합니다"
+                min={0}
+                max={30}
+                value={settings.taskOverdueDays}
+                onChange={v => set('taskOverdueDays', v)}
+                unit="일"
+              />
+              <NumberInput
+                label="마감 알림 보내는 시각"
+                description="이 시각부터 보냅니다. 정해 두지 않으면 자정 직후에 울립니다"
+                min={0}
+                max={23}
+                value={settings.taskReminderHour}
+                onChange={v => set('taskReminderHour', v)}
+                unit="시"
+              />
+              <NumberInput
+                label="'곧 마감' 으로 칠할 기준"
+                description="마감이 이 날 수 안이면 업무 목록·칸반에서 눈에 띄게 칠합니다"
+                min={1}
+                max={30}
+                value={settings.taskSoonDays}
+                onChange={v => set('taskSoonDays', v)}
+                unit="일"
+              />
+            </SettingList>
+          </div>
           {/* 업무 상태를 부르는 말. 키(todo/doing/done)는 코드가 고정하고 화면에 뜨는 말만 바꾼다 */}
           <div className="pt-2">
             <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -540,376 +1025,78 @@ export const SiteSettingsManagement = () => {
               ))}
             </div>
           </div>
-        </div>
-      </AdminSection>
-
-      {/* 포인트 뽑기 */}
-      <AdminSection id="lottery" title="포인트 뽑기">
-        <FeatureOffNotice feature="tools.lottery" name="포인트 뽑기" />
-        <div className="space-y-4">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            확률·금액·횟수를 여기서 정합니다. 추첨은 서버에서만 이뤄지고, 아래 확률표는 사용자
-            화면에도 그대로 보입니다. (기능 자체를 켜고 끄는 것은 <b>기능 설정</b> 탭입니다)
-          </p>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                상품과 확률
-              </h4>
-              <span
-                className={`text-xs font-semibold tabular-nums ${
-                  prizeTotal > 100 ? 'text-red-500' : 'text-slate-500 dark:text-slate-400'
-                }`}
-              >
-                합계 {prizeTotal}%{' '}
-                {prizeTotal <= 100 &&
-                  `· 미당첨 ${(100 - prizeTotal).toFixed(2).replace(/\.?0+$/, '')}%`}
-              </span>
-            </div>
-            {prizeTotal > 100 && (
-              <p className="text-xs font-medium text-red-500">
-                확률의 합이 100%를 넘으면 뒤쪽 상품은 영영 나오지 않습니다. 저장이 거부됩니다.
-              </p>
-            )}
-            <div className="space-y-2">
-              {(settings.lotteryPrizes ?? []).map((prize, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={0}
-                    value={prize.amount}
-                    onChange={e => updatePrize(i, 'amount', Number(e.target.value))}
-                    className={adminInputCls('w-32')}
-                    aria-label={`${i + 1}번 상품 포인트`}
-                  />
-                  <span className="text-sm text-slate-500 dark:text-slate-400">P</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step="0.01"
-                    value={prize.weight}
-                    onChange={e => updatePrize(i, 'weight', Number(e.target.value))}
-                    className={adminInputCls('w-24')}
-                    aria-label={`${i + 1}번 상품 확률`}
-                  />
-                  <span className="text-sm text-slate-500 dark:text-slate-400">%</span>
-                  <button
-                    type="button"
-                    onClick={() => removePrize(i)}
-                    className="ml-auto rounded-lg border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                  >
-                    삭제
-                  </button>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={addPrize}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-            >
-              + 상품 추가
-            </button>
-          </div>
-
-          <SettingList>
-            <NumberInput
-              label="하루 뽑기 횟수"
-              description="한 사람이 하루에 뽑을 수 있는 횟수"
-              min={1}
-              max={200}
-              value={settings.lotteryDailyLimit}
-              onChange={v => set('lotteryDailyLimit', v)}
-              unit="회"
-            />
-            <NumberInput
-              label="뽑기 참가비"
-              description="한 번 뽑을 때마다 깎이는 포인트. 0 이면 공짜입니다."
-              min={0}
-              max={100000}
-              value={settings.lotteryDrawCost}
-              onChange={v => set('lotteryDrawCost', v)}
-              unit="P"
-            />
-            <NumberInput
-              label="출석 포인트"
-              description="하루 한 번 접속하면 자동 지급"
-              min={0}
-              max={100000}
-              value={settings.attendanceBonus}
-              onChange={v => set('attendanceBonus', v)}
-              unit="P"
-            />
-          </SettingList>
-
-          <h4 className="mt-6 text-sm font-semibold text-slate-800 dark:text-slate-200">
-            포인트 대결
-          </h4>
-          <SettingList>
-            <NumberInput
-              label="최소 판돈"
-              description="한 판에 걸 수 있는 가장 적은 포인트"
-              min={1}
-              max={1000000}
-              value={settings.duelMinStake}
-              onChange={v => set('duelMinStake', v)}
-              unit="P"
-            />
-            <NumberInput
-              label="최대 판돈"
-              description="한 판에 전 재산이 오가지 않게 막는 상한"
-              min={1}
-              max={1000000}
-              value={settings.duelMaxStake}
-              onChange={v => set('duelMaxStake', v)}
-              unit="P"
-            />
-            <NumberInput
-              label="대결 유효 시간"
-              description="상대가 이 시간 안에 답하지 않으면 무효가 되고 건 포인트를 돌려줍니다"
-              min={1}
-              max={120}
-              value={settings.duelExpireMinutes}
-              onChange={v => set('duelExpireMinutes', v)}
-              unit="분"
-            />
-            <NumberInput
-              label="동시 신청 가능 판 수"
-              description="한 사람이 한꺼번에 걸어 둘 수 있는 대결 수"
-              min={1}
-              max={20}
-              value={settings.duelMaxOpenPerUser}
-              onChange={v => set('duelMaxOpenPerUser', v)}
-              unit="판"
-            />
-          </SettingList>
-
-          <h4 className="mt-6 text-sm font-semibold text-slate-800 dark:text-slate-200">
-            퇴근 공격
-          </h4>
-          <SettingList>
-            <NumberInput
-              label="퇴근 방해 값"
-              description="상대의 퇴근 버튼이 잠깐 말을 안 듣게 만듭니다 (기록은 그대로입니다)"
-              min={0}
-              max={100000}
-              value={settings.attackCost}
-              onChange={v => set('attackCost', v)}
-              unit="P"
-            />
-            <NumberInput
-              label="버튼 숨기기 값"
-              description="상대의 퇴근 버튼을 잠깐 감춥니다"
-              min={0}
-              max={100000}
-              value={settings.attackHideCost}
-              onChange={v => set('attackHideCost', v)}
-              unit="P"
-            />
-            <NumberInput
-              label="방어권 값"
-              description="공격보다 싸야 방어할 마음이 듭니다"
-              min={0}
-              max={100000}
-              value={settings.attackDefendCost}
-              onChange={v => set('attackDefendCost', v)}
-              unit="P"
-            />
-            <NumberInput
-              label="방해 지속 시간"
-              description="퇴근 버튼이 말을 안 듣는 시간"
-              min={5}
-              max={600}
-              value={settings.attackBlockSeconds}
-              onChange={v => set('attackBlockSeconds', v)}
-              unit="초"
-            />
-            <NumberInput
-              label="숨기는 시간"
-              description="이 시간 동안은 정말로 누를 수 없으므로 짧게 둡니다"
-              min={3}
-              max={60}
-              value={settings.attackHideSeconds}
-              onChange={v => set('attackHideSeconds', v)}
-              unit="초"
-            />
-            <NumberInput
-              label="하루 공격 횟수"
-              description="퇴근 공격과 포인트 날리기를 합쳐서 셉니다"
-              min={1}
-              max={100}
-              value={settings.attackDailyLimit}
-              onChange={v => set('attackDailyLimit', v)}
-              unit="회"
-            />
-            <NumberInput
-              label="한 사람에게 쌓이는 공격 수"
-              description="이보다 많이 쌓이면 더 보낼 수 없습니다"
-              min={1}
-              max={50}
-              value={settings.attackMaxStack}
-              onChange={v => set('attackMaxStack', v)}
-              unit="개"
-            />
-            <NumberInput
-              label="숨기기 합계 상한"
-              description="숨기기만 실제로 누를 수 없어 개수와 별개로 합계를 제한합니다"
-              min={5}
-              max={300}
-              value={settings.attackHideTotalMaxSeconds}
-              onChange={v => set('attackHideTotalMaxSeconds', v)}
-              unit="초"
-            />
-            <NumberInput
-              label="포인트 날리기 — 값"
-              description="한 번 던지는 값입니다. 빗나가도 돌려주지 않습니다"
-              min={0}
-              max={100000}
-              value={settings.pointAttackCost}
-              onChange={v => set('pointAttackCost', v)}
-              unit="P"
-            />
-            <NumberInput
-              label="포인트 날리기 — 통할 확률"
-              description="0 이면 아무도 못 맞히고, 100 이면 던질 때마다 맞습니다"
-              min={0}
-              max={100}
-              value={settings.pointAttackPercent}
-              onChange={v => set('pointAttackPercent', v)}
-              unit="%"
-            />
-            <NumberInput
-              label="포인트 날리기 — 한 번에 던지는 수"
-              description="화면의 'xN' 단추가 이 값을 씁니다. 1 이면 묶음 단추를 숨깁니다"
-              min={1}
-              max={50}
-              value={settings.pointAttackMaxBurst}
-              onChange={v => set('pointAttackMaxBurst', v)}
-              unit="회"
-            />
-            <NumberInput
-              label="포인트 날리기 — 없앨 비율"
-              description="통했을 때 상대 포인트에서 없앨 몫입니다. 50 이면 절반"
-              min={1}
-              max={100}
-              value={settings.pointAttackLossPercent}
-              onChange={v => set('pointAttackLossPercent', v)}
-              unit="%"
-            />
-          </SettingList>
-        </div>
-      </AdminSection>
-
-      {/* 업무 */}
-      <AdminSection id="tasks" title="업무">
-        <div className="space-y-4">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            글에 담당자·일정을 붙이는 업무 기능의 설정입니다. 마감 알림은 담당자에게만 가고 같은
-            글은 하루 한 번만 보냅니다.
-          </p>
-          <SettingList>
-            <NumberInput
-              label="마감 알림 — 며칠 전부터"
-              description="0 이면 마감 당일에만 알립니다. 3 이면 사흘 전부터 매일 한 번"
-              min={0}
-              max={14}
-              value={settings.taskReminderDaysBefore}
-              onChange={v => set('taskReminderDaysBefore', v)}
-              unit="일"
-            />
-            <NumberInput
-              label="마감 알림 보내는 시각"
-              description="이 시각부터 보냅니다. 정해 두지 않으면 자정 직후에 울립니다"
-              min={0}
-              max={23}
-              value={settings.taskReminderHour}
-              onChange={v => set('taskReminderHour', v)}
-              unit="시"
-            />
-            <NumberInput
-              label="'곧 마감' 으로 칠할 기준"
-              description="마감이 이 날 수 안이면 업무 목록·칸반에서 눈에 띄게 칠합니다"
-              min={1}
-              max={30}
-              value={settings.taskSoonDays}
-              onChange={v => set('taskSoonDays', v)}
-              unit="일"
-            />
-          </SettingList>
-        </div>
-      </AdminSection>
+        </AdminSection>
+      )}
 
       {/* 점검 모드 */}
-      <AdminSection title="점검 모드">
-        <div className="space-y-4">
-          {settings.maintenanceMode && (
-            <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-yellow-800 dark:text-yellow-300 text-sm">
-              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-              <span>
-                점검 모드가 활성화되면 관리자/매니저를 제외한 모든 사용자가 서비스 이용 불가 상태가
-                됩니다.
-              </span>
-            </div>
-          )}
-
-          <SettingList>
-            <SettingRow
-              label="점검 모드 활성화"
-              description="켜면 관리자·매니저를 뺀 모든 사람에게 점검 화면이 보입니다."
-            >
-              <ToggleSwitch
-                checked={settings.maintenanceMode}
-                label="점검 모드 활성화"
-                tone="danger"
-                onChange={v => set('maintenanceMode', v)}
-              />
-            </SettingRow>
-
+      {group === 'system' && (
+        <AdminSection title="점검 모드">
+          <div className="space-y-4">
             {settings.maintenanceMode && (
-              <SettingRow label="점검 안내 메시지" description="비워 두면 기본 문구가 나갑니다.">
-                <textarea
-                  value={settings.maintenanceMessage ?? ''}
-                  onChange={e => set('maintenanceMessage', e.target.value || null)}
-                  rows={3}
-                  placeholder="현재 서비스 점검 중입니다. 잠시 후 다시 이용해주세요."
-                  className="input resize-none"
+              <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-yellow-800 dark:text-yellow-300 text-sm">
+                <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <span>
+                  점검 모드가 활성화되면 관리자/매니저를 제외한 모든 사용자가 서비스 이용 불가
+                  상태가 됩니다.
+                </span>
+              </div>
+            )}
+
+            <SettingList>
+              <SettingRow
+                label="점검 모드 활성화"
+                description="켜면 관리자·매니저를 뺀 모든 사람에게 점검 화면이 보입니다."
+              >
+                <ToggleSwitch
+                  checked={settings.maintenanceMode}
+                  label="점검 모드 활성화"
+                  tone="danger"
+                  onChange={v => set('maintenanceMode', v)}
                 />
               </SettingRow>
-            )}
-          </SettingList>
-        </div>
-      </AdminSection>
+
+              {settings.maintenanceMode && (
+                <SettingRow label="점검 안내 메시지" description="비워 두면 기본 문구가 나갑니다.">
+                  <textarea
+                    value={settings.maintenanceMessage ?? ''}
+                    onChange={e => set('maintenanceMessage', e.target.value || null)}
+                    rows={3}
+                    placeholder="현재 서비스 점검 중입니다. 잠시 후 다시 이용해주세요."
+                    className="input resize-none"
+                  />
+                </SettingRow>
+              )}
+            </SettingList>
+          </div>
+        </AdminSection>
+      )}
 
       {/* 로그인 페이지 설정 */}
-      <AdminSection title="로그인 페이지 설정">
-        <div>
-          <label className="form-label" htmlFor="site-login-notice">
-            로그인 페이지 안내 메시지
-          </label>
-          <textarea
-            id="site-login-notice"
-            value={settings.loginMessage ?? ''}
-            onChange={e => set('loginMessage', e.target.value || null)}
-            rows={3}
-            placeholder="로그인 페이지 하단에 표시할 메시지를 입력하세요. (예: 문의: admin@example.com)"
-            className="input resize-none"
-          />
-          <p className="mt-1 text-xs text-slate-400">
-            공지사항, 문의처, 이용 안내 등을 입력할 수 있습니다.
-          </p>
-        </div>
-      </AdminSection>
+      {group === 'site' && (
+        <AdminSection title="로그인 페이지 설정">
+          <div>
+            <label className="form-label" htmlFor="site-login-notice">
+              로그인 페이지 안내 메시지
+            </label>
+            <textarea
+              id="site-login-notice"
+              value={settings.loginMessage ?? ''}
+              onChange={e => set('loginMessage', e.target.value || null)}
+              rows={3}
+              placeholder="로그인 페이지 하단에 표시할 메시지를 입력하세요. (예: 문의: admin@example.com)"
+              className="input resize-none"
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              공지사항, 문의처, 이용 안내 등을 입력할 수 있습니다.
+            </p>
+          </div>
+        </AdminSection>
+      )}
 
-      {/* 시스템 설정 */}
-      <AdminSection title="시스템 설정">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* 보안 설정 */}
+      {/* 보안 — 비밀번호 규칙·로그인 잠금·토큰 수명 */}
+      {group === 'members' && (
+        <AdminSection id="security" title="비밀번호·로그인·토큰">
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 pb-2">
-              보안 설정
-            </h4>
             <NumberInput
               label="비밀번호 최소 길이"
               description="회원가입/변경 시 요구되는 최소 비밀번호 길이 (6~72자)"
@@ -1010,29 +1197,13 @@ export const SiteSettingsManagement = () => {
               unit="시간"
             />
           </div>
-          {/* 파일 & 게시글 설정 */}
+        </AdminSection>
+      )}
+
+      {/* 글 길이·쪽 크기 한도 */}
+      {group === 'content' && (
+        <AdminSection id="content-limits" title="글 한도">
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 pb-2">
-              파일 &amp; 게시글
-            </h4>
-            <NumberInput
-              label="첨부파일 최대 개수"
-              description="게시글당 허용되는 파일 수"
-              min={1}
-              max={20}
-              value={settings.maxFileCount}
-              onChange={v => set('maxFileCount', v)}
-              unit="개"
-            />
-            <NumberInput
-              label="문서/일반 파일 최대 크기"
-              description="문서, 압축 첨부파일 1개당 최대 크기"
-              min={1}
-              max={1000}
-              value={settings.maxFileSizeMb}
-              onChange={v => set('maxFileSizeMb', v)}
-              unit="MB"
-            />
             <NumberInput
               label="기본 페이지 크기"
               description="목록에서 한 번에 표시할 항목 수"
@@ -1079,141 +1250,197 @@ export const SiteSettingsManagement = () => {
               unit="개"
             />
           </div>
-          {/* 로그 설정 */}
-          <div className="space-y-4 md:col-span-2">
-            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 pb-2">
-              로그 보존 기간
-            </h4>
-            <SettingList>
-              <NumberInput
-                label="보안 로그 보존 기간"
-                description="보안 감사 로그 자동 삭제 기간"
-                min={7}
-                max={365}
-                value={settings.securityLogRetentionDays}
-                onChange={v => set('securityLogRetentionDays', v)}
-                unit="일"
-              />
-              <NumberInput
-                label="에러 로그 보존 기간"
-                description="에러 로그 자동 삭제 기간"
-                min={7}
-                max={365}
-                value={settings.errorLogRetentionDays}
-                onChange={v => set('errorLogRetentionDays', v)}
-                unit="일"
-              />
-              <NumberInput
-                label="삭제 게시글 보관 기간"
-                description="삭제(숨김)된 게시글을 DB에서 영구 삭제하기까지의 기간"
-                min={1}
-                max={365}
-                value={settings.deletedPostRetentionDays}
-                onChange={v => set('deletedPostRetentionDays', v)}
-                unit="일"
-              />
-            </SettingList>
+        </AdminSection>
+      )}
+
+      {/* 첨부 개수·문서 크기 — 카테고리별 크기 제한과 같은 묶음에 둔다 */}
+      {group === 'files' && (
+        <AdminSection id="attachment-limits" title="첨부 한도">
+          <div className="space-y-4">
+            <NumberInput
+              label="첨부파일 최대 개수"
+              description="게시글당 허용되는 파일 수"
+              min={1}
+              max={20}
+              value={settings.maxFileCount}
+              onChange={v => set('maxFileCount', v)}
+              unit="개"
+            />
+            <NumberInput
+              label="문서/일반 파일 최대 크기"
+              description="문서, 압축 첨부파일 1개당 최대 크기. 최대 3072MB(3GB)까지 — 웹서버(nginx)의 client_max_body_size 도 그만큼 열려 있어야 합니다"
+              min={1}
+              max={3072}
+              value={settings.maxFileSizeMb}
+              onChange={v => set('maxFileSizeMb', v)}
+              unit="MB"
+            />
           </div>
-        </div>
-      </AdminSection>
+        </AdminSection>
+      )}
+
+      {/* 로그 보존 기간 */}
+      {group === 'system' && (
+        <AdminSection id="log-retention" title="로그 보존 기간">
+          <SettingList>
+            <NumberInput
+              label="보안 로그 보존 기간"
+              description="보안 감사 로그 자동 삭제 기간"
+              min={7}
+              max={365}
+              value={settings.securityLogRetentionDays}
+              onChange={v => set('securityLogRetentionDays', v)}
+              unit="일"
+            />
+            <NumberInput
+              label="에러 로그 보존 기간"
+              description="에러 로그 자동 삭제 기간"
+              min={7}
+              max={365}
+              value={settings.errorLogRetentionDays}
+              onChange={v => set('errorLogRetentionDays', v)}
+              unit="일"
+            />
+            <NumberInput
+              label="삭제 게시글 보관 기간"
+              description="삭제(숨김)된 게시글을 DB에서 영구 삭제하기까지의 기간"
+              min={1}
+              max={365}
+              value={settings.deletedPostRetentionDays}
+              onChange={v => set('deletedPostRetentionDays', v)}
+              unit="일"
+            />
+          </SettingList>
+        </AdminSection>
+      )}
 
       {/* 파일 크기 제한 */}
-      <AdminSection id="file-limits" title="파일 크기 제한 (카테고리별)">
-        <FeatureOffNotice feature="post.attachments" name="파일 첨부" />
-        <SettingList>
-          <NumberInput
-            label="이미지 최대 크기"
-            description="에디터·게시글 첨부 이미지"
-            min={1}
-            max={500}
-            value={settings.maxImageSizeMb}
-            onChange={v => set('maxImageSizeMb', v)}
-            unit="MB"
-          />
-          <NumberInput
-            label="아바타 최대 크기"
-            description="프로필 사진 업로드 제한"
-            min={1}
-            max={100}
-            value={settings.maxAvatarSizeMb}
-            onChange={v => set('maxAvatarSizeMb', v)}
-            unit="MB"
-          />
-        </SettingList>
-      </AdminSection>
+      {group === 'files' && (
+        <AdminSection id="file-limits" title="파일 크기 제한 (카테고리별)">
+          <FeatureOffNotice feature="post.attachments" name="파일 첨부" />
+          <SettingList>
+            <NumberInput
+              label="이미지 최대 크기"
+              description="에디터·게시글 첨부 이미지"
+              min={1}
+              max={500}
+              value={settings.maxImageSizeMb}
+              onChange={v => set('maxImageSizeMb', v)}
+              unit="MB"
+            />
+            <NumberInput
+              label="아바타 최대 크기"
+              description="프로필 사진 업로드 제한"
+              min={1}
+              max={100}
+              value={settings.maxAvatarSizeMb}
+              onChange={v => set('maxAvatarSizeMb', v)}
+              unit="MB"
+            />
+            <NumberInput
+              label="이미지 한 번에 올릴 수 있는 개수"
+              description="에디터에서 한 번에 선택할 수 있는 이미지 수"
+              min={1}
+              max={20}
+              value={settings.maxImageCount}
+              onChange={v => set('maxImageCount', v)}
+              unit="개"
+            />
+          </SettingList>
+        </AdminSection>
+      )}
 
       {/* 보안 고급 설정 */}
-      <AdminSection title="보안 고급 설정">
-        <div className="space-y-4">
-          <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs">
-            <p className="font-medium">주의</p>
-            <p>
-              bcrypt 라운드를 높이면 비밀번호 보안이 강화되지만, 로그인 시 처리 시간이 증가합니다.
-              (10: 기본, 12: 권장, 14: 최고 보안)
-            </p>
+      {group === 'members' && (
+        <AdminSection title="보안 고급 설정">
+          <div className="space-y-4">
+            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs">
+              <p className="font-medium">주의</p>
+              <p>
+                bcrypt 라운드를 높이면 비밀번호 보안이 강화되지만, 로그인 시 처리 시간이 증가합니다.
+                (10: 기본, 12: 권장, 14: 최고 보안)
+              </p>
+            </div>
+            <NumberInput
+              label="bcrypt 해싱 라운드"
+              description="비밀번호 해싱 강도 (높을수록 안전하나 로그인 속도 감소)"
+              min={10}
+              max={14}
+              value={settings.bcryptRounds}
+              onChange={v => set('bcryptRounds', v)}
+              unit="라운드"
+            />
           </div>
-          <NumberInput
-            label="bcrypt 해싱 라운드"
-            description="비밀번호 해싱 강도 (높을수록 안전하나 로그인 속도 감소)"
-            min={10}
-            max={14}
-            value={settings.bcryptRounds}
-            onChange={v => set('bcryptRounds', v)}
-            unit="라운드"
-          />
-        </div>
-      </AdminSection>
+        </AdminSection>
+      )}
 
       {/* 아바타 처리 설정 */}
-      <AdminSection title="아바타 처리 설정">
-        <SettingList>
-          <NumberInput
-            label="아바타 리사이징 크기"
-            description="업로드된 프로필 사진을 이 크기의 정사각형으로 자릅니다"
-            min={50}
-            max={500}
-            value={settings.avatarSizePx}
-            onChange={v => set('avatarSizePx', v)}
-            unit="px"
-          />
-          <NumberInput
-            label="아바타 JPEG 품질"
-            description="낮출수록 파일 크기 감소, 높일수록 화질 향상"
-            min={50}
-            max={100}
-            value={settings.avatarQuality}
-            onChange={v => set('avatarQuality', v)}
-            unit="%"
-          />
-        </SettingList>
-      </AdminSection>
+      {group === 'files' && (
+        <AdminSection title="아바타 처리 설정">
+          <SettingList>
+            <NumberInput
+              label="아바타 리사이징 크기"
+              description="업로드된 프로필 사진을 이 크기의 정사각형으로 자릅니다"
+              min={50}
+              max={500}
+              value={settings.avatarSizePx}
+              onChange={v => set('avatarSizePx', v)}
+              unit="px"
+            />
+            <NumberInput
+              label="아바타 JPEG 품질"
+              description="낮출수록 파일 크기 감소, 높일수록 화질 향상"
+              min={50}
+              max={100}
+              value={settings.avatarQuality}
+              onChange={v => set('avatarQuality', v)}
+              unit="%"
+            />
+          </SettingList>
+        </AdminSection>
+      )}
 
       {/* 에디터 설정 */}
-      <AdminSection id="editor" title="에디터 설정">
-        <SettingList>
-          <NumberInput
-            label="자동저장 주기"
-            description="게시글 작성 중 임시저장 간격"
-            min={10}
-            max={300}
-            value={settings.autoSaveIntervalSeconds}
-            onChange={v => set('autoSaveIntervalSeconds', v)}
-            unit="초"
-          />
-          <NumberInput
-            label="오래된 임시저장 기준"
-            description="이보다 오래 손대지 않은 초안은 임시저장 목록에 '오래됨' 으로 표시됩니다. 자동으로 지우지는 않습니다."
-            min={10}
-            max={1440}
-            value={settings.draftExpiryMinutes}
-            onChange={v => set('draftExpiryMinutes', v)}
-            unit="분"
-          />
-        </SettingList>
-      </AdminSection>
+      {group === 'content' && (
+        <AdminSection id="editor" title="에디터 설정">
+          <SettingList>
+            <NumberInput
+              label="자동저장 주기"
+              description="게시글 작성 중 임시저장 간격"
+              min={10}
+              max={300}
+              value={settings.autoSaveIntervalSeconds}
+              onChange={v => set('autoSaveIntervalSeconds', v)}
+              unit="초"
+            />
+            <NumberInput
+              label="오래된 임시저장 기준"
+              description="이보다 오래 손대지 않은 초안은 임시저장 목록에 '오래됨' 으로 표시됩니다. 자동으로 지우지는 않습니다."
+              min={10}
+              max={1440}
+              value={settings.draftExpiryMinutes}
+              onChange={v => set('draftExpiryMinutes', v)}
+              unit="분"
+            />
+          </SettingList>
+        </AdminSection>
+      )}
 
-      {/* 저장 바 */}
-      <div className="flex justify-end gap-3 pt-2 pb-4">
+      {/* 저장 바. 화면 아래에 붙여 둔다(기능 설정 화면과 같은 방식) — 묶음 하나도
+          한 화면을 넘길 수 있어, 가운데쯤에서 고친 뒤 저장하려면 끝까지 내려가야 했다.
+          바뀐 것이 있을 때는 테두리를 띄워 눌러야 할 것이 있음을 알린다. */}
+      <div
+        className={`sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-end gap-3 px-1 py-3 ${
+          dirty
+            ? 'border-t border-amber-300 bg-amber-50/95 backdrop-blur dark:border-amber-700 dark:bg-amber-900/30'
+            : 'border-t border-slate-200 bg-white/95 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95'
+        }`}
+      >
+        {dirty && (
+          <span className="mr-auto text-sm font-medium text-amber-800 dark:text-amber-200">
+            저장하지 않은 변경이 있습니다.
+          </span>
+        )}
         <button
           type="button"
           onClick={async () => {
@@ -1221,6 +1448,7 @@ export const SiteSettingsManagement = () => {
             try {
               setSettings(await getAdminSiteSettings());
               isDirty.current = false; // 취소 시 dirty 플래그 초기화
+              setDirty(false);
             } catch {
               showMessage('error', '설정을 불러오는데 실패했습니다.');
             } finally {

@@ -105,6 +105,11 @@ Post.belongsTo(User, {
   constraints: false,
 });
 
+// 하위 업무 — 한 단계만 둔다(postTask.service 가 하위의 하위를 막는다).
+// 거를 때 하위 줄에 상위 제목을 붙이려면 조인이 필요하다. 글이 지워져도 남은
+// parentTaskId 로 쿼리가 깨지지 않도록 WikiPage.parent 처럼 제약은 걸지 않는다.
+Post.belongsTo(Post, { foreignKey: 'parentTaskId', as: 'parentTask', constraints: false });
+
 // Post ↔ Board
 Post.belongsTo(Board, {
   foreignKey: 'boardType',

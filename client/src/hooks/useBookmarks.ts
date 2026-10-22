@@ -2,6 +2,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchBookmarks, type Bookmark } from '../api/bookmarks';
 
+/**
+ * 북마크가 가리키는 진짜 주소. 사람이 'example.com' 처럼 적어 두므로 빠진 스킴을 채운다.
+ * 링크의 href 로도 쓰므로 창을 여는 쪽과 같은 값이어야 한다 —
+ * 두 벌로 갈라지면 마우스를 올렸을 때 보이는 주소와 실제로 가는 곳이 달라진다.
+ */
+export function bookmarkHref(url: string): string {
+  return url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
+}
+
 export function useBookmarks() {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,11 +46,7 @@ export function useBookmarks() {
   }, [loadBookmarks]);
 
   const openBookmark = (url: string) => {
-    let finalUrl = url;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      finalUrl = `https://${url}`;
-    }
-    window.open(finalUrl, '_blank', 'noopener,noreferrer');
+    window.open(bookmarkHref(url), '_blank', 'noopener,noreferrer');
   };
 
   const refreshBookmarks = useCallback(() => {

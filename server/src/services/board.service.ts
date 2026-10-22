@@ -14,6 +14,7 @@ import { BoardManager } from '../models/BoardManager';
 import { CommentLike } from '../models/CommentLike';
 import { Notification } from '../models/Notification';
 import { Tag } from '../models/Tag';
+import { Event } from '../models/Event';
 import { AccessibleBoard, PersonalFolderResult } from '../types/auth-request';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -76,6 +77,7 @@ export class BoardService extends BaseService {
     description?: string;
     order?: number;
     taskEnabled?: boolean;
+    calendarEnabled?: boolean;
   }) {
     // 예약된 시스템 경로와 충돌 방지
     if (RESERVED_BOARD_IDS.includes(data.id.toLowerCase())) {
@@ -93,6 +95,7 @@ export class BoardService extends BaseService {
             isActive: true,
             isPersonal: false,
             taskEnabled: data.taskEnabled ?? false,
+            calendarEnabled: data.calendarEnabled ?? false,
           },
           { transaction: t }
         );
@@ -128,6 +131,7 @@ export class BoardService extends BaseService {
       order?: number;
       isActive?: boolean;
       taskEnabled?: boolean;
+      calendarEnabled?: boolean;
     }
   ) {
     const board = await Board.findByPk(boardId);
@@ -224,6 +228,9 @@ export class BoardService extends BaseService {
       await BoardAccess.destroy({ where: { boardId }, transaction: t });
       await BoardManager.destroy({ where: { boardId }, transaction: t });
       await Tag.destroy({ where: { boardId }, transaction: t });
+      // 게시판 달력의 일정도 함께 지운다. 남겨 두면 어느 달력에도 뜨지 않는 행이 되고,
+      // 같은 id 로 게시판을 다시 만들면 옛 일정이 되살아난다(권한·구독과 같은 이유).
+      await Event.destroy({ where: { boardId }, transaction: t });
       // 구독도 같은 이유로 지운다.
       await Subscription.destroy({
         where: { targetType: 'board', targetId: boardId },
@@ -338,6 +345,7 @@ export class BoardService extends BaseService {
           order: access.board!.order,
           isPersonal: false,
           taskEnabled: !!access.board!.taskEnabled,
+          calendarEnabled: !!access.board!.calendarEnabled,
           permissions: {
             canRead: access.canRead,
             canWrite: access.canWrite,
@@ -354,6 +362,7 @@ export class BoardService extends BaseService {
           order: b.order,
           isPersonal: false,
           taskEnabled: !!b.taskEnabled,
+          calendarEnabled: !!b.calendarEnabled,
           permissions: { canRead: true, canWrite: true, canDelete: true },
         })),
     ];
@@ -366,6 +375,7 @@ export class BoardService extends BaseService {
         order: personalFolderResult.board.order,
         isPersonal: true,
         taskEnabled: !!personalFolderResult.board.taskEnabled,
+        calendarEnabled: !!personalFolderResult.board.calendarEnabled,
         ownerId: userId,
         permissions: { canRead: true, canWrite: true, canDelete: true },
       });

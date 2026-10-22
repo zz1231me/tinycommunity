@@ -8,6 +8,19 @@ export const ROLES = {
 export const isAdminOrManager = (role: string): boolean =>
   role === ROLES.ADMIN || role === ROLES.MANAGER;
 
+/**
+ * 관리자가 올릴 수 있는 파일 한도의 천장(MB).
+ *
+ * 이 숫자 하나로 끝나지 않는다. 함께 맞춰야 하는 것들 —
+ *   nginx  client_max_body_size (nginx.conf · nginx.docker.conf)
+ *          더 작으면 Express 에 닿기도 전에 413 으로 끊긴다
+ *   DB     첨부 크기 컬럼은 BIGINT 여야 한다. 부호 있는 INTEGER 는
+ *          2,147,483,647 바이트(2047.99MiB)에서 넘친다
+ *   Node   requestTimeout. 3GB 를 한 시간에 올리려면 약 6.8Mbps 가 필요하다
+ * 어긋나지 않는지는 uploadSizeCeiling 검사가 본다.
+ */
+export const MAX_FILE_SIZE_MB_CEILING = 3072;
+
 // 예약된 게시판 ID (시스템 경로와 충돌 방지)
 export const RESERVED_BOARD_IDS = [
   'admin',

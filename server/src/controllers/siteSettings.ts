@@ -3,6 +3,7 @@ import { SiteSettings } from '../models';
 import { logInfo, logError } from '../utils/logger';
 import { sendSuccess, sendError } from '../utils/response';
 import { AuthRequest } from '../types/auth-request';
+import { MAX_FILE_SIZE_MB_CEILING } from '../config/constants';
 import { refreshMaintenanceCache } from '../middlewares/maintenance.middleware';
 import {
   refreshSettingsCache,
@@ -12,6 +13,11 @@ import {
 } from '../utils/settingsCache';
 import { refreshUploaders } from '../middlewares/upload/refresh';
 import { validatePrizes, type LotteryPrize } from '../config/lottery';
+import {
+  parseEventCategories,
+  sanitizeEventCategories,
+  type EventCategory,
+} from '../config/eventCategory';
 import { invalidateIndexHtmlCache } from '../utils/indexHtml';
 import { auditLogService } from '../services/auditLog.service';
 import { isWorkStatus } from '../config/workStatus';
@@ -41,6 +47,7 @@ const DEFAULTS = {
   // 빈 객체는 코드 기본값을 쓴다는 뜻이다.
   workStatusLabels: JSON.stringify(SETTINGS_DEFAULTS.workStatusLabels),
   lotteryPrizes: JSON.stringify(SETTINGS_DEFAULTS.lotteryPrizes),
+  eventCategories: JSON.stringify(SETTINGS_DEFAULTS.eventCategories),
 };
 
 /** 업무 상태 이름 검사. 코드가 아는 키만 받고, 빈 문자열은 저장하지 않는다. */
@@ -134,7 +141,6 @@ function toPayload(s: SiteSettings) {
     maxFileSizeMb: s.maxFileSizeMb ?? DEFAULTS.maxFileSizeMb,
     maxImageSizeMb: s.maxImageSizeMb ?? DEFAULTS.maxImageSizeMb,
     maxAvatarSizeMb: s.maxAvatarSizeMb ?? DEFAULTS.maxAvatarSizeMb,
-    maxArchiveSizeMb: s.maxArchiveSizeMb ?? DEFAULTS.maxArchiveSizeMb,
     maxImageCount: s.maxImageCount ?? DEFAULTS.maxImageCount,
     allowedImageExtensions: parseExtensionField(
       s.allowedImageExtensions,
@@ -177,6 +183,8 @@ function toPayload(s: SiteSettings) {
     workStatusLabels: parseLabelField(s.workStatusLabels),
     // 확률표는 사용자에게도 보여야 한다.
     lotteryPrizes: parsePrizeField(s.lotteryPrizes),
+    // 일정 분류는 고르는 폼·달력 칩이 쓰므로 모두에게 내려 준다.
+    eventCategories: parseEventCategories(s.eventCategories),
     lotteryDailyLimit: s.lotteryDailyLimit ?? DEFAULTS.lotteryDailyLimit,
     lotteryDrawCost: s.lotteryDrawCost ?? DEFAULTS.lotteryDrawCost,
     attendanceBonus: s.attendanceBonus ?? DEFAULTS.attendanceBonus,
@@ -184,6 +192,7 @@ function toPayload(s: SiteSettings) {
     duelMaxStake: s.duelMaxStake ?? DEFAULTS.duelMaxStake,
     duelExpireMinutes: s.duelExpireMinutes ?? DEFAULTS.duelExpireMinutes,
     taskReminderDaysBefore: s.taskReminderDaysBefore ?? DEFAULTS.taskReminderDaysBefore,
+    taskOverdueDays: s.taskOverdueDays ?? DEFAULTS.taskOverdueDays,
     taskReminderHour: s.taskReminderHour ?? DEFAULTS.taskReminderHour,
     taskSoonDays: s.taskSoonDays ?? DEFAULTS.taskSoonDays,
     duelMaxOpenPerUser: s.duelMaxOpenPerUser ?? DEFAULTS.duelMaxOpenPerUser,
@@ -270,7 +279,6 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       maxFileSizeMb,
       maxImageSizeMb,
       maxAvatarSizeMb,
-      maxArchiveSizeMb,
       maxImageCount,
       bcryptRounds,
       allowedImageExtensions,
@@ -305,6 +313,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       eventBodyMaxLength,
       eventLocationMaxLength,
       workStatusLabels,
+      eventCategories,
       lotteryPrizes,
       lotteryDailyLimit,
       lotteryDrawCost,
@@ -314,6 +323,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       duelExpireMinutes,
       duelMaxOpenPerUser,
       taskReminderDaysBefore,
+      taskOverdueDays,
       taskReminderHour,
       taskSoonDays,
       attackCost,
@@ -350,10 +360,10 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       [accountLockMinutes, 'accountLockMinutes', 1, 1440],
       [minPasswordLength, 'minPasswordLength', 6, 72],
       [maxFileCount, 'maxFileCount', 1, 20],
-      [maxFileSizeMb, 'maxFileSizeMb', 1, 1000],
+      // 천장과 함께 맞춰야 하는 것은 MAX_FILE_SIZE_MB_CEILING 주석에 적어 두었다.
+      [maxFileSizeMb, 'maxFileSizeMb', 1, MAX_FILE_SIZE_MB_CEILING],
       [maxImageSizeMb, 'maxImageSizeMb', 1, 500],
       [maxAvatarSizeMb, 'maxAvatarSizeMb', 1, 100],
-      [maxArchiveSizeMb, 'maxArchiveSizeMb', 1, 1000],
       [maxImageCount, 'maxImageCount', 1, 20],
       [defaultPageSize, 'defaultPageSize', 5, 100],
       // 제목 컬럼 중 가장 작은 것이 WikiPage.title STRING(200) 이다
@@ -460,6 +470,7 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
     let parsedAllowedArchive: string[] | undefined;
     let parsedAllowedMedia: string[] | undefined;
     let parsedLotteryPrizes: LotteryPrize[] | undefined;
+    let parsedEventCategories: EventCategory[] | undefined;
     let parsedWorkStatusLabels: Record<string, string> | undefined;
 
     try {
@@ -487,6 +498,11 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       }
       if (lotteryPrizes !== undefined) {
         parsedLotteryPrizes = validatePrizes(lotteryPrizes);
+      }
+      if (eventCategories !== undefined) {
+        // 쓸 수 없는 줄은 버리고 남은 것만 저장한다. 하나도 남지 않으면 기본 목록으로
+        // 돌아간다 — 분류가 비면 일정을 만들 수 없다.
+        parsedEventCategories = sanitizeEventCategories(eventCategories);
       }
     } catch (validationError) {
       const msg = validationError instanceof Error ? validationError.message : '입력 형식 오류';
@@ -531,8 +547,6 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       maxFileSizeMb: maxFileSizeMb !== undefined ? maxFileSizeMb : settings.maxFileSizeMb,
       maxImageSizeMb: maxImageSizeMb !== undefined ? maxImageSizeMb : settings.maxImageSizeMb,
       maxAvatarSizeMb: maxAvatarSizeMb !== undefined ? maxAvatarSizeMb : settings.maxAvatarSizeMb,
-      maxArchiveSizeMb:
-        maxArchiveSizeMb !== undefined ? maxArchiveSizeMb : settings.maxArchiveSizeMb,
       maxImageCount: maxImageCount !== undefined ? maxImageCount : settings.maxImageCount,
       bcryptRounds: bcryptRounds !== undefined ? bcryptRounds : settings.bcryptRounds,
       allowedImageExtensions:
@@ -633,6 +647,8 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
         0,
         14
       ),
+      // 지난 뒤로도 알리는 날 수. 0 이면 지난 일은 알리지 않는다(예전 동작).
+      taskOverdueDays: intOrKeep(taskOverdueDays, settings.taskOverdueDays, 0, 30),
       taskReminderHour: intOrKeep(taskReminderHour, settings.taskReminderHour, 0, 23),
       taskSoonDays: intOrKeep(taskSoonDays, settings.taskSoonDays, 1, 30),
       duelMaxOpenPerUser: intOrKeep(duelMaxOpenPerUser, settings.duelMaxOpenPerUser, 1, 20),
@@ -666,6 +682,10 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
         parsedWorkStatusLabels !== undefined
           ? JSON.stringify(parsedWorkStatusLabels)
           : settings.workStatusLabels,
+      eventCategories:
+        parsedEventCategories !== undefined
+          ? JSON.stringify(parsedEventCategories)
+          : settings.eventCategories,
     });
 
     refreshMaintenanceCache();
@@ -689,7 +709,15 @@ export const updateSiteSettings = async (req: Request, res: Response) => {
       .catch(err => logError('사이트 설정 감사 로그 기록 실패', err));
 
     logInfo('사이트 설정 업데이트', { siteName: settings.siteName });
-    sendSuccess(res, toPayload(settings), '사이트 설정이 업데이트되었습니다.');
+    // 관리자 조회(GET /admin)와 **같은 모양**으로 돌려준다. 이 길도 isAdmin 뒤에 있다.
+    // 공개용 toPayload 만 돌려주던 때는 보안 설정 아홉 개(로그인 시도 횟수·잠금 시간·
+    // bcrypt·로그 보존일·토큰 유효기간)가 빠져 있었고, 화면이 그 응답으로 폼을
+    // 덮어쓰면서 저장 직후 그 칸들이 비어 보였다.
+    sendSuccess(
+      res,
+      { ...toPayload(settings), ...adminOnlyPayload(settings) },
+      '사이트 설정이 업데이트되었습니다.'
+    );
   } catch (error) {
     logError('사이트 설정 업데이트 실패', error);
     sendError(res, 500, '사이트 설정 업데이트에 실패했습니다.');

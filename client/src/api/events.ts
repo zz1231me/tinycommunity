@@ -23,6 +23,11 @@ export interface CreateEventParams {
   recurrenceEndDate?: string;
   /** 주간 반복의 요일(0=일 ~ 6=토). 서버가 주간에서 필수로 본다 */
   recurrenceDays?: number[];
+  /**
+   * 게시판 일정이면 그 게시판. 비우면 전사 공유 일정이다.
+   * 만들 때만 정해진다 — 서버는 수정으로 게시판을 옮기지 않는다.
+   */
+  boardId?: string | null;
 }
 
 export const createEvent = (event: CreateEventParams) => {
@@ -43,12 +48,14 @@ export const editOccurrence = (
 export const skipOccurrence = (id: number, date: string) =>
   api.delete(`/events/${id}/occurrences/${date}`).then(unwrap);
 
-export const getEvents = (start: Date, end: Date) => {
+/** boardId 를 주면 그 게시판의 달력, 주지 않으면 전사 공유 달력이다. */
+export const getEvents = (start: Date, end: Date, boardId?: string | null) => {
   return api
     .get('/events', {
       params: {
         start: start.toISOString(),
         end: end.toISOString(),
+        ...(boardId ? { boardId } : {}),
       },
     })
     .then(unwrap);

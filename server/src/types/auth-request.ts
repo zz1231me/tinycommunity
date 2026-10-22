@@ -38,6 +38,8 @@ export interface AccessibleBoard {
   isPersonal: boolean;
   /** 업무용 게시판 — 담당자·업무 상태를 쓴다 */
   taskEnabled: boolean;
+  /** 게시판 달력을 쓴다 — 그 게시판의 업무 기간과 게시판 일정을 함께 본다 */
+  calendarEnabled: boolean;
   ownerId?: string;
   permissions: {
     canRead: boolean;

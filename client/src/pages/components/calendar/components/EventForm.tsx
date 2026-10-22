@@ -4,7 +4,7 @@ import { ClassicEditor, type EditorConfig } from 'ckeditor5';
 import { buildEditorConfig } from '../../../../components/editor/core/editorConfig';
 import '../../../../components/editor/core/CKEditorOverride.css';
 import { EventFormData } from '../types';
-import { categories } from '../constants';
+import { useEventCategories } from '../useEventCategories';
 import { uploadApi } from '../../../../api/axios';
 import { useSiteSettings } from '../../../../store/siteSettings';
 
@@ -107,6 +107,7 @@ export const EventForm: React.FC<EventFormProps> = ({
   const fieldId = useId();
   const eventBodyMax = useSiteSettings(s => s.settings.eventBodyMaxLength);
   const eventLocationMax = useSiteSettings(s => s.settings.eventLocationMaxLength);
+  const categories = useEventCategories();
   const editorConfig = useMemo<EditorConfig>(
     () =>
       buildEditorConfig('event', {

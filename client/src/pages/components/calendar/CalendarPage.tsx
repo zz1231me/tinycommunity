@@ -41,7 +41,32 @@ const DEFAULT_FORM: EventFormData = {
   backgroundColor: DEFAULT_EVENT_COLOR,
 };
 
-const CalendarPage: React.FC = () => {
+export interface CalendarPageProps {
+  /**
+   * 게시판 달력이면 그 게시판. 비우면 전사 공유 달력이다.
+   * 같은 화면을 두 자리에서 쓴다 — 일정 만들기·고치기·반복·건너뛰기 규칙이 갈라지지 않게.
+   */
+  boardId?: string;
+  /** 그 게시판이 업무용인가. 켜져 있으면 업무 기간도 달력에 함께 그린다. */
+  boardTaskEnabled?: boolean;
+  /** 그 게시판의 관리자인가. 남이 세운 게시판 일정도 고칠 수 있다. */
+  canManageBoard?: boolean;
+  /**
+   * 일정을 세울 수 있는가. 게시판 달력에서는 그 게시판의 쓰기 권한이다.
+   * 끌 수 있게 두고 저장할 때 거절하면, 읽기만 되는 사람은 날짜를 끌 때마다 403 을 본다.
+   */
+  canCreate?: boolean;
+  /** 게시판 탭 안에 들어가는 자리. 바깥 여백과 옆 레일을 빼고 높이를 정해 쓴다. */
+  embedded?: boolean;
+}
+
+const CalendarPage: React.FC<CalendarPageProps> = ({
+  boardId,
+  boardTaskEnabled = false,
+  canManageBoard = false,
+  canCreate = true,
+  embedded = false,
+}) => {
   const { user, isAdmin } = useAuth();
   const calendarRef = useRef<FullCalendar>(null);
 
@@ -55,10 +80,19 @@ const CalendarPage: React.FC = () => {
     handleEditOccurrence,
     handleDeleteEvent,
     canEditEvent,
-  } = useCalendarEvents({ userId: user?.id, isAdmin: isAdmin(), calendarRef });
+  } = useCalendarEvents({
+    userId: user?.id,
+    isAdmin: isAdmin(),
+    calendarRef,
+    boardId,
+    canManageBoard,
+  });
 
-  // 내 업무의 일정. 달력 일정과 섞어 보여 주되, 누르면 그 글로 간다.
-  const taskEvents = useTaskEvents();
+  // 함께 그리는 업무의 기간. 공유 달력은 내 업무, 게시판 달력은 그 게시판의 업무다.
+  // 누르면 그 글로 간다.
+  const taskEvents = useTaskEvents(
+    boardId ? { boardId, taskEnabled: boardTaskEnabled } : undefined
+  );
   const calendarEvents = useMemo(() => [...events, ...taskEvents], [events, taskEvents]);
   const navigate = useNavigate();
 
@@ -88,7 +122,8 @@ const CalendarPage: React.FC = () => {
   useEffect(() => {
     if (user?.id) loadEvents();
     // 자정을 넘기면 레일 창이 하루 밀리므로 그 범위까지 다시 받는다.
-  }, [user?.id, todayStr]); // eslint-disable-line react-hooks/exhaustive-deps
+    // 게시판이 바뀌면 다른 달력이다.
+  }, [user?.id, todayStr, boardId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePrev = useCallback(() => calendarRef.current?.getApi().prev(), []);
   const handleNext = useCallback(() => calendarRef.current?.getApi().next(), []);
@@ -355,17 +390,38 @@ const CalendarPage: React.FC = () => {
   );
 
   return (
-    <div className="h-full flex flex-col xl:flex-row bg-slate-50 dark:bg-slate-900">
+    <div
+      className={
+        embedded
+          ? 'flex flex-col'
+          : 'h-full flex flex-col xl:flex-row bg-slate-50 dark:bg-slate-900'
+      }
+    >
+      {/*
+        이 화면만 제목이 없었다. 다른 화면은 PageHeader 가 h1 을 그리는데 달력은 화면을
+        가득 채우는 구성이라 그 자리가 없었고, 제목으로 건너뛰면 '2026년 10월'(h2)이
+        가장 먼저 잡혔다 — 날짜이지 이 화면의 이름이 아니다.
+        보이는 자리를 빼앗지 않도록 읽기 전용으로 둔다. 게시판 탭 안에서는 게시판 이름이
+        이미 h1 이므로 두지 않는다 — 한 문서에 h1 이 둘이면 어느 쪽이 이 화면인지 모른다.
+      */}
+      {!embedded && <h1 className="sr-only">일정</h1>}
       <div
-        className="flex-1 flex flex-col min-h-0 m-4 sm:m-6 xl:mr-4
+        className={`flex flex-col min-h-0
                       bg-white dark:bg-slate-900
                       rounded-2xl border border-slate-200 dark:border-slate-800
-                      shadow-sm overflow-hidden relative"
+                      shadow-sm overflow-hidden relative ${
+                        // 게시판 탭 안에서는 바깥 여백을 두지 않고 높이를 정해 쓴다 —
+                        // flex-1 은 높이를 정해 주는 부모가 있을 때만 자란다.
+                        embedded ? 'h-[36rem]' : 'flex-1 m-4 sm:m-6 xl:mr-4'
+                      }`}
       >
         <CalendarHeader
           loading={loading}
           title={calendarTitle}
           currentView={currentView}
+          // 게시판 달력에는 간트를 두지 않는다 — 게시판 탭의 '간트' 가 그 게시판의 것이고,
+          // 여기 간트는 '내 업무' 라 같은 이름으로 다른 것을 보여 주게 된다.
+          views={embedded ? ['dayGridMonth', 'dayGridWeek', 'listMonth'] : undefined}
           onPrev={handlePrev}
           onNext={handleNext}
           onToday={handleToday}
@@ -391,8 +447,8 @@ const CalendarPage: React.FC = () => {
                 height="100%"
                 expandRows={true}
                 events={calendarEvents}
-                selectable={true}
-                selectMirror={true}
+                selectable={canCreate}
+                selectMirror={canCreate}
                 unselectAuto={true}
                 editable={true}
                 eventDragMinDistance={5}
@@ -419,8 +475,10 @@ const CalendarPage: React.FC = () => {
         )}
       </div>
 
-      {/* 넓은 화면에서만 보이는 오늘·다가오는 일정 레일 */}
-      <TodayRail events={railEvents} todayStr={todayStr} onSelect={openEventDetail} />
+      {/* 넓은 화면에서만 보이는 오늘·다가오는 일정 레일. 게시판 탭 안에서는 자리가 좁아 뺀다. */}
+      {!embedded && (
+        <TodayRail events={railEvents} todayStr={todayStr} onSelect={openEventDetail} />
+      )}
 
       <CalendarModal
         isOpen={isModalOpen}

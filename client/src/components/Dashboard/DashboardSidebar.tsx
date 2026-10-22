@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
 import {
   Calendar,
+  LayoutDashboard,
   Compass,
   BookOpen,
   Bookmark,
@@ -11,6 +12,7 @@ import {
   Settings,
   Link,
   FileText,
+  Folder,
 } from 'lucide-react';
 import { fetchPublishedPages, type CustomPageSummary } from '../../api/customPages';
 import SimpleBar from 'simplebar-react';
@@ -20,7 +22,7 @@ import { BoardIcon } from './BoardIcon';
 import { useSiteSettings } from '../../store/siteSettings';
 import { wikiInsertIndex } from '../../utils/sidebarOrder';
 import { useAccessibleBoards } from '../../hooks/useAccessibleBoards';
-import { useBookmarks } from '../../hooks/useBookmarks';
+import { bookmarkHref, useBookmarks } from '../../hooks/useBookmarks';
 import { useAuth } from '../../store/auth';
 import { useFeature, useFeatures, useMenuVisible } from '../../store/features';
 import { logger } from '../../utils/logger';
@@ -62,14 +64,8 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
   const hidden = narrow && !isOpen;
 
   const { boards, loading: boardsLoading, regularBoards, personalBoards } = useAccessibleBoards();
-  const {
-    bookmarks,
-    loading: bookmarksLoading,
-    error: bookmarksError,
-    openBookmark,
-  } = useBookmarks();
+  const { bookmarks, loading: bookmarksLoading, error: bookmarksError } = useBookmarks();
   const { getUserRole, user, isAdmin: isAdminCheck } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
 
   const userRole = getUserRole();
@@ -81,18 +77,28 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
   const tagCloudEnabled = useFeature('discovery.tagCloud');
   const exploreHidden = useFeatures(s => s.hidden.includes('discovery.popular'));
   const showExplore = (popularEnabled || tagCloudEnabled) && !exploreHidden;
-  // '대시보드' 는 일정 화면이다. 일정이 꺼졌거나 숨겼으면 메뉴에서 뺀다 — 누르면 '꺼져 있음' 화면만 나왔다.
-  const showDashboard = useMenuVisible('tools.calendar');
+  // '대시보드' 는 이제 조망 화면이다(이름과 가는 곳이 같아졌다). 스위치가 없으므로 늘 보인다.
+  // '일정' 은 따로 선 메뉴이고, 꺼졌거나 숨겼으면 뺀다 — 누르면 '꺼져 있음' 화면만 나왔다.
+  const showCalendar = useMenuVisible('tools.calendar');
   const showWiki = useMenuVisible('tools.wiki');
   const wikiOrder = useSiteSettings(st => st.settings.wikiOrder);
 
   // 게시판 목록에 위키를 끼워 넣는다. 자리 규칙은 utils/sidebarOrder 에 적어 두었다.
   const navEntries = useMemo(() => {
-    const entries = regularBoards.map(board => ({
+    const entries: Array<{
+      key: string;
+      label: string;
+      to: string;
+      icon: React.ReactNode;
+      task?: boolean;
+    }> = regularBoards.map(board => ({
       key: board.id,
       label: board.name,
       to: `posts/${board.id}`,
       icon: <BoardIcon boardId={board.id} />,
+      // 업무용 게시판은 안에 보드·간트가 있다. 표식이 없으면 공지판과 같은 모양이라
+      // 들어가 보기 전에는 구별되지 않는다.
+      task: !!board.taskEnabled,
     }));
     if (!showWiki) return entries;
 
@@ -113,13 +119,9 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
   const showTasks = useMenuVisible('post.tasks');
   const showMessages = useMenuVisible('social.dm');
 
-  const handleAdminClick = () => {
-    navigate('/admin');
-    if (window.innerWidth < 1024) onClose();
-  };
-
-  const handleBookmarkManagementClick = () => {
-    navigate('/admin');
+  /** 사이드바의 다른 줄과 같은 규칙 — ⌘·가운데 클릭은 브라우저에 넘기고 서랍도 두드리지 않는다. */
+  const handleAdminClick = (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
     if (window.innerWidth < 1024) onClose();
   };
 
@@ -165,9 +167,15 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
           <div>
             <SectionLabel>메인</SectionLabel>
             <div className="space-y-0.5">
-              {showDashboard && (
+              <SidebarNav
+                label="대시보드"
+                to="overview"
+                closeSidebar={onClose}
+                icon={<LayoutDashboard className="w-4.5 h-4.5" />}
+              />
+              {showCalendar && (
                 <SidebarNav
-                  label="대시보드"
+                  label="일정"
                   to="calendar"
                   closeSidebar={onClose}
                   icon={<Calendar className="w-4.5 h-4.5" />}
@@ -199,6 +207,17 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
                       to={entry.to}
                       icon={entry.icon}
                       closeSidebar={onClose}
+                      trailing={
+                        entry.task && showTasks ? (
+                          <>
+                            <span className="sr-only">업무 게시판</span>
+                            <ClipboardList
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5 flex-shrink-0 text-slate-400"
+                            />
+                          </>
+                        ) : undefined
+                      }
                     />
                   ))
                 )}
@@ -222,12 +241,20 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
             </div>
           )}
 
-          {/* 개인 공간은 헤더 프로필 드롭다운에서 진입한다 */}
-
-          {/* 도구 */}
+          {/* 도구. 여기 있는 것은 모두 '내 것' 이라 개인 공간도 같은 묶음에 둔다 —
+              프로필 드롭다운에만 있으면 접힌 메뉴 안에 숨어 찾지 못한다. */}
           <div>
             <SectionLabel>도구</SectionLabel>
             <div className="space-y-0.5">
+              {/* 보통 사용자당 하나다. 드롭다운과 같은 곳으로 간다. */}
+              {personalBoards.length > 0 && (
+                <SidebarNav
+                  label="내 공간"
+                  to={`posts/${personalBoards[0].id}`}
+                  closeSidebar={onClose}
+                  icon={<Folder className="h-4.5 w-4.5 text-amber-500" />}
+                />
+              )}
               {showScraps && (
                 <SidebarNav
                   label="스크랩"
@@ -286,7 +313,8 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
             <div>
               <SectionLabel>관리</SectionLabel>
               <div className="space-y-0.5">
-                <button
+                <RouterLink
+                  to="/admin"
                   onClick={handleAdminClick}
                   className={`
                     w-full flex items-center gap-3 px-3 py-3 rounded-lg
@@ -308,7 +336,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
                   {isAdminActive && (
                     <span className="w-1.5 h-1.5 rounded-full bg-primary-500 dark:bg-primary-400 flex-shrink-0" />
                   )}
-                </button>
+                </RouterLink>
               </div>
             </div>
           )}
@@ -321,12 +349,13 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
                 북마크
               </p>
               {isAdmin && (
-                <button
-                  onClick={handleBookmarkManagementClick}
+                <RouterLink
+                  to="/admin"
+                  onClick={handleAdminClick}
                   className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 transition-colors"
                 >
                   관리
-                </button>
+                </RouterLink>
               )}
             </div>
             <div className="space-y-0.5">
@@ -342,9 +371,13 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
                 </p>
               ) : (
                 bookmarks.slice(0, 8).map(bookmark => (
-                  <button
+                  // 바깥 주소라 늘 새 탭이다. button + window.open 이던 때는 주소가 없어
+                  // 어디로 가는지 미리 볼 수도, 링크를 복사할 수도 없었다.
+                  <a
                     key={bookmark.id}
-                    onClick={() => openBookmark(bookmark.url)}
+                    href={bookmarkHref(bookmark.url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-base
                                text-slate-700 dark:text-slate-300
                                hover:bg-slate-100 dark:hover:bg-slate-800/70
@@ -355,7 +388,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
                     <span className="truncate flex-1 text-left text-base font-medium">
                       {bookmark.name}
                     </span>
-                  </button>
+                  </a>
                 ))
               )}
             </div>

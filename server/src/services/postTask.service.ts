@@ -14,6 +14,7 @@ import { notificationService } from './notification.service';
 import { getAccessibleBoardTypes } from './accessibleBoards';
 import { checkUserBoardPermission } from '../controllers/board.controller';
 import { checkSecretPostAccess } from '../utils/postAccess';
+import { getPostTitleMaxLength } from '../utils/settingsCache';
 import { sequelize } from '../config/sequelize';
 import { logError } from '../utils/logger';
 
@@ -32,6 +33,11 @@ interface ChangeParams {
   /** YYYY-MM-DD. 넘기지 않으면 그대로 두고 null 은 일정 없음. */
   startDate?: string | null;
   dueDate?: string | null;
+  /**
+   * 이 업무의 기간을 달력에 그릴지. 일정은 그대로 두고 달력에서만 뺀다 —
+   * 기간은 필요한데 달력이 그것으로 가득 차는 업무가 있다(간트·목록에는 남는다).
+   */
+  showOnCalendar?: boolean;
   /**
    * 이 상태일 때만 바꾼다. 다르면 409. '되돌리기' 처럼 방금 본 상태를 전제로 한 변경이
    * 그새 다른 사람이 바꾼 상태를 덮어쓰지 않게 한다.
@@ -106,7 +112,8 @@ async function assertAssigneeCanSee(assigneeId: string, post: Post) {
 }
 
 /** 하위 업무 제목 상한. 한 줄짜리 할 일이라 글 제목보다 짧게 둔다. */
-const SUBTASK_TITLE_MAX = 200;
+// 하위 업무도 글 하나다. 제목 길이도 글과 같은 설정을 따른다 — 여기만 200 으로
+// 박아 두면 관리자가 글 제목 상한을 늘려도 하위 업무만 거절당한다.
 
 export const postTaskService = {
   async change(params: ChangeParams) {
@@ -145,6 +152,22 @@ export const postTaskService = {
       }
     }
 
+    // 업무에서 빼려는데 하위가 달려 있으면 막는다. 빼고 나면 상위는 업무 목록·간트·
+    // 칸반에서 사라지는데 하위는 남아, 무엇에 딸린 일인지 알 수 없는 줄이 된다
+    // (실제로 그런 데이터가 만들어져 있었다 — 하위만 맨 윗단에 떠 있었다).
+    // 떼어 낸 뒤에는 뺄 수 있다. 막는 것이지 영영 못 하게 하는 것이 아니다.
+    if (params.workStatus === 'none' && post.workStatus !== 'none') {
+      const children = await Post.count({
+        where: { parentTaskId: post.id, status: 'published' },
+      });
+      if (children > 0) {
+        throw new AppError(
+          400,
+          `하위 업무 ${children}개가 달려 있어 업무에서 뺄 수 없습니다. 먼저 하위 업무를 떼어 주세요.`
+        );
+      }
+    }
+
     if (params.workStatus !== undefined) {
       post.workStatus = params.workStatus;
       // 담당자 없이 '진행 중' 이면 바꾼 사람이 맡은 것으로 본다
@@ -154,6 +177,7 @@ export const postTaskService = {
     }
 
     if (params.priority !== undefined) post.priority = params.priority;
+    if (params.showOnCalendar !== undefined) post.showOnCalendar = params.showOnCalendar;
     if (params.startDate !== undefined) post.startDate = params.startDate;
     if (params.dueDate !== undefined) post.dueDate = params.dueDate;
     // 한쪽만 바꿔도 저장된 다른 쪽과 어긋날 수 있어 합친 뒤에 본다
@@ -218,6 +242,7 @@ export const postTaskService = {
       priority: post.priority,
       startDate: post.startDate ?? null,
       dueDate: post.dueDate ?? null,
+      showOnCalendar: post.showOnCalendar !== false,
     };
   },
 
@@ -301,8 +326,9 @@ export const postTaskService = {
   }) {
     const title = params.title.trim();
     if (!title) throw new AppError(400, '하위 업무의 제목을 적어주세요.');
-    if (title.length > SUBTASK_TITLE_MAX) {
-      throw new AppError(400, `제목은 ${SUBTASK_TITLE_MAX}자를 넘을 수 없습니다.`);
+    const titleMax = getPostTitleMaxLength();
+    if (title.length > titleMax) {
+      throw new AppError(400, `제목은 ${titleMax}자를 넘을 수 없습니다.`);
     }
 
     const parent = await Post.findByPk(params.parentId);
@@ -340,15 +366,23 @@ export const postTaskService = {
     });
 
     if (params.assigneeId || params.dueDate) {
-      await postTaskService.change({
-        postId: child.id,
-        boardType: parent.boardType,
-        actorId: params.actorId,
-        actorRole: params.actorRole,
-        actorName: params.actorName,
-        ...(params.assigneeId ? { assigneeId: params.assigneeId } : {}),
-        ...(params.dueDate ? { dueDate: params.dueDate } : {}),
-      });
+      try {
+        await postTaskService.change({
+          postId: child.id,
+          boardType: parent.boardType,
+          actorId: params.actorId,
+          actorRole: params.actorRole,
+          actorName: params.actorName,
+          ...(params.assigneeId ? { assigneeId: params.assigneeId } : {}),
+          ...(params.dueDate ? { dueDate: params.dueDate } : {}),
+        });
+      } catch (err) {
+        // 담당자·마감이 거절되면 방금 만든 글도 되돌린다. 남겨 두면 '만들지 못했습니다' 라고
+        // 답해 놓고 제목만 있는 하위가 생기고, 담당자를 고쳐 다시 누를 때마다 하나씩 쌓인다.
+        // 아무에게도 보인 적 없는 글이라 되돌리기(force)다 — 휴지통에 남길 삭제가 아니다.
+        await child.destroy({ force: true });
+        throw err;
+      }
     }
 
     const [view] = await findTasks(
@@ -402,8 +436,15 @@ async function taskBoardTypes(userId: string, userRole: string): Promise<string[
   return taskBoards.map(b => b.id);
 }
 
-const OPEN_LIMIT = 100;
-const DONE_LIMIT = 50;
+/**
+ * 한 번에 내려 주는 업무 수.
+ *
+ * 화면도 이 수를 안다 — client/src/pages/MyTasks.tsx 가 목록이 가득 찼는지 보고
+ * '더 있을 수 있습니다' 를 띄운다. 여기만 바꾸면 그 안내가 조용히 거짓이 되므로
+ * (가득 차도 뜨지 않거나, 차지 않았는데 뜬다) 아래 검사가 두 값을 묶어 둔다.
+ */
+export const OPEN_LIMIT = 100;
+export const DONE_LIMIT = 50;
 
 /**
  * 업무 목록 공통 조회.
@@ -437,6 +478,9 @@ async function findTasks(
             'assigneeId',
             'startDate',
             'dueDate',
+            'showOnCalendar',
+            // 간트가 하위 업무를 상위 아래로 들여 그린다(목록과 같은 모양).
+            'parentTaskId',
             'createdAt',
             'updatedAt',
             // 비밀글 여부를 함께 읽어 아래에서 거른다
@@ -480,6 +524,8 @@ async function findTasks(
       assigneeId: string | null;
       startDate: string | null;
       dueDate: string | null;
+      showOnCalendar: boolean;
+      parentTaskId: string | null;
       createdAt: Date;
       updatedAt: Date;
       UserId: string | null;
@@ -502,6 +548,9 @@ async function findTasks(
         : null,
       startDate: plain.startDate ?? null,
       dueDate: plain.dueDate ?? null,
+      // 예전에 만들어진 글은 이 칸이 비어 있을 수 있다 — 기본은 보임
+      showOnCalendar: plain.showOnCalendar !== false,
+      parentTaskId: plain.parentTaskId ?? null,
       createdAt: plain.createdAt,
       updatedAt: plain.updatedAt,
       // assertCanManage 와 같은 규칙. 화면이 끌 수 없는 카드를 미리 막는 데 쓴다.

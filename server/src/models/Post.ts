@@ -45,6 +45,7 @@ export interface PostInstance extends Model<
   assigneeId: CreationOptional<string | null>;
   parentTaskId: CreationOptional<string | null>;
   startDate: CreationOptional<string | null>;
+  showOnCalendar: CreationOptional<boolean>;
   dueDate: CreationOptional<string | null>;
   status: CreationOptional<'draft' | 'published' | 'archived'>;
   deletedAt: CreationOptional<Date | null>;
@@ -84,6 +85,7 @@ class PostModel
   declare public assigneeId: CreationOptional<string | null>;
   declare public parentTaskId: CreationOptional<string | null>;
   declare public startDate: CreationOptional<string | null>;
+  declare public showOnCalendar: CreationOptional<boolean>;
   declare public dueDate: CreationOptional<string | null>;
   declare public status: CreationOptional<'draft' | 'published' | 'archived'>;
   declare public deletedAt: CreationOptional<Date | null>;
@@ -230,6 +232,13 @@ PostModel.init(
       type: DataTypes.DATEONLY,
       allowNull: true,
       comment: '업무 시작일 (YYYY-MM-DD)',
+    },
+    showOnCalendar: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      // 기본은 보임. 일정이 있는 업무는 달력에 뜨는 것이 자연스럽고, 끄는 쪽이 예외다.
+      defaultValue: true,
+      comment: '이 업무의 기간을 달력에 그릴지. 끄면 간트·목록에는 남고 달력에서만 빠진다',
     },
     dueDate: {
       type: DataTypes.DATEONLY,

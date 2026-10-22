@@ -23,7 +23,6 @@ import { Notification } from '../models/Notification';
 //  2) 포인트는 사라질 뿐 옮겨지지 않는다. 공격자가 이득을 보면 서로 털어 주는 짓이 된다.
 
 let atkCookie: string;
-let tgtCookie: string;
 const ATK = 'halveatk';
 const TGT = 'halvetgt';
 
@@ -97,7 +96,7 @@ const never = () => 100;
 beforeAll(async () => {
   await seedTestData();
   atkCookie = await makeUser(ATK);
-  tgtCookie = await makeUser(TGT);
+  await makeUser(TGT);
 });
 
 beforeEach(async () => {

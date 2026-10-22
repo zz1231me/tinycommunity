@@ -10,6 +10,8 @@ import { AppError } from '../middlewares/error.middleware';
 import { ROLES } from '../config/constants';
 import { sanitizeHtmlContent } from '../utils/contentRenderer';
 import { sequelize } from '../config/sequelize';
+import Board from '../models/Board';
+import { checkUserBoardPermission } from '../controllers/board.controller';
 
 /**
  * 컨트롤러가 요청 몸통에서 뽑아 낸 값들. 여기 적힌 것만 저장된다 —
@@ -38,6 +40,8 @@ export interface NewEventInput {
   recurrenceDays?: number[] | null;
   recurrenceEndDate?: Date | string | null;
   parentEventId?: number | null;
+  /** 게시판 일정이면 그 게시판. 비어 있으면 전사 공유 일정. 만들 때만 정한다. */
+  boardId?: string | null;
 }
 
 /** 한 번에 내려 줄 수 있는 일정 수 */
@@ -91,13 +95,22 @@ export class EventService extends BaseService {
    * 작년에 시작한 '매주 회의' 가 통째로 빠진다. 처음 일정이 범위보다 앞서 있어도
    * 이 범위에 번째가 설 수 있다.
    */
-  async listEventsInRange(start?: string, end?: string): Promise<Array<Record<string, unknown>>> {
+  async listEventsInRange(
+    start?: string,
+    end?: string,
+    boardId?: string | null
+  ): Promise<Array<Record<string, unknown>>> {
     try {
+      // 범위를 가르는 것은 하나뿐이다. 게시판을 주지 않으면 전사 공유 일정(boardId IS NULL)만 —
+      // 주지 않을 때 전부 준다면 못 읽는 게시판의 회의 제목이 공유 달력에 새어 나간다.
+      const scope = { boardId: boardId ?? null };
       const plainWhere = {
+        ...scope,
         recurrenceType: 'none',
         ...(start && end ? { start: { [Op.lte]: end }, end: { [Op.gte]: start } } : {}),
       };
       const recurringWhere = {
+        ...scope,
         recurrenceType: { [Op.ne]: 'none' },
         ...(start && end
           ? {
@@ -175,6 +188,45 @@ export class EventService extends BaseService {
     }
   }
 
+  /**
+   * 게시판 달력을 쓰는 게시판인가. 꺼 둔 게시판에 일정이 쌓이면 아무도 볼 수 없는
+   * 자리에 남는다 — 업무용 게시판을 보는 규칙(assertTaskBoard)과 같은 모양이다.
+   */
+  async assertCalendarBoard(boardId: string): Promise<void> {
+    const board = await Board.findByPk(boardId, { attributes: ['id', 'calendarEnabled'] });
+    if (!board?.calendarEnabled) {
+      throw new AppError(400, '달력을 쓰는 게시판이 아닙니다.');
+    }
+  }
+
+  /**
+   * 이 게시판의 일정을 읽거나 쓸 수 있는가.
+   *
+   * 게시판 일정의 권한은 역할(EventPermission)이 아니라 게시판 접근을 따른다.
+   * 그래야 '게시판마다 달력' 이 말이 된다 — 그 게시판을 볼 수 있으면 일정도 보이고,
+   * 글을 쓸 수 있으면 일정도 세운다.
+   */
+  async assertBoardCalendarAccess(
+    boardId: string,
+    userId: string,
+    userRole: string | undefined,
+    action: 'canRead' | 'canWrite'
+  ): Promise<{ canManage: boolean }> {
+    // 권한을 먼저 본다. 달력 여부를 먼저 보면 들어갈 수 없는 사람에게도 400('달력을 쓰는
+    // 게시판이 아닙니다')과 403 이 갈려 나가, 그 게시판이 있는지와 달력을 켰는지가 드러난다.
+    const check = await checkUserBoardPermission(userId, userRole ?? '', boardId, action);
+    if (!check.hasAccess) {
+      throw new AppError(
+        403,
+        action === 'canWrite'
+          ? '이 게시판에 일정을 세울 권한이 없습니다.'
+          : '이 게시판의 일정을 볼 권한이 없습니다.'
+      );
+    }
+    await this.assertCalendarBoard(boardId);
+    return { canManage: check.canManage === true };
+  }
+
   /** 일정을 만들 수 있는 역할인가. 관리자는 늘 가능하다. */
   async assertCanCreate(userRole?: string): Promise<void> {
     if (userRole === ROLES.ADMIN) return;
@@ -234,6 +286,20 @@ export class EventService extends BaseService {
   ): Promise<void> {
     if (event.UserId === userId) return;
     if (userRole === ROLES.ADMIN) return;
+
+    // 게시판 일정은 역할별 권한을 보지 않는다. 역할에 canUpdate 가 켜져 있다는 이유로
+    // 못 들어가는 게시판의 회의 일정을 고칠 수 있으면 게시판 경계가 뚫린다.
+    // 남의 게시판 일정에 손댈 수 있는 사람은 그 게시판의 관리자뿐이다.
+    if (event.boardId) {
+      const check = await checkUserBoardPermission(
+        userId,
+        userRole ?? '',
+        event.boardId,
+        'canRead'
+      );
+      if (check.hasAccess && check.canManage === true) return;
+      throw new AppError(403, message);
+    }
 
     const permission = await EventPermission.findOne({ where: { roleId: userRole } });
     if (!permission?.[field]) {
@@ -338,6 +404,8 @@ export class EventService extends BaseService {
       // 손대지 않은 칸은 규칙에서 그대로 물려받는다. 색만 바꾸러 들어온 사람이
       // 장소·메모를 잃지 않게.
       const inherited = {
+        // 떨어져 나온 하루도 같은 게시판에 남는다. 비우면 전사 공유 달력으로 새어 나간다.
+        boardId: event.boardId ?? null,
         calendarId: event.calendarId,
         title: event.title,
         body: event.body,

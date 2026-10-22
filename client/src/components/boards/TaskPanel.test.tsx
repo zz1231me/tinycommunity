@@ -18,6 +18,7 @@ const state = (over: Partial<TaskState> = {}): TaskState => ({
   assignee: null,
   startDate: '2026-10-10',
   dueDate: '2026-10-12',
+  showOnCalendar: true,
   ...over,
 });
 

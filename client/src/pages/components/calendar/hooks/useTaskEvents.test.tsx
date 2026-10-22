@@ -25,6 +25,8 @@ const task = (id: string, over: Partial<MyTask>): MyTask => ({
   canEdit: true,
   startDate: null,
   dueDate: null,
+  showOnCalendar: true,
+  parentTaskId: null,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
   ...over,
@@ -113,5 +115,29 @@ describe('칸이 좁아도 이름이 보이게', () => {
     await waitFor(() => expect(result.current).toHaveLength(1));
     expect(result.current[0].title).toBe('업무 a');
     expect(result.current[0].extendedProps).toMatchObject({ fullTitle: '업무 · 업무 a' });
+  });
+});
+
+// 기간은 필요한데 달력이 그것으로 가득 차는 업무가 있다. 끄면 달력에서만 빠지고
+// 간트·목록에는 남는다(그쪽은 같은 목록을 그대로 쓴다).
+describe('달력에 표시하지 않기', () => {
+  it('꺼 둔 업무는 달력에 올리지 않는다', async () => {
+    fetchMyTasks.mockResolvedValue([
+      task('on', { dueDate: '2026-10-17' }),
+      task('off', { dueDate: '2026-10-18', showOnCalendar: false }),
+    ]);
+    const { result } = run();
+
+    await waitFor(() => expect(result.current).toHaveLength(1));
+    expect(result.current[0].id).toBe('task:on');
+  });
+
+  it('칸이 비어 있는 예전 업무는 보이는 쪽으로 친다', async () => {
+    fetchMyTasks.mockResolvedValue([
+      task('old', { dueDate: '2026-10-17', showOnCalendar: undefined as unknown as boolean }),
+    ]);
+    const { result } = run();
+
+    await waitFor(() => expect(result.current).toHaveLength(1));
   });
 });

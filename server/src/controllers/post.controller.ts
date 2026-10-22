@@ -48,6 +48,7 @@ interface PostLike {
   assignee?: { id: string; name: string; avatar: string | null } | null;
   startDate?: string | null;
   dueDate?: string | null;
+  showOnCalendar?: boolean;
   board?: { id: string; name: string; taskEnabled: boolean } | null;
 }
 
@@ -152,6 +153,7 @@ function formatPostResponse(
       : null,
     startDate: post.startDate ?? null,
     dueDate: post.dueDate ?? null,
+    showOnCalendar: post.showOnCalendar !== false,
     // 게시판 이름과 용도. 화면이 게시판 목록을 따로 뒤지지 않아도 되게 함께 내린다.
     board: post.board
       ? { id: post.board.id, name: post.board.name, taskEnabled: !!post.board.taskEnabled }
